@@ -1,0 +1,12 @@
+matrix:
+  homeserver: "https://scamdemic.wtf"
+  access_token: "syt_bWVzaHRhc3RpY2JvdA_TJwsgMiKQmBdpPVIVlaQ_0S5MPm"
+  bot_user_id: "@meshtasticbot:scamdemic.wtf"
+  room_id: "!phZxXpkkANBjLFBWUB:scamdemic.wtf"
+
+meshtastic:
+  host: "meshtastic.local"
+  broadcast_enabled: false
+
+logging:
+  level: "debug"
