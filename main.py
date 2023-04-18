@@ -2,6 +2,7 @@ import asyncio
 import time
 import logging
 import re
+import sqlite3
 import yaml
 import meshtastic.tcp_interface
 import meshtastic.serial_interface
@@ -19,6 +20,48 @@ with open("config.yaml", "r") as f:
     relay_config = yaml.load(f, Loader=SafeLoader)
 
 logger.setLevel(getattr(logging, relay_config["logging"]["level"].upper()))
+
+# Initialize SQLite database
+def initialize_database():
+    conn = sqlite3.connect("meshtastic.sqlite")
+    cursor = conn.cursor()
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS longnames (meshtastic_id TEXT PRIMARY KEY, longname TEXT)"
+    )
+    conn.commit()
+    conn.close()
+
+# Get the longname for a given Meshtastic ID
+def get_longname(meshtastic_id):
+    conn = sqlite3.connect("meshtastic.sqlite")
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT longname FROM longnames WHERE meshtastic_id=?", (meshtastic_id,)
+    )
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else None
+
+# Save the longname for a given Meshtastic ID
+def save_longname(meshtastic_id, longname):
+    conn = sqlite3.connect("meshtastic.sqlite")
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR REPLACE INTO longnames (meshtastic_id, longname) VALUES (?, ?)",
+        (meshtastic_id, longname),
+    )
+    conn.commit()
+    conn.close()
+
+def update_longnames():
+    if meshtastic_interface.nodes:
+        for node in meshtastic_interface.nodes.values():
+            user = node.get("user")
+            if user:
+                meshtastic_id = user["id"]
+                longname = user.get("longName", "N/A")
+                save_longname(meshtastic_id, longname)
+
 
 # Initialize Meshtastic interface
 connection_type = relay_config["meshtastic"]["connection_type"]
@@ -66,11 +109,13 @@ def on_meshtastic_message(packet, loop=None):
 
         logger.info(f"Processing inbound radio message from {sender}")
 
-        formatted_message = f"{sender}: {text}"
+        longname = get_longname(sender) or sender
+        formatted_message = f"{longname}: {text}"
         asyncio.run_coroutine_threadsafe(
             matrix_relay(matrix_client, formatted_message),
             loop=loop,
         )
+
 
 # Callback for new messages in Matrix room
 async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
@@ -84,10 +129,10 @@ async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
             logger.info(f"Processing matrix message from {event.sender}: {text}")
 
             display_name_response = await matrix_client.get_displayname(event.sender)
-            display_name = display_name_response.displayname or event.sender
+            display_name = (display_name_response.displayname or event.sender)[:8]
 
             text = f"{display_name}: {text}"
-            text = text[0:80]
+            text = text[0:218] # 218 = 228 (max message length) - 8 (max display name length) - 1 (colon + space)
 
             if relay_config["meshtastic"]["broadcast_enabled"]:
                 logger.info(f"Sending radio message from {display_name} to radio broadcast")
@@ -99,8 +144,12 @@ async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
 
 
 
+
 async def main():
     global matrix_client
+
+    # Initialize the SQLite database
+    initialize_database()
 
     config = AsyncClientConfig(encryption_enabled=False)
     matrix_client = AsyncClient(matrix_homeserver, bot_user_id, config=config)
@@ -117,6 +166,11 @@ async def main():
     matrix_client.add_event_callback(on_room_message, RoomMessageText)
 
     # Start the Matrix client
-    await matrix_client.sync_forever(timeout=30000)
+    while True:
+        # Update longnames
+        update_longnames()
+
+        await matrix_client.sync_forever(timeout=30000)
+        await asyncio.sleep(60)  # Update longnames every 60 seconds
 
 asyncio.run(main())
