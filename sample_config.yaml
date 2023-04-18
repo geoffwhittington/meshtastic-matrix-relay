@@ -8,8 +8,9 @@ meshtastic:
   connection_type: serial  # Choose either "network" or "serial"
   serial_port: /dev/ttyUSB0  # Only used when connection is "serial"
   host: "meshtastic.local" # Only used when connection is "network"
-  broadcast_enabled: true
   channel: 0
+  meshnet_name: "Your Meshnet Name" # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
+  display_meshnet_name: true
 
 logging:
   level: "debug"

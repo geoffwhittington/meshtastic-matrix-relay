@@ -83,13 +83,19 @@ bot_user_id = relay_config["matrix"]["bot_user_id"]
 matrix_room_id = relay_config["matrix"]["room_id"]
 
 # Send message to the Matrix room
-async def matrix_relay(matrix_client, message):
+async def matrix_relay(matrix_client, message, longname, meshnet_name):
     try:
+        content = {
+            "msgtype": "m.text",
+            "body": message,
+            "meshtastic_longname": longname,
+            "meshtastic_meshnet": meshnet_name,
+        }
         await asyncio.wait_for(
             matrix_client.room_send(
                 room_id=matrix_room_id,
                 message_type="m.room.message",
-                content={"msgtype": "m.text", "body": message},
+                content=content,
             ),
             timeout=0.5,
         )
@@ -110,11 +116,15 @@ def on_meshtastic_message(packet, loop=None):
         logger.info(f"Processing inbound radio message from {sender}")
 
         longname = get_longname(sender) or sender
-        formatted_message = f"{longname}: {text}"
+        meshnet_name = relay_config["meshtastic"]["meshnet_name"]
+
+        formatted_message = f"[{longname}/{meshnet_name}]: {text}"
+
         asyncio.run_coroutine_threadsafe(
-            matrix_relay(matrix_client, formatted_message),
+            matrix_relay(matrix_client, formatted_message, longname, meshnet_name),
             loop=loop,
         )
+
 
 
 # Callback for new messages in Matrix room
@@ -122,26 +132,31 @@ async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
     if room.room_id == matrix_room_id and event.sender != bot_user_id:
         message_timestamp = event.server_timestamp
 
-        # Only process messages with a timestamp greater than the bot's start time
         if message_timestamp > bot_start_time:
             text = event.body.strip()
-
             logger.info(f"Processing matrix message from {event.sender}: {text}")
 
-            display_name_response = await matrix_client.get_displayname(event.sender)
-            display_name = (display_name_response.displayname or event.sender)[:8]
+            longname = event.source['content'].get("meshtastic_longname")
+            meshnet_name = event.source['content'].get("meshtastic_meshnet")
 
-            text = f"{display_name}: {text}"
-            text = text[0:218] # 218 = 228 (max message length) - 8 (max display name length) - 1 (colon + space)
+            if longname and meshnet_name:
+                short_longname = longname[:3]
+                short_meshnet_name = meshnet_name[:4]
+                text = f"{short_longname}/{short_meshnet_name}: {text}"
+            else:
+                display_name_response = await matrix_client.get_displayname(event.sender)
+                full_display_name = display_name_response.displayname or event.sender
+                short_display_name = full_display_name[:5]
+
+                text = f"{short_display_name}[M]: {text}"
 
             if relay_config["meshtastic"]["broadcast_enabled"]:
-                logger.info(f"Sending radio message from {display_name} to radio broadcast")
+                logger.info(f"Sending radio message from {full_display_name} to radio broadcast")
                 meshtastic_interface.sendText(
                     text=text, channelIndex=relay_config["meshtastic"]["channel"]
                 )
             else:
-                logger.debug(f"Broadcast not supported: Message from {display_name} dropped.")
-
+                logger.debug(f"Broadcast not supported: Message from {full_display_name} dropped.")
 
 
 

@@ -1,6 +1,6 @@
 # Meshtastic <=> Matrix Relay
 
-Simple relay between Meshtastic and Matrix.org
+Simple relay between Meshtastic and a Matrix homeserver.
 
 ## Installation
 
@@ -37,9 +37,12 @@ matrix:
   room_id: "!someroomid:example.matrix.org"
 
 meshtastic:
-  host: "meshtastic.local"
-  broadcast_enabled: false
+  connection_type: serial  # Choose either "network" or "serial"
+  serial_port: /dev/ttyUSB0  # Only used when connection is "serial"
+  host: "meshtastic.local" # Only used when connection is "network"
   channel: 0
+  meshnet_name: "Your Meshnet Name" # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
+  display_meshnet_name: true
 
 logging:
   level: "debug"
