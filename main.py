@@ -6,6 +6,7 @@ import logging
 import yaml
 import re
 import meshtastic.tcp_interface
+import meshtastic.serial_interface
 from nio import AsyncClient, AsyncClientConfig, MatrixRoom, RoomMessageText, RoomMessage
 from pubsub import pub
 from meshtastic import mesh_pb2
@@ -28,14 +29,23 @@ elif relay_config["logging"]["level"] == "warn":
 elif relay_config["logging"]["level"] == "error":
     logger.setLevel(logging.ERROR)
 
-target_host = relay_config["meshtastic"]["host"]
 
 # Connect to the Meshtastic device
 logger.info(f"Starting Meshtastic <==> Matrix Relay...")
 
-logger.info(f"Connecting to radio at {target_host} ...")
-meshtastic_interface = meshtastic.tcp_interface.TCPInterface(hostname=target_host)
-logger.info(f"Connected to radio at {target_host}.")
+# Add a new configuration option to select between serial and network connections
+connection_type = relay_config["meshtastic"]["connection_type"]
+
+if connection_type == "serial":
+    serial_port = relay_config["meshtastic"]["serial_port"]
+    logger.info(f"Connecting to radio using serial port {serial_port} ...")
+    meshtastic_interface = meshtastic.serial_interface.SerialInterface(serial_port)
+    logger.info(f"Connected to radio using serial port {serial_port}.")
+else:
+    target_host = relay_config["meshtastic"]["host"]
+    logger.info(f"Connecting to radio at {target_host} ...")
+    meshtastic_interface = meshtastic.tcp_interface.TCPInterface(hostname=target_host)
+    logger.info(f"Connected to radio at {target_host}.")
 
 matrix_client = None
 

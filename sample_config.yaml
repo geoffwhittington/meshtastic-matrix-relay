@@ -1,12 +1,14 @@
 matrix:
-  homeserver: "https://scamdemic.wtf"
-  access_token: "syt_bWVzaHRhc3RpY2JvdA_TJwsgMiKQmBdpPVIVlaQ_0S5MPm"
-  bot_user_id: "@meshtasticbot:scamdemic.wtf"
-  room_id: "!phZxXpkkANBjLFBWUB:scamdemic.wtf"
+  homeserver: "https://example.matrix.org"
+  access_token: "reaalllllyloooooongsecretttttcodeeeeeeforrrrbot"
+  bot_user_id: "@botuser:example.matrix.org"
+  room_id: "!someroomid:example.matrix.org"
 
 meshtastic:
-  host: "meshtastic.local"
-  broadcast_enabled: false
+  connection_type: serial  # Choose either "network" or "serial"
+  serial_port: /dev/ttyUSB0  # Only used when connection is "serial"
+  host: "meshtastic.local" # Only used when connection is "network"
+  broadcast_enabled: true
   channel: 0
 
 logging:
