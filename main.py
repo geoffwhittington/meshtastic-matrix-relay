@@ -126,6 +126,10 @@ def on_meshtastic_message(packet, loop=None):
         )
 
 
+def truncate_message(text, max_bytes=320):  #GPT says it thinks Meshtastic's Max Payload is 340 bytes, it wanted to set it to 250. I'm trying 320.
+    truncated_text = text.encode('utf-8')[:max_bytes].decode('utf-8', 'ignore')
+    return truncated_text
+
 
 # Callback for new messages in Matrix room
 async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
@@ -149,6 +153,8 @@ async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
                 short_display_name = full_display_name[:5]
 
                 text = f"{short_display_name}[M]: {text}"
+
+            text = truncate_message(text)
 
             if relay_config["meshtastic"]["broadcast_enabled"]:
                 logger.info(f"Sending radio message from {full_display_name} to radio broadcast")
