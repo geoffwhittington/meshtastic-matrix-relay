@@ -157,13 +157,19 @@ async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
             logger.debug(
                 f"Sending radio message from {event.sender} to {target_node} ..."
             )
-            meshtastic_interface.sendText(text, destinationId=target_node)
+            meshtastic_interface.sendText(
+                text=text,
+                channelIndex=relay_config["meshtastic"]["channel"],
+                destinationId=target_node,
+            )
             logger.info(f"Sent radio message from {event.sender} to {target_node}")
         elif relay_config["meshtastic"]["broadcast_enabled"]:
             logger.debug(
                 f"Sending radio message from {event.sender} to radio broadcast ..."
             )
-            meshtastic_interface.sendText(text)
+            meshtastic_interface.sendText(
+                text=text, channelIndex=relay_config["meshtastic"]["channel"]
+            )
             logger.info(f"Sent radio message from {event.sender} to radio broadcast")
         elif not relay_config["meshtastic"]["broadcast_enabled"]:
             logger.debug(

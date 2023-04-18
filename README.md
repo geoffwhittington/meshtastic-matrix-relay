@@ -39,6 +39,7 @@ matrix:
 meshtastic:
   host: "meshtastic.local"
   broadcast_enabled: false
+  channel: 0
 
 logging:
   level: "debug"
