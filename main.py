@@ -23,35 +23,34 @@ logger.setLevel(getattr(logging, relay_config["logging"]["level"].upper()))
 
 # Initialize SQLite database
 def initialize_database():
-    conn = sqlite3.connect("meshtastic.sqlite")
-    cursor = conn.cursor()
-    cursor.execute(
-        "CREATE TABLE IF NOT EXISTS longnames (meshtastic_id TEXT PRIMARY KEY, longname TEXT)"
-    )
-    conn.commit()
-    conn.close()
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS longnames (meshtastic_id TEXT PRIMARY KEY, longname TEXT)"
+        )
+        conn.commit()
+
 
 # Get the longname for a given Meshtastic ID
 def get_longname(meshtastic_id):
-    conn = sqlite3.connect("meshtastic.sqlite")
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT longname FROM longnames WHERE meshtastic_id=?", (meshtastic_id,)
-    )
-    result = cursor.fetchone()
-    conn.close()
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT longname FROM longnames WHERE meshtastic_id=?", (meshtastic_id,)
+        )
+        result = cursor.fetchone()
     return result[0] if result else None
 
-# Save the longname for a given Meshtastic ID
+
 def save_longname(meshtastic_id, longname):
-    conn = sqlite3.connect("meshtastic.sqlite")
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT OR REPLACE INTO longnames (meshtastic_id, longname) VALUES (?, ?)",
-        (meshtastic_id, longname),
-    )
-    conn.commit()
-    conn.close()
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT OR REPLACE INTO longnames (meshtastic_id, longname) VALUES (?, ?)",
+            (meshtastic_id, longname),
+        )
+        conn.commit()
+
 
 def update_longnames():
     if meshtastic_interface.nodes:
@@ -127,12 +126,22 @@ def on_meshtastic_message(packet, loop=None):
 
 
 def truncate_message(text, max_bytes=320):  #GPT says it thinks Meshtastic's Max Payload is 340 bytes, it wanted to set it to 250. I'm trying 320.
+    """
+    Truncate the given text to fit within the specified byte size.
+
+    :param text: The text to truncate.
+    :param max_bytes: The maximum allowed byte size for the truncated text.
+    :return: The truncated text.
+    """
     truncated_text = text.encode('utf-8')[:max_bytes].decode('utf-8', 'ignore')
     return truncated_text
 
 
+
 # Callback for new messages in Matrix room
 async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
+    
+    full_display_name = "Unknown user"
     if room.room_id == matrix_room_id and event.sender != bot_user_id:
         message_timestamp = event.server_timestamp
 
@@ -142,11 +151,16 @@ async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
 
             longname = event.source['content'].get("meshtastic_longname")
             meshnet_name = event.source['content'].get("meshtastic_meshnet")
+            local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
 
             if longname and meshnet_name:
-                short_longname = longname[:3]
-                short_meshnet_name = meshnet_name[:4]
-                text = f"{short_longname}/{short_meshnet_name}: {text}"
+                if meshnet_name != local_meshnet_name:
+                    short_longname = longname[:3]
+                    short_meshnet_name = meshnet_name[:4]
+                    text = f"{short_longname}/{short_meshnet_name}: {text}"
+                else:
+                    logger.info("Ignoring message from the same meshnet.")
+                    return
             else:
                 display_name_response = await matrix_client.get_displayname(event.sender)
                 full_display_name = display_name_response.displayname or event.sender
@@ -163,7 +177,6 @@ async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
                 )
             else:
                 logger.debug(f"Broadcast not supported: Message from {full_display_name} dropped.")
-
 
 
 async def main():
