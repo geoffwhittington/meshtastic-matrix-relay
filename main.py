@@ -147,6 +147,12 @@ async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
 
         if message_timestamp > bot_start_time:
             text = event.body.strip()
+            
+            # Remove unnecessary part of the message content
+            split_content = text.split("]: ", 1)
+            if len(split_content) > 1:
+                text = split_content[1]
+
             logger.info(f"Processing matrix message from {event.sender}: {text}")
 
             longname = event.source['content'].get("meshtastic_longname")
