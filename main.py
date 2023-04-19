@@ -125,7 +125,7 @@ def on_meshtastic_message(packet, loop=None):
         )
 
 
-def truncate_message(text, max_bytes=320):  #GPT says it thinks Meshtastic's Max Payload is 340 bytes, it wanted to set it to 250. I'm trying 320.
+def truncate_message(text, max_bytes=234):  #234 is the maximum that we can run without an error. Trying it for awhile, otherwise lower this to 230 or less.
     """
     Truncate the given text to fit within the specified byte size.
 
