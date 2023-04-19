@@ -23,35 +23,34 @@ logger.setLevel(getattr(logging, relay_config["logging"]["level"].upper()))
 
 # Initialize SQLite database
 def initialize_database():
-    conn = sqlite3.connect("meshtastic.sqlite")
-    cursor = conn.cursor()
-    cursor.execute(
-        "CREATE TABLE IF NOT EXISTS longnames (meshtastic_id TEXT PRIMARY KEY, longname TEXT)"
-    )
-    conn.commit()
-    conn.close()
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS longnames (meshtastic_id TEXT PRIMARY KEY, longname TEXT)"
+        )
+        conn.commit()
+
 
 # Get the longname for a given Meshtastic ID
 def get_longname(meshtastic_id):
-    conn = sqlite3.connect("meshtastic.sqlite")
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT longname FROM longnames WHERE meshtastic_id=?", (meshtastic_id,)
-    )
-    result = cursor.fetchone()
-    conn.close()
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT longname FROM longnames WHERE meshtastic_id=?", (meshtastic_id,)
+        )
+        result = cursor.fetchone()
     return result[0] if result else None
 
-# Save the longname for a given Meshtastic ID
+
 def save_longname(meshtastic_id, longname):
-    conn = sqlite3.connect("meshtastic.sqlite")
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT OR REPLACE INTO longnames (meshtastic_id, longname) VALUES (?, ?)",
-        (meshtastic_id, longname),
-    )
-    conn.commit()
-    conn.close()
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT OR REPLACE INTO longnames (meshtastic_id, longname) VALUES (?, ?)",
+            (meshtastic_id, longname),
+        )
+        conn.commit()
+
 
 def update_longnames():
     if meshtastic_interface.nodes:
@@ -83,13 +82,19 @@ bot_user_id = relay_config["matrix"]["bot_user_id"]
 matrix_room_id = relay_config["matrix"]["room_id"]
 
 # Send message to the Matrix room
-async def matrix_relay(matrix_client, message):
+async def matrix_relay(matrix_client, message, longname, meshnet_name):
     try:
+        content = {
+            "msgtype": "m.text",
+            "body": message,
+            "meshtastic_longname": longname,
+            "meshtastic_meshnet": meshnet_name,
+        }
         await asyncio.wait_for(
             matrix_client.room_send(
                 room_id=matrix_room_id,
                 message_type="m.room.message",
-                content={"msgtype": "m.text", "body": message},
+                content=content,
             ),
             timeout=0.5,
         )
@@ -110,39 +115,74 @@ def on_meshtastic_message(packet, loop=None):
         logger.info(f"Processing inbound radio message from {sender}")
 
         longname = get_longname(sender) or sender
-        formatted_message = f"{longname}: {text}"
+        meshnet_name = relay_config["meshtastic"]["meshnet_name"]
+
+        formatted_message = f"[{longname}/{meshnet_name}]: {text}"
+
         asyncio.run_coroutine_threadsafe(
-            matrix_relay(matrix_client, formatted_message),
+            matrix_relay(matrix_client, formatted_message, longname, meshnet_name),
             loop=loop,
         )
 
 
+def truncate_message(text, max_bytes=320):  #GPT says it thinks Meshtastic's Max Payload is 340 bytes, it wanted to set it to 250. I'm trying 320.
+    """
+    Truncate the given text to fit within the specified byte size.
+
+    :param text: The text to truncate.
+    :param max_bytes: The maximum allowed byte size for the truncated text.
+    :return: The truncated text.
+    """
+    truncated_text = text.encode('utf-8')[:max_bytes].decode('utf-8', 'ignore')
+    return truncated_text
+
+
+
 # Callback for new messages in Matrix room
 async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
+    
+    full_display_name = "Unknown user"
     if room.room_id == matrix_room_id and event.sender != bot_user_id:
         message_timestamp = event.server_timestamp
 
-        # Only process messages with a timestamp greater than the bot's start time
         if message_timestamp > bot_start_time:
             text = event.body.strip()
+            
+            # Remove unnecessary part of the message content
+            split_content = text.split("]: ", 1)
+            if len(split_content) > 1:
+                text = split_content[1]
 
             logger.info(f"Processing matrix message from {event.sender}: {text}")
 
-            display_name_response = await matrix_client.get_displayname(event.sender)
-            display_name = (display_name_response.displayname or event.sender)[:8]
+            longname = event.source['content'].get("meshtastic_longname")
+            meshnet_name = event.source['content'].get("meshtastic_meshnet")
+            local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
 
-            text = f"{display_name}: {text}"
-            text = text[0:218] # 218 = 228 (max message length) - 8 (max display name length) - 1 (colon + space)
+            if longname and meshnet_name:
+                if meshnet_name != local_meshnet_name:
+                    short_longname = longname[:3]
+                    short_meshnet_name = meshnet_name[:4]
+                    text = f"{short_longname}/{short_meshnet_name}: {text}"
+                else:
+                    logger.info("Ignoring message from the same meshnet.")
+                    return
+            else:
+                display_name_response = await matrix_client.get_displayname(event.sender)
+                full_display_name = display_name_response.displayname or event.sender
+                short_display_name = full_display_name[:5]
+
+                text = f"{short_display_name}[M]: {text}"
+
+            text = truncate_message(text)
 
             if relay_config["meshtastic"]["broadcast_enabled"]:
-                logger.info(f"Sending radio message from {display_name} to radio broadcast")
+                logger.info(f"Sending radio message from {full_display_name} to radio broadcast")
                 meshtastic_interface.sendText(
                     text=text, channelIndex=relay_config["meshtastic"]["channel"]
                 )
             else:
-                logger.debug(f"Broadcast not supported: Message from {display_name} dropped.")
-
-
+                logger.debug(f"Broadcast not supported: Message from {full_display_name} dropped.")
 
 
 async def main():
