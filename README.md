@@ -14,7 +14,7 @@ A powerful and easy-to-use relay between Meshtastic devices and Matrix chat room
 
 ## Custom Keys in Matrix Messages
 
-This relay utilizes custom keys in Matrix messages to store metadata about Meshtastic users. When a message is received from a remote meshnet, the relay includes the sender's longname and the meshnet name as custom keys in the Matrix message. This metadata helps identify the source of the message and provides context for users in the Matrix chat room.
+This relay utilizes custom keys in Matrix messages. When a message is received from a remote meshnet, the relay includes the sender's longname and the meshnet name as custom keys in the Matrix message. This metadata helps identify the source of the message and provides context for users in the Matrix chat room.
 
 Example message format with custom keys:
 
