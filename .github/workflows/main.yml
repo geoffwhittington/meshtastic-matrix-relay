@@ -28,7 +28,7 @@ jobs:
       - name: Build Windows Executable
         run: |
           ls -al
-          pyoxidizer build --config-file ./pyoxidizer.toml
+          PYOXIDIZER_CONFIG=./pyoxidizer.toml pyoxidizer build
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
