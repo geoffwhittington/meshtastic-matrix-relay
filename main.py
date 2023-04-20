@@ -1,3 +1,7 @@
+"""
+This script connects a Meshtastic mesh network to Matrix chat rooms by relaying messages between them.
+It uses Meshtastic-python and Matrix nio client library to interface with the radio and the Matrix server respectively.
+"""
 import asyncio
 import time
 import logging
@@ -6,12 +10,12 @@ import sqlite3
 import yaml
 import meshtastic.tcp_interface
 import meshtastic.serial_interface
-from nio import AsyncClient, AsyncClientConfig, MatrixRoom, RoomMessageText
+from nio import AsyncClient, AsyncClientConfig, MatrixRoom, RoomMessageText, RoomAliasEvent
 from pubsub import pub
 from yaml.loader import SafeLoader
 from typing import List
 
-bot_start_time = int(time.time() * 1000)
+bot_start_time = int(time.time() * 1000) # Timestamp when the bot starts, used to filter out old messages
 
 logging.basicConfig()
 logger = logging.getLogger(name="meshtastic.matrix.relay")
@@ -62,6 +66,29 @@ def update_longnames():
                 longname = user.get("longName", "N/A")
                 save_longname(meshtastic_id, longname)
 
+
+async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
+    """Join a Matrix room by its ID or alias."""
+    try:
+        if room_id_or_alias.startswith("#"):
+            response = await matrix_client.resolve_room_alias(room_id_or_alias)
+            if not response.room_id:
+                logger.error(f"Failed to resolve room alias '{room_id_or_alias}': {response.message}")
+                return
+            room_id = response.room_id
+        else:
+            room_id = room_id_or_alias
+
+        if room_id not in matrix_client.rooms:
+            response = await matrix_client.join(room_id)
+            if response and hasattr(response, 'room_id'):
+                logger.info(f"Joined room '{room_id_or_alias}' successfully")
+            else:
+                logger.error(f"Failed to join room '{room_id_or_alias}': {response.message}")
+        else:
+            logger.debug(f"Bot is already in room '{room_id_or_alias}'")
+    except Exception as e:
+        logger.error(f"Error joining room '{room_id_or_alias}': {e}")
 
 # Initialize Meshtastic interface
 connection_type = relay_config["meshtastic"]["connection_type"]
@@ -175,7 +202,6 @@ def truncate_message(text, max_bytes=234):  #234 is the maximum that we can run 
 
 
 # Callback for new messages in Matrix room
-# Callback for new messages in Matrix room
 async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
     
     full_display_name = "Unknown user"
@@ -250,6 +276,10 @@ async def main():
     except Exception as e:
         logger.error(f"Error connecting to Matrix server: {e}")
         return
+    
+    # Join the rooms specified in the config.yaml
+    for room in matrix_rooms:
+        await join_matrix_room(matrix_client, room["id"])
 
     # Register the Meshtastic message callback
     logger.info(f"Listening for inbound radio messages ...")
