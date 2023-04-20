@@ -131,15 +131,25 @@ def on_meshtastic_message(packet, loop=None):
             meshnet_name = relay_config["meshtastic"]["meshnet_name"]
 
             formatted_message = f"[{longname}/{meshnet_name}]: {text}"
+            logger.info(f"Relaying Meshtastic message from {longname} to Matrix: {formatted_message}")
 
             asyncio.run_coroutine_threadsafe(
                 matrix_relay(matrix_client, formatted_message, longname, meshnet_name),
                 loop=loop,
             )
         else:
-            logger.info(f"Skipping message from channel {channel} (sender: {sender})")
+            logger.debug(f"Skipping message from channel {channel}")
     else:
-        logger.debug(f"Unknown packet")
+        portnum = packet["decoded"]["portnum"]
+        if portnum == "TELEMETRY_APP":
+            logger.debug("Ignoring Telemetry packet")
+        elif portnum == "POSITION_APP":
+            logger.debug("Ignoring Position packet")
+        elif portnum == "ADMIN_APP":
+            logger.debug("Ignoring Admin packet")
+        else:
+            logger.debug(f"Ignoring Unknown packet")
+
 
 
 
