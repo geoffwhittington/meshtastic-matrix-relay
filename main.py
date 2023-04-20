@@ -9,6 +9,7 @@ import meshtastic.serial_interface
 from nio import AsyncClient, AsyncClientConfig, MatrixRoom, RoomMessageText
 from pubsub import pub
 from yaml.loader import SafeLoader
+from typing import List
 
 bot_start_time = int(time.time() * 1000)
 
@@ -79,10 +80,10 @@ matrix_client = None
 matrix_homeserver = relay_config["matrix"]["homeserver"]
 matrix_access_token = relay_config["matrix"]["access_token"]
 bot_user_id = relay_config["matrix"]["bot_user_id"]
-matrix_room_id = relay_config["matrix"]["room_id"]
+matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 
 # Send message to the Matrix room
-async def matrix_relay(matrix_client, message, longname, meshnet_name):
+async def matrix_relay(matrix_client, room_id, message, longname, meshnet_name):
     try:
         content = {
             "msgtype": "m.text",
@@ -92,18 +93,19 @@ async def matrix_relay(matrix_client, message, longname, meshnet_name):
         }
         await asyncio.wait_for(
             matrix_client.room_send(
-                room_id=matrix_room_id,
+                room_id=room_id,
                 message_type="m.room.message",
                 content=content,
             ),
             timeout=0.5,
         )
-        logger.info(f"Sent inbound radio message to matrix room: {matrix_room_id}")
+        logger.info(f"Sent inbound radio message to matrix room: {room_id}")
 
     except asyncio.TimeoutError:
         logger.error(f"Timed out while waiting for Matrix response")
     except Exception as e:
-        logger.error(f"Error sending radio message to matrix room {matrix_room_id}: {e}")
+        logger.error(f"Error sending radio message to matrix room {room_id}: {e}")
+
 
 # Callback for new messages from Meshtastic
 def on_meshtastic_message(packet, loop=None):
@@ -112,33 +114,40 @@ def on_meshtastic_message(packet, loop=None):
     if "text" in packet["decoded"] and packet["decoded"]["text"]:
         text = packet["decoded"]["text"]
 
-        # Check if the channel is in the packet
         if "channel" in packet:
             channel = packet["channel"]
         else:
-            # Assume any decoded packet without a channel number and includes
-            # 'portnum': 'TEXT_MESSAGE_APP' as a channel 0
             if packet["decoded"]["portnum"] == "TEXT_MESSAGE_APP":
                 channel = 0
             else:
                 logger.debug(f"Unknown packet")
                 return
 
-        if channel == relay_config["meshtastic"]["channel"]:
-            logger.info(f"Processing inbound radio message from {sender} on channel {channel}")
+        # Check if the channel is mapped to a Matrix room in the configuration
+        channel_mapped = False
+        for room in matrix_rooms:
+            if room["meshtastic_channel"] == channel:
+                channel_mapped = True
+                break
 
-            longname = get_longname(sender) or sender
-            meshnet_name = relay_config["meshtastic"]["meshnet_name"]
+        if not channel_mapped:
+            logger.debug(f"Skipping message from unmapped channel {channel}")
+            return
 
-            formatted_message = f"[{longname}/{meshnet_name}]: {text}"
-            logger.info(f"Relaying Meshtastic message from {longname} to Matrix: {formatted_message}")
+        logger.info(f"Processing inbound radio message from {sender} on channel {channel}")
 
-            asyncio.run_coroutine_threadsafe(
-                matrix_relay(matrix_client, formatted_message, longname, meshnet_name),
-                loop=loop,
-            )
-        else:
-            logger.debug(f"Skipping message from channel {channel}")
+        longname = get_longname(sender) or sender
+        meshnet_name = relay_config["meshtastic"]["meshnet_name"]
+
+        formatted_message = f"[{longname}/{meshnet_name}]: {text}"
+        logger.info(f"Relaying Meshtastic message from {longname} to Matrix: {formatted_message}")
+
+        for room in matrix_rooms:
+            if room["meshtastic_channel"] == channel:
+                asyncio.run_coroutine_threadsafe(
+                    matrix_relay(matrix_client, room["id"], formatted_message, longname, meshnet_name),
+                    loop=loop,
+                )
     else:
         portnum = packet["decoded"]["portnum"]
         if portnum == "TELEMETRY_APP":
@@ -149,7 +158,6 @@ def on_meshtastic_message(packet, loop=None):
             logger.debug("Ignoring Admin packet")
         else:
             logger.debug(f"Ignoring Unknown packet")
-
 
 
 
@@ -167,10 +175,11 @@ def truncate_message(text, max_bytes=234):  #234 is the maximum that we can run 
 
 
 # Callback for new messages in Matrix room
+# Callback for new messages in Matrix room
 async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
     
     full_display_name = "Unknown user"
-    if room.room_id == matrix_room_id and event.sender != bot_user_id:
+    if event.sender != bot_user_id:
         message_timestamp = event.server_timestamp
 
         if message_timestamp > bot_start_time:
@@ -204,13 +213,24 @@ async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
 
             text = truncate_message(text)
 
-            if relay_config["meshtastic"]["broadcast_enabled"]:
-                logger.info(f"Sending radio message from {full_display_name} to radio broadcast")
-                meshtastic_interface.sendText(
-                    text=text, channelIndex=relay_config["meshtastic"]["channel"]
-                )
-            else:
-                logger.debug(f"Broadcast not supported: Message from {full_display_name} dropped.")
+            # Find the corresponding room configuration
+            room_config = None
+            for config in matrix_rooms:
+                if config["id"] == room.room_id:
+                    room_config = config
+                    break
+
+            if room_config:
+                meshtastic_channel = room_config["meshtastic_channel"]
+
+                if relay_config["meshtastic"]["broadcast_enabled"]:
+                    logger.info(f"Sending radio message from {full_display_name} to radio broadcast")
+                    meshtastic_interface.sendText(
+                        text=text, channelIndex=meshtastic_channel
+                    )
+                else:
+                    logger.debug(f"Broadcast not supported: Message from {full_display_name} dropped.")
+
 
 
 async def main():
