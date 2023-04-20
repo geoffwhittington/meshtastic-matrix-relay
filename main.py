@@ -243,6 +243,14 @@ async def main():
     matrix_client = AsyncClient(matrix_homeserver, bot_user_id, config=config)
     matrix_client.access_token = matrix_access_token
 
+    logger.info("Connecting to Matrix server...")
+    try:
+        login_response = await matrix_client.login(matrix_access_token)
+        logger.info(f"Login response: {login_response}")
+    except Exception as e:
+        logger.error(f"Error connecting to Matrix server: {e}")
+        return
+
     # Register the Meshtastic message callback
     logger.info(f"Listening for inbound radio messages ...")
     pub.subscribe(
@@ -255,10 +263,16 @@ async def main():
 
     # Start the Matrix client
     while True:
-        # Update longnames
-        update_longnames()
+        try:
+            # Update longnames
+            update_longnames()
 
-        await matrix_client.sync_forever(timeout=30000)
+            logger.info("Syncing with Matrix server...")
+            await matrix_client.sync_forever(timeout=30000)
+            logger.info("Sync completed.")
+        except Exception as e:
+            logger.error(f"Error syncing with Matrix server: {e}")
+
         await asyncio.sleep(60)  # Update longnames every 60 seconds
 
 asyncio.run(main())
