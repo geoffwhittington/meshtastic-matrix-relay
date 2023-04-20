@@ -112,24 +112,35 @@ def on_meshtastic_message(packet, loop=None):
     if "text" in packet["decoded"] and packet["decoded"]["text"]:
         text = packet["decoded"]["text"]
 
-        # Check if the channel is in the packet and if it matches the specified channel
-        if 'channel' in packet:
-            if packet['channel'] == relay_config["meshtastic"]["channel"]:
-                logger.info(f"Processing inbound radio message from {sender}")
-
-                longname = get_longname(sender) or sender
-                meshnet_name = relay_config["meshtastic"]["meshnet_name"]
-
-                formatted_message = f"[{longname}/{meshnet_name}]: {text}"
-
-                asyncio.run_coroutine_threadsafe(
-                    matrix_relay(matrix_client, formatted_message, longname, meshnet_name),
-                    loop=loop,
-                )
-            else:
-                logger.info(f"Skipping message from channel {packet['channel']} (sender: {sender})")
+        # Check if the channel is in the packet
+        if "channel" in packet:
+            channel = packet["channel"]
         else:
-            logger.debug(f"Unknown packet")
+            # Assume any decoded packet without a channel number and includes
+            # 'portnum': 'TEXT_MESSAGE_APP' as a channel 0
+            if packet["decoded"]["portnum"] == "TEXT_MESSAGE_APP":
+                channel = 0
+            else:
+                logger.debug(f"Unknown packet")
+                return
+
+        if channel == relay_config["meshtastic"]["channel"]:
+            logger.info(f"Processing inbound radio message from {sender} on channel {channel}")
+
+            longname = get_longname(sender) or sender
+            meshnet_name = relay_config["meshtastic"]["meshnet_name"]
+
+            formatted_message = f"[{longname}/{meshnet_name}]: {text}"
+
+            asyncio.run_coroutine_threadsafe(
+                matrix_relay(matrix_client, formatted_message, longname, meshnet_name),
+                loop=loop,
+            )
+        else:
+            logger.info(f"Skipping message from channel {channel} (sender: {sender})")
+    else:
+        logger.debug(f"Unknown packet")
+
 
 
 def truncate_message(text, max_bytes=234):  #234 is the maximum that we can run without an error. Trying it for awhile, otherwise lower this to 230 or less.
