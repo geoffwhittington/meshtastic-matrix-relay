@@ -2,15 +2,19 @@ matrix:
   homeserver: "https://example.matrix.org"
   access_token: "reaalllllyloooooongsecretttttcodeeeeeeforrrrbot"
   bot_user_id: "@botuser:example.matrix.org"
-  room_id: "!someroomid:example.matrix.org"
+
+matrix_rooms:  # Needs at least 1 room & channel, but supports all Meshtastic channels
+  - id: "!someroomid:example.matrix.org"
+    meshtastic_channel: 0
+  - id: "!someroomid2:example.matrix.org"
+    meshtastic_channel: 2
 
 meshtastic:
   connection_type: serial  # Choose either "network" or "serial"
   serial_port: /dev/ttyUSB0  # Only used when connection is "serial"
   host: "meshtastic.local" # Only used when connection is "network"
-  channel: 0
   meshnet_name: "Your Meshnet Name" # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
-  display_meshnet_name: true
+  broadcast_enabled: true
 
 logging:
-  level: "debug"
+  level: "info"

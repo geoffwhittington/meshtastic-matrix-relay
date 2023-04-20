@@ -1,3 +1,7 @@
+"""
+This script connects a Meshtastic mesh network to Matrix chat rooms by relaying messages between them.
+It uses Meshtastic-python and Matrix nio client library to interface with the radio and the Matrix server respectively.
+"""
 import asyncio
 import time
 import logging
@@ -6,11 +10,12 @@ import sqlite3
 import yaml
 import meshtastic.tcp_interface
 import meshtastic.serial_interface
-from nio import AsyncClient, AsyncClientConfig, MatrixRoom, RoomMessageText
+from nio import AsyncClient, AsyncClientConfig, MatrixRoom, RoomMessageText, RoomAliasEvent
 from pubsub import pub
 from yaml.loader import SafeLoader
+from typing import List
 
-bot_start_time = int(time.time() * 1000)
+bot_start_time = int(time.time() * 1000) # Timestamp when the bot starts, used to filter out old messages
 
 logging.basicConfig()
 logger = logging.getLogger(name="meshtastic.matrix.relay")
@@ -62,6 +67,29 @@ def update_longnames():
                 save_longname(meshtastic_id, longname)
 
 
+async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
+    """Join a Matrix room by its ID or alias."""
+    try:
+        if room_id_or_alias.startswith("#"):
+            response = await matrix_client.resolve_room_alias(room_id_or_alias)
+            if not response.room_id:
+                logger.error(f"Failed to resolve room alias '{room_id_or_alias}': {response.message}")
+                return
+            room_id = response.room_id
+        else:
+            room_id = room_id_or_alias
+
+        if room_id not in matrix_client.rooms:
+            response = await matrix_client.join(room_id)
+            if response and hasattr(response, 'room_id'):
+                logger.info(f"Joined room '{room_id_or_alias}' successfully")
+            else:
+                logger.error(f"Failed to join room '{room_id_or_alias}': {response.message}")
+        else:
+            logger.debug(f"Bot is already in room '{room_id_or_alias}'")
+    except Exception as e:
+        logger.error(f"Error joining room '{room_id_or_alias}': {e}")
+
 # Initialize Meshtastic interface
 connection_type = relay_config["meshtastic"]["connection_type"]
 if connection_type == "serial":
@@ -79,10 +107,10 @@ matrix_client = None
 matrix_homeserver = relay_config["matrix"]["homeserver"]
 matrix_access_token = relay_config["matrix"]["access_token"]
 bot_user_id = relay_config["matrix"]["bot_user_id"]
-matrix_room_id = relay_config["matrix"]["room_id"]
+matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 
 # Send message to the Matrix room
-async def matrix_relay(matrix_client, message, longname, meshnet_name):
+async def matrix_relay(matrix_client, room_id, message, longname, meshnet_name):
     try:
         content = {
             "msgtype": "m.text",
@@ -92,18 +120,19 @@ async def matrix_relay(matrix_client, message, longname, meshnet_name):
         }
         await asyncio.wait_for(
             matrix_client.room_send(
-                room_id=matrix_room_id,
+                room_id=room_id,
                 message_type="m.room.message",
                 content=content,
             ),
             timeout=0.5,
         )
-        logger.info(f"Sent inbound radio message to matrix room: {matrix_room_id}")
+        logger.info(f"Sent inbound radio message to matrix room: {room_id}")
 
     except asyncio.TimeoutError:
         logger.error(f"Timed out while waiting for Matrix response")
     except Exception as e:
-        logger.error(f"Error sending radio message to matrix room {matrix_room_id}: {e}")
+        logger.error(f"Error sending radio message to matrix room {room_id}: {e}")
+
 
 # Callback for new messages from Meshtastic
 def on_meshtastic_message(packet, loop=None):
@@ -112,20 +141,54 @@ def on_meshtastic_message(packet, loop=None):
     if "text" in packet["decoded"] and packet["decoded"]["text"]:
         text = packet["decoded"]["text"]
 
-        logger.info(f"Processing inbound radio message from {sender}")
+        if "channel" in packet:
+            channel = packet["channel"]
+        else:
+            if packet["decoded"]["portnum"] == "TEXT_MESSAGE_APP":
+                channel = 0
+            else:
+                logger.debug(f"Unknown packet")
+                return
+
+        # Check if the channel is mapped to a Matrix room in the configuration
+        channel_mapped = False
+        for room in matrix_rooms:
+            if room["meshtastic_channel"] == channel:
+                channel_mapped = True
+                break
+
+        if not channel_mapped:
+            logger.debug(f"Skipping message from unmapped channel {channel}")
+            return
+
+        logger.info(f"Processing inbound radio message from {sender} on channel {channel}")
 
         longname = get_longname(sender) or sender
         meshnet_name = relay_config["meshtastic"]["meshnet_name"]
 
         formatted_message = f"[{longname}/{meshnet_name}]: {text}"
+        logger.info(f"Relaying Meshtastic message from {longname} to Matrix: {formatted_message}")
 
-        asyncio.run_coroutine_threadsafe(
-            matrix_relay(matrix_client, formatted_message, longname, meshnet_name),
-            loop=loop,
-        )
+        for room in matrix_rooms:
+            if room["meshtastic_channel"] == channel:
+                asyncio.run_coroutine_threadsafe(
+                    matrix_relay(matrix_client, room["id"], formatted_message, longname, meshnet_name),
+                    loop=loop,
+                )
+    else:
+        portnum = packet["decoded"]["portnum"]
+        if portnum == "TELEMETRY_APP":
+            logger.debug("Ignoring Telemetry packet")
+        elif portnum == "POSITION_APP":
+            logger.debug("Ignoring Position packet")
+        elif portnum == "ADMIN_APP":
+            logger.debug("Ignoring Admin packet")
+        else:
+            logger.debug(f"Ignoring Unknown packet")
 
 
-def truncate_message(text, max_bytes=320):  #GPT says it thinks Meshtastic's Max Payload is 340 bytes, it wanted to set it to 250. I'm trying 320.
+
+def truncate_message(text, max_bytes=234):  #234 is the maximum that we can run without an error. Trying it for awhile, otherwise lower this to 230 or less.
     """
     Truncate the given text to fit within the specified byte size.
 
@@ -142,7 +205,7 @@ def truncate_message(text, max_bytes=320):  #GPT says it thinks Meshtastic's Max
 async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
     
     full_display_name = "Unknown user"
-    if room.room_id == matrix_room_id and event.sender != bot_user_id:
+    if event.sender != bot_user_id:
         message_timestamp = event.server_timestamp
 
         if message_timestamp > bot_start_time:
@@ -176,13 +239,24 @@ async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
 
             text = truncate_message(text)
 
-            if relay_config["meshtastic"]["broadcast_enabled"]:
-                logger.info(f"Sending radio message from {full_display_name} to radio broadcast")
-                meshtastic_interface.sendText(
-                    text=text, channelIndex=relay_config["meshtastic"]["channel"]
-                )
-            else:
-                logger.debug(f"Broadcast not supported: Message from {full_display_name} dropped.")
+            # Find the corresponding room configuration
+            room_config = None
+            for config in matrix_rooms:
+                if config["id"] == room.room_id:
+                    room_config = config
+                    break
+
+            if room_config:
+                meshtastic_channel = room_config["meshtastic_channel"]
+
+                if relay_config["meshtastic"]["broadcast_enabled"]:
+                    logger.info(f"Sending radio message from {full_display_name} to radio broadcast")
+                    meshtastic_interface.sendText(
+                        text=text, channelIndex=meshtastic_channel
+                    )
+                else:
+                    logger.debug(f"Broadcast not supported: Message from {full_display_name} dropped.")
+
 
 
 async def main():
@@ -194,6 +268,18 @@ async def main():
     config = AsyncClientConfig(encryption_enabled=False)
     matrix_client = AsyncClient(matrix_homeserver, bot_user_id, config=config)
     matrix_client.access_token = matrix_access_token
+
+    logger.info("Connecting to Matrix server...")
+    try:
+        login_response = await matrix_client.login(matrix_access_token)
+        logger.info(f"Login response: {login_response}")
+    except Exception as e:
+        logger.error(f"Error connecting to Matrix server: {e}")
+        return
+    
+    # Join the rooms specified in the config.yaml
+    for room in matrix_rooms:
+        await join_matrix_room(matrix_client, room["id"])
 
     # Register the Meshtastic message callback
     logger.info(f"Listening for inbound radio messages ...")
@@ -207,10 +293,16 @@ async def main():
 
     # Start the Matrix client
     while True:
-        # Update longnames
-        update_longnames()
+        try:
+            # Update longnames
+            update_longnames()
 
-        await matrix_client.sync_forever(timeout=30000)
+            logger.info("Syncing with Matrix server...")
+            await matrix_client.sync_forever(timeout=30000)
+            logger.info("Sync completed.")
+        except Exception as e:
+            logger.error(f"Error syncing with Matrix server: {e}")
+
         await asyncio.sleep(60)  # Update longnames every 60 seconds
 
 asyncio.run(main())
