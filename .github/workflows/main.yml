@@ -22,16 +22,11 @@ jobs:
     - name: Build executable
       run: pyinstaller --name=mmrelay.exe --onefile --console main.py
 
-    - name: Install Inno Setup
-      run: |
-        $url = 'https://www.jrsoftware.org/download.php/is-unicode.exe'
-        $installer = "$env:TEMP\installer.exe"
-        Invoke-WebRequest $url -OutFile $installer
-        Start-Process -FilePath $installer -ArgumentList '/VERYSILENT' -Wait
-    - name: Build Installer
-      run: |
-        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" mmrelay.iss
-    
+    - name: Build installer
+      uses: nadeemjazmawe/inno-setup-action-cli@v6.0.5
+      with: 
+          filepath: './mmrelay.iss'
+
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
