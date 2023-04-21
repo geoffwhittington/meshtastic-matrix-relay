@@ -221,9 +221,9 @@ async def on_room_message(room: MatrixRoom, event: Union[RoomMessageText, RoomMe
                     short_longname = longname[:3]
                     short_meshnet_name = meshnet_name[:4]
                     prefix = f"{short_longname}/{short_meshnet_name}: "
-                    logger.info(f"Processing message from remote meshnet [{full_display_name}]: {text}")
+                    logger.info(f"Processing message from remote meshnet: {text}")
                 else:
-                    logger.info(f"Processing message from local meshnet [{full_display_name}]: {text}")
+                    logger.info(f"Processing message from local meshnet: {text}")
                     return
             else:
                 display_name_response = await matrix_client.get_displayname(event.sender)
