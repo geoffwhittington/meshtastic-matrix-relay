@@ -22,16 +22,16 @@ jobs:
     - name: Build executable
       run: pyinstaller --name=mmrelay.exe --onefile --console main.py
 
+    - name: Download and install Winget
+      run: |
+        Invoke-WebRequest -Uri 'https://winget.azureedge.net/cache/winget-cli-0.3.13971-preview.zip' -OutFile 'winget.zip'
+        Expand-Archive -Path 'winget.zip' -DestinationPath "$env:ProgramFiles\WindowsApps"
+        Set-ExecutionPolicy RemoteSigned -scope CurrentUser
+
     - name: Install NSIS
       run: |
-        $url = 'https://sourceforge.net/projects/nsis/files/NSIS%203/3.06.1/nsis-3.06.1-setup.exe/download'
-        $installer = "$env:TEMP\installer.exe"
-        Invoke-WebRequest $url -OutFile $installer
-        Start-Process -FilePath $installer -ArgumentList '/S' -Wait
+        winget install -e --id NSIS.NSIS
 
-    - name: Build NSIS Installer
-      run: |
-        "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
     - name: Compile NSIS script
       run: |
         makensis mmrelay.nsi
