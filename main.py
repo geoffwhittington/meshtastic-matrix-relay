@@ -266,9 +266,9 @@ async def main():
     ssl_context = ssl.create_default_context(cafile=certifi.where())
 
     # Initialize the Matrix client with custom SSL context
-    config = AsyncClientConfig(encryption_enabled=False, ssl=ssl_context)
-    matrix_client = AsyncClient(matrix_homeserver, bot_user_id, config=config)
-    matrix_client.access_token = matrix_access_token    
+    config = AsyncClientConfig(encryption_enabled=False)
+    matrix_client = AsyncClient(matrix_homeserver, bot_user_id, config=config, ssl=ssl_context)
+    matrix_client.access_token = matrix_access_token
 
     logger.info("Connecting to Matrix server...")
     try:
