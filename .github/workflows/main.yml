@@ -22,13 +22,17 @@ jobs:
     - name: Build executable
       run: pyinstaller --name=mmrelay.exe --onefile --console main.py
 
-    - name: Setup NSIS
+    - name: Install NSIS
       run: |
-        choco install nsis
-
+        Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
+        scoop bucket add extras
+        scoop install nsis
+    - name: Print NSIS version
+      run: makensis -VERSION
+      
     - name: Compile NSIS script
       run: |
-        "C:\Program Files (x86)\NSIS\makensis.exe" .\mmrelay.nsi
+        makensis mmrelay.nsi
   
     - name: Upload artifact
       uses: actions/upload-artifact@v2
