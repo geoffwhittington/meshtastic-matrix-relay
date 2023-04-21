@@ -23,7 +23,7 @@ jobs:
       run: pyinstaller --name=mmrelay.exe --onefile --console main.py
 
     - name: Set up NSIS
-      uses: jasonsturges/setup-nsis@v1
+      uses: NSIS-Dev/NSIS-Setup@v1
 
     - name: Copy files for installer
       run: |
