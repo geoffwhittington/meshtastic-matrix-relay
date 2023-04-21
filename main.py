@@ -8,6 +8,8 @@ import logging
 import re
 import sqlite3
 import yaml
+import certifi
+import ssl
 import meshtastic.tcp_interface
 import meshtastic.serial_interface
 from nio import AsyncClient, AsyncClientConfig, MatrixRoom, RoomMessageText, RoomAliasEvent, RoomMessageNotice
@@ -260,9 +262,13 @@ async def main():
     # Initialize the SQLite database
     initialize_database()
 
-    config = AsyncClientConfig(encryption_enabled=False)
+    # Create SSL context using certifi's certificates
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+
+    # Initialize the Matrix client with custom SSL context
+    config = AsyncClientConfig(encryption_enabled=False, ssl=ssl_context)
     matrix_client = AsyncClient(matrix_homeserver, bot_user_id, config=config)
-    matrix_client.access_token = matrix_access_token
+    matrix_client.access_token = matrix_access_token    
 
     logger.info("Connecting to Matrix server...")
     try:
