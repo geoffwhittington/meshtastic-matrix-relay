@@ -5,6 +5,7 @@ DefaultDirName={pf}\MM Relay
 DefaultGroupName=MM Relay
 UninstallFilesDir={app}
 OutputDir=.
+OutputBaseFilename=MMRelay_setup
 
 [Files]
 Source: "dist\mmrelay.exe"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
