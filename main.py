@@ -220,7 +220,7 @@ async def on_room_message(room: MatrixRoom, event: Union[RoomMessageText, RoomMe
                 if meshnet_name != local_meshnet_name:
                     short_longname = longname[:3]
                     short_meshnet_name = meshnet_name[:4]
-                    text = f"{short_longname}/{short_meshnet_name}: {text}"
+                    prefix = f"{short_longname}/{short_meshnet_name}: "
                 else:
                     logger.info("Ignoring message from the same meshnet.")
                     return
@@ -228,12 +228,12 @@ async def on_room_message(room: MatrixRoom, event: Union[RoomMessageText, RoomMe
                 display_name_response = await matrix_client.get_displayname(event.sender)
                 full_display_name = display_name_response.displayname or event.sender
                 short_display_name = full_display_name[:5]
-
-                text = f"{short_display_name}[M]: {text}"
+                prefix = f"{short_display_name}[M]: "
 
             text = truncate_message(text)
+            full_message = f"{prefix}{text}"
 
-            logger.info(f"Processing matrix message from {full_display_name}: {text}")
+            logger.info(f"Processing matrix message from {full_display_name}: {full_message}")
 
             room_config = None
             for config in matrix_rooms:
@@ -247,10 +247,11 @@ async def on_room_message(room: MatrixRoom, event: Union[RoomMessageText, RoomMe
                 if relay_config["meshtastic"]["broadcast_enabled"]:
                     logger.info(f"Sending radio message from {full_display_name} to radio broadcast")
                     meshtastic_interface.sendText(
-                        text=text, channelIndex=meshtastic_channel
+                        text=full_message, channelIndex=meshtastic_channel
                     )
                 else:
                     logger.debug(f"Broadcast not supported: Message from {full_display_name} dropped.")
+
 
 
 
