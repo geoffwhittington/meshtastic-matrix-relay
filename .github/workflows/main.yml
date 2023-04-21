@@ -1,37 +1,29 @@
 name: Build Windows Executable
 
-on:
-  create:
-    tags:
-      - v*
-    branches:
-      - main
+on: push
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
 
-      - name: Install PyOxidizer
-        run: |
-          curl https://sh.rustup.rs -sSf | sh -s -- -y
-          export PATH="$HOME/.cargo/bin:$PATH"
-          pip install pyoxidizer
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+    - name: Build executable
+      run: pyinstaller --name=mmrelay.exe --onefile --console main.py
 
-      - name: Build Windows Executable
-        run: |
-          ls -al
-          PYOXIDIZER_CONFIG=./pyoxidizer.toml pyoxidizer build
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: myapp-windows
-          path: build/target/x86_64-pc-windows-msvc/release/myapp.exe
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: mmrelay
+        path: dist/mmrelay.exe

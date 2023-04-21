@@ -8,12 +8,14 @@ import logging
 import re
 import sqlite3
 import yaml
+import certifi
+import ssl
 import meshtastic.tcp_interface
 import meshtastic.serial_interface
-from nio import AsyncClient, AsyncClientConfig, MatrixRoom, RoomMessageText, RoomAliasEvent
+from nio import AsyncClient, AsyncClientConfig, MatrixRoom, RoomMessageText, RoomAliasEvent, RoomMessageNotice
 from pubsub import pub
 from yaml.loader import SafeLoader
-from typing import List
+from typing import List, Union
 
 bot_start_time = int(time.time() * 1000) # Timestamp when the bot starts, used to filter out old messages
 
@@ -202,44 +204,39 @@ def truncate_message(text, max_bytes=234):  #234 is the maximum that we can run 
 
 
 # Callback for new messages in Matrix room
-async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
-    
+async def on_room_message(room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice]) -> None:
+
     full_display_name = "Unknown user"
     if event.sender != bot_user_id:
         message_timestamp = event.server_timestamp
 
         if message_timestamp > bot_start_time:
             text = event.body.strip()
-            
-            # Remove unnecessary part of the message content
-            split_content = text.split("]: ", 1)
-            if len(split_content) > 1:
-                text = split_content[1]
-
-            logger.info(f"Processing matrix message from {event.sender}: {text}")
 
             longname = event.source['content'].get("meshtastic_longname")
             meshnet_name = event.source['content'].get("meshtastic_meshnet")
             local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
 
             if longname and meshnet_name:
+                full_display_name = f"{longname}/{meshnet_name}"
                 if meshnet_name != local_meshnet_name:
                     short_longname = longname[:3]
                     short_meshnet_name = meshnet_name[:4]
-                    text = f"{short_longname}/{short_meshnet_name}: {text}"
+                    prefix = f"{short_longname}/{short_meshnet_name}: "
+                    logger.info(f"Processing message from remote meshnet: {text}")
                 else:
-                    logger.info("Ignoring message from the same meshnet.")
+                    logger.info(f"Processing message from local meshnet: {text}")
                     return
             else:
                 display_name_response = await matrix_client.get_displayname(event.sender)
                 full_display_name = display_name_response.displayname or event.sender
                 short_display_name = full_display_name[:5]
-
-                text = f"{short_display_name}[M]: {text}"
+                prefix = f"{short_display_name}[M]: "
+                logger.info(f"Processing matrix message from [{full_display_name}]: {text}")
 
             text = truncate_message(text)
+            full_message = f"{prefix}{text}"
 
-            # Find the corresponding room configuration
             room_config = None
             for config in matrix_rooms:
                 if config["id"] == room.room_id:
@@ -252,7 +249,7 @@ async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
                 if relay_config["meshtastic"]["broadcast_enabled"]:
                     logger.info(f"Sending radio message from {full_display_name} to radio broadcast")
                     meshtastic_interface.sendText(
-                        text=text, channelIndex=meshtastic_channel
+                        text=full_message, channelIndex=meshtastic_channel
                     )
                 else:
                     logger.debug(f"Broadcast not supported: Message from {full_display_name} dropped.")
@@ -265,8 +262,12 @@ async def main():
     # Initialize the SQLite database
     initialize_database()
 
+    # Create SSL context using certifi's certificates
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+
+    # Initialize the Matrix client with custom SSL context
     config = AsyncClientConfig(encryption_enabled=False)
-    matrix_client = AsyncClient(matrix_homeserver, bot_user_id, config=config)
+    matrix_client = AsyncClient(matrix_homeserver, bot_user_id, config=config, ssl=ssl_context)
     matrix_client.access_token = matrix_access_token
 
     logger.info("Connecting to Matrix server...")
@@ -289,7 +290,7 @@ async def main():
 
     # Register the message callback
     logger.info(f"Listening for inbound matrix messages ...")
-    matrix_client.add_event_callback(on_room_message, RoomMessageText)
+    matrix_client.add_event_callback(on_room_message, (RoomMessageText, RoomMessageNotice))
 
     # Start the Matrix client
     while True:
