@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v2
@@ -19,19 +19,18 @@ jobs:
         with:
           python-version: 3.9
 
-      - name: Install PyOxidizer
+      - name: Install dependencies
         run: |
-          curl https://sh.rustup.rs -sSf | sh -s -- -y
-          export PATH="$HOME/.cargo/bin:$PATH"
-          pip install pyoxidizer
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
 
       - name: Build Windows Executable
         run: |
-          ls -al
-          PYOXIDIZER_CONFIG=./pyoxidizer.toml pyoxidizer build
+          pyinstaller --onefile main.py
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: myapp-windows
-          path: build/target/x86_64-pc-windows-msvc/release/myapp.exe
+          name: meshtastic-matrix-relay-windows
+          path: dist/main.exe
