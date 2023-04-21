@@ -202,6 +202,7 @@ def truncate_message(text, max_bytes=234):  #234 is the maximum that we can run 
 
 
 # Callback for new messages in Matrix room
+# Callback for new messages in Matrix room
 async def on_room_message(room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice]) -> None:
 
     full_display_name = "Unknown user"
@@ -233,7 +234,7 @@ async def on_room_message(room: MatrixRoom, event: Union[RoomMessageText, RoomMe
             text = truncate_message(text)
             full_message = f"{prefix}{text}"
 
-            logger.info(f"Processing matrix message from {full_display_name}: {full_message}")
+            logger.info(f"Processing matrix message from {full_display_name}: {text}")  # Changed this line
 
             room_config = None
             for config in matrix_rooms:
@@ -251,7 +252,6 @@ async def on_room_message(room: MatrixRoom, event: Union[RoomMessageText, RoomMe
                     )
                 else:
                     logger.debug(f"Broadcast not supported: Message from {full_display_name} dropped.")
-
 
 
 
