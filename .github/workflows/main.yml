@@ -22,18 +22,9 @@ jobs:
     - name: Build executable
       run: pyinstaller --name=mmrelay.exe --onefile --console main.py
 
-    - name: Setup NSIS
-      run: |
-        choco install nsis
-
-    - name: Compile NSIS script
-      run: |
-        "C:\Program Files (x86)\NSIS\makensis.exe" mmrelay.nsi
-  
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
         name: mmrelay
         path: |
           dist/mmrelay.exe
-          mmrelay-setup.exe
