@@ -22,8 +22,22 @@ jobs:
     - name: Build executable
       run: pyinstaller --name=mmrelay.exe --onefile --console main.py
 
-    - name: Upload artifact
+    - name: Set up NSIS
+      uses: jasonsturges/setup-nsis@v1
+
+    - name: Copy files for installer
+      run: |
+        mkdir installer
+        copy dist\mmrelay.exe installer\mmrelay.exe
+        copy mmrelay.nsi installer\mmrelay.nsi
+
+    - name: Build installer
+      run: makensis installer\mmrelay.nsi
+
+    - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
-        name: mmrelay
-        path: dist/mmrelay.exe
+        name: mmrelay-artifacts
+        path: |
+          dist/mmrelay.exe
+          installer/mmrelay-setup.exe
