@@ -10,10 +10,10 @@ import sqlite3
 import yaml
 import meshtastic.tcp_interface
 import meshtastic.serial_interface
-from nio import AsyncClient, AsyncClientConfig, MatrixRoom, RoomMessageText, RoomAliasEvent
+from nio import AsyncClient, AsyncClientConfig, MatrixRoom, RoomMessageText, RoomAliasEvent, RoomMessageNotice
 from pubsub import pub
 from yaml.loader import SafeLoader
-from typing import List
+from typing import List, Union
 
 bot_start_time = int(time.time() * 1000) # Timestamp when the bot starts, used to filter out old messages
 
@@ -202,7 +202,8 @@ def truncate_message(text, max_bytes=234):  #234 is the maximum that we can run 
 
 
 # Callback for new messages in Matrix room
-async def on_room_message(room: MatrixRoom, event: RoomMessageText) -> None:
+async def on_room_message(room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice]) -> None:
+
     
     full_display_name = "Unknown user"
     if event.sender != bot_user_id:
@@ -289,7 +290,7 @@ async def main():
 
     # Register the message callback
     logger.info(f"Listening for inbound matrix messages ...")
-    matrix_client.add_event_callback(on_room_message, RoomMessageText)
+    matrix_client.add_event_callback(on_room_message, (RoomMessageText, RoomMessageNotice))
 
     # Start the Matrix client
     while True:
