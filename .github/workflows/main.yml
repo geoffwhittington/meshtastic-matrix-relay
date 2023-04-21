@@ -28,7 +28,7 @@ jobs:
 
     - name: Compile NSIS script
       run: |
-        "C:\Program Files (x86)\NSIS\makensis.exe" "mmrelay.nsi"
+        "C:\Program Files (x86)\NSIS\makensis.exe" .\mmrelay.nsi
   
     - name: Upload artifact
       uses: actions/upload-artifact@v2
