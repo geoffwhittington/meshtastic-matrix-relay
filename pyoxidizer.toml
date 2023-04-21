@@ -1,0 +1,11 @@
+[package]
+name = "mmrelay"
+description = "Meshtastic Matrix Relay"
+version = "0.1.0"
+
+[dependencies]
+python = "3.9.7"
+
+[[bin]]
+name = "mmrelay"
+path = "main.py"
