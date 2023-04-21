@@ -204,26 +204,19 @@ def truncate_message(text, max_bytes=234):  #234 is the maximum that we can run 
 # Callback for new messages in Matrix room
 async def on_room_message(room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice]) -> None:
 
-    
     full_display_name = "Unknown user"
     if event.sender != bot_user_id:
         message_timestamp = event.server_timestamp
 
         if message_timestamp > bot_start_time:
             text = event.body.strip()
-            
-            # Remove unnecessary part of the message content
-            split_content = text.split("]: ", 1)
-            if len(split_content) > 1:
-                text = split_content[1]
-
-            logger.info(f"Processing matrix message from {event.sender}: {text}")
 
             longname = event.source['content'].get("meshtastic_longname")
             meshnet_name = event.source['content'].get("meshtastic_meshnet")
             local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
 
             if longname and meshnet_name:
+                full_display_name = f"{longname}/{meshnet_name}"
                 if meshnet_name != local_meshnet_name:
                     short_longname = longname[:3]
                     short_meshnet_name = meshnet_name[:4]
@@ -240,7 +233,8 @@ async def on_room_message(room: MatrixRoom, event: Union[RoomMessageText, RoomMe
 
             text = truncate_message(text)
 
-            # Find the corresponding room configuration
+            logger.info(f"Processing matrix message from {full_display_name}: {text}")
+
             room_config = None
             for config in matrix_rooms:
                 if config["id"] == room.room_id:
