@@ -24,10 +24,14 @@ jobs:
 
     - name: Install NSIS
       run: |
-        winget install -e --id NSIS.NSIS
-    - name: Print NSIS version
-      run: makensis -VERSION
-      
+        $url = 'https://sourceforge.net/projects/nsis/files/NSIS%203/3.06.1/nsis-3.06.1-setup.exe/download'
+        $installer = "$env:TEMP\installer.exe"
+        Invoke-WebRequest $url -OutFile $installer
+        Start-Process -FilePath $installer -ArgumentList '/S' -Wait
+
+    - name: Build NSIS Installer
+      run: |
+        "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
     - name: Compile NSIS script
       run: |
         makensis mmrelay.nsi
