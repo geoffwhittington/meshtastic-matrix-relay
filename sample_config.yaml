@@ -19,4 +19,4 @@ meshtastic:
 logging:
   level: "debug"
   show_timestamps: true
-  timestamp_format: '[%m/%d/%y]-%H:%M:%S'
+  timestamp_format: '[%H:%M:%S]'
