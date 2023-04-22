@@ -29,7 +29,7 @@ begin
   ConfigFile := ExpandConstant('{app}\config.yaml');
   FileStream := TFileStream.Create(ConfigFile, fmCreate);
   try
-    FileStream.WriteBuffer(YamlText[1], Length(YamlText) * SizeOf(Char));
+    FileStream.WriteBuffer(YamlText, Length(YamlText) * SizeOf(Char));
   finally
     FileStream.Free;
   end;
