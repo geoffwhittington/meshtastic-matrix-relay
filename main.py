@@ -18,6 +18,25 @@ from yaml.loader import SafeLoader
 from typing import List, Union
 from datetime import datetime
 
+class CustomFormatter(logging.Formatter):
+    def __init__(self, fmt=None, datefmt=None, style="%", converter=None):
+        super().__init__(fmt, datefmt, style)
+        self.converter = converter or time.localtime
+
+    def formatTime(self, record, datefmt=None):
+        ct = self.converter(record.created, None)  # Add None as the second argument
+        if datefmt:
+            s = time.strftime(datefmt, ct)
+        else:
+            t = time.strftime(self.default_time_format, ct)
+            s = self.default_msec_format % (t, record.msecs)
+        return s
+
+
+def utc_converter(timestamp, _):
+    return time.gmtime(timestamp)
+
+
 bot_start_time = int(time.time() * 1000) # Timestamp when the bot starts, used to filter out old messages
 
 # Load configuration
@@ -38,7 +57,7 @@ else:
 logger.setLevel(getattr(logging, relay_config["logging"]["level"].upper()))
 logger.propagate = False  # Add this line to prevent double logging
 
-formatter = logging.Formatter(log_format, datefmt=timestamp_format)
+formatter = CustomFormatter(log_format, datefmt=timestamp_format, converter=utc_converter)
 handler = logging.StreamHandler()
 handler.setFormatter(formatter)
 logger.addHandler(handler)
