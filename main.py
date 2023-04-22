@@ -16,17 +16,32 @@ from nio import AsyncClient, AsyncClientConfig, MatrixRoom, RoomMessageText, Roo
 from pubsub import pub
 from yaml.loader import SafeLoader
 from typing import List, Union
+from datetime import datetime
 
 bot_start_time = int(time.time() * 1000) # Timestamp when the bot starts, used to filter out old messages
-
-logging.basicConfig()
-logger = logging.getLogger(name="meshtastic.matrix.relay")
 
 # Load configuration
 with open("config.yaml", "r") as f:
     relay_config = yaml.load(f, Loader=SafeLoader)
 
+# Configure logging
+logger = logging.getLogger(name="meshtastic.matrix.relay")
+log_level = getattr(logging, relay_config["logging"]["level"].upper())
+show_timestamps = relay_config["logging"]["show_timestamps"]
+timestamp_format = relay_config["logging"]["timestamp_format"]
+
+if show_timestamps:
+    log_format = f"%(asctime)s %(levelname)s:%(name)s:%(message)s"
+else:
+    log_format = "%(levelname)s:%(name)s:%(message)s"
+
 logger.setLevel(getattr(logging, relay_config["logging"]["level"].upper()))
+logger.propagate = False  # Add this line to prevent double logging
+
+formatter = logging.Formatter(log_format, datefmt=timestamp_format)
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 # Initialize SQLite database
 def initialize_database():

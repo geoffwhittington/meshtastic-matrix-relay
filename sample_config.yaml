@@ -17,4 +17,6 @@ meshtastic:
   broadcast_enabled: true
 
 logging:
-  level: "info"
+  level: "debug"
+  show_timestamps: true
+  timestamp_format: '[%m/%d/%y]-%H:%M:%S'

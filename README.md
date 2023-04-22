@@ -77,6 +77,8 @@ meshtastic:
 
 logging:
   level: "info"
+  show_timestamps: true
+  timestamp_format: '[%m/%d/%y]-%H:%M:%S'
 ```
 
 ## Usage
