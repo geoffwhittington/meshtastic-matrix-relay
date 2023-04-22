@@ -1,6 +1,11 @@
 name: Build Windows Executable
 
-on: push
+on:
+  push:
+    branches:
+      - main
+  release:
+    types: [published]
 
 jobs:
   build:
@@ -19,6 +24,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pyinstaller
+
     - name: Build executable
       run: pyinstaller --name=mmrelay.exe --onefile --console main.py
 
@@ -27,10 +33,13 @@ jobs:
       with: 
           filepath: './mmrelay.iss'
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v2
+    - name: Upload setup.exe to release
+      uses: actions/upload-release-asset@v1
       with:
-        name: mmrelay
-        path: |
-          dist/mmrelay.exe
-          MMRelay_setup.exe
+        asset_path: MMRelay_setup.exe
+        asset_name: MMRelay_setup.exe
+        asset_content_type: application/octet-stream
+        tag_name: ${{ github.event.release.tag_name }}
+        release_id: ${{ github.event.release.id }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
