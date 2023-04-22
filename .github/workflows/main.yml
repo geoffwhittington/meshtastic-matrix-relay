@@ -33,4 +33,4 @@ jobs:
         name: mmrelay
         path: |
           dist/mmrelay.exe
-          mmrelay-setup.exe
+          MMRelay_setup.exe
