@@ -25,7 +25,7 @@ with open("config.yaml", "r") as f:
     relay_config = yaml.load(f, Loader=SafeLoader)
 
 # Configure logging
-logger = logging.getLogger(name="meshtastic.matrix.relay")
+logger = logging.getLogger(name="MMRELAY")
 log_level = getattr(logging, relay_config["logging"]["level"].upper())
 show_timestamps = relay_config["logging"]["show_timestamps"]
 timestamp_format = relay_config["logging"]["timestamp_format"]
