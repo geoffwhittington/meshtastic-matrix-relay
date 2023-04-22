@@ -16,17 +16,51 @@ from nio import AsyncClient, AsyncClientConfig, MatrixRoom, RoomMessageText, Roo
 from pubsub import pub
 from yaml.loader import SafeLoader
 from typing import List, Union
+from datetime import datetime
+
+class CustomFormatter(logging.Formatter):
+    def __init__(self, fmt=None, datefmt=None, style="%", converter=None):
+        super().__init__(fmt, datefmt, style)
+        self.converter = converter or time.localtime
+
+    def formatTime(self, record, datefmt=None):
+        ct = self.converter(record.created, None)  # Add None as the second argument
+        if datefmt:
+            s = time.strftime(datefmt, ct)
+        else:
+            t = time.strftime(self.default_time_format, ct)
+            s = self.default_msec_format % (t, record.msecs)
+        return s
+
+
+def utc_converter(timestamp, _):
+    return time.gmtime(timestamp)
+
 
 bot_start_time = int(time.time() * 1000) # Timestamp when the bot starts, used to filter out old messages
-
-logging.basicConfig()
-logger = logging.getLogger(name="meshtastic.matrix.relay")
 
 # Load configuration
 with open("config.yaml", "r") as f:
     relay_config = yaml.load(f, Loader=SafeLoader)
 
+# Configure logging
+logger = logging.getLogger(name="MMRELAY")
+log_level = getattr(logging, relay_config["logging"]["level"].upper())
+show_timestamps = relay_config["logging"]["show_timestamps"]
+timestamp_format = relay_config["logging"]["timestamp_format"]
+
+if show_timestamps:
+    log_format = f"%(asctime)s %(levelname)s:%(name)s:%(message)s"
+else:
+    log_format = "%(levelname)s:%(name)s:%(message)s"
+
 logger.setLevel(getattr(logging, relay_config["logging"]["level"].upper()))
+logger.propagate = False  # Add this line to prevent double logging
+
+formatter = CustomFormatter(log_format, datefmt=timestamp_format, converter=utc_converter)
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 # Initialize SQLite database
 def initialize_database():

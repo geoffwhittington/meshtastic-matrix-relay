@@ -1,3 +1,4 @@
 .pyenv
+.vscode
 config.yaml
 meshtastic.sqlite
