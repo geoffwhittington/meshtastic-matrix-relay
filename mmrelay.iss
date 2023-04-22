@@ -20,13 +20,19 @@ procedure SaveYamlConfig();
 var
   YamlText: string;
   ConfigFile: string;
+  FileStream: TFileStream;
 begin
   // Get the YAML text from the memo control
   YamlText := Memo.Text;
   
   // Save the YAML text to a file
   ConfigFile := ExpandConstant('{app}\config.yaml');
-  WriteStringToFile(ConfigFile, YamlText, False);
+  FileStream := TFileStream.Create(ConfigFile, fmCreate);
+  try
+    FileStream.WriteBuffer(YamlText[1], Length(YamlText) * SizeOf(Char));
+  finally
+    FileStream.Free;
+  end;
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
