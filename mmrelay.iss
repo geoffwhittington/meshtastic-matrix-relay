@@ -47,8 +47,8 @@ end;
 
 [Setup]
 // Add the custom wizard page to the installation
-WizardImageFile=wizard.bmp
-WizardSmallImageFile=smallwiz.bmp
+//WizardImageFile=wizard.bmp
+//WizardSmallImageFile=smallwiz.bmp
 
 AppName=MM Relay
 AppVersion=1.0
