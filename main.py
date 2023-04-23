@@ -46,8 +46,8 @@ with open("config.yaml", "r") as f:
 # Configure logging
 logger = logging.getLogger(name="MMRELAY")
 log_level = getattr(logging, relay_config["logging"]["level"].upper())
-show_timestamps = relay_config["logging"]["show_timestamps"]
-timestamp_format = relay_config["logging"]["timestamp_format"]
+show_timestamps = relay_config["logging"].get("show_timestamps", False)
+timestamp_format = relay_config["logging"].get("timestamp_format", "[%H:%M:%S]")
 
 if show_timestamps:
     log_format = f"%(asctime)s %(levelname)s:%(name)s:%(message)s"

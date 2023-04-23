@@ -77,8 +77,8 @@ meshtastic:
 
 logging:
   level: "info"
-  show_timestamps: true
-  timestamp_format: '[%H:%M:%S]'
+  show_timestamps: true # Optional, defaults to false. If true, timestamp_format is customizable
+  timestamp_format: '[%Y/%d/%m]-%H:%M:%S' # Defaults to [%H:%M:%S] if not specified
 ```
 
 ## Usage
