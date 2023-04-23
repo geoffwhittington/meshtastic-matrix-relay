@@ -17,7 +17,6 @@ Source: "dist\mmrelay.exe"; DestDir: "{app}"; Flags: recursesubdirs createallsub
 
 [Icons]
 Name: "{group}\MM Relay"; Filename: "{app}\mmrelay.bat"
-Name: "{group}\Logs"; Filename: "{app}\output.log"; WorkingDir: "{app}"
 
 [Run]
 Filename: "{app}\mmrelay.bat"; Description: "Launch MM Relay"; Flags: nowait postinstall
