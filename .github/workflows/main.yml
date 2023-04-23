@@ -31,11 +31,11 @@ jobs:
           filepath: "./mmrelay.iss"
 
       - name: Upload setup.exe to release
-        uses: actions/upload-release-asset@v1
+        uses: svenstaro/upload-release-action@v2
         with:
-          asset_path: MMRelay_setup.exe
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: MMRelay_setup.exe
           asset_name: MMRelay_setup.exe
-          asset_content_type: application/octet-stream
-          upload_url: ${{ github.event.release.upload_url }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref }}
+          overwrite: true
+          body: "Windows Installer"
