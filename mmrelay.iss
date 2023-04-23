@@ -158,7 +158,8 @@ begin
     end;
 
 
-    batch_file := '"' + sAppDir+ '\mmrelay.exe" config.yaml 2>> "'+sAppDir+'\output.log"'
+    batch_file := '"' + sAppDir+ '\mmrelay.exe" config.yaml ' + #13#10 +
+                  'pause'
 
     if Not SaveStringToFile(sAppDir+'/mmrelay.bat', batch_file, false) then
     begin
