@@ -36,8 +36,6 @@ jobs:
           asset_path: MMRelay_setup.exe
           asset_name: MMRelay_setup.exe
           asset_content_type: application/octet-stream
-          tag_name: ${{ github.event.release.tag_name }}
-          release_id: ${{ github.event.release.id }}
           upload_url: ${{ github.event.release.upload_url }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
