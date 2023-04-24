@@ -340,7 +340,7 @@ async def on_room_message(
                     text = truncate_message(text)
                     full_message = f"{prefix}{text}"
                 else:
-                    logger.info(f"Ignoring message from local meshnet: {text}")
+                    # This is a message from a local user, it should be ignored no log is needed
                     return
             else:
                 display_name_response = await matrix_client.get_displayname(
