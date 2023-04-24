@@ -332,12 +332,15 @@ async def on_room_message(
             if longname and meshnet_name:
                 full_display_name = f"{longname}/{meshnet_name}"
                 if meshnet_name != local_meshnet_name:
+                    logger.info(f"Processing message from remote meshnet: {text}")
                     short_longname = longname[:3]
                     short_meshnet_name = meshnet_name[:4]
                     prefix = f"{short_longname}/{short_meshnet_name}: "
-                    logger.info(f"Processing message from remote meshnet: {text}")
+                    text = re.sub(rf"^\[{full_display_name}\]: ", "", text)  # Remove the original prefix from the text
+                    text = truncate_message(text)
+                    full_message = f"{prefix}{text}"
                 else:
-                    logger.info(f"Processing message from local meshnet: {text}")
+                    # This is a message from a local user, it should be ignored no log is needed
                     return
             else:
                 display_name_response = await matrix_client.get_displayname(
@@ -346,12 +349,9 @@ async def on_room_message(
                 full_display_name = display_name_response.displayname or event.sender
                 short_display_name = full_display_name[:5]
                 prefix = f"{short_display_name}[M]: "
-                logger.info(
-                    f"Processing matrix message from [{full_display_name}]: {text}"
-                )
-
-            text = truncate_message(text)
-            full_message = f"{prefix}{text}"
+                logger.info(f"Processing matrix message from [{full_display_name}]: {text}")
+                text = truncate_message(text)
+                full_message = f"{prefix}{text}"
 
             room_config = None
             for config in matrix_rooms:
@@ -366,8 +366,7 @@ async def on_room_message(
                     logger.info(
                         f"Sending radio message from {full_display_name} to radio broadcast"
                     )
-                    meshtastic_interface.sendText(
-                        text=full_message, channelIndex=meshtastic_channel
+                    meshtastic_interface.sendText(text=full_message, channelIndex=meshtastic_channel
                     )
                 else:
                     logger.debug(
