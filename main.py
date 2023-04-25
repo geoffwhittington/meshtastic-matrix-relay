@@ -8,6 +8,7 @@ import logging
 import re
 import sqlite3
 import yaml
+import statistics
 import certifi
 import ssl
 import meshtastic.tcp_interface
@@ -318,6 +319,43 @@ async def on_room_message(
         await send_image(matrix_client, room.room_id, pillow_image)
         return
 
+    match = re.match(r"^.*: !health$", body.strip())
+    if match:
+        battery_levels = []
+        air_util_tx = []
+        snr = []
+
+        for node, info in meshtastic_interface.nodes.items():
+            if "deviceMetrics" in info:
+                battery_levels.append(info["deviceMetrics"]["batteryLevel"])
+                air_util_tx.append(info["deviceMetrics"]["airUtilTx"])
+            if "snr" in info:
+                snr.append(info["snr"])
+
+        low_battery = len([n for n in battery_levels if n <= 10])
+        radios = len(meshtastic_interface.nodes)
+        avg_battery = statistics.mean(battery_levels) if battery_levels else 0
+        mdn_battery = statistics.median(battery_levels)
+        avg_air = statistics.mean(air_util_tx) if air_util_tx else 0
+        mdn_air = statistics.median(air_util_tx)
+        avg_snr = statistics.mean(snr) if snr else 0
+        mdn_snr = statistics.median(snr)
+
+        response = await matrix_client.room_send(
+            room_id=room.room_id,
+            message_type="m.room.message",
+            content={
+                "msgtype": "m.text",
+                "body": f"""Nodes: {radios}
+Battery: {avg_battery:.1f}% / {mdn_battery:.1f}% (avg / median)
+Nodes with Low Battery (< 10): {low_battery}
+Air Util: {avg_air:.2f} / {mdn_air:.2f} (avg / median)
+SNR: {avg_snr:.2f} / {mdn_snr:.2f} (avg / median)
+"""
+            },
+        )
+        return
+
     full_display_name = "Unknown user"
     if event.sender != bot_user_id:
         message_timestamp = event.server_timestamp
@@ -336,7 +374,9 @@ async def on_room_message(
                     short_longname = longname[:3]
                     short_meshnet_name = meshnet_name[:4]
                     prefix = f"{short_longname}/{short_meshnet_name}: "
-                    text = re.sub(rf"^\[{full_display_name}\]: ", "", text)  # Remove the original prefix from the text
+                    text = re.sub(
+                        rf"^\[{full_display_name}\]: ", "", text
+                    )  # Remove the original prefix from the text
                     text = truncate_message(text)
                     full_message = f"{prefix}{text}"
                 else:
@@ -349,7 +389,9 @@ async def on_room_message(
                 full_display_name = display_name_response.displayname or event.sender
                 short_display_name = full_display_name[:5]
                 prefix = f"{short_display_name}[M]: "
-                logger.info(f"Processing matrix message from [{full_display_name}]: {text}")
+                logger.info(
+                    f"Processing matrix message from [{full_display_name}]: {text}"
+                )
                 text = truncate_message(text)
                 full_message = f"{prefix}{text}"
 
@@ -366,7 +408,8 @@ async def on_room_message(
                     logger.info(
                         f"Sending radio message from {full_display_name} to radio broadcast"
                     )
-                    meshtastic_interface.sendText(text=full_message, channelIndex=meshtastic_channel
+                    meshtastic_interface.sendText(
+                        text=full_message, channelIndex=meshtastic_channel
                     )
                 else:
                     logger.debug(
