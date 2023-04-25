@@ -10,6 +10,9 @@ import sqlite3
 import yaml
 import certifi
 import ssl
+import os
+import importlib
+import sys
 import meshtastic.tcp_interface
 import meshtastic.serial_interface
 from nio import (
@@ -24,6 +27,7 @@ from pubsub import pub
 from yaml.loader import SafeLoader
 from typing import List, Union
 from datetime import datetime
+from pathlib import Path
 
 
 class CustomFormatter(logging.Formatter):
@@ -110,6 +114,21 @@ def update_longnames():
                 meshtastic_id = user["id"]
                 longname = user.get("longName", "N/A")
                 save_longname(meshtastic_id, longname)
+
+def load_plugins():
+    plugins = []
+    plugin_folder = Path("plugins")
+    sys.path.insert(0, str(plugin_folder.resolve()))
+
+    for plugin_file in plugin_folder.glob("*.py"):
+        plugin_name = plugin_file.stem
+        if plugin_name == "__init__":
+            continue
+        plugin_module = importlib.import_module(plugin_name)
+        plugins.append(plugin_module)
+
+    return plugins
+
 
 
 async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
@@ -224,6 +243,10 @@ def on_meshtastic_message(packet, loop=None):
             f"Relaying Meshtastic message from {longname} to Matrix: {formatted_message}"
         )
 
+        # Plugin functionality
+        for plugin in plugins:
+            plugin.on_meshtastic_message(packet, matrix_client, formatted_message)
+
         for room in matrix_rooms:
             if room["meshtastic_channel"] == channel:
                 asyncio.run_coroutine_threadsafe(
@@ -291,6 +314,11 @@ async def on_room_message(
                 else:
                     # This is a message from a local user, it should be ignored no log is needed
                     return
+
+                # Plugin functionality
+                for plugin in plugins:
+                    await plugin.on_room_message(event, matrix_client, full_message)
+
             else:
                 display_name_response = await matrix_client.get_displayname(
                     event.sender
@@ -325,6 +353,8 @@ async def on_room_message(
 
 async def main():
     global matrix_client
+    global plugins
+    plugins = load_plugins()
 
     # Initialize the SQLite database
     initialize_database()
