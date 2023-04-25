@@ -287,61 +287,10 @@ def truncate_message(
 
 # Callback for new messages in Matrix room
 async def on_room_message(
-    room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice]
-) -> None:
-    if event.server_timestamp < bot_start_time:
-        return
-
-    body = event.body.strip()
-    match = re.match(r"^.*: !ping$", body.strip())
-    if match:
-        # Respond to the command
-        await matrix_client.room_send(
-            room.room_id, "m.room.message", {"msgtype": "m.text", "body": "pong!"}
-        )
-        return
-    pattern = r"^.*:(?: !map(?: zoom=(\d+))?(?: size=(\d+),(\d+))?)?$"
-    match = re.match(pattern, body.strip())
-    if match:
-        zoom = match.group(1)
-        image_size = match.group(2, 3)
-
-        try:
-            zoom = int(zoom)
-        except:
-            zoom = 8
-
-        if zoom < 0 or zoom > 30:
-            zoom = 8
-
-        try:
-            image_size = (int(image_size[0]), int(image_size[1]))
-        except:
-            image_size = (1000, 1000)
-
-        if image_size[0] > 1000 or image_size[1] > 1000:
-            image_size = (1000, 1000)
-
-        from map import get_map
-
-        locations = []
-        for node, info in meshtastic_interface.nodes.items():
-            if "position" in info and "latitude" in info["position"]:
-                locations.append(
-                    {
-                        "lat": info["position"]["latitude"],
-                        "lon": info["position"]["longitude"],
-                    }
-                )
-
-        pillow_image = get_map(locations=locations, zoom=zoom, image_size=image_size)
-
-        from matrix import send_image
-
-        await send_image(matrix_client, room.room_id, pillow_image)
-        return
+    room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice]) -> None:
 
     full_display_name = "Unknown user"
+    
     if event.sender != bot_user_id:
         message_timestamp = event.server_timestamp
 
