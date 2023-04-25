@@ -1,3 +1,2 @@
 meshtastic==2.1.6
 matrix-nio==0.20.2
-py-staticmaps==0.4.0
