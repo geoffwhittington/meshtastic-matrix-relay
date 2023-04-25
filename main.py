@@ -115,6 +115,7 @@ def update_longnames():
                 longname = user.get("longName", "N/A")
                 save_longname(meshtastic_id, longname)
 
+
 def load_plugins():
     plugins = []
     plugin_folder = Path("plugins")
@@ -125,10 +126,10 @@ def load_plugins():
         if plugin_name == "__init__":
             continue
         plugin_module = importlib.import_module(plugin_name)
-        plugins.append(plugin_module)
+        if hasattr(plugin_module, "Plugin"):
+            plugins.append(plugin_module.Plugin())
 
     return plugins
-
 
 
 async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
@@ -245,7 +246,8 @@ def on_meshtastic_message(packet, loop=None):
 
         # Plugin functionality
         for plugin in plugins:
-            plugin.on_meshtastic_message(packet, matrix_client, formatted_message)
+            plugin.configure(matrix_client, meshtastic_interface)
+            plugin.on_meshtastic_message(packet, formatted_message)
 
         for room in matrix_rooms:
             if room["meshtastic_channel"] == channel:
@@ -287,10 +289,10 @@ def truncate_message(
 
 # Callback for new messages in Matrix room
 async def on_room_message(
-    room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice]) -> None:
-
+    room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice]
+) -> None:
     full_display_name = "Unknown user"
-    
+
     if event.sender != bot_user_id:
         message_timestamp = event.server_timestamp
 
@@ -308,16 +310,14 @@ async def on_room_message(
                     short_longname = longname[:3]
                     short_meshnet_name = meshnet_name[:4]
                     prefix = f"{short_longname}/{short_meshnet_name}: "
-                    text = re.sub(rf"^\[{full_display_name}\]: ", "", text)  # Remove the original prefix from the text
+                    text = re.sub(
+                        rf"^\[{full_display_name}\]: ", "", text
+                    )  # Remove the original prefix from the text
                     text = truncate_message(text)
                     full_message = f"{prefix}{text}"
                 else:
                     # This is a message from a local user, it should be ignored no log is needed
                     return
-
-                # Plugin functionality
-                for plugin in plugins:
-                    await plugin.on_room_message(event, matrix_client, full_message)
 
             else:
                 display_name_response = await matrix_client.get_displayname(
@@ -326,7 +326,9 @@ async def on_room_message(
                 full_display_name = display_name_response.displayname or event.sender
                 short_display_name = full_display_name[:5]
                 prefix = f"{short_display_name}[M]: "
-                logger.info(f"Processing matrix message from [{full_display_name}]: {text}")
+                logger.info(
+                    f"Processing matrix message from [{full_display_name}]: {text}"
+                )
                 text = truncate_message(text)
                 full_message = f"{prefix}{text}"
 
@@ -336,6 +338,11 @@ async def on_room_message(
                     room_config = config
                     break
 
+            # Plugin functionality
+            for plugin in plugins:
+                plugin.configure(matrix_client, meshtastic_interface)
+                await plugin.handle_room_message(room, event, full_message)
+
             if room_config:
                 meshtastic_channel = room_config["meshtastic_channel"]
 
@@ -343,8 +350,10 @@ async def on_room_message(
                     logger.info(
                         f"Sending radio message from {full_display_name} to radio broadcast"
                     )
-                    meshtastic_interface.sendText(text=full_message, channelIndex=meshtastic_channel
+                    meshtastic_interface.sendText(
+                        text=full_message, channelIndex=meshtastic_channel
                     )
+
                 else:
                     logger.debug(
                         f"Broadcast not supported: Message from {full_display_name} dropped."
