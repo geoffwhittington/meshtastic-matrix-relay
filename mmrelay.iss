@@ -4,7 +4,7 @@
 //WizardSmallImageFile=smallwiz.bmp
 
 AppName=Matrix <> Meshtastic Relay
-AppVersion=0.3.5
+AppVersion={#AppVersion}
 DefaultDirName={userpf}\MM Relay
 DefaultGroupName=MM Relay
 UninstallFilesDir={app}

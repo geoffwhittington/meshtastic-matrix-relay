@@ -10,6 +10,9 @@ import sqlite3
 import yaml
 import certifi
 import ssl
+import os
+import importlib
+import sys
 import meshtastic.tcp_interface
 import meshtastic.serial_interface
 from nio import (
@@ -24,6 +27,7 @@ from pubsub import pub
 from yaml.loader import SafeLoader
 from typing import List, Union
 from datetime import datetime
+from pathlib import Path
 
 
 class CustomFormatter(logging.Formatter):
@@ -110,6 +114,22 @@ def update_longnames():
                 meshtastic_id = user["id"]
                 longname = user.get("longName", "N/A")
                 save_longname(meshtastic_id, longname)
+
+
+def load_plugins():
+    plugins = []
+    plugin_folder = Path("plugins")
+    sys.path.insert(0, str(plugin_folder.resolve()))
+
+    for plugin_file in plugin_folder.glob("*.py"):
+        plugin_name = plugin_file.stem
+        if plugin_name == "__init__":
+            continue
+        plugin_module = importlib.import_module(plugin_name)
+        if hasattr(plugin_module, "Plugin"):
+            plugins.append(plugin_module.Plugin())
+
+    return plugins
 
 
 async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
@@ -224,6 +244,11 @@ def on_meshtastic_message(packet, loop=None):
             f"Relaying Meshtastic message from {longname} to Matrix: {formatted_message}"
         )
 
+        # Plugin functionality
+        for plugin in plugins:
+            plugin.configure(matrix_client, meshtastic_interface)
+            plugin.on_meshtastic_message(packet, formatted_message)
+
         for room in matrix_rooms:
             if room["meshtastic_channel"] == channel:
                 asyncio.run_coroutine_threadsafe(
@@ -264,10 +289,10 @@ def truncate_message(
 
 # Callback for new messages in Matrix room
 async def on_room_message(
-    room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice]) -> None:
-
+    room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice]
+) -> None:
     full_display_name = "Unknown user"
-    
+
     if event.sender != bot_user_id:
         message_timestamp = event.server_timestamp
 
@@ -285,12 +310,15 @@ async def on_room_message(
                     short_longname = longname[:3]
                     short_meshnet_name = meshnet_name[:4]
                     prefix = f"{short_longname}/{short_meshnet_name}: "
-                    text = re.sub(rf"^\[{full_display_name}\]: ", "", text)  # Remove the original prefix from the text
+                    text = re.sub(
+                        rf"^\[{full_display_name}\]: ", "", text
+                    )  # Remove the original prefix from the text
                     text = truncate_message(text)
                     full_message = f"{prefix}{text}"
                 else:
                     # This is a message from a local user, it should be ignored no log is needed
                     return
+
             else:
                 display_name_response = await matrix_client.get_displayname(
                     event.sender
@@ -298,7 +326,9 @@ async def on_room_message(
                 full_display_name = display_name_response.displayname or event.sender
                 short_display_name = full_display_name[:5]
                 prefix = f"{short_display_name}[M]: "
-                logger.info(f"Processing matrix message from [{full_display_name}]: {text}")
+                logger.info(
+                    f"Processing matrix message from [{full_display_name}]: {text}"
+                )
                 text = truncate_message(text)
                 full_message = f"{prefix}{text}"
 
@@ -308,6 +338,11 @@ async def on_room_message(
                     room_config = config
                     break
 
+            # Plugin functionality
+            for plugin in plugins:
+                plugin.configure(matrix_client, meshtastic_interface)
+                await plugin.handle_room_message(room, event, full_message)
+
             if room_config:
                 meshtastic_channel = room_config["meshtastic_channel"]
 
@@ -315,8 +350,10 @@ async def on_room_message(
                     logger.info(
                         f"Sending radio message from {full_display_name} to radio broadcast"
                     )
-                    meshtastic_interface.sendText(text=full_message, channelIndex=meshtastic_channel
+                    meshtastic_interface.sendText(
+                        text=full_message, channelIndex=meshtastic_channel
                     )
+
                 else:
                     logger.debug(
                         f"Broadcast not supported: Message from {full_display_name} dropped."
@@ -325,6 +362,8 @@ async def on_room_message(
 
 async def main():
     global matrix_client
+    global plugins
+    plugins = load_plugins()
 
     # Initialize the SQLite database
     initialize_database()
