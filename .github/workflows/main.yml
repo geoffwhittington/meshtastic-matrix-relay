@@ -28,7 +28,7 @@ jobs:
       - name: Build installer
         uses: nadeemjazmawe/inno-setup-action-cli@v6.0.5
         with:
-          filepath: "./mmrelay.iss"
+          filepath: "/DAppVersion=${{ github.ref_name }} ./mmrelay.iss"
 
       - name: Upload setup.exe to release
         uses: svenstaro/upload-release-action@v2
