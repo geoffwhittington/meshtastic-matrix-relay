@@ -274,8 +274,8 @@ def on_meshtastic_message(packet, loop=None):
 
 
 def truncate_message(
-    text, max_bytes=230
-):  # 234 is the maximum that we can run without an error. Trying it for awhile, otherwise lower this to 230 or less.
+    text, max_bytes=227
+):  # 227 is the maximum that we can run without an error so far.  228 throws an error.
     """
     Truncate the given text to fit within the specified byte size.
 
