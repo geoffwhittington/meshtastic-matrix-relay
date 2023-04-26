@@ -247,7 +247,7 @@ def on_meshtastic_message(packet, loop=None):
         # Plugin functionality
         for plugin in plugins:
             plugin.configure(matrix_client, meshtastic_interface)
-            plugin.on_meshtastic_message(packet, formatted_message)
+            plugin.handle_meshtastic_message(packet, formatted_message, longname, meshnet_name)
 
         for room in matrix_rooms:
             if room["meshtastic_channel"] == channel:
