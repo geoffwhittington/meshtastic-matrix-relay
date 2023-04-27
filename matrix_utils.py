@@ -20,9 +20,9 @@ from plugin_loader import load_plugins
 from meshtastic_utils import connect_meshtastic
 
 matrix_homeserver = relay_config["matrix"]["homeserver"]
-matrix_access_token = relay_config["matrix"]["access_token"]
 bot_user_id = relay_config["matrix"]["bot_user_id"]
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
+matrix_access_token = relay_config["matrix"]["access_token"]
 
 bot_user_id = relay_config["matrix"]["bot_user_id"]
 bot_start_time = int(
@@ -50,6 +50,9 @@ matrix_client = None
 
 async def connect_matrix():
     global matrix_client
+    if matrix_client:
+        return matrix_client
+
     # Create SSL context using certifi's certificates
     ssl_context = ssl.create_default_context(cafile=certifi.where())
 
@@ -91,7 +94,8 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
 
 
 # Send message to the Matrix room
-async def matrix_relay(matrix_client, room_id, message, longname, meshnet_name):
+async def matrix_relay(room_id, message, longname, meshnet_name):
+    matrix_client = await connect_matrix()
     try:
         content = {
             "msgtype": "m.text",
@@ -185,7 +189,6 @@ async def on_room_message(
             meshtastic_interface = connect_meshtastic()
 
             for plugin in plugins:
-                plugin.configure(matrix_client, meshtastic_interface)
                 await plugin.handle_room_message(room, event, full_message)
 
             if room_config:

@@ -15,7 +15,7 @@ from matrix_utils import connect_matrix, matrix_relay, join_matrix_room, on_room
 from plugin_loader import load_plugins
 
 from config import relay_config
-from meshtastic_utils import connect_meshtastic
+from meshtastic_utils import connect_meshtastic, on_meshtastic_message
 
 # Configure logging
 logger = logging.getLogger(name="M<>M Relay")
@@ -35,91 +35,12 @@ handler.setFormatter(
 logger.addHandler(handler)
 
 
+meshtastic_interface = connect_meshtastic()
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 matrix_access_token = relay_config["matrix"]["access_token"]
 
-matrix_client = None
-meshtastic_interface = connect_meshtastic()
-
-
-# Callback for new messages from Meshtastic
-def on_meshtastic_message(packet, loop=None):
-    sender = packet["fromId"]
-
-    if "text" in packet["decoded"] and packet["decoded"]["text"]:
-        text = packet["decoded"]["text"]
-
-        if "channel" in packet:
-            channel = packet["channel"]
-        else:
-            if packet["decoded"]["portnum"] == "TEXT_MESSAGE_APP":
-                channel = 0
-            else:
-                logger.debug(f"Unknown packet")
-                return
-
-        # Check if the channel is mapped to a Matrix room in the configuration
-        channel_mapped = False
-        for room in matrix_rooms:
-            if room["meshtastic_channel"] == channel:
-                channel_mapped = True
-                break
-
-        if not channel_mapped:
-            logger.debug(f"Skipping message from unmapped channel {channel}")
-            return
-
-        logger.info(
-            f"Processing inbound radio message from {sender} on channel {channel}"
-        )
-
-        longname = get_longname(sender) or sender
-        meshnet_name = relay_config["meshtastic"]["meshnet_name"]
-
-        formatted_message = f"[{longname}/{meshnet_name}]: {text}"
-        logger.info(
-            f"Relaying Meshtastic message from {longname} to Matrix: {formatted_message}"
-        )
-
-        # Plugin functionality
-        for plugin in plugins:
-            plugin.configure(matrix_client, meshtastic_interface)
-            asyncio.run_coroutine_threadsafe(
-                plugin.handle_meshtastic_message(
-                    packet, formatted_message, longname, meshnet_name
-                ),
-                loop=loop,
-            )
-
-        for room in matrix_rooms:
-            if room["meshtastic_channel"] == channel:
-                asyncio.run_coroutine_threadsafe(
-                    matrix_relay(
-                        matrix_client,
-                        room["id"],
-                        formatted_message,
-                        longname,
-                        meshnet_name,
-                    ),
-                    loop=loop,
-                )
-    else:
-        portnum = packet["decoded"]["portnum"]
-        if portnum == "TELEMETRY_APP":
-            logger.debug("Ignoring Telemetry packet")
-        elif portnum == "POSITION_APP":
-            logger.debug("Ignoring Position packet")
-        elif portnum == "ADMIN_APP":
-            logger.debug("Ignoring Admin packet")
-        else:
-            logger.debug(f"Ignoring Unknown packet")
-
 
 async def main():
-    global matrix_client
-    global plugins
-    plugins = load_plugins()
-
     # Initialize the SQLite database
     initialize_database()
 
