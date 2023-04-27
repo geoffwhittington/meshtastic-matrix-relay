@@ -189,8 +189,6 @@ def apply_changes():
         else:
             config["meshtastic"][key] = var.get()
 
-    #save_config(config)
-    #messagebox.showinfo("Success", "Configuration changes saved.")
 
 def add_matrix_room(room=None, meshtastic_channel=None):
     if len(matrix_rooms_frames) >= 8:
