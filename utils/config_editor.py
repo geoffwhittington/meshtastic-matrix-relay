@@ -128,7 +128,7 @@ def create_logging_frame(root):
     return logging_level_var
 
 def create_plugins_frame(root):
-    frame = tk.LabelFrame(root, text="Enabled Plugins", padx=5, pady=5)
+    frame = tk.LabelFrame(root, text="Plugins", padx=5, pady=5)
     frame.pack(fill="x", padx=5, pady=5)
 
     plugin_names = get_plugin_names()
@@ -149,8 +149,15 @@ def create_plugins_frame(root):
             label = tk.Label(plugin_frame, text=nested_key)
             label.grid(row=0, column=2 * j + 1, padx=(10, 0))
 
-            nested_var = tk.StringVar(value=config["plugins"][plugin][nested_key])
-            entry = tk.Entry(plugin_frame, textvariable=nested_var)
+            nested_var_value = config["plugins"][plugin][nested_key]
+
+            if isinstance(nested_var_value, bool):
+                nested_var = tk.BooleanVar(value=nested_var_value)
+                entry = tk.Checkbutton(plugin_frame, variable=nested_var)
+            else:
+                nested_var = tk.StringVar(value=nested_var_value)
+                entry = tk.Entry(plugin_frame, textvariable=nested_var)
+
             entry.grid(row=0, column=2 * j + 2)
 
             plugin_vars[plugin][nested_key] = nested_var
