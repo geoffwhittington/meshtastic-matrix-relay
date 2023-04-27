@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import meshtastic.tcp_interface
 import meshtastic.serial_interface
 from typing import List

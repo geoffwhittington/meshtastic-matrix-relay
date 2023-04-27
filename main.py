@@ -3,7 +3,6 @@ This script connects a Meshtastic mesh network to Matrix chat rooms by relaying 
 It uses Meshtastic-python and Matrix nio client library to interface with the radio and the Matrix server respectively.
 """
 import asyncio
-import logging
 from nio import (
     RoomMessageText,
     RoomMessageNotice,
