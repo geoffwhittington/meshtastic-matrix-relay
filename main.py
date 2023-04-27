@@ -14,26 +14,10 @@ from db_utils import initialize_database, update_longnames
 from matrix_utils import connect_matrix, join_matrix_room, on_room_message
 
 from config import relay_config
+from log_utils import get_logger
 from meshtastic_utils import connect_meshtastic, on_meshtastic_message
 
-# Configure logging
-logger = logging.getLogger(name="M<>M Relay")
-log_level = getattr(logging, relay_config["logging"]["level"].upper())
-
-
-logger.setLevel(log_level)
-logger.propagate = False  # Add this line to prevent double logging
-
-handler = logging.StreamHandler()
-handler.setFormatter(
-    logging.Formatter(
-        fmt=f"%(asctime)s %(levelname)s:%(name)s:%(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S %z",
-    )
-)
-logger.addHandler(handler)
-
-
+logger = get_logger(name="M<>M Relay")
 meshtastic_interface = connect_meshtastic()
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 matrix_access_token = relay_config["matrix"]["access_token"]

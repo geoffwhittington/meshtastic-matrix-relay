@@ -5,25 +5,13 @@ import meshtastic.serial_interface
 from typing import List
 
 from config import relay_config
+from log_utils import get_logger
 from db_utils import get_longname
 from plugin_loader import load_plugins
 
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 
-logger = logging.getLogger(name="M<>M Relay.Meshtastic")
-log_level = getattr(logging, relay_config["logging"]["level"].upper())
-
-logger.setLevel(log_level)
-logger.propagate = False  # Add this line to prevent double logging
-
-handler = logging.StreamHandler()
-handler.setFormatter(
-    logging.Formatter(
-        fmt=f"%(asctime)s %(levelname)s:%(name)s:%(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S %z",
-    )
-)
-logger.addHandler(handler)
+logger = get_logger(name="Meshtastic")
 
 
 meshtastic_client = None

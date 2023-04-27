@@ -13,6 +13,7 @@ from nio import (
     RoomMessageNotice,
 )
 from config import relay_config
+from log_utils import get_logger
 from plugin_loader import load_plugins
 from meshtastic_utils import connect_meshtastic
 
@@ -26,21 +27,7 @@ bot_start_time = int(
     time.time() * 1000
 )  # Timestamp when the bot starts, used to filter out old messages
 
-logger = logging.getLogger(name="M<>M Relay.Matrix")
-log_level = getattr(logging, relay_config["logging"]["level"].upper())
-
-
-logger.setLevel(log_level)
-logger.propagate = False  # Add this line to prevent double logging
-
-handler = logging.StreamHandler()
-handler.setFormatter(
-    logging.Formatter(
-        fmt=f"%(asctime)s %(levelname)s:%(name)s:%(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S %z",
-    )
-)
-logger.addHandler(handler)
+logger = get_logger(name="Matrix")
 
 matrix_client = None
 
