@@ -32,6 +32,21 @@ def load_config():
     except FileNotFoundError:
         return create_default_config()
 
+def validate_config():
+    room_ids = [frame.room_id_var.get() for frame in matrix_rooms_frames]
+    meshtastic_channels = [int(frame.meshtastic_channel_var.get()) for frame in matrix_rooms_frames]
+
+    if len(room_ids) != len(set(room_ids)):
+        messagebox.showerror("Error", "Each Matrix room must be unique. Please check the room IDs.")
+        return False
+
+    if len(meshtastic_channels) != len(set(meshtastic_channels)):
+        messagebox.showerror("Error", "Each Meshtastic channel must be unique. Please check the channel numbers.")
+        return False
+
+    return True
+
+
 class Hyperlink(tk.Label):
     def __init__(self, master=None, **kwargs):
         self.default_color = kwargs.pop("fg", "blue")
@@ -174,17 +189,17 @@ def save_config(config):
         ordered_yaml_dump(config, f)
 
 def apply_changes():
+    
+    #Check if config is valid
+    if not validate_config():
+        return
+
     # Update matrix config
     for key, var in matrix_vars.items():
         config["matrix"][key] = var.get()
     new_config = OrderedDict()
     new_config["matrix"] = config["matrix"]
     new_config["meshtastic"] = config["meshtastic"]
-    new_config["matrix_rooms"] = config["matrix_rooms"]
-    new_config["logging"] = config["logging"]
-    new_config["plugins"] = config["plugins"]
-
-    messagebox.showinfo("Success", "Configuration changes saved.")
 
     # Update matrix_rooms config
     config["matrix_rooms"] = []
@@ -192,6 +207,12 @@ def apply_changes():
         room_id = room_frame.room_id_var.get()
         meshtastic_channel = room_frame.meshtastic_channel_var.get()
         config["matrix_rooms"].append({"id": room_id, "meshtastic_channel": int(meshtastic_channel)})
+    
+    # Add updated matrix_rooms to new_config
+    new_config["matrix_rooms"] = config["matrix_rooms"]
+
+    new_config["logging"] = config["logging"]
+    new_config["plugins"] = config["plugins"]
 
     # Update logging config
     config["logging"]["level"] = logging_level_var.get()
@@ -211,6 +232,8 @@ def apply_changes():
             config["meshtastic"][key] = var.get()
 
     save_config(new_config)
+
+    messagebox.showinfo("Success", "Configuration changes saved.")
 
 
 def add_matrix_room(room=None, meshtastic_channel=None):
