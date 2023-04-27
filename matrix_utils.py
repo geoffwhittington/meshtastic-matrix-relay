@@ -170,6 +170,7 @@ async def on_room_message(
             # Plugin functionality
             plugins = load_plugins()
             meshtastic_interface = connect_meshtastic()
+            from meshtastic_utils import logger as meshtastic_logger
 
             for plugin in plugins:
                 await plugin.handle_room_message(room, event, full_message)
@@ -178,8 +179,8 @@ async def on_room_message(
                 meshtastic_channel = room_config["meshtastic_channel"]
 
                 if relay_config["meshtastic"]["broadcast_enabled"]:
-                    logger.info(
-                        f"Sending radio message from {full_display_name} to radio broadcast"
+                    meshtastic_logger.info(
+                        f"Relaying message from {full_display_name} to radio broadcast"
                     )
                     meshtastic_interface.sendText(
                         text=full_message, channelIndex=meshtastic_channel
