@@ -155,7 +155,7 @@ async def on_room_message(
                 full_display_name = display_name_response.displayname or event.sender
                 short_display_name = full_display_name[:5]
                 prefix = f"{short_display_name}[M]: "
-                logger.info(
+                logger.debug(
                     f"Processing matrix message from [{full_display_name}]: {text}"
                 )
                 text = truncate_message(text)
