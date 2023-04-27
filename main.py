@@ -30,25 +30,6 @@ from datetime import datetime
 from pathlib import Path
 
 
-class CustomFormatter(logging.Formatter):
-    def __init__(self, fmt=None, datefmt=None, style="%", converter=None):
-        super().__init__(fmt, datefmt, style)
-        self.converter = converter or time.localtime
-
-    def formatTime(self, record, datefmt=None):
-        ct = self.converter(record.created, None)  # Add None as the second argument
-        if datefmt:
-            s = time.strftime(datefmt, ct)
-        else:
-            t = time.strftime(self.default_time_format, ct)
-            s = self.default_msec_format % (t, record.msecs)
-        return s
-
-
-def utc_converter(timestamp, _):
-    return time.gmtime(timestamp)
-
-
 bot_start_time = int(
     time.time() * 1000
 )  # Timestamp when the bot starts, used to filter out old messages
@@ -65,13 +46,13 @@ log_level = getattr(logging, relay_config["logging"]["level"].upper())
 logger.setLevel(log_level)
 logger.propagate = False  # Add this line to prevent double logging
 
-formatter = CustomFormatter(
-    fmt=f"%(asctime)s %(levelname)s:%(name)s:%(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    converter=utc_converter,
-)
 handler = logging.StreamHandler()
-handler.setFormatter(formatter)
+handler.setFormatter(
+    logging.Formatter(
+        fmt=f"%(asctime)s %(levelname)s:%(name)s:%(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S %z",
+    )
+)
 logger.addHandler(handler)
 
 
@@ -248,7 +229,9 @@ def on_meshtastic_message(packet, loop=None):
         for plugin in plugins:
             plugin.configure(matrix_client, meshtastic_interface)
             asyncio.run_coroutine_threadsafe(
-                plugin.handle_meshtastic_message(packet, formatted_message, longname, meshnet_name),
+                plugin.handle_meshtastic_message(
+                    packet, formatted_message, longname, meshnet_name
+                ),
                 loop=loop,
             )
 
