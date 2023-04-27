@@ -41,13 +41,17 @@ async def main():
         await join_matrix_room(matrix_client, room["id"])
 
     # Register the Meshtastic message callback
-    logger.info(f"Listening for inbound radio messages ...")
+    from meshtastic_utils import logger as meshtastic_logger
+
+    meshtastic_logger.info(f"Listening for inbound radio messages ...")
     pub.subscribe(
         on_meshtastic_message, "meshtastic.receive", loop=asyncio.get_event_loop()
     )
 
     # Register the message callback
-    logger.info(f"Listening for inbound matrix messages ...")
+    from matrix_utils import logger as matrix_logger
+
+    matrix_logger.info(f"Listening for inbound matrix messages ...")
     matrix_client.add_event_callback(
         on_room_message, (RoomMessageText, RoomMessageNotice)
     )
