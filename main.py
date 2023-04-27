@@ -40,7 +40,6 @@ async def main():
     matrix_logger.info("Connecting ...")
     try:
         login_response = await matrix_client.login(matrix_access_token)
-        matrix_logger.info(f"Login response: {login_response}")
     except Exception as e:
         matrix_logger.error(f"Error connecting to Matrix server: {e}")
         return

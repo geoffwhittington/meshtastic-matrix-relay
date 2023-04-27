@@ -2,4 +2,5 @@
 .vscode
 config.yaml
 meshtastic.sqlite
+__pycache__/
 ./plugins/__pycache__/
