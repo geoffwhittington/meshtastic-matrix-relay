@@ -182,9 +182,8 @@ def apply_changes():
     new_config["meshtastic"] = config["meshtastic"]
     new_config["matrix_rooms"] = config["matrix_rooms"]
     new_config["logging"] = config["logging"]
-    new_config["enabled_plugins"] = config["enabled_plugins"]
+    new_config["plugins"] = config["plugins"]
 
-    save_config(new_config)
     messagebox.showinfo("Success", "Configuration changes saved.")
 
     # Update matrix_rooms config
@@ -197,9 +196,12 @@ def apply_changes():
     # Update logging config
     config["logging"]["level"] = logging_level_var.get()
 
-    # Update enabled_plugins config
+    # Update plugins config
     for plugin, vars in plugin_vars.items():
-        config["plugins"][plugin] = {k: v.get() for k, v in vars.items()}
+        plugin_config = {}
+        for k, v in vars.items():
+            plugin_config[k] = v.get()
+        config["plugins"][plugin] = plugin_config
 
     # Update meshtastic config
     for key, var in meshtastic_vars.items():
@@ -207,6 +209,8 @@ def apply_changes():
             config["meshtastic"][key] = var.get()
         else:
             config["meshtastic"][key] = var.get()
+
+    save_config(new_config)
 
 
 def add_matrix_room(room=None, meshtastic_channel=None):
