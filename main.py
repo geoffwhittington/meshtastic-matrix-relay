@@ -10,11 +10,20 @@ from nio import (
 from pubsub import pub
 from typing import List
 from db_utils import initialize_database, update_longnames
-from matrix_utils import connect_matrix, join_matrix_room, on_room_message
+from matrix_utils import (
+    connect_matrix,
+    join_matrix_room,
+    on_room_message,
+    logger as matrix_logger,
+)
 
 from config import relay_config
 from log_utils import get_logger
-from meshtastic_utils import connect_meshtastic, on_meshtastic_message
+from meshtastic_utils import (
+    connect_meshtastic,
+    on_meshtastic_message,
+    logger as meshtastic_logger,
+)
 
 logger = get_logger(name="M<>M Relay")
 meshtastic_interface = connect_meshtastic()
@@ -28,12 +37,12 @@ async def main():
 
     matrix_client = await connect_matrix()
 
-    logger.info("Connecting to Matrix server...")
+    matrix_logger.info("Connecting ...")
     try:
         login_response = await matrix_client.login(matrix_access_token)
-        logger.info(f"Login response: {login_response}")
+        matrix_logger.info(f"Login response: {login_response}")
     except Exception as e:
-        logger.error(f"Error connecting to Matrix server: {e}")
+        matrix_logger.error(f"Error connecting to Matrix server: {e}")
         return
 
     # Join the rooms specified in the config.yaml
@@ -41,15 +50,12 @@ async def main():
         await join_matrix_room(matrix_client, room["id"])
 
     # Register the Meshtastic message callback
-    from meshtastic_utils import logger as meshtastic_logger
-
     meshtastic_logger.info(f"Listening for inbound radio messages ...")
     pub.subscribe(
         on_meshtastic_message, "meshtastic.receive", loop=asyncio.get_event_loop()
     )
 
     # Register the message callback
-    from matrix_utils import logger as matrix_logger
 
     matrix_logger.info(f"Listening for inbound matrix messages ...")
     matrix_client.add_event_callback(
@@ -62,11 +68,11 @@ async def main():
             # Update longnames
             update_longnames(meshtastic_interface.nodes)
 
-            logger.info("Syncing with Matrix server...")
+            matrix_logger.info("Syncing with Matrix server...")
             await matrix_client.sync_forever(timeout=30000)
-            logger.info("Sync completed.")
+            matrix_logger.info("Sync completed.")
         except Exception as e:
-            logger.error(f"Error syncing with Matrix server: {e}")
+            matrix_logger.error(f"Error syncing with Matrix server: {e}")
 
         await asyncio.sleep(60)  # Update longnames every 60 seconds
 

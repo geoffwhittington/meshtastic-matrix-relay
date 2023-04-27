@@ -24,11 +24,11 @@ def connect_meshtastic():
     connection_type = relay_config["meshtastic"]["connection_type"]
     if connection_type == "serial":
         serial_port = relay_config["meshtastic"]["serial_port"]
-        logger.info(f"Connecting to radio using serial port {serial_port} ...")
+        logger.info(f"Connecting to serial port {serial_port} ...")
         meshtastic_client = meshtastic.serial_interface.SerialInterface(serial_port)
     else:
         target_host = relay_config["meshtastic"]["host"]
-        logger.info(f"Connecting to radio at {target_host} ...")
+        logger.info(f"Connecting to host {target_host} ...")
         meshtastic_client = meshtastic.tcp_interface.TCPInterface(hostname=target_host)
     return meshtastic_client
 
