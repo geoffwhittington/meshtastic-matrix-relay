@@ -135,10 +135,25 @@ def create_plugins_frame(root):
     plugin_vars = {}
 
     for i, plugin in enumerate(plugin_names):
-        var = tk.BooleanVar(value=plugin in config["enabled_plugins"])
-        checkbox = tk.Checkbutton(frame, text=plugin, variable=var)
-        checkbox.grid(row=i // 4, column=i % 4, padx=5, pady=5)
-        plugin_vars[plugin] = var
+        plugin_frame = tk.Frame(frame)
+        plugin_frame.grid(row=i, column=0, padx=5, pady=5, sticky="w")
+
+        active_var = tk.BooleanVar(value=config["plugins"][plugin]["active"])
+        checkbox = tk.Checkbutton(plugin_frame, text=plugin, variable=active_var)
+        checkbox.grid(row=0, column=0)
+
+        plugin_vars[plugin] = {"active": active_var}
+
+        nested_keys = [k for k in config["plugins"][plugin] if k != "active"]
+        for j, nested_key in enumerate(nested_keys):
+            label = tk.Label(plugin_frame, text=nested_key)
+            label.grid(row=0, column=2 * j + 1, padx=(10, 0))
+
+            nested_var = tk.StringVar(value=config["plugins"][plugin][nested_key])
+            entry = tk.Entry(plugin_frame, textvariable=nested_var)
+            entry.grid(row=0, column=2 * j + 2)
+
+            plugin_vars[plugin][nested_key] = nested_var
 
     return plugin_vars
 
@@ -176,11 +191,8 @@ def apply_changes():
     config["logging"]["level"] = logging_level_var.get()
 
     # Update enabled_plugins config
-    enabled_plugins = []
-    for plugin, var in plugin_vars.items():
-        if var.get():
-            enabled_plugins.append(plugin)
-    config["enabled_plugins"] = enabled_plugins
+    for plugin, vars in plugin_vars.items():
+        config["plugins"][plugin] = {k: v.get() for k, v in vars.items()}
 
     # Update meshtastic config
     for key, var in meshtastic_vars.items():
