@@ -51,6 +51,20 @@ class Hyperlink(tk.Label):
         webbrowser.open(self.cget("text"))
 
 # Functions
+def ordered_yaml_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
+    class OrderedDumper(Dumper):
+        pass
+
+    def _dict_representer(dumper, data):
+        return dumper.represent_mapping(
+            yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+            data.items()
+        )
+
+    OrderedDumper.add_representer(OrderedDict, _dict_representer)
+    return yaml.dump(data, stream, OrderedDumper, **kwds)
+
+
 def get_plugin_names():
     plugin_files = glob.glob("./plugins/*_plugin.py")
     plugin_files = [p for p in plugin_files if os.path.basename(p) != "base_plugin.py"]
@@ -135,12 +149,21 @@ def load_config():
 
 def save_config(config):
     with open("config.yaml", "w") as f:
-        yaml.dump(config, f)
+        ordered_yaml_dump(config, f)
 
 def apply_changes():
     # Update matrix config
     for key, var in matrix_vars.items():
         config["matrix"][key] = var.get()
+    new_config = OrderedDict()
+    new_config["matrix"] = config["matrix"]
+    new_config["meshtastic"] = config["meshtastic"]
+    new_config["matrix_rooms"] = config["matrix_rooms"]
+    new_config["logging"] = config["logging"]
+    new_config["enabled_plugins"] = config["enabled_plugins"]
+
+    save_config(new_config)
+    messagebox.showinfo("Success", "Configuration changes saved.")
 
     # Update matrix_rooms config
     config["matrix_rooms"] = []
@@ -166,8 +189,8 @@ def apply_changes():
         else:
             config["meshtastic"][key] = var.get()
 
-    save_config(config)
-    messagebox.showinfo("Success", "Configuration changes saved.")
+    #save_config(config)
+    #messagebox.showinfo("Success", "Configuration changes saved.")
 
 def add_matrix_room(room=None, meshtastic_channel=None):
     if len(matrix_rooms_frames) >= 8:
