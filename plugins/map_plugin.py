@@ -8,6 +8,10 @@ from nio import AsyncClient, UploadResponse
 from base_plugin import BasePlugin
 
 
+from matrix_utils import connect_matrix
+from meshtastic_utils import connect_meshtastic
+
+
 def anonymize_location(lat, lon, radius=1000):
     # Generate random offsets for latitude and longitude
     lat_offset = random.uniform(-radius / 111320, radius / 111320)
@@ -83,6 +87,9 @@ class Plugin(BasePlugin):
         return
 
     async def handle_room_message(self, room, event, full_message):
+        matrix_client = await connect_matrix()
+        meshtastic_client = connect_meshtastic()
+
         pattern = r"^.*:(?: !map(?: zoom=(\d+))?(?: size=(\d+),(\d+))?)?$"
         match = re.match(pattern, full_message)
         if match:
@@ -106,7 +113,7 @@ class Plugin(BasePlugin):
                 image_size = (1000, 1000)
 
             locations = []
-            for node, info in self.meshtastic_client.nodes.items():
+            for node, info in meshtastic_client.nodes.items():
                 if "position" in info and "latitude" in info["position"]:
                     locations.append(
                         {
@@ -119,4 +126,4 @@ class Plugin(BasePlugin):
                 locations=locations, zoom=zoom, image_size=image_size
             )
 
-            await send_image(self.matrix_client, room.room_id, pillow_image)
+            await send_image(matrix_client, room.room_id, pillow_image)
