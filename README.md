@@ -13,20 +13,6 @@ A powerful and easy-to-use relay between Meshtastic devices and Matrix chat room
 - Configurable through a simple YAML file
 - **New:** Supports mapping multiple rooms and channels 1:1
 
-## Custom Keys in Matrix Messages
-
-This relay utilizes custom keys in Matrix messages. When a message is received from a remote meshnet, the relay includes the sender's longname and the meshnet name as custom keys in the Matrix message. This metadata helps identify the source of the message and provides context for users in the Matrix chat room.
-
-Example message format with custom keys:
-
-```
-{
-"msgtype": "m.text",
-"body": "[Alice/VeryCoolMeshnet]: Hello from my very cool meshnet!",
-"meshtastic_longname": "Alice",
-"meshtastic_meshnet": "VeryCoolMeshnet"
-}
-```
 
 ## Installation
 
