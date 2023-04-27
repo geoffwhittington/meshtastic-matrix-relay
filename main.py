@@ -16,7 +16,7 @@ from matrix_utils import (
     on_room_message,
     logger as matrix_logger,
 )
-
+from plugin_loader import load_plugins
 from config import relay_config
 from log_utils import get_logger
 from meshtastic_utils import (
@@ -34,6 +34,9 @@ matrix_access_token = relay_config["matrix"]["access_token"]
 async def main():
     # Initialize the SQLite database
     initialize_database()
+
+    # Load plugins early
+    load_plugins()
 
     matrix_client = await connect_matrix()
 

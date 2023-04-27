@@ -81,6 +81,8 @@ async def send_image(client: AsyncClient, room_id: str, image: Image.Image):
 
 
 class Plugin(BasePlugin):
+    plugin_name = "map"
+
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
     ):

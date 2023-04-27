@@ -7,6 +7,8 @@ from meshtastic_utils import connect_meshtastic
 
 
 class Plugin(BasePlugin):
+    plugin_name = "health"
+
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
     ):
