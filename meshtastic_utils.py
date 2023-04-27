@@ -2,10 +2,9 @@ import asyncio
 import logging
 import meshtastic.tcp_interface
 import meshtastic.serial_interface
-from typing import List, Union
+from typing import List
 
 from config import relay_config
-
 from db_utils import get_longname
 from plugin_loader import load_plugins
 
@@ -90,7 +89,6 @@ def on_meshtastic_message(packet, loop=None):
 
         # Plugin functionality
         plugins = load_plugins()
-        meshtastic_interface = connect_meshtastic()
 
         for plugin in plugins:
             asyncio.run_coroutine_threadsafe(
@@ -113,11 +111,4 @@ def on_meshtastic_message(packet, loop=None):
                 )
     else:
         portnum = packet["decoded"]["portnum"]
-        if portnum == "TELEMETRY_APP":
-            logger.debug("Ignoring Telemetry packet")
-        elif portnum == "POSITION_APP":
-            logger.debug("Ignoring Position packet")
-        elif portnum == "ADMIN_APP":
-            logger.debug("Ignoring Admin packet")
-        else:
-            logger.debug(f"Ignoring Unknown packet")
+        logger.debug(f"Ignoring {portnum} packet")

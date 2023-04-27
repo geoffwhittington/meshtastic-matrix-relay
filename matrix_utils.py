@@ -2,17 +2,14 @@ import asyncio
 import logging
 import time
 import re
-import yaml
 import certifi
 import ssl
-import os
 from typing import List, Union
 from nio import (
     AsyncClient,
     AsyncClientConfig,
     MatrixRoom,
     RoomMessageText,
-    RoomAliasEvent,
     RoomMessageNotice,
 )
 from config import relay_config

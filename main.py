@@ -9,10 +9,9 @@ from nio import (
     RoomMessageNotice,
 )
 from pubsub import pub
-from typing import List, Union
-from db_utils import initialize_database, get_longname, update_longnames
-from matrix_utils import connect_matrix, matrix_relay, join_matrix_room, on_room_message
-from plugin_loader import load_plugins
+from typing import List
+from db_utils import initialize_database, update_longnames
+from matrix_utils import connect_matrix, join_matrix_room, on_room_message
 
 from config import relay_config
 from meshtastic_utils import connect_meshtastic, on_meshtastic_message
