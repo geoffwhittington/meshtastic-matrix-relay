@@ -180,11 +180,6 @@ def apply_changes():
     new_config = OrderedDict()
     new_config["matrix"] = config["matrix"]
     new_config["meshtastic"] = config["meshtastic"]
-    new_config["matrix_rooms"] = config["matrix_rooms"]
-    new_config["logging"] = config["logging"]
-    new_config["plugins"] = config["plugins"]
-
-    messagebox.showinfo("Success", "Configuration changes saved.")
 
     # Update matrix_rooms config
     config["matrix_rooms"] = []
@@ -192,6 +187,14 @@ def apply_changes():
         room_id = room_frame.room_id_var.get()
         meshtastic_channel = room_frame.meshtastic_channel_var.get()
         config["matrix_rooms"].append({"id": room_id, "meshtastic_channel": int(meshtastic_channel)})
+    
+    # Add updated matrix_rooms to new_config
+    new_config["matrix_rooms"] = config["matrix_rooms"]
+
+    new_config["logging"] = config["logging"]
+    new_config["plugins"] = config["plugins"]
+
+    messagebox.showinfo("Success", "Configuration changes saved.")
 
     # Update logging config
     config["logging"]["level"] = logging_level_var.get()
