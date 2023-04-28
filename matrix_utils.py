@@ -52,7 +52,7 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
     """Join a Matrix room by its ID or alias."""
     try:
         if room_id_or_alias.startswith("#"):
-            response = await matrix_client.resolve_room_alias(room_id_or_alias)
+            response = await matrix_client.room_resolve_alias(room_id_or_alias)
             if not response.room_id:
                 logger.error(
                     f"Failed to resolve room alias '{room_id_or_alias}': {response.message}"
@@ -63,7 +63,7 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
             room_id = room_id_or_alias
 
         if room_id not in matrix_client.rooms:
-            response = await matrix_client.join(room_id)
+            response = await matrix_client.join(room_id_or_alias)
             if response and hasattr(response, "room_id"):
                 logger.info(f"Joined room '{room_id_or_alias}' successfully")
             else:
@@ -74,6 +74,7 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
             logger.debug(f"Bot is already in room '{room_id_or_alias}'")
     except Exception as e:
         logger.error(f"Error joining room '{room_id_or_alias}': {e}")
+
 
 
 # Send message to the Matrix room
