@@ -208,7 +208,7 @@ def save_config(config):
 
 def apply_changes():
     
-    #Check if config is valid
+    # Check if config is valid
     if not validate_config():
         return
 
@@ -226,8 +226,8 @@ def apply_changes():
         meshtastic_channel = room_frame.meshtastic_channel_var.get()
         config["matrix_rooms"].append({"id": room_id, "meshtastic_channel": int(meshtastic_channel)})
     
-    # Add updated matrix_rooms to new_config
-    new_config["matrix_rooms"] = config["matrix_rooms"]
+    # Sort matrix_rooms by meshtastic_channel and add to new_config
+    new_config["matrix_rooms"] = sorted(config["matrix_rooms"], key=lambda x: x["meshtastic_channel"])
 
     new_config["logging"] = config["logging"]
     new_config["plugins"] = config["plugins"]
