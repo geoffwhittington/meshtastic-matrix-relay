@@ -13,6 +13,19 @@ A powerful and easy-to-use relay between Meshtastic devices and Matrix chat room
 - Configurable through a simple YAML file
 - **New:** Supports mapping multiple rooms and channels 1:1
 
+### Windows Installer
+
+<img src="https://user-images.githubusercontent.com/1770544/235249050-8c79107a-50cc-4803-b989-39e58100342d.png" width="500"/>
+
+### Plugins
+
+Generate a map of your nodes
+
+<img src="https://user-images.githubusercontent.com/1770544/235247915-47750b4f-d505-4792-a458-54a5f24c1523.png" width="500"/>
+
+Produce high-level details about your mesh
+
+<img src="https://user-images.githubusercontent.com/1770544/235245873-1ddc773b-a4cd-4c67-b0a5-b55a29504b73.png" width="500"/>
 
 ## Installation
 
