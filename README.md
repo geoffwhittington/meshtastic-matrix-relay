@@ -1,4 +1,5 @@
-# Meshtastic <=> Matrix Relay
+# M<>M Relay 
+###(Meshtastic <=> Matrix Relay)
 
 A powerful and easy-to-use relay between Meshtastic devices and Matrix chat rooms, allowing seamless communication across platforms. This opens the door for bridging Meshtastic devices to [many other platforms](https://matrix.org/bridges/).
 
