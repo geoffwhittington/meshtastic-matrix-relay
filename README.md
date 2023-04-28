@@ -14,81 +14,28 @@ A powerful and easy-to-use relay between Meshtastic devices and Matrix chat room
 - Configurable through a simple YAML file
 - **New:** Supports mapping multiple rooms and channels 1:1
 
+### Windows Installer
 
-## Installation
+<img src="https://user-images.githubusercontent.com/1770544/235249050-8c79107a-50cc-4803-b989-39e58100342d.png" width="500"/>
 
-Clone the repository:
+The latest installer is available [here](https://github.com/geoffwhittington/meshtastic-matrix-relay/releases)
 
-```
-git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
-```
+### Plugins
 
-### Setup
+Generate a map of your nodes
 
-Create a Python virtual environment in the project directory:
+<img src="https://user-images.githubusercontent.com/1770544/235247915-47750b4f-d505-4792-a458-54a5f24c1523.png" width="500"/>
 
-```
-python3 -m venv .pyenv
-```
+Produce high-level details about your mesh
 
-Activate the virtual environment and install dependencies:
+<img src="https://user-images.githubusercontent.com/1770544/235245873-1ddc773b-a4cd-4c67-b0a5-b55a29504b73.png" width="500"/>
 
-```
-source .pyenv/bin/activate
-pip install -r requirements.txt
-```
+## Supported Platforms
 
+The relay can run on:
 
-### Configuration
+* Linux
+* MacOS
+* Windows
 
-Create a `config.yaml` in the project directory with the appropriate values. A sample configuration is provided below:
-
-```yaml
-matrix:
-  homeserver: "https://example.matrix.org"
-  access_token: "reaalllllyloooooongsecretttttcodeeeeeeforrrrbot"
-  bot_user_id: "@botuser:example.matrix.org"
-
-matrix_rooms:  # Needs at least 1 room & channel, but supports all Meshtastic channels
-  - id: "!someroomid:example.matrix.org"
-    meshtastic_channel: 0
-  - id: "!someroomid2:example.matrix.org"
-    meshtastic_channel: 2
-
-meshtastic:
-  connection_type: serial  # Choose either "network" or "serial"
-  serial_port: /dev/ttyUSB0  # Only used when connection is "serial"
-  host: "meshtastic.local" # Only used when connection is "network"
-  meshnet_name: "VeryCoolMeshnet" # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
-  broadcast_enabled: true
-
-logging:
-  level: "info"
-  show_timestamps: true
-  timestamp_format: '[%H:%M:%S]'
-```
-
-## Usage
-Activate the virtual environment:
-```
-source .pyenv/bin/activate
-```
-Run the `main.py` script:
-```
-python main.py
-```
-Example output:
-```
-
-$ python main.py
-INFO:meshtastic.matrix.relay:Starting Meshtastic <==> Matrix Relay...
-INFO:meshtastic.matrix.relay:Connecting to radio at meshtastic.local ...
-INFO:meshtastic.matrix.relay:Connected to radio at meshtastic.local.
-INFO:meshtastic.matrix.relay:Listening for inbound radio messages ...
-INFO:meshtastic.matrix.relay:Listening for inbound matrix messages ...
-INFO:meshtastic.matrix.relay:Processing matrix message from @bob:matrix.org: Hi Alice!
-INFO:meshtastic.matrix.relay:Sending radio message from Bob to radio broadcast
-INFO:meshtastic.matrix.relay:Processing inbound radio message from !613501e4 on channel 0
-INFO:meshtastic.matrix.relay:Relaying Meshtastic message from Alice to Matrix: [Alice/VeryCoolMeshnet]: Hey Bob!
-INFO:meshtastic.matrix.relay:Sent inbound radio message to matrix room: !someroomid:example.matrix.org
-```
+Refer to [the development instructions](DEVELOPMENT.md) for more details.
