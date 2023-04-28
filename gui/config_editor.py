@@ -4,6 +4,7 @@ import yaml
 import webbrowser
 import tkinter as tk
 from tkinter import messagebox
+from tkinter import ttk
 from collections import OrderedDict
 
 
@@ -45,6 +46,12 @@ def validate_config():
         return False
 
     return True
+
+
+def update_minsize(): # Function that prevents the window from resizing too small
+    root.update_idletasks()
+    root.minsize(root.winfo_width(), root.winfo_height())
+    
 
 
 class Hyperlink(tk.Label):
@@ -150,11 +157,14 @@ def create_plugins_frame(root):
     plugin_vars = {}
 
     for i, plugin in enumerate(plugin_names):
-        plugin_frame = tk.Frame(frame)
-        plugin_frame.grid(row=i, column=0, padx=5, pady=5, sticky="w")
+        # Create a plugin-specific frame
+        plugin_frame = tk.LabelFrame(frame, text=plugin, padx=5, pady=5)
+        plugin_frame.grid(row=i, column=0, padx=5, pady=5, sticky="ew")
+
+        frame.columnconfigure(0, weight=1)
 
         active_var = tk.BooleanVar(value=config["plugins"][plugin]["active"])
-        checkbox = tk.Checkbutton(plugin_frame, text=plugin, variable=active_var)
+        checkbox = tk.Checkbutton(plugin_frame, text="Active", variable=active_var)
         checkbox.grid(row=0, column=0)
 
         plugin_vars[plugin] = {"active": active_var}
@@ -171,13 +181,21 @@ def create_plugins_frame(root):
                 entry = tk.Checkbutton(plugin_frame, variable=nested_var)
             else:
                 nested_var = tk.StringVar(value=nested_var_value)
-                entry = tk.Entry(plugin_frame, textvariable=nested_var)
+                entry = tk.Entry(plugin_frame, textvariable=nested_var, width=len(nested_var_value) + 1)  # Change the width here
+                entry.bind('<KeyRelease>', lambda event: update_entry_width(event, entry))
 
             entry.grid(row=0, column=2 * j + 2)
 
             plugin_vars[plugin][nested_key] = nested_var
 
     return plugin_vars
+
+
+
+# Add the update_entry_width function
+def update_entry_width(event, entry):
+    if isinstance(entry, tk.Entry):
+        entry.config(width=len(entry.get()) + 1)
 
 
 def load_config():
@@ -260,6 +278,7 @@ def add_matrix_room(room=None, meshtastic_channel=None):
     meshtastic_channel_entry.grid(row=0, column=3)
 
     matrix_rooms_frames.append(room_frame)
+    update_minsize()  
 
 def remove_matrix_room():
     if len(matrix_rooms_frames) <= 1:
@@ -268,6 +287,7 @@ def remove_matrix_room():
     if matrix_rooms_frames:
         frame_to_remove = matrix_rooms_frames.pop()
         frame_to_remove.destroy()
+        update_minsize()
 
 # GUI
 config = load_config()
@@ -275,8 +295,21 @@ config = load_config()
 root = tk.Tk()
 root.title("Config Editor")
 
+# Create the main tab control
+tab_control = ttk.Notebook(root)
+tab_control.pack(expand=True, fill="both")
+
+# Create the Settings tab
+settings_tab = ttk.Frame(tab_control)
+tab_control.add(settings_tab, text="Settings")
+
+# Create the Plugins tab
+plugins_tab = ttk.Frame(tab_control)
+tab_control.add(plugins_tab, text="Plugins")
+
+
 # Matrix frame
-matrix_frame = tk.LabelFrame(root, text="Matrix", padx=5, pady=5)
+matrix_frame = tk.LabelFrame(settings_tab, text="Matrix", padx=5, pady=5)
 matrix_frame.pack(padx=10, pady=10, fill="x", expand="yes")
 
 matrix_keys = ["homeserver", "bot_user_id", "access_token"]
@@ -299,11 +332,11 @@ instruction_label.grid(row=3, column=0, columnspan=2, sticky="ew")
 link_label = Hyperlink(matrix_frame, text="https://t2bot.io/docs/access_tokens/")
 link_label.grid(row=4, column=0, columnspan=2, sticky="ew")
 
-#Create meshtastic frame
-meshtastic_vars = create_meshtastic_frame(root)
+# Create meshtastic frame
+meshtastic_vars = create_meshtastic_frame(settings_tab)
 
 # Matrix rooms frame
-matrix_rooms_frame = tk.LabelFrame(root, text="Matrix Rooms", padx=5, pady=5)
+matrix_rooms_frame = tk.LabelFrame(settings_tab, text="Matrix Rooms", padx=5, pady=5)
 matrix_rooms_frame.pack(padx=10, pady=10, fill="both", expand="yes")
 
 matrix_rooms_frames = []
@@ -321,13 +354,13 @@ remove_button = tk.Button(add_remove_frame, text="-", command=remove_matrix_room
 remove_button.pack(side="left")
 
 # Create logging frame
-logging_level_var = create_logging_frame(root)
+logging_level_var = create_logging_frame(settings_tab)
 
 # Create plugins frame
-plugin_vars = create_plugins_frame(root)
+plugin_vars = create_plugins_frame(plugins_tab)
 
 # Apply button
 apply_button = tk.Button(root, text="Apply", command=apply_changes)
-apply_button.pack(pady=10)
+apply_button.pack(side="bottom", pady=10)
 
 root.mainloop()
