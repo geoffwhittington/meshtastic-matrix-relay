@@ -17,6 +17,8 @@ A powerful and easy-to-use relay between Meshtastic devices and Matrix chat room
 
 <img src="https://user-images.githubusercontent.com/1770544/235249050-8c79107a-50cc-4803-b989-39e58100342d.png" width="500"/>
 
+The latest installer is available [here](https://github.com/geoffwhittington/meshtastic-matrix-relay/releases)
+
 ### Plugins
 
 Generate a map of your nodes
