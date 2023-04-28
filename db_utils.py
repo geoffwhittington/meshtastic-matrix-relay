@@ -1,3 +1,4 @@
+import json
 import sqlite3
 
 
@@ -8,7 +9,46 @@ def initialize_database():
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS longnames (meshtastic_id TEXT PRIMARY KEY, longname TEXT)"
         )
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS plugin_data (plugin_name TEXT, meshtastic_id TEXT, data TEXT, PRIMARY KEY (plugin_name, meshtastic_id))"
+        )
         conn.commit()
+
+
+def store_plugin_data(plugin_name, meshtastic_id, data):
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT OR REPLACE INTO plugin_data (plugin_name, meshtastic_id, data) VALUES (?, ?, ?) ON CONFLICT (plugin_name, meshtastic_id) DO UPDATE SET data = ?",
+            (plugin_name, meshtastic_id, json.dumps(data), json.dumps(data)),
+        )
+        conn.commit()
+
+
+# Get the data for a given plugin and Meshtastic ID
+def get_plugin_data_for_node(plugin_name, meshtastic_id):
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT data FROM plugin_data WHERE plugin_name=? AND meshtastic_id=?",
+            (
+                plugin_name,
+                meshtastic_id,
+            ),
+        )
+        result = cursor.fetchone()
+    return json.loads(result[0] if result else "[]")
+
+
+# Get the data for a given plugin
+def get_plugin_data(plugin_name):
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT data FROM plugin_data WHERE plugin_name=? ",
+            (plugin_name,),
+        )
+        return cursor.fetchall()
 
 
 # Get the longname for a given Meshtastic ID
