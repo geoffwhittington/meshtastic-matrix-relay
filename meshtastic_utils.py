@@ -35,7 +35,7 @@ def connect_meshtastic():
 
 # Callback for new messages from Meshtastic
 def on_meshtastic_message(packet, loop=None):
-    from matrix_utils import connect_matrix, matrix_relay
+    from matrix_utils import matrix_relay
 
     sender = packet["fromId"]
 
@@ -98,4 +98,16 @@ def on_meshtastic_message(packet, loop=None):
                 )
     else:
         portnum = packet["decoded"]["portnum"]
-        logger.debug(f"Ignoring {portnum} packet")
+
+        logger.debug(f"Detected {portnum} packet")
+
+        plugins = load_plugins()
+        for plugin in plugins:
+            logger.debug(f"Running plugin {plugin.plugin_name}")
+
+            asyncio.run_coroutine_threadsafe(
+                plugin.handle_meshtastic_message(
+                    packet, formatted_message=None, longname=None, meshnet_name=None
+                ),
+                loop=loop,
+            )

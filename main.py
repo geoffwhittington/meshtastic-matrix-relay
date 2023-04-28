@@ -70,11 +70,11 @@ async def main():
             # Update longnames
             update_longnames(meshtastic_interface.nodes)
 
-            matrix_logger.info("Syncing with Matrix server...")
+            matrix_logger.info("Syncing with server...")
             await matrix_client.sync_forever(timeout=30000)
             matrix_logger.info("Sync completed.")
         except Exception as e:
-            matrix_logger.error(f"Error syncing with Matrix server: {e}")
+            matrix_logger.error(f"Error syncing with server: {e}")
 
         await asyncio.sleep(60)  # Update longnames every 60 seconds
 
