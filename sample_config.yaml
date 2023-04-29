@@ -1,6 +1,6 @@
 matrix:
   homeserver: "https://example.matrix.org"
-  access_token: "reaalllllyloooooongsecretttttcodeeeeeeforrrrbot"
+  access_token: "reaalllllyloooooongsecretttttcodeeeeeeforrrrbot" # See: https://t2bot.io/docs/access_tokens/
   bot_user_id: "@botuser:example.matrix.org"
 
 matrix_rooms:  # Needs at least 1 room & channel, but supports all Meshtastic channels
@@ -17,6 +17,10 @@ meshtastic:
   broadcast_enabled: true
 
 logging:
-  level: "debug"
-  show_timestamps: true
-  timestamp_format: '[%H:%M:%S]'
+  level: "info"
+
+plugins:  # Optional plugins
+  health:
+    active: true
+  map:
+    active: true
