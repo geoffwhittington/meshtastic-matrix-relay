@@ -33,7 +33,7 @@ Create a `config.yaml` in the project directory with the appropriate values. A s
 ```yaml
 matrix:
   homeserver: "https://example.matrix.org"
-  access_token: "reaalllllyloooooongsecretttttcodeeeeeeforrrrbot"
+  access_token: "reaalllllyloooooongsecretttttcodeeeeeeforrrrbot" # See: https://t2bot.io/docs/access_tokens/
   bot_user_id: "@botuser:example.matrix.org"
 
 matrix_rooms:  # Needs at least 1 room & channel, but supports all Meshtastic channels
@@ -46,11 +46,17 @@ meshtastic:
   connection_type: serial  # Choose either "network" or "serial"
   serial_port: /dev/ttyUSB0  # Only used when connection is "serial"
   host: "meshtastic.local" # Only used when connection is "network"
-  meshnet_name: "VeryCoolMeshnet" # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
+  meshnet_name: "Your Meshnet Name" # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
   broadcast_enabled: true
 
 logging:
   level: "info"
+
+plugins:  # Optional plugins
+  health:
+    active: true
+  map:
+    active: true
 ```
 
 ## Usage
