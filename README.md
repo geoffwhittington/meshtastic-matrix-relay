@@ -9,7 +9,7 @@ A powerful and easy-to-use relay between Meshtastic devices and Matrix chat room
 - Supports both serial and network connections for Meshtastic devices
 - Custom keys are embedded in Matrix messages which are used when relaying messages between two or more meshnets.
 - Truncates long messages to fit within Meshtastic's payload size
-- SQLite database to store Meshtastic longnames for improved functionality
+- SQLite database to store node information for improved functionality
 - Customizable logging level for easy debugging
 - Configurable through a simple YAML file
 - **New:** Supports mapping multiple rooms and channels 1:1
