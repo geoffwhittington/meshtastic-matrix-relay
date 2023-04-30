@@ -49,8 +49,10 @@ def get_map(locations, zoom=None, image_size=None, minimum_radius=10000):
         return context.render_pillow(1000, 1000)
 
 
-async def send_image(client: AsyncClient, room_id: str, image: Image.Image):
-    response = await upload_image(client=client, image=image)
+async def send_image(
+    client: AsyncClient, room_id: str, image: Image.Image, filename: str
+):
+    response = await upload_image(client=client, image=image, filename=filename)
     await send_room_image(client, room_id, upload_response=response)
 
 
@@ -63,7 +65,7 @@ class Plugin(BasePlugin):
         return
 
     async def handle_room_message(self, room, event, full_message):
-        if not self.matrix_allowed(room):
+        if not self.matrix_allowed(room, event):
             return
 
         minimum_radius = (

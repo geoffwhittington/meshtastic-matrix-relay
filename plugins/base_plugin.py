@@ -40,8 +40,8 @@ class BasePlugin(ABC):
         allowed = True
         if "matrix_rooms" in self.config:
             allowed = False
-            for matrix_room in self.config["matrix_rooms"]:
-                if matrix_room["id"] == matrix_room.room_id:
+            for mroom in self.config["matrix_rooms"]:
+                if mroom["id"] == matrix_room.room_id:
                     allowed = True
 
         if allowed and "matrix_users" in self.config:

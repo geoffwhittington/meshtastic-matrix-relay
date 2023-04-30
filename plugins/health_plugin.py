@@ -15,7 +15,7 @@ class Plugin(BasePlugin):
         return
 
     async def handle_room_message(self, room, event, full_message):
-        if not self.matrix_allowed(room):
+        if not self.matrix_allowed(room, event):
             return
 
         meshtastic_client = connect_meshtastic()
