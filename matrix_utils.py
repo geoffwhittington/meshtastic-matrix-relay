@@ -76,7 +76,6 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
         logger.error(f"Error joining room '{room_id_or_alias}': {e}")
 
 
-
 # Send message to the Matrix room
 async def matrix_relay(room_id, message, longname, meshnet_name):
     matrix_client = await connect_matrix()
@@ -173,8 +172,15 @@ async def on_room_message(
             meshtastic_interface = connect_meshtastic()
             from meshtastic_utils import logger as meshtastic_logger
 
+            found_matching_plugin = False
             for plugin in plugins:
-                await plugin.handle_room_message(room, event, full_message)
+                if not found_matching_plugin:
+                    found_matching_plugin = await plugin.handle_room_message(
+                        room, event, full_message
+                    )
+
+            if found_matching_plugin:
+                return
 
             if room_config:
                 meshtastic_channel = room_config["meshtastic_channel"]

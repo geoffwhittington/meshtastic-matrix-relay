@@ -77,13 +77,19 @@ def on_meshtastic_message(packet, loop=None):
         # Plugin functionality
         plugins = load_plugins()
 
+        found_matching_plugin = False
         for plugin in plugins:
-            asyncio.run_coroutine_threadsafe(
-                plugin.handle_meshtastic_message(
-                    packet, formatted_message, longname, meshnet_name
-                ),
-                loop=loop,
-            )
+            if not found_matching_plugin:
+                result = asyncio.run_coroutine_threadsafe(
+                    plugin.handle_meshtastic_message(
+                        packet, formatted_message, longname, meshnet_name
+                    ),
+                    loop=loop,
+                )
+                found_matching_plugin = result.result()
+
+        if found_matching_plugin:
+            return
 
         for room in matrix_rooms:
             if room["meshtastic_channel"] == channel:
