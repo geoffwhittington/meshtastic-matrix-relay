@@ -87,6 +87,8 @@ def on_meshtastic_message(packet, loop=None):
                     loop=loop,
                 )
                 found_matching_plugin = result.result()
+                if found_matching_plugin:
+                    logger.debug(f"Processed by plugin {plugin.plugin_name}")
 
         if found_matching_plugin:
             return
@@ -105,15 +107,18 @@ def on_meshtastic_message(packet, loop=None):
     else:
         portnum = packet["decoded"]["portnum"]
 
-        logger.debug(f"Detected {portnum} packet")
-
         plugins = load_plugins()
+        found_matching_plugin = False
         for plugin in plugins:
-            logger.debug(f"Running plugin {plugin.plugin_name}")
-
-            asyncio.run_coroutine_threadsafe(
-                plugin.handle_meshtastic_message(
-                    packet, formatted_message=None, longname=None, meshnet_name=None
-                ),
-                loop=loop,
-            )
+            if not found_matching_plugin:
+                result = asyncio.run_coroutine_threadsafe(
+                    plugin.handle_meshtastic_message(
+                        packet, formatted_message=None, longname=None, meshnet_name=None
+                    ),
+                    loop=loop,
+                )
+                found_matching_plugin = result.result()
+                if found_matching_plugin:
+                    logger.debug(
+                        f"Processed {portnum} with plugin {plugin.plugin_name}"
+                    )

@@ -9,19 +9,8 @@ from meshtastic_utils import connect_meshtastic
 class Plugin(BasePlugin):
     plugin_name = "health"
 
-    async def handle_meshtastic_message(
-        self, packet, formatted_message, longname, meshnet_name
-    ):
-        return False
-
-    async def handle_room_message(self, room, event, full_message):
+    def generate_response(self):
         meshtastic_client = connect_meshtastic()
-        matrix_client = await connect_matrix()
-
-        match = re.match(r"^.*: !health$", full_message)
-        if not match:
-            return False
-
         battery_levels = []
         air_util_tx = []
         snr = []
@@ -42,17 +31,31 @@ class Plugin(BasePlugin):
         avg_snr = statistics.mean(snr) if snr else 0
         mdn_snr = statistics.median(snr)
 
+        return f"""Nodes: {radios}
+Battery: {avg_battery:.1f}% / {mdn_battery:.1f}% (avg / median)
+Nodes with Low Battery (< 10): {low_battery}
+Air Util: {avg_air:.2f} / {mdn_air:.2f} (avg / median)
+SNR: {avg_snr:.2f} / {mdn_snr:.2f} (avg / median)
+"""
+
+    async def handle_meshtastic_message(
+        self, packet, formatted_message, longname, meshnet_name
+    ):
+        return False
+
+    async def handle_room_message(self, room, event, full_message):
+        matrix_client = await connect_matrix()
+
+        match = re.match(r"^.*: !health$", full_message)
+        if not match:
+            return False
+
         response = await matrix_client.room_send(
             room_id=room.room_id,
             message_type="m.room.message",
             content={
                 "msgtype": "m.text",
-                "body": f"""Nodes: {radios}
-Battery: {avg_battery:.1f}% / {mdn_battery:.1f}% (avg / median)
-Nodes with Low Battery (< 10): {low_battery}
-Air Util: {avg_air:.2f} / {mdn_air:.2f} (avg / median)
-SNR: {avg_snr:.2f} / {mdn_snr:.2f} (avg / median)
-""",
+                "body": self.generate_response(),
             },
         )
 
