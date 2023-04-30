@@ -5,6 +5,17 @@ from db_utils import store_plugin_data, get_plugin_data, get_plugin_data_for_nod
 
 
 class BasePlugin(ABC):
+    """
+    Sample config
+
+    plugin_name:
+        active: true
+        matrix_rooms:
+        - id: "!room:host.matrix.org"
+        matrix_users:
+        - user@host.matrix.org
+    """
+
     plugin_name = None
     max_data_rows_per_node = 10
 
@@ -24,6 +35,22 @@ class BasePlugin(ABC):
 
     def get_data(self):
         return get_plugin_data(self.plugin_name)
+
+    def matrix_allowed(self, matrix_room, event):
+        allowed = True
+        if "matrix_rooms" in self.config:
+            allowed = False
+            for matrix_room in self.config["matrix_rooms"]:
+                if matrix_room["id"] == matrix_room.room_id:
+                    allowed = True
+
+        if allowed and "matrix_users" in self.config:
+            allowed = False
+            for matrix_user in self.config["matrix_users"]:
+                if matrix_user == event.sender:
+                    allowed = True
+
+        return allowed
 
     @abstractmethod
     async def handle_meshtastic_message(

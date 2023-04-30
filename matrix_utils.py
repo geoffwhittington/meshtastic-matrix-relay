@@ -1,8 +1,9 @@
 import asyncio
-import time
-import re
 import certifi
+import io
+import re
 import ssl
+import time
 from typing import List, Union
 from nio import (
     AsyncClient,
@@ -10,7 +11,10 @@ from nio import (
     MatrixRoom,
     RoomMessageText,
     RoomMessageNotice,
+    UploadResponse,
 )
+from PIL import Image
+
 from config import relay_config
 from log_utils import get_logger
 from plugin_loader import load_plugins
@@ -191,3 +195,30 @@ async def on_room_message(
                     logger.debug(
                         f"Broadcast not supported: Message from {full_display_name} dropped."
                     )
+
+
+async def upload_image(
+    client: AsyncClient, image: Image.Image, filename: str
+) -> UploadResponse:
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    image_data = buffer.getvalue()
+
+    response, maybe_keys = await client.upload(
+        io.BytesIO(image_data),
+        content_type="image/png",
+        filename=filename,
+        filesize=len(image_data),
+    )
+
+    return response
+
+
+async def send_room_image(
+    client: AsyncClient, room_id: str, upload_response: UploadResponse
+):
+    response = await client.room_send(
+        room_id=room_id,
+        message_type="m.room.message",
+        content={"msgtype": "m.image", "url": upload_response.content_uri, "body": ""},
+    )

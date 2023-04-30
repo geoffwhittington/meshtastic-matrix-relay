@@ -1,14 +1,13 @@
 import staticmaps
 import math
 import random
-import io
 import re
 from PIL import Image
-from nio import AsyncClient, UploadResponse
+from nio import AsyncClient
 from base_plugin import BasePlugin
 
 
-from matrix_utils import connect_matrix
+from matrix_utils import connect_matrix, upload_image, send_room_image
 from meshtastic_utils import connect_meshtastic
 
 
@@ -26,7 +25,7 @@ def anonymize_location(lat, lon, radius=1000):
     return new_lat, new_lon
 
 
-def get_map(locations, zoom=None, image_size=None, radius=10000):
+def get_map(locations, zoom=None, image_size=None, minimum_radius=10000):
     """
     Anonymize a location to 10km by default
     """
@@ -38,7 +37,7 @@ def get_map(locations, zoom=None, image_size=None, radius=10000):
         new_location = anonymize_location(
             lat=float(location["lat"]),
             lon=float(location["lon"]),
-            radius=radius,
+            radius=minimum_radius,
         )
         radio = staticmaps.create_latlng(new_location[0], new_location[1])
         context.add_object(staticmaps.Marker(radio, size=10))
@@ -48,31 +47,6 @@ def get_map(locations, zoom=None, image_size=None, radius=10000):
         return context.render_pillow(image_size[0], image_size[1])
     else:
         return context.render_pillow(1000, 1000)
-
-
-async def upload_image(client: AsyncClient, image: Image.Image) -> UploadResponse:
-    buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
-    image_data = buffer.getvalue()
-
-    response, maybe_keys = await client.upload(
-        io.BytesIO(image_data),
-        content_type="image/png",
-        filename="location.png",
-        filesize=len(image_data),
-    )
-
-    return response
-
-
-async def send_room_image(
-    client: AsyncClient, room_id: str, upload_response: UploadResponse
-):
-    response = await client.room_send(
-        room_id=room_id,
-        message_type="m.room.message",
-        content={"msgtype": "m.image", "url": upload_response.content_uri, "body": ""},
-    )
 
 
 async def send_image(client: AsyncClient, room_id: str, image: Image.Image):
@@ -89,6 +63,12 @@ class Plugin(BasePlugin):
         return
 
     async def handle_room_message(self, room, event, full_message):
+        if not self.matrix_allowed(room):
+            return
+
+        minimum_radius = (
+            self.config["minimum_radius"] if "minimum_radius" in self.config else 10000
+        )
         matrix_client = await connect_matrix()
         meshtastic_client = connect_meshtastic()
 
@@ -125,7 +105,15 @@ class Plugin(BasePlugin):
                     )
 
             pillow_image = get_map(
-                locations=locations, zoom=zoom, image_size=image_size
+                locations=locations,
+                zoom=zoom,
+                image_size=image_size,
+                minimum_radius=minimum_radius,
             )
 
-            await send_image(matrix_client, room.room_id, pillow_image)
+            await send_image(
+                client=matrix_client,
+                room_id=room.room_id,
+                image=pillow_image,
+                filename="location.png",
+            )
