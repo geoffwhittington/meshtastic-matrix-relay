@@ -47,6 +47,10 @@ def validate_config():
 
     return True
 
+def save_config(config):
+    with open("config.yaml", "w") as f:
+        ordered_yaml_dump(config, f)
+
 
 def update_minsize(): # Function that prevents the window from resizing too small
     root.update_idletasks()
@@ -198,13 +202,7 @@ def update_entry_width(event, entry):
         entry.config(width=len(entry.get()) + 1)
 
 
-def load_config():
-    with open("config.yaml", "r") as f:
-        return yaml.safe_load(f)
 
-def save_config(config):
-    with open("config.yaml", "w") as f:
-        ordered_yaml_dump(config, f)
 
 def apply_changes():
     
@@ -251,7 +249,7 @@ def apply_changes():
 
     save_config(new_config)
 
-    messagebox.showinfo("Success", "Configuration changes saved.")
+    root.destroy()
 
 
 def add_matrix_room(room=None, meshtastic_channel=None):
@@ -293,7 +291,7 @@ def remove_matrix_room():
 config = load_config()
 
 root = tk.Tk()
-root.title("Config Editor")
+root.title("M<>M Relay - Configuration Editor")
 
 # Create the main tab control
 tab_control = ttk.Notebook(root)
@@ -360,7 +358,7 @@ logging_level_var = create_logging_frame(settings_tab)
 plugin_vars = create_plugins_frame(plugins_tab)
 
 # Apply button
-apply_button = tk.Button(root, text="Apply", command=apply_changes)
+apply_button = tk.Button(root, text="Save & Launch Relay", command=apply_changes)
 apply_button.pack(side="bottom", pady=10)
 
 root.mainloop()

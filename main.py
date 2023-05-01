@@ -17,6 +17,7 @@ from matrix_utils import (
     logger as matrix_logger,
 )
 from plugin_loader import load_plugins
+from gui.config_editor import load_config
 from config import relay_config
 from log_utils import get_logger
 from meshtastic_utils import (
@@ -32,6 +33,9 @@ matrix_access_token = relay_config["matrix"]["access_token"]
 
 
 async def main():
+    # Load the Configuration Editor
+    load_config()
+
     # Initialize the SQLite database
     initialize_database()
 
