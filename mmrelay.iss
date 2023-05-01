@@ -172,6 +172,7 @@ begin
               '  broadcast_enabled: ' + BoolToStr(OptionsPage.Values[1]) + #13#10 +
               'logging:' + #13#10 +
               '  level: "' + log_level + '"' + #13#10;
+              'plugins:' + #13#10;
 
     if Not SaveStringToFile(sAppDir+'/config.yaml', config, false) then
     begin
