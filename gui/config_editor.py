@@ -360,7 +360,7 @@ logging_level_var = create_logging_frame(settings_tab)
 plugin_vars = create_plugins_frame(plugins_tab)
 
 # Apply button
-apply_button = tk.Button(root, text="Save Configuration & Launch Relay", command=apply_changes)
+apply_button = tk.Button(root, text="Save & Launch Relay", command=apply_changes)
 apply_button.pack(side="bottom", pady=10)
 
 root.mainloop()
