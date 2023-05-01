@@ -47,6 +47,10 @@ def validate_config():
 
     return True
 
+def save_config(config):
+    with open("config.yaml", "w") as f:
+        ordered_yaml_dump(config, f)
+
 
 def update_minsize(): # Function that prevents the window from resizing too small
     root.update_idletasks()
@@ -198,13 +202,7 @@ def update_entry_width(event, entry):
         entry.config(width=len(entry.get()) + 1)
 
 
-def load_config():
-    with open("config.yaml", "r") as f:
-        return yaml.safe_load(f)
 
-def save_config(config):
-    with open("config.yaml", "w") as f:
-        ordered_yaml_dump(config, f)
 
 def apply_changes():
     
