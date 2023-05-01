@@ -19,7 +19,7 @@ def create_default_config():
         "logging": {
             "level": "info"
         },
-        "enabled_plugins": []
+        "plugins": []
     }
 
     with open("config.yaml", "w") as f:
