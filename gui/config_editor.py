@@ -144,7 +144,7 @@ def create_logging_frame(root):
     frame = tk.LabelFrame(root, text="Logging", padx=5, pady=5)
     frame.pack(fill="x", padx=5, pady=5)
 
-    logging_options = ["info", "warn", "error", "debug"]
+    logging_options = ["info", "debug"]
     logging_level_var = tk.StringVar(value=config["logging"]["level"])
 
     for i, level in enumerate(logging_options):
