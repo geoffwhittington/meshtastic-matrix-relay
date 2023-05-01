@@ -6,7 +6,7 @@ from db_utils import store_plugin_data, get_plugin_data, get_plugin_data_for_nod
 
 class BasePlugin(ABC):
     plugin_name = None
-    max_data_rows_per_node = 10
+    max_data_rows_per_node = 100
 
     def __init__(self) -> None:
         super().__init__()
