@@ -293,7 +293,7 @@ def remove_matrix_room():
 config = load_config()
 
 root = tk.Tk()
-root.title("Config Editor")
+root.title("M<>M Relay - Configuration Editor")
 
 # Create the main tab control
 tab_control = ttk.Notebook(root)
