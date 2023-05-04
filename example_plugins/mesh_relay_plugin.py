@@ -81,7 +81,7 @@ class Plugin(BasePlugin):
             message_type="m.room.message",
             content={
                 "msgtype": "m.text",
-                "mmrelay_suppress": False,
+                "mmrelay_suppress": True,
                 "meshtastic_packet": json.dumps(packet),
                 "body": f"Processed {packet_type} radio packet",
             },
