@@ -52,18 +52,19 @@ class Plugin(BasePlugin):
             return True
 
     async def handle_room_message(self, room, event, full_message):
-        self.logger.debug("Hello world, Matrix")
+        full_message = full_message.strip()
+        if not self.matches(full_message):
+            return False
+
+        match = re.match(r"^.*: !battery$", full_message)
+        if not match:
+            return False
 
         hourly_intervals = self._generate_timeperiods()
         matrix_client = await connect_matrix()
 
         # Compute the hourly averages for each node
         hourly_averages = {}
-
-        match = re.match(r"^.*: !battery$", full_message)
-        # Indicate this message is not meant for this plugin
-        if not match:
-            return False
 
         for node_data_json in self.get_data():
             node_data_rows = json.loads(node_data_json[0])

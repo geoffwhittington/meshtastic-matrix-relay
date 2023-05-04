@@ -46,7 +46,7 @@ SNR: {avg_snr:.2f} / {mdn_snr:.2f} (avg / median)
     async def handle_room_message(self, room, event, full_message):
         full_message = full_message.strip()
         if not self.matches(full_message):
-            return
+            return False
 
         matrix_client = await connect_matrix()
 

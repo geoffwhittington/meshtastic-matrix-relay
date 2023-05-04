@@ -147,6 +147,10 @@ async def on_room_message(
     suppress = event.source["content"].get("mmrelay_suppress")
     local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
 
+    # Do not process
+    if suppress:
+        return
+
     if longname and meshnet_name:
         full_display_name = f"{longname}/{meshnet_name}"
         if meshnet_name != local_meshnet_name:

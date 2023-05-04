@@ -63,7 +63,7 @@ class Plugin(BasePlugin):
         packet_type = packet["decoded"]["portnum"]
         if "channel" in packet:
             channel = packet["channel"]
-        elif packet["decoded"]["portnum"] == "TEXT_MESSAGE_APP":
+        else:
             channel = 0
 
         channel_mapped = False
@@ -83,6 +83,7 @@ class Plugin(BasePlugin):
                 "msgtype": "m.text",
                 "mmrelay_suppress": False,
                 "meshtastic_packet": json.dumps(packet),
+                "body": f"Processed {packet_type} radio packet",
             },
         )
 
@@ -104,6 +105,10 @@ class Plugin(BasePlugin):
         for room in matrix_rooms:
             if room["id"] == room["id"]:
                 channel = room["meshtastic_channel"]
+
+        if not channel:
+            self.logger.debug(f"Skipping message from unmapped channel {channel}")
+            return
 
         packet_json = event.source["content"].get("meshtastic_packet")
         if not packet_json:

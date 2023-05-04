@@ -1,3 +1,5 @@
+import re
+
 from plugins.base_plugin import BasePlugin
 from matrix_utils import connect_matrix
 
@@ -8,9 +10,17 @@ class Plugin(BasePlugin):
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
     ):
-        self.logger.debug("Hello world, Meshtastic")
+        pass
 
     async def handle_room_message(self, room, event, full_message):
+        full_message = full_message.strip()
+        if not self.matches(full_message):
+            return
+
+        match = re.match(r"^.*: !ping$", full_message)
+        if not match:
+            return False
+
         matrix_client = await connect_matrix()
         response = await matrix_client.room_send(
             room_id=room.room_id,
