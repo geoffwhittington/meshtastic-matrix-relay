@@ -6,7 +6,7 @@ from db_utils import store_plugin_data, get_plugin_data, get_plugin_data_for_nod
 
 class BasePlugin(ABC):
     plugin_name = None
-    max_data_rows_per_node = 10
+    max_data_rows_per_node = 100
 
     def __init__(self) -> None:
         super().__init__()
@@ -24,6 +24,11 @@ class BasePlugin(ABC):
 
     def get_data(self):
         return get_plugin_data(self.plugin_name)
+
+    def matches(self, payload):
+        if type(payload) == str:
+            return f"!{self.plugin_name}" in payload
+        return False
 
     @abstractmethod
     async def handle_meshtastic_message(

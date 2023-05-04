@@ -2,6 +2,7 @@ import asyncio
 import time
 import re
 import certifi
+import io
 import ssl
 from typing import List, Union
 from nio import (
@@ -10,11 +11,13 @@ from nio import (
     MatrixRoom,
     RoomMessageText,
     RoomMessageNotice,
+    UploadResponse,
 )
 from config import relay_config
 from log_utils import get_logger
 from plugin_loader import load_plugins
 from meshtastic_utils import connect_meshtastic
+from PIL import Image
 
 matrix_homeserver = relay_config["matrix"]["homeserver"]
 bot_user_id = relay_config["matrix"]["bot_user_id"]
@@ -76,7 +79,6 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
         logger.error(f"Error joining room '{room_id_or_alias}': {e}")
 
 
-
 # Send message to the Matrix room
 async def matrix_relay(room_id, message, longname, meshnet_name):
     matrix_client = await connect_matrix()
@@ -122,72 +124,108 @@ async def on_room_message(
     room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice]
 ) -> None:
     full_display_name = "Unknown user"
+    message_timestamp = event.server_timestamp
 
-    if event.sender != bot_user_id:
-        message_timestamp = event.server_timestamp
+    # We do not relay the past
+    if message_timestamp < bot_start_time:
+        return
 
-        if message_timestamp > bot_start_time:
-            text = event.body.strip()
+    room_config = None
+    for config in matrix_rooms:
+        if config["id"] == room.room_id:
+            room_config = config
+            break
 
-            longname = event.source["content"].get("meshtastic_longname")
-            meshnet_name = event.source["content"].get("meshtastic_meshnet")
-            local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
+    # Only relay supported rooms
+    if not room_config:
+        return
 
-            if longname and meshnet_name:
-                full_display_name = f"{longname}/{meshnet_name}"
-                if meshnet_name != local_meshnet_name:
-                    logger.info(f"Processing message from remote meshnet: {text}")
-                    short_longname = longname[:3]
-                    short_meshnet_name = meshnet_name[:4]
-                    prefix = f"{short_longname}/{short_meshnet_name}: "
-                    text = re.sub(
-                        rf"^\[{full_display_name}\]: ", "", text
-                    )  # Remove the original prefix from the text
-                    text = truncate_message(text)
-                    full_message = f"{prefix}{text}"
-                else:
-                    # This is a message from a local user, it should be ignored no log is needed
-                    return
+    text = event.body.strip()
 
-            else:
-                display_name_response = await matrix_client.get_displayname(
-                    event.sender
-                )
-                full_display_name = display_name_response.displayname or event.sender
-                short_display_name = full_display_name[:5]
-                prefix = f"{short_display_name}[M]: "
-                logger.debug(
-                    f"Processing matrix message from [{full_display_name}]: {text}"
-                )
-                text = truncate_message(text)
-                full_message = f"{prefix}{text}"
+    longname = event.source["content"].get("meshtastic_longname")
+    meshnet_name = event.source["content"].get("meshtastic_meshnet")
+    suppress = event.source["content"].get("mmrelay_suppress")
+    local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
 
-            room_config = None
-            for config in matrix_rooms:
-                if config["id"] == room.room_id:
-                    room_config = config
-                    break
+    if longname and meshnet_name:
+        full_display_name = f"{longname}/{meshnet_name}"
+        if meshnet_name != local_meshnet_name:
+            logger.info(f"Processing message from remote meshnet: {text}")
+            short_longname = longname[:3]
+            short_meshnet_name = meshnet_name[:4]
+            prefix = f"{short_longname}/{short_meshnet_name}: "
+            text = re.sub(
+                rf"^\[{full_display_name}\]: ", "", text
+            )  # Remove the original prefix from the text
+            text = truncate_message(text)
+            full_message = f"{prefix}{text}"
+        else:
+            # This is a message from a local user, it should be ignored no log is needed
+            return
 
-            # Plugin functionality
-            plugins = load_plugins()
-            meshtastic_interface = connect_meshtastic()
-            from meshtastic_utils import logger as meshtastic_logger
+    else:
+        display_name_response = await matrix_client.get_displayname(event.sender)
+        full_display_name = display_name_response.displayname or event.sender
+        short_display_name = full_display_name[:5]
+        prefix = f"{short_display_name}[M]: "
+        logger.debug(f"Processing matrix message from [{full_display_name}]: {text}")
+        full_message = f"{prefix}{text}"
+        text = truncate_message(text)
+        truncated_message = f"{prefix}{text}"
 
-            for plugin in plugins:
-                await plugin.handle_room_message(room, event, full_message)
+    # Plugin functionality
+    plugins = load_plugins()
+    meshtastic_interface = connect_meshtastic()
+    from meshtastic_utils import logger as meshtastic_logger
 
-            if room_config:
-                meshtastic_channel = room_config["meshtastic_channel"]
+    found_matching_plugin = False
+    for plugin in plugins:
+        if not found_matching_plugin:
+            found_matching_plugin = await plugin.handle_room_message(
+                room, event, full_message
+            )
+            if found_matching_plugin:
+                logger.debug(f"Processed by plugin {plugin.plugin_name}")
 
-                if relay_config["meshtastic"]["broadcast_enabled"]:
-                    meshtastic_logger.info(
-                        f"Relaying message from {full_display_name} to radio broadcast"
-                    )
-                    meshtastic_interface.sendText(
-                        text=full_message, channelIndex=meshtastic_channel
-                    )
+    meshtastic_channel = room_config["meshtastic_channel"]
 
-                else:
-                    logger.debug(
-                        f"Broadcast not supported: Message from {full_display_name} dropped."
-                    )
+    if found_matching_plugin or event.sender != bot_user_id:
+        if relay_config["meshtastic"]["broadcast_enabled"]:
+            meshtastic_logger.info(
+                f"Relaying message from {full_display_name} to radio broadcast"
+            )
+            meshtastic_interface.sendText(
+                text=full_message, channelIndex=meshtastic_channel
+            )
+
+        else:
+            logger.debug(
+                f"Broadcast not supported: Message from {full_display_name} dropped."
+            )
+
+
+async def upload_image(
+    client: AsyncClient, image: Image.Image, filename: str
+) -> UploadResponse:
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    image_data = buffer.getvalue()
+
+    response, maybe_keys = await client.upload(
+        io.BytesIO(image_data),
+        content_type="image/png",
+        filename=filename,
+        filesize=len(image_data),
+    )
+
+    return response
+
+
+async def send_room_image(
+    client: AsyncClient, room_id: str, upload_response: UploadResponse
+):
+    response = await client.room_send(
+        room_id=room_id,
+        message_type="m.room.message",
+        content={"msgtype": "m.image", "url": upload_response.content_uri, "body": ""},
+    )

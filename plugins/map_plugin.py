@@ -86,46 +86,54 @@ class Plugin(BasePlugin):
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
     ):
-        return
+        return False
 
     async def handle_room_message(self, room, event, full_message):
+        full_message = full_message.strip()
+        if not self.matches(full_message):
+            return
+
         matrix_client = await connect_matrix()
         meshtastic_client = connect_meshtastic()
 
         pattern = r"^.*:(?: !map(?: zoom=(\d+))?(?: size=(\d+),(\d+))?)?$"
         match = re.match(pattern, full_message)
-        if match:
-            zoom = match.group(1)
-            image_size = match.group(2, 3)
 
-            try:
-                zoom = int(zoom)
-            except:
-                zoom = 8
+        # Indicate this message is not meant for this plugin
+        if not match:
+            return False
 
-            if zoom < 0 or zoom > 30:
-                zoom = 8
+        zoom = match.group(1)
+        image_size = match.group(2, 3)
 
-            try:
-                image_size = (int(image_size[0]), int(image_size[1]))
-            except:
-                image_size = (1000, 1000)
+        try:
+            zoom = int(zoom)
+        except:
+            zoom = 8
 
-            if image_size[0] > 1000 or image_size[1] > 1000:
-                image_size = (1000, 1000)
+        if zoom < 0 or zoom > 30:
+            zoom = 8
 
-            locations = []
-            for node, info in meshtastic_client.nodes.items():
-                if "position" in info and "latitude" in info["position"]:
-                    locations.append(
-                        {
-                            "lat": info["position"]["latitude"],
-                            "lon": info["position"]["longitude"],
-                        }
-                    )
+        try:
+            image_size = (int(image_size[0]), int(image_size[1]))
+        except:
+            image_size = (1000, 1000)
 
-            pillow_image = get_map(
-                locations=locations, zoom=zoom, image_size=image_size
-            )
+        if image_size[0] > 1000 or image_size[1] > 1000:
+            image_size = (1000, 1000)
 
-            await send_image(matrix_client, room.room_id, pillow_image)
+        locations = []
+        for node, info in meshtastic_client.nodes.items():
+            if "position" in info and "latitude" in info["position"]:
+                locations.append(
+                    {
+                        "lat": info["position"]["latitude"],
+                        "lon": info["position"]["longitude"],
+                    }
+                )
+
+        pillow_image = get_map(locations=locations, zoom=zoom, image_size=image_size)
+
+        await send_image(matrix_client, room.room_id, pillow_image)
+
+        return True
