@@ -10,7 +10,7 @@ from matrix_utils import connect_matrix, upload_image, send_room_image
 
 
 class Plugin(BasePlugin):
-    plugin_name = "battery"
+    plugin_name = "telemetry"
     max_data_rows_per_node = 50
 
     def _generate_timeperiods(self, hours=12):
@@ -49,16 +49,25 @@ class Plugin(BasePlugin):
                 }
             )
             self.store_node_data(meshtastic_id=packet["fromId"], data=telemetry_data)
-            return True
+            return False
+
+    def matches(self, payload):
+        if type(payload) == str:
+            for option in ["batteryLevel", "voltage", "airUtilTx"]:
+                if f"!{option}" in payload:
+                    return True
+        return False
 
     async def handle_room_message(self, room, event, full_message):
         full_message = full_message.strip()
         if not self.matches(full_message):
             return False
 
-        match = re.match(r"^.*: !battery$", full_message)
+        match = re.match(r"^.*: !(batteryLevel|voltage|airUtilTx)$", full_message)
         if not match:
             return False
+
+        telemetry_option = match.group(1)
 
         hourly_intervals = self._generate_timeperiods()
         matrix_client = await connect_matrix()
@@ -73,14 +82,14 @@ class Plugin(BasePlugin):
                 record_time = datetime.fromtimestamp(
                     record["time"]
                 )  # Replace with your timestamp field name
-                battery_level = record[
-                    "batteryLevel"
+                telemetry_value = record[
+                    telemetry_option
                 ]  # Replace with your battery level field name
                 for i in range(len(hourly_intervals) - 1):
                     if hourly_intervals[i] <= record_time < hourly_intervals[i + 1]:
                         if i not in hourly_averages:
                             hourly_averages[i] = []
-                        hourly_averages[i].append(battery_level)
+                        hourly_averages[i].append(telemetry_value)
                         break
 
         # Compute the final hourly averages
@@ -105,9 +114,9 @@ class Plugin(BasePlugin):
         ax.plot(hourly_strings, average_values)
 
         # Set the plot title and axis labels
-        ax.set_title("Hourly Battery Level Averages")
+        ax.set_title(f"Hourly {telemetry_option} Averages")
         ax.set_xlabel("Hour")
-        ax.set_ylabel("Battery Level")
+        ax.set_ylabel(f"{telemetry_option}")
 
         # Rotate the x-axis labels for readability
         plt.xticks(rotation=45)

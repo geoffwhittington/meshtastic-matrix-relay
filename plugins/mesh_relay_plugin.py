@@ -87,7 +87,7 @@ class Plugin(BasePlugin):
             },
         )
 
-        return True
+        return False
 
     def matches(self, payload):
         if type(payload) == str:
