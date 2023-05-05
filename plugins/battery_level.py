@@ -10,7 +10,7 @@ from matrix_utils import connect_matrix, upload_image, send_room_image
 
 
 class Plugin(BasePlugin):
-    plugin_name = "telemetry"
+    plugin_name = "battery"
     max_data_rows_per_node = 50
 
     def _generate_timeperiods(self, hours=12):
