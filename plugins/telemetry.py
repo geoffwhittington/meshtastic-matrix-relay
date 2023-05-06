@@ -29,10 +29,13 @@ class Plugin(BasePlugin):
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
     ):
+        # Support deviceMetrics only for now
         if (
             "decoded" in packet
             and "portnum" in packet["decoded"]
             and packet["decoded"]["portnum"] == "TELEMETRY_APP"
+            and "telemetry" in packet["decoded"]
+            and "deviceMetrics" in packet["decoded"]["telemetry"]
         ):
             telemetry_data = []
             data = self.get_node_data(meshtastic_id=packet["fromId"])
