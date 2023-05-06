@@ -50,10 +50,6 @@ SNR: {avg_snr:.2f} / {mdn_snr:.2f} (avg / median)
 
         matrix_client = await connect_matrix()
 
-        match = re.match(r"^.*: !health$", full_message)
-        if not match:
-            return False
-
         response = await matrix_client.room_send(
             room_id=room.room_id,
             message_type="m.room.message",

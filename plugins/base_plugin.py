@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from log_utils import get_logger
 from config import relay_config
 from db_utils import store_plugin_data, get_plugin_data, get_plugin_data_for_node
+from matrix_utils import bot_command
 
 
 class BasePlugin(ABC):
@@ -27,7 +28,7 @@ class BasePlugin(ABC):
 
     def matches(self, payload):
         if type(payload) == str:
-            return f"!{self.plugin_name}" in payload
+            return bot_command(self.plugin_name, payload)
         return False
 
     @abstractmethod

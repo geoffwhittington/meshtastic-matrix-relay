@@ -20,11 +20,11 @@ from meshtastic_utils import connect_meshtastic
 from PIL import Image
 
 matrix_homeserver = relay_config["matrix"]["homeserver"]
-bot_user_id = relay_config["matrix"]["bot_user_id"]
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 matrix_access_token = relay_config["matrix"]["access_token"]
 
 bot_user_id = relay_config["matrix"]["bot_user_id"]
+bot_user_name = None  # Detected upon logon
 bot_start_time = int(
     time.time() * 1000
 )  # Timestamp when the bot starts, used to filter out old messages
@@ -34,8 +34,13 @@ logger = get_logger(name="Matrix")
 matrix_client = None
 
 
+def bot_command(command, payload):
+    return f"{bot_user_name}: !{command}" in payload
+
+
 async def connect_matrix():
     global matrix_client
+    global bot_user_name
     if matrix_client:
         return matrix_client
 
@@ -48,6 +53,8 @@ async def connect_matrix():
         matrix_homeserver, bot_user_id, config=config, ssl=ssl_context
     )
     matrix_client.access_token = matrix_access_token
+    response = await matrix_client.get_displayname(bot_user_id)
+    bot_user_name = response.displayname
     return matrix_client
 
 

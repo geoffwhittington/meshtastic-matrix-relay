@@ -6,7 +6,7 @@ from PIL import Image
 from datetime import datetime, timedelta
 
 from plugins.base_plugin import BasePlugin
-from matrix_utils import connect_matrix, upload_image, send_room_image
+from matrix_utils import bot_command, connect_matrix, upload_image, send_room_image
 
 
 class Plugin(BasePlugin):
@@ -54,7 +54,7 @@ class Plugin(BasePlugin):
     def matches(self, payload):
         if type(payload) == str:
             for option in ["batteryLevel", "voltage", "airUtilTx"]:
-                if f"!{option}" in payload:
+                if bot_command(option, payload):
                     return True
         return False
 

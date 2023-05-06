@@ -99,7 +99,7 @@ class Plugin(BasePlugin):
         full_message = full_message.strip()
 
         if not self.matches(full_message):
-            return
+            return False
 
         channel = None
         for room in matrix_rooms:
@@ -108,12 +108,12 @@ class Plugin(BasePlugin):
 
         if not channel:
             self.logger.debug(f"Skipping message from unmapped channel {channel}")
-            return
+            return False
 
         packet_json = event.source["content"].get("meshtastic_packet")
         if not packet_json:
             self.logger.debug("Missing embedded packet")
-            return
+            return False
 
         try:
             packet = json.loads(packet_json)

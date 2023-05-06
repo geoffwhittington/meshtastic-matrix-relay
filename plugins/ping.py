@@ -17,10 +17,6 @@ class Plugin(BasePlugin):
         if not self.matches(full_message):
             return
 
-        match = re.match(r"^.*: !ping$", full_message)
-        if not match:
-            return False
-
         matrix_client = await connect_matrix()
         response = await matrix_client.room_send(
             room_id=room.room_id,
