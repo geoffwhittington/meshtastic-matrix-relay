@@ -30,12 +30,9 @@ def load_plugins():
             plugin_module = importlib.import_module(plugin_name)
             if hasattr(plugin_module, "Plugin"):
                 plugin = plugin_module.Plugin()
-                logger.debug(
-                    f"Found plugin {os.path.basename(plugin_folder)}/{plugin_name}"
-                )
                 if plugin.config["active"]:
                     logger.info(
-                        f"Loaded plugin {os.path.basename(plugin_folder)}/{plugin_name}"
+                        f"Loaded {os.path.basename(plugin_folder)}/{plugin_name}"
                     )
                     plugins.append(plugin)
 
