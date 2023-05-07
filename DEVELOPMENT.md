@@ -37,9 +37,9 @@ matrix:
   bot_user_id: "@botuser:example.matrix.org"
 
 matrix_rooms:  # Needs at least 1 room & channel, but supports all Meshtastic channels
-  - id: "!someroomid:example.matrix.org"
+  - id: "#someroomalias:example.matrix.org" # Matrix room aliases & IDs supported
     meshtastic_channel: 0
-  - id: "!someroomid2:example.matrix.org"
+  - id: "!someroomid:example.matrix.org"
     meshtastic_channel: 2
 
 meshtastic:
@@ -81,5 +81,5 @@ INFO:meshtastic.matrix.relay:Processing matrix message from @bob:matrix.org: Hi 
 INFO:meshtastic.matrix.relay:Sending radio message from Bob to radio broadcast
 INFO:meshtastic.matrix.relay:Processing inbound radio message from !613501e4 on channel 0
 INFO:meshtastic.matrix.relay:Relaying Meshtastic message from Alice to Matrix: [Alice/VeryCoolMeshnet]: Hey Bob!
-INFO:meshtastic.matrix.relay:Sent inbound radio message to matrix room: !someroomid:example.matrix.org
+INFO:meshtastic.matrix.relay:Sent inbound radio message to matrix room: #someroomid:example.matrix.org
 ```
