@@ -37,9 +37,9 @@ matrix:
   bot_user_id: "@botuser:example.matrix.org"
 
 matrix_rooms:  # Needs at least 1 room & channel, but supports all Meshtastic channels
-  - id: "#someroom:example.matrix.org" # Matrix room aliases & IDs supported
+  - id: "#someroomalias:example.matrix.org" # Matrix room aliases & IDs supported
     meshtastic_channel: 0
-  - id: "#someroom2:example.matrix.org"
+  - id: "!someroomid:example.matrix.org"
     meshtastic_channel: 2
 
 meshtastic:
