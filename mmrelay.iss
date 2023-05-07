@@ -99,7 +99,7 @@ begin
   MeshtasticPage.Edits[3].Hint := 'Name for radio Meshnet';
 
 
-  MatrixMeshtasticPage.Add('Matrix Room ID/Alias (example: !someroomid:example.matrix.org)', False);
+  MatrixMeshtasticPage.Add('Matrix Room ID/Alias (example: #someroom:example.matrix.org)', False);
   MatrixMeshtasticPage.Add('Meshtastic Channel # (0 is Primary, 1-7 Secondary)', False);
   MatrixMeshtasticPage.Edits[0].Hint := '!someroomid:example.matrix.org';
   MatrixMeshtasticPage.Edits[1].Hint := '0-7 (default 0)';
