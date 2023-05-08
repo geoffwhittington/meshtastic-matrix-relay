@@ -62,7 +62,7 @@ begin
       'Set logging and broadcast options, you can keep the defaults.', False, False);
   
   OverwriteConfig.Add('Generate configuration (overwrite any current config files)');
-  OverwriteConfig.Values[0] := True;
+  OverwriteConfig.Values[0] := False;
 
   MatrixPage.Add('Homeserver: (example: https://matrix.org)', False);
   MatrixPage.Add('Bot User ID (example: @mybotuser:matrix.org)', False);
