@@ -33,6 +33,11 @@ def connect_meshtastic():
     return meshtastic_client
 
 
+def on_lost_meshtastic_connection(interface):
+    logger.error("Lost connection. Reconnecting...")
+    connect_meshtastic()
+
+
 # Callback for new messages from Meshtastic
 def on_meshtastic_message(packet, loop=None):
     from matrix_utils import matrix_relay
@@ -70,9 +75,6 @@ def on_meshtastic_message(packet, loop=None):
         meshnet_name = relay_config["meshtastic"]["meshnet_name"]
 
         formatted_message = f"[{longname}/{meshnet_name}]: {text}"
-        logger.info(
-            f"Relaying Meshtastic message from {longname} to Matrix: {formatted_message}"
-        )
 
         # Plugin functionality
         plugins = load_plugins()
@@ -92,6 +94,10 @@ def on_meshtastic_message(packet, loop=None):
 
         if found_matching_plugin:
             return
+
+        logger.info(
+            f"Relaying Meshtastic message from {longname} to Matrix: {formatted_message}"
+        )
 
         for room in matrix_rooms:
             if room["meshtastic_channel"] == channel:
