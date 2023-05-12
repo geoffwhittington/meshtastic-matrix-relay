@@ -25,6 +25,16 @@ def store_plugin_data(plugin_name, meshtastic_id, data):
         conn.commit()
 
 
+def delete_plugin_data(plugin_name, meshtastic_id):
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM plugin_data WHERE plugin_name=? AND meshtastic_id=?",
+            (plugin_name, meshtastic_id),
+        )
+        conn.commit()
+
+
 # Get the data for a given plugin and Meshtastic ID
 def get_plugin_data_for_node(plugin_name, meshtastic_id):
     with sqlite3.connect("meshtastic.sqlite") as conn:

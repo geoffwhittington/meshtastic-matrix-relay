@@ -51,7 +51,7 @@ class Plugin(BasePlugin):
                     "airUtilTx": packet_data["deviceMetrics"]["airUtilTx"],
                 }
             )
-            self.store_node_data(meshtastic_id=packet["fromId"], data=telemetry_data)
+            self.set_node_data(meshtastic_id=packet["fromId"], node_data=telemetry_data)
             return False
 
     def matches(self, payload):
