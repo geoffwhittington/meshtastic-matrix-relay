@@ -206,7 +206,7 @@ async def on_room_message(
 
     meshtastic_channel = room_config["meshtastic_channel"]
 
-    if found_matching_plugin or event.sender != bot_user_id:
+    if not found_matching_plugin and event.sender != bot_user_id:
         if relay_config["meshtastic"]["broadcast_enabled"]:
             meshtastic_logger.info(
                 f"Relaying message from {full_display_name} to radio broadcast"
