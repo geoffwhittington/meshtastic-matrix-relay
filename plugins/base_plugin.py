@@ -1,7 +1,12 @@
 from abc import ABC, abstractmethod
 from log_utils import get_logger
 from config import relay_config
-from db_utils import store_plugin_data, get_plugin_data, get_plugin_data_for_node
+from db_utils import (
+    store_plugin_data,
+    get_plugin_data,
+    get_plugin_data_for_node,
+    delete_plugin_data,
+)
 from matrix_utils import bot_command
 
 
@@ -16,9 +21,21 @@ class BasePlugin(ABC):
         if "plugins" in relay_config and self.plugin_name in relay_config["plugins"]:
             self.config = relay_config["plugins"][self.plugin_name]
 
-    def store_node_data(self, meshtastic_id, data):
+    def store_node_data(self, meshtastic_id, node_data):
+        data = self.get_node_data(meshtastic_id=meshtastic_id)
         data = data[-self.max_data_rows_per_node :]
+        if type(node_data) is list:
+            data.extend(node_data)
+        else:
+            data.append(node_data)
         store_plugin_data(self.plugin_name, meshtastic_id, data)
+
+    def set_node_data(self, meshtastic_id, node_data):
+        node_data = node_data[-self.max_data_rows_per_node :]
+        store_plugin_data(self.plugin_name, meshtastic_id, node_data)
+
+    def delete_node_data(self, meshtastic_id):
+        return delete_plugin_data(self.plugin_name, meshtastic_id)
 
     def get_node_data(self, meshtastic_id):
         return get_plugin_data_for_node(self.plugin_name, meshtastic_id)
