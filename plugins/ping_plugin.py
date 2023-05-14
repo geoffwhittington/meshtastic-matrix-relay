@@ -1,8 +1,6 @@
 import re
 
 from plugins.base_plugin import BasePlugin
-from matrix_utils import connect_matrix
-from meshtastic_utils import connect_meshtastic
 
 
 class Plugin(BasePlugin):
@@ -22,6 +20,8 @@ class Plugin(BasePlugin):
             if f"!{self.plugin_name}" not in message:
                 return
 
+            from meshtastic_utils import connect_meshtastic
+
             meshtastic_client = connect_meshtastic()
             meshtastic_client.sendText(text="pong!", destinationId=packet["fromId"])
             return True
@@ -30,6 +30,8 @@ class Plugin(BasePlugin):
         full_message = full_message.strip()
         if not self.matches(full_message):
             return False
+
+        from matrix_utils import connect_matrix
 
         matrix_client = await connect_matrix()
         response = await matrix_client.room_send(

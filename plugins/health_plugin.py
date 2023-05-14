@@ -1,15 +1,14 @@
 import re
 import statistics
-from base_plugin import BasePlugin
-
-from matrix_utils import connect_matrix
-from meshtastic_utils import connect_meshtastic
+from plugins.base_plugin import BasePlugin
 
 
 class Plugin(BasePlugin):
     plugin_name = "health"
 
     def generate_response(self):
+        from meshtastic_utils import connect_meshtastic
+
         meshtastic_client = connect_meshtastic()
         battery_levels = []
         air_util_tx = []
@@ -44,6 +43,8 @@ SNR: {avg_snr:.2f} / {mdn_snr:.2f} (avg / median)
         return False
 
     async def handle_room_message(self, room, event, full_message):
+        from matrix_utils import connect_matrix
+
         full_message = full_message.strip()
         if not self.matches(full_message):
             return False

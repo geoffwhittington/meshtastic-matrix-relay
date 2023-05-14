@@ -1,39 +1,34 @@
-import os
-import sys
-import importlib
-from pathlib import Path
-from log_utils import get_logger
+from plugins.health_plugin import Plugin as HealthPlugin
+from plugins.map_plugin import Plugin as MapPlugin
+from plugins.mesh_relay_plugin import Plugin as MeshRelayPlugin
+from plugins.ping_plugin import Plugin as PingPlugin
+from plugins.telemetry_plugin import Plugin as TelemetryPlugin
+from plugins.weather_plugin import Plugin as WeatherPlugin
 
-# Get the path to the PyInstaller script
-launch_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
+from log_utils import get_logger
 
 logger = get_logger(name="Plugins")
 
-plugins = []
+active_plugins = []
 
 
 def load_plugins():
     global plugins
-    if plugins:
-        return plugins
+    if active_plugins:
+        return active_plugins
 
-    plugins = []
-    plugin_dirs = [Path("plugins"), Path(launch_dir, "custom_plugins")]
+    plugins = [
+        HealthPlugin(),
+        MapPlugin(),
+        MeshRelayPlugin(),
+        PingPlugin(),
+        TelemetryPlugin(),
+        WeatherPlugin(),
+    ]
 
-    for plugin_folder in plugin_dirs:
-        sys.path.insert(0, str(plugin_folder.resolve()))
+    for plugin in plugins:
+        if plugin.config["active"]:
+            logger.info(f"Loaded {plugin.plugin_name}")
+            active_plugins.append(plugin)
 
-        for plugin_file in plugin_folder.glob("*.py"):
-            plugin_name = plugin_file.stem
-            if plugin_name == "__init__":
-                continue
-            plugin_module = importlib.import_module(plugin_name)
-            if hasattr(plugin_module, "Plugin"):
-                plugin = plugin_module.Plugin()
-                if plugin.config["active"]:
-                    logger.info(
-                        f"Loaded {os.path.basename(plugin_folder)}/{plugin_name}"
-                    )
-                    plugins.append(plugin)
-
-    return plugins
+    return active_plugins

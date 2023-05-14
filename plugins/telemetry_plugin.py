@@ -6,12 +6,14 @@ from PIL import Image
 from datetime import datetime, timedelta
 
 from plugins.base_plugin import BasePlugin
-from matrix_utils import bot_command, connect_matrix, upload_image, send_room_image
 
 
 class Plugin(BasePlugin):
     plugin_name = "telemetry"
     max_data_rows_per_node = 50
+
+    def commands(self):
+        return ["batteryLevel", "voltage", "airUtilTx"]
 
     def _generate_timeperiods(self, hours=12):
         # Calculate the start and end times
@@ -55,6 +57,8 @@ class Plugin(BasePlugin):
             return False
 
     def matches(self, payload):
+        from matrix_utils import bot_command
+
         if type(payload) == str:
             for option in ["batteryLevel", "voltage", "airUtilTx"]:
                 if bot_command(option, payload):
@@ -73,6 +77,8 @@ class Plugin(BasePlugin):
         telemetry_option = match.group(1)
 
         hourly_intervals = self._generate_timeperiods()
+        from matrix_utils import connect_matrix
+
         matrix_client = await connect_matrix()
 
         # Compute the hourly averages for each node
@@ -130,6 +136,8 @@ class Plugin(BasePlugin):
         buf.seek(0)
         img = Image.open(buf)
         pil_image = Image.frombytes(mode="RGBA", size=img.size, data=img.tobytes())
+
+        from matrix_utils import upload_image, send_room_image
 
         upload_response = await upload_image(matrix_client, pil_image, "graph.png")
         await send_room_image(matrix_client, room.room_id, upload_response)

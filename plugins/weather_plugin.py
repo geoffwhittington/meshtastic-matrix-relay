@@ -2,8 +2,6 @@ import re
 import requests
 
 from plugins.base_plugin import BasePlugin
-from matrix_utils import connect_matrix
-from meshtastic_utils import connect_meshtastic
 
 
 class Plugin(BasePlugin):
@@ -79,6 +77,8 @@ class Plugin(BasePlugin):
 
             if f"!{self.plugin_name}" not in message:
                 return False
+
+            from meshtastic_utils import connect_meshtastic
 
             meshtastic_client = connect_meshtastic()
             if packet["fromId"] in meshtastic_client.nodes:
