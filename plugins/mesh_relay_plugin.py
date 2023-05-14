@@ -8,8 +8,6 @@ from meshtastic import mesh_pb2
 
 from plugins.base_plugin import BasePlugin
 from config import relay_config
-from matrix_utils import connect_matrix
-from meshtastic_utils import connect_meshtastic
 
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 
@@ -57,6 +55,8 @@ class Plugin(BasePlugin):
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
     ):
+        from matrix_utils import connect_matrix
+
         packet = self.process(packet)
         matrix_client = await connect_matrix()
 
@@ -120,6 +120,8 @@ class Plugin(BasePlugin):
         except Exception as e:
             self.logger.error(f"Error processing embedded packet: {e}")
             return
+
+        from meshtastic_utils import connect_meshtastic
 
         meshtastic_client = connect_meshtastic()
         meshPacket = mesh_pb2.MeshPacket()

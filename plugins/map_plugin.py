@@ -5,11 +5,7 @@ import io
 import re
 from PIL import Image
 from nio import AsyncClient, UploadResponse
-from base_plugin import BasePlugin
-
-
-from matrix_utils import connect_matrix
-from meshtastic_utils import connect_meshtastic
+from plugins.base_plugin import BasePlugin
 
 
 def anonymize_location(lat, lon, radius=1000):
@@ -92,6 +88,9 @@ class Plugin(BasePlugin):
         full_message = full_message.strip()
         if not self.matches(full_message):
             return False
+
+        from matrix_utils import connect_matrix
+        from meshtastic_utils import connect_meshtastic
 
         matrix_client = await connect_matrix()
         meshtastic_client = connect_meshtastic()

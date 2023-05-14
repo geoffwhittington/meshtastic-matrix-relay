@@ -7,7 +7,6 @@ from db_utils import (
     get_plugin_data_for_node,
     delete_plugin_data,
 )
-from matrix_utils import bot_command
 
 
 class BasePlugin(ABC):
@@ -44,6 +43,8 @@ class BasePlugin(ABC):
         return get_plugin_data(self.plugin_name)
 
     def matches(self, payload):
+        from matrix_utils import bot_command
+
         if type(payload) == str:
             return bot_command(self.plugin_name, payload)
         return False
