@@ -4,9 +4,6 @@ import importlib
 from pathlib import Path
 from log_utils import get_logger
 
-# Get the path to the PyInstaller script
-launch_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
-
 logger = get_logger(name="Plugins")
 
 plugins = []
@@ -18,7 +15,7 @@ def load_plugins():
         return plugins
 
     plugins = []
-    plugin_dirs = [Path("plugins"), Path(launch_dir, "custom_plugins")]
+    plugin_dirs = [Path("plugins")]
 
     for plugin_folder in plugin_dirs:
         sys.path.insert(0, str(plugin_folder.resolve()))
