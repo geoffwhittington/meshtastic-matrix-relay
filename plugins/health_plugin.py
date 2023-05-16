@@ -6,6 +6,10 @@ from plugins.base_plugin import BasePlugin
 class Plugin(BasePlugin):
     plugin_name = "health"
 
+    @property
+    def description(self):
+        return "Show mesh health using avg battery, SNR, AirUtil"
+
     def generate_response(self):
         from meshtastic_utils import connect_meshtastic
 

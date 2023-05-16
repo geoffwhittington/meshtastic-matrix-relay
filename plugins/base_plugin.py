@@ -13,12 +13,22 @@ class BasePlugin(ABC):
     plugin_name = None
     max_data_rows_per_node = 100
 
+    @property
+    def description(self):
+        return f""
+
     def __init__(self) -> None:
         super().__init__()
         self.logger = get_logger(f"Plugin:{self.plugin_name}")
         self.config = {"active": False}
         if "plugins" in relay_config and self.plugin_name in relay_config["plugins"]:
             self.config = relay_config["plugins"][self.plugin_name]
+
+    def get_matrix_commands(self):
+        return [self.plugin_name]
+
+    def get_mesh_commands(self):
+        return []
 
     def store_node_data(self, meshtastic_id, node_data):
         data = self.get_node_data(meshtastic_id=meshtastic_id)
