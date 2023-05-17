@@ -1,3 +1,4 @@
+import markdown
 from abc import ABC, abstractmethod
 from log_utils import get_logger
 from config import relay_config
@@ -26,6 +27,22 @@ class BasePlugin(ABC):
 
     def get_matrix_commands(self):
         return [self.plugin_name]
+
+    async def send_matrix_message(self, room_id, message):
+        from matrix_utils import connect_matrix
+
+        matrix_client = await connect_matrix()
+
+        return await matrix_client.room_send(
+            room_id=room_id,
+            message_type="m.room.message",
+            content={
+                "msgtype": "m.text",
+                "format": "org.matrix.custom.html",
+                "body": message,
+                "formatted_body": markdown.markdown(message),
+            },
+        )
 
     def get_mesh_commands(self):
         return []

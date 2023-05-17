@@ -41,15 +41,5 @@ class Plugin(BasePlugin):
         if not self.matches(full_message):
             return False
 
-        from matrix_utils import connect_matrix
-
-        matrix_client = await connect_matrix()
-        response = await matrix_client.room_send(
-            room_id=room.room_id,
-            message_type="m.room.message",
-            content={
-                "msgtype": "m.text",
-                "body": "pong!",
-            },
-        )
+        response = await self.send_matrix_message(room.room_id, "pong!")
         return True

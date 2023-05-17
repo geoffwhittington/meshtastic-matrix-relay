@@ -34,11 +34,11 @@ class Plugin(BasePlugin):
         avg_snr = statistics.mean(snr) if snr else 0
         mdn_snr = statistics.median(snr)
 
-        return f"""Nodes: {radios}
-Battery: {avg_battery:.1f}% / {mdn_battery:.1f}% (avg / median)
-Nodes with Low Battery (< 10): {low_battery}
-Air Util: {avg_air:.2f} / {mdn_air:.2f} (avg / median)
-SNR: {avg_snr:.2f} / {mdn_snr:.2f} (avg / median)
+        return f"""**Nodes**: {radios}
+**Battery**: {avg_battery:.1f}% / {mdn_battery:.1f}% (avg / median)
+**Nodes with Low Battery (< 10)**: {low_battery}
+**Air Util**: {avg_air:.2f} / {mdn_air:.2f} (avg / median)
+**SNR**: {avg_snr:.2f} / {mdn_snr:.2f} (avg / median)
 """
 
     async def handle_meshtastic_message(
@@ -53,15 +53,8 @@ SNR: {avg_snr:.2f} / {mdn_snr:.2f} (avg / median)
         if not self.matches(full_message):
             return False
 
-        matrix_client = await connect_matrix()
-
-        response = await matrix_client.room_send(
-            room_id=room.room_id,
-            message_type="m.room.message",
-            content={
-                "msgtype": "m.text",
-                "body": self.generate_response(),
-            },
+        response = await self.send_matrix_message(
+            room.room_id, self.generate_response()
         )
 
         return True

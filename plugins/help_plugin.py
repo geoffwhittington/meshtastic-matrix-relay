@@ -40,20 +40,12 @@ class Plugin(BasePlugin):
 
             for plugin in plugins:
                 if command in plugin.get_matrix_commands():
-                    reply = f"{command}: {plugin.description}"
+                    reply = f"`!{command}`: {plugin.description}"
         else:
             commands = []
             for plugin in plugins:
                 commands.extend(plugin.get_matrix_commands())
-            reply = "Commands: " + ", ".join(commands)
+            reply = "Available commands: " + ", ".join(commands)
 
-        from matrix_utils import connect_matrix
-
-        matrix_client = await connect_matrix()
-
-        response = await matrix_client.room_send(
-            room_id=room.room_id,
-            message_type="m.room.message",
-            content={"msgtype": "m.text", "body": reply},
-        )
+        response = await self.send_matrix_message(room.room_id, reply)
         return True
