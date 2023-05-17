@@ -7,6 +7,10 @@ from plugins.base_plugin import BasePlugin
 class Plugin(BasePlugin):
     plugin_name = "weather"
 
+    @property
+    def description(self):
+        return f"Show weather forecast for a radio node using GPS location"
+
     def generate_forecast(self, latitude, longitude):
         url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,weathercode,cloudcover&forecast_days=1&current_weather=true"
 
@@ -100,6 +104,12 @@ class Plugin(BasePlugin):
                     destinationId=packet["fromId"],
                 )
             return True
+
+    def get_matrix_commands(self):
+        return []
+
+    def get_mesh_commands(self):
+        return [self.plugin_name]
 
     async def handle_room_message(self, room, event, full_message):
         return False

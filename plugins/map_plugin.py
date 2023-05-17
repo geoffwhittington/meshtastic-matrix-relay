@@ -79,10 +79,22 @@ async def send_image(client: AsyncClient, room_id: str, image: Image.Image):
 class Plugin(BasePlugin):
     plugin_name = "map"
 
+    @property
+    def description(self):
+        return (
+            f"Map of mesh radio nodes. Supports `zoom` and `size` options to customize"
+        )
+
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
     ):
         return False
+
+    def get_matrix_commands(self):
+        return [self.plugin_name]
+
+    def get_mesh_commands(self):
+        return []
 
     async def handle_room_message(self, room, event, full_message):
         full_message = full_message.strip()

@@ -1,10 +1,3 @@
-from plugins.health_plugin import Plugin as HealthPlugin
-from plugins.map_plugin import Plugin as MapPlugin
-from plugins.mesh_relay_plugin import Plugin as MeshRelayPlugin
-from plugins.ping_plugin import Plugin as PingPlugin
-from plugins.telemetry_plugin import Plugin as TelemetryPlugin
-from plugins.weather_plugin import Plugin as WeatherPlugin
-
 from log_utils import get_logger
 
 logger = get_logger(name="Plugins")
@@ -13,6 +6,14 @@ active_plugins = []
 
 
 def load_plugins():
+    from plugins.health_plugin import Plugin as HealthPlugin
+    from plugins.map_plugin import Plugin as MapPlugin
+    from plugins.mesh_relay_plugin import Plugin as MeshRelayPlugin
+    from plugins.ping_plugin import Plugin as PingPlugin
+    from plugins.telemetry_plugin import Plugin as TelemetryPlugin
+    from plugins.weather_plugin import Plugin as WeatherPlugin
+    from plugins.help_plugin import Plugin as HelpPlugin
+
     global plugins
     if active_plugins:
         return active_plugins
@@ -24,6 +25,7 @@ def load_plugins():
         PingPlugin(),
         TelemetryPlugin(),
         WeatherPlugin(),
+        HelpPlugin(),
     ]
 
     for plugin in plugins:
