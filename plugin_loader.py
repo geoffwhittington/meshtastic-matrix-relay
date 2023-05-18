@@ -13,6 +13,7 @@ def load_plugins():
     from plugins.telemetry_plugin import Plugin as TelemetryPlugin
     from plugins.weather_plugin import Plugin as WeatherPlugin
     from plugins.help_plugin import Plugin as HelpPlugin
+    from plugins.nodes_plugin import Plugin as NodesPlugin
 
     global plugins
     if active_plugins:
@@ -26,6 +27,7 @@ def load_plugins():
         TelemetryPlugin(),
         WeatherPlugin(),
         HelpPlugin(),
+        NodesPlugin(),
     ]
 
     for plugin in plugins:

@@ -28,7 +28,7 @@ class BasePlugin(ABC):
     def get_matrix_commands(self):
         return [self.plugin_name]
 
-    async def send_matrix_message(self, room_id, message):
+    async def send_matrix_message(self, room_id, message, formatted=True):
         from matrix_utils import connect_matrix
 
         matrix_client = await connect_matrix()
@@ -38,7 +38,7 @@ class BasePlugin(ABC):
             message_type="m.room.message",
             content={
                 "msgtype": "m.text",
-                "format": "org.matrix.custom.html",
+                "format": "org.matrix.custom.html" if formatted else None,
                 "body": message,
                 "formatted_body": markdown.markdown(message),
             },
