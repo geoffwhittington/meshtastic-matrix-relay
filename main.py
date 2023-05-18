@@ -62,7 +62,6 @@ async def main():
         "meshtastic.connection.lost",
     )
     # Register the message callback
-
     matrix_logger.info(f"Listening for inbound matrix messages ...")
     matrix_client.add_event_callback(
         on_room_message, (RoomMessageText, RoomMessageNotice)
