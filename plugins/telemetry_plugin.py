@@ -15,6 +15,9 @@ class Plugin(BasePlugin):
     def commands(self):
         return ["batteryLevel", "voltage", "airUtilTx"]
 
+    def description(self):
+        return f"Graph of avg Mesh telemetry value for last 12 hours"
+
     def _generate_timeperiods(self, hours=12):
         # Calculate the start and end times
         end_time = datetime.now()
@@ -55,6 +58,12 @@ class Plugin(BasePlugin):
             )
             self.set_node_data(meshtastic_id=packet["fromId"], node_data=telemetry_data)
             return False
+
+    def get_matrix_commands(self):
+        return ["batteryLevel", "voltage", "airUtilTx"]
+
+    def get_mesh_commands(self):
+        return []
 
     def matches(self, payload):
         from matrix_utils import bot_command

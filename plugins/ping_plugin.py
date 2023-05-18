@@ -6,6 +6,10 @@ from plugins.base_plugin import BasePlugin
 class Plugin(BasePlugin):
     plugin_name = "ping"
 
+    @property
+    def description(self):
+        return f"Check connectivity with the relay"
+
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
     ):
@@ -26,20 +30,16 @@ class Plugin(BasePlugin):
             meshtastic_client.sendText(text="pong!", destinationId=packet["fromId"])
             return True
 
+    def get_matrix_commands(self):
+        return [self.plugin_name]
+
+    def get_mesh_commands(self):
+        return [self.plugin_name]
+
     async def handle_room_message(self, room, event, full_message):
         full_message = full_message.strip()
         if not self.matches(full_message):
             return False
 
-        from matrix_utils import connect_matrix
-
-        matrix_client = await connect_matrix()
-        response = await matrix_client.room_send(
-            room_id=room.room_id,
-            message_type="m.room.message",
-            content={
-                "msgtype": "m.text",
-                "body": "pong!",
-            },
-        )
+        response = await self.send_matrix_message(room.room_id, "pong!")
         return True

@@ -2,4 +2,5 @@ meshtastic==2.1.6
 py-staticmaps==0.4.0
 matrix-nio==0.20.2
 matplotlib==3.7.1
-requests
+requests==2.30.0
+markdown==3.4.3

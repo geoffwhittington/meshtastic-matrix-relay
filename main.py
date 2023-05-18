@@ -22,6 +22,7 @@ from log_utils import get_logger
 from meshtastic_utils import (
     connect_meshtastic,
     on_meshtastic_message,
+    on_lost_meshtastic_connection,
     logger as meshtastic_logger,
 )
 
@@ -56,7 +57,10 @@ async def main():
     pub.subscribe(
         on_meshtastic_message, "meshtastic.receive", loop=asyncio.get_event_loop()
     )
-
+    pub.subscribe(
+        on_lost_meshtastic_connection,
+        "meshtastic.connection.lost",
+    )
     # Register the message callback
     matrix_logger.info(f"Listening for inbound matrix messages ...")
     matrix_client.add_event_callback(
