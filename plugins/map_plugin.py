@@ -159,7 +159,7 @@ class Plugin(BasePlugin):
             zoom=zoom,
             image_size=image_size,
             anonymize=anonymize,
-            radiu=radius,
+            radius=radius,
         )
 
         await send_image(matrix_client, room.room_id, pillow_image)
