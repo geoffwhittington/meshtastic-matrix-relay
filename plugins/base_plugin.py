@@ -13,6 +13,7 @@ from db_utils import (
 class BasePlugin(ABC):
     plugin_name = None
     max_data_rows_per_node = 100
+    priority = 10
 
     @property
     def description(self):
@@ -24,6 +25,18 @@ class BasePlugin(ABC):
         self.config = {"active": False}
         if "plugins" in relay_config and self.plugin_name in relay_config["plugins"]:
             self.config = relay_config["plugins"][self.plugin_name]
+
+    def strip_raw(self, data):
+        if type(data) is not dict:
+            return data
+
+        if "raw" in data:
+            del data["raw"]
+
+        for k, v in data.items():
+            data[k] = self.strip_raw(v)
+
+        return data
 
     def get_matrix_commands(self):
         return [self.plugin_name]

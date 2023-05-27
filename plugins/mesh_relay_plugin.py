@@ -16,18 +16,6 @@ class Plugin(BasePlugin):
     plugin_name = "mesh_relay"
     max_data_rows_per_node = 50
 
-    def strip_raw(self, data):
-        if type(data) is not dict:
-            return data
-
-        if "raw" in data:
-            del data["raw"]
-
-        for k, v in data.items():
-            data[k] = self.strip_raw(v)
-
-        return data
-
     def normalize(self, dict_obj):
         """
         Packets are either a dict, string dict or string
