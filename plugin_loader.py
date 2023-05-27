@@ -2,7 +2,7 @@ from log_utils import get_logger
 
 logger = get_logger(name="Plugins")
 
-active_plugins = []
+sorted_active_plugins = []
 
 
 def load_plugins():
@@ -14,10 +14,12 @@ def load_plugins():
     from plugins.weather_plugin import Plugin as WeatherPlugin
     from plugins.help_plugin import Plugin as HelpPlugin
     from plugins.nodes_plugin import Plugin as NodesPlugin
+    from plugins.drop_plugin import Plugin as DropPlugin
+    from plugins.debug_plugin import Plugin as DebugPlugin
 
-    global plugins
-    if active_plugins:
-        return active_plugins
+    global sorted_active_plugins
+    if sorted_active_plugins:
+        return sorted_active_plugins
 
     plugins = [
         HealthPlugin(),
@@ -28,11 +30,20 @@ def load_plugins():
         WeatherPlugin(),
         HelpPlugin(),
         NodesPlugin(),
+        DropPlugin(),
+        DebugPlugin(),
     ]
 
+    active_plugins = []
     for plugin in plugins:
         if plugin.config["active"]:
-            logger.info(f"Loaded {plugin.plugin_name}")
+            plugin.priority = (
+                plugin.config["priority"]
+                if "priority" in plugin.config
+                else plugin.priority
+            )
+            logger.info(f"Loaded {plugin.plugin_name} ({plugin.priority})")
             active_plugins.append(plugin)
 
-    return active_plugins
+    sorted_active_plugins = sorted(active_plugins, key=lambda plugin: plugin.priority)
+    return sorted_active_plugins
