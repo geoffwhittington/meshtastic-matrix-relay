@@ -22,7 +22,7 @@ def anonymize_location(lat, lon, radius=1000):
     return new_lat, new_lon
 
 
-def get_map(locations, zoom=None, image_size=None, radius=10000):
+def get_map(locations, zoom=None, image_size=None, anonymize=True, radius=10000):
     """
     Anonymize a location to 10km by default
     """
@@ -31,12 +31,17 @@ def get_map(locations, zoom=None, image_size=None, radius=10000):
     context.set_zoom(zoom)
 
     for location in locations:
-        new_location = anonymize_location(
-            lat=float(location["lat"]),
-            lon=float(location["lon"]),
-            radius=radius,
-        )
-        radio = staticmaps.create_latlng(new_location[0], new_location[1])
+        if anonymize:
+            new_location = anonymize_location(
+                lat=float(location["lat"]),
+                lon=float(location["lon"]),
+                radius=radius,
+            )
+            radio = staticmaps.create_latlng(new_location[0], new_location[1])
+        else:
+            radio = staticmaps.create_latlng(
+                float(location["lat"]), float(location["lon"])
+            )
         context.add_object(staticmaps.Marker(radio, size=10))
 
     # render non-anti-aliased png
@@ -120,7 +125,7 @@ class Plugin(BasePlugin):
         try:
             zoom = int(zoom)
         except:
-            zoom = 8
+            zoom = self.config["zoom"] if "zoom" in self.config else 8
 
         if zoom < 0 or zoom > 30:
             zoom = 8
@@ -128,7 +133,10 @@ class Plugin(BasePlugin):
         try:
             image_size = (int(image_size[0]), int(image_size[1]))
         except:
-            image_size = (1000, 1000)
+            image_size = (
+                self.config["image_width"] if "image_width" in self.config else 1000,
+                self.config["image_height"] if "image_height" in self.config else 1000,
+            )
 
         if image_size[0] > 1000 or image_size[1] > 1000:
             image_size = (1000, 1000)
@@ -143,7 +151,16 @@ class Plugin(BasePlugin):
                     }
                 )
 
-        pillow_image = get_map(locations=locations, zoom=zoom, image_size=image_size)
+        anonymize = self.config["anonymize"] if "anonymize" in self.config else True
+        radius = self.config["radius"] if "radius" in self.config else 1000
+
+        pillow_image = get_map(
+            locations=locations,
+            zoom=zoom,
+            image_size=image_size,
+            anonymize=anonymize,
+            radius=radius,
+        )
 
         await send_image(matrix_client, room.room_id, pillow_image)
 

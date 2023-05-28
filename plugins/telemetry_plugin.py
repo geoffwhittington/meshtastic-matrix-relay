@@ -79,11 +79,14 @@ class Plugin(BasePlugin):
         if not self.matches(full_message):
             return False
 
-        match = re.match(r"^.*: !(batteryLevel|voltage|airUtilTx)$", full_message)
+        match = re.search(
+            r":\s+!(batteryLevel|voltage|airUtilTx)(?:\s+(.+))?$", full_message
+        )
         if not match:
             return False
 
         telemetry_option = match.group(1)
+        node = match.group(2)
 
         hourly_intervals = self._generate_timeperiods()
         from matrix_utils import connect_matrix
@@ -93,9 +96,7 @@ class Plugin(BasePlugin):
         # Compute the hourly averages for each node
         hourly_averages = {}
 
-        for node_data_json in self.get_data():
-            node_data_rows = json.loads(node_data_json[0])
-
+        def calculate_averages(node_data_rows):
             for record in node_data_rows:
                 record_time = datetime.fromtimestamp(
                     record["time"]
@@ -109,6 +110,14 @@ class Plugin(BasePlugin):
                             hourly_averages[i] = []
                         hourly_averages[i].append(telemetry_value)
                         break
+
+        if node:
+            node_data_rows = self.get_node_data(node)
+            calculate_averages(node_data_rows)
+        else:
+            for node_data_json in self.get_data():
+                node_data_rows = json.loads(node_data_json[0])
+                calculate_averages(node_data_rows)
 
         # Compute the final hourly averages
         final_averages = {}
@@ -132,7 +141,11 @@ class Plugin(BasePlugin):
         ax.plot(hourly_strings, average_values)
 
         # Set the plot title and axis labels
-        ax.set_title(f"Hourly {telemetry_option} Averages")
+        if node:
+            title = f"{node} Hourly {telemetry_option} Averages"
+        else:
+            title = f"Network Hourly {telemetry_option} Averages"
+        ax.set_title(title)
         ax.set_xlabel("Hour")
         ax.set_ylabel(f"{telemetry_option}")
 
