@@ -1,4 +1,7 @@
 import markdown
+import schedule
+import threading
+import time
 from abc import ABC, abstractmethod
 from log_utils import get_logger
 from config import relay_config
@@ -25,6 +28,49 @@ class BasePlugin(ABC):
         self.config = {"active": False}
         if "plugins" in relay_config and self.plugin_name in relay_config["plugins"]:
             self.config = relay_config["plugins"][self.plugin_name]
+
+    def start(self):
+        if "schedule" not in self.config or (
+            "at" not in self.config["schedule"]
+            and "hours" not in self.config["schedule"]
+            and "minutes" not in self.config["schedule"]
+        ):
+            self.logger.debug(f"Started with priority={self.priority}")
+            return
+
+        # Schedule the email-checking function to run every minute
+        if "at" in self.config["schedule"] and "hours" in self.config["schedule"]:
+            schedule.every(self.config["schedule"]["hours"]).hours.at(
+                self.config["schedule"]["at"]
+            ).do(self.background_job)
+        elif "at" in self.config["schedule"] and "minutes" in self.config["schedule"]:
+            schedule.every(self.config["schedule"]["minutes"]).minutes.at(
+                self.config["schedule"]["at"]
+            ).do(self.background_job)
+        elif "hours" in self.config["schedule"]:
+            schedule.every(self.config["schedule"]["hours"]).hours.do(
+                self.background_job
+            )
+        elif "minutes" in self.config["schedule"]:
+            schedule.every(self.config["schedule"]["minutes"]).minutes.do(
+                self.background_job
+            )
+
+        # Function to execute the scheduled tasks
+        def run_schedule():
+            while True:
+                schedule.run_pending()
+                time.sleep(1)
+
+        # Create a thread for executing the scheduled tasks
+        schedule_thread = threading.Thread(target=run_schedule)
+
+        # Start the thread
+        schedule_thread.start()
+        self.logger.debug(f"Scheduled with priority={self.priority}")
+
+    def background_job(self):
+        pass
 
     def strip_raw(self, data):
         if type(data) is not dict:

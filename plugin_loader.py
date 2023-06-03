@@ -42,8 +42,8 @@ def load_plugins():
                 if "priority" in plugin.config
                 else plugin.priority
             )
-            logger.info(f"Loaded {plugin.plugin_name} ({plugin.priority})")
             active_plugins.append(plugin)
+            plugin.start()
 
     sorted_active_plugins = sorted(active_plugins, key=lambda plugin: plugin.priority)
     return sorted_active_plugins

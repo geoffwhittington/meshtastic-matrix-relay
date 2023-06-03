@@ -1,4 +1,5 @@
 import staticmaps
+import s2sphere
 import math
 import random
 import io
@@ -6,6 +7,139 @@ import re
 from PIL import Image
 from nio import AsyncClient, UploadResponse
 from plugins.base_plugin import BasePlugin
+
+
+class TextLabel(staticmaps.Object):
+    def __init__(self, latlng: s2sphere.LatLng, text: str, fontSize: int = 12) -> None:
+        staticmaps.Object.__init__(self)
+        self._latlng = latlng
+        self._text = text
+        self._margin = 4
+        self._arrow = 16
+        self._font_size = fontSize
+        print(self._font_size)
+
+    def latlng(self) -> s2sphere.LatLng:
+        return self._latlng
+
+    def bounds(self) -> s2sphere.LatLngRect:
+        return s2sphere.LatLngRect.from_point(self._latlng)
+
+    def extra_pixel_bounds(self) -> staticmaps.PixelBoundsT:
+        # Guess text extents.
+        tw = len(self._text) * self._font_size * 0.5
+        th = self._font_size * 1.2
+        w = max(self._arrow, tw + 2.0 * self._margin)
+        return (int(w / 2.0), int(th + 2.0 * self._margin + self._arrow), int(w / 2), 0)
+
+    def render_pillow(self, renderer: staticmaps.PillowRenderer) -> None:
+        x, y = renderer.transformer().ll2pixel(self.latlng())
+        x = x + renderer.offset_x()
+
+        tw, th = renderer.draw().textsize(self._text)
+        w = max(self._arrow, tw + 2 * self._margin)
+        h = th + 2 * self._margin
+
+        path = [
+            (x, y),
+            (x + self._arrow / 2, y - self._arrow),
+            (x + w / 2, y - self._arrow),
+            (x + w / 2, y - self._arrow - h),
+            (x - w / 2, y - self._arrow - h),
+            (x - w / 2, y - self._arrow),
+            (x - self._arrow / 2, y - self._arrow),
+        ]
+
+        renderer.draw().polygon(path, fill=(255, 255, 255, 255))
+        renderer.draw().line(path, fill=(255, 0, 0, 255))
+        renderer.draw().text(
+            (x - tw / 2, y - self._arrow - h / 2 - th / 2),
+            self._text,
+            fill=(0, 0, 0, 255),
+        )
+
+    def render_cairo(self, renderer: staticmaps.CairoRenderer) -> None:
+        x, y = renderer.transformer().ll2pixel(self.latlng())
+
+        ctx = renderer.context()
+        ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+
+        ctx.set_font_size(self._font_size)
+        x_bearing, y_bearing, tw, th, _, _ = ctx.text_extents(self._text)
+
+        w = max(self._arrow, tw + 2 * self._margin)
+        h = th + 2 * self._margin
+
+        path = [
+            (x, y),
+            (x + self._arrow / 2, y - self._arrow),
+            (x + w / 2, y - self._arrow),
+            (x + w / 2, y - self._arrow - h),
+            (x - w / 2, y - self._arrow - h),
+            (x - w / 2, y - self._arrow),
+            (x - self._arrow / 2, y - self._arrow),
+        ]
+
+        ctx.set_source_rgb(1, 1, 1)
+        ctx.new_path()
+        for p in path:
+            ctx.line_to(*p)
+        ctx.close_path()
+        ctx.fill()
+
+        ctx.set_source_rgb(1, 0, 0)
+        ctx.set_line_width(1)
+        ctx.new_path()
+        for p in path:
+            ctx.line_to(*p)
+        ctx.close_path()
+        ctx.stroke()
+
+        ctx.set_source_rgb(0, 0, 0)
+        ctx.set_line_width(1)
+        ctx.move_to(
+            x - tw / 2 - x_bearing, y - self._arrow - h / 2 - y_bearing - th / 2
+        )
+        ctx.show_text(self._text)
+        ctx.stroke()
+
+    def render_svg(self, renderer: staticmaps.SvgRenderer) -> None:
+        x, y = renderer.transformer().ll2pixel(self.latlng())
+
+        # guess text extents
+        tw = len(self._text) * self._font_size * 0.5
+        th = self._font_size * 1.2
+
+        w = max(self._arrow, tw + 2 * self._margin)
+        h = th + 2 * self._margin
+
+        path = renderer.drawing().path(
+            fill="#ffffff",
+            stroke="#ff0000",
+            stroke_width=1,
+            opacity=1.0,
+        )
+        path.push(f"M {x} {y}")
+        path.push(f" l {self._arrow / 2} {-self._arrow}")
+        path.push(f" l {w / 2 - self._arrow / 2} 0")
+        path.push(f" l 0 {-h}")
+        path.push(f" l {-w} 0")
+        path.push(f" l 0 {h}")
+        path.push(f" l {w / 2 - self._arrow / 2} 0")
+        path.push("Z")
+        renderer.group().add(path)
+
+        renderer.group().add(
+            renderer.drawing().text(
+                self._text,
+                text_anchor="middle",
+                dominant_baseline="central",
+                insert=(x, y - self._arrow - h / 2),
+                font_family="sans-serif",
+                font_size=f"{self._font_size}px",
+                fill="#000000",
+            )
+        )
 
 
 def anonymize_location(lat, lon, radius=1000):
@@ -42,7 +176,7 @@ def get_map(locations, zoom=None, image_size=None, anonymize=True, radius=10000)
             radio = staticmaps.create_latlng(
                 float(location["lat"]), float(location["lon"])
             )
-        context.add_object(staticmaps.Marker(radio, size=10))
+        context.add_object(TextLabel(radio, location["label"], fontSize=50))
 
     # render non-anti-aliased png
     if image_size:
@@ -148,6 +282,7 @@ class Plugin(BasePlugin):
                     {
                         "lat": info["position"]["latitude"],
                         "lon": info["position"]["longitude"],
+                        "label": info["user"]["shortName"],
                     }
                 )
 

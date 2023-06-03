@@ -1,4 +1,5 @@
 import asyncio
+import time
 import meshtastic.tcp_interface
 import meshtastic.serial_interface
 from typing import List
@@ -22,14 +23,56 @@ def connect_meshtastic():
         return meshtastic_client
     # Initialize Meshtastic interface
     connection_type = relay_config["meshtastic"]["connection_type"]
+    retry_limit = (
+        relay_config["meshtastic"]["retry_limit"]
+        if "retry_limit" in relay_config["meshtastic"]
+        else 3
+    )
+    attempts = 1
+    successful = False
     if connection_type == "serial":
         serial_port = relay_config["meshtastic"]["serial_port"]
         logger.info(f"Connecting to serial port {serial_port} ...")
-        meshtastic_client = meshtastic.serial_interface.SerialInterface(serial_port)
+        while not successful and attempts <= retry_limit:
+            try:
+                meshtastic_client = meshtastic.serial_interface.SerialInterface(
+                    serial_port
+                )
+                successful = True
+            except Exception as e:
+                attempts += 1
+                if attempts <= retry_limit:
+                    logger.warn(
+                        f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}"
+                    )
+                    time.sleep(attempts)
+                else:
+                    logger.error(f"Could not connect: {e}")
+                    return None
     else:
         target_host = relay_config["meshtastic"]["host"]
         logger.info(f"Connecting to host {target_host} ...")
-        meshtastic_client = meshtastic.tcp_interface.TCPInterface(hostname=target_host)
+        while not successful and attempts <= retry_limit:
+            try:
+                meshtastic_client = meshtastic.tcp_interface.TCPInterface(
+                    hostname=target_host
+                )
+                successful = True
+            except Exception as e:
+                attempts += 1
+                if attempts <= retry_limit:
+                    logger.warn(
+                        f"Attempt #{attempts-1} failed. Retrying in {attempts} secs... {e}"
+                    )
+                    time.sleep(attempts)
+                else:
+                    logger.error(f"Could not connect: {e}")
+                    return None
+
+    nodeInfo = meshtastic_client.getMyNodeInfo()
+    logger.info(
+        f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}"
+    )
     return meshtastic_client
 
 
