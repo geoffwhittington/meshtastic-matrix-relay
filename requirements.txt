@@ -1,7 +1,8 @@
-meshtastic==2.1.7
+meshtastic==2.1.8
 py-staticmaps==0.4.0
 matrix-nio==0.20.2
 matplotlib==3.7.1
 requests==2.30.0
 markdown==3.4.3
 haversine==2.8.0
+schedule==1.2.0
