@@ -70,7 +70,7 @@ async def main():
     # Start the Matrix client
     while True:
         try:
-            # Update longnames
+            # Update longnames & shortnames
             update_longnames(meshtastic_interface.nodes)
             update_shortnames(meshtastic_interface.nodes)
 
@@ -80,7 +80,7 @@ async def main():
         except Exception as e:
             matrix_logger.error(f"Error syncing with server: {e}")
 
-        await asyncio.sleep(60)  # Update longnames every 60 seconds
+        await asyncio.sleep(60)  # Update longnames & shortnames every 60 seconds
 
 
 asyncio.run(main())
