@@ -9,7 +9,7 @@ from nio import (
 )
 from pubsub import pub
 from typing import List
-from db_utils import initialize_database, update_longnames
+from db_utils import initialize_database, update_longnames, update_shortnames
 from matrix_utils import (
     connect_matrix,
     join_matrix_room,
@@ -72,6 +72,7 @@ async def main():
         try:
             # Update longnames
             update_longnames(meshtastic_interface.nodes)
+            update_shortnames(meshtastic_interface.nodes)
 
             matrix_logger.info("Syncing with server...")
             await matrix_client.sync_forever(timeout=30000)
