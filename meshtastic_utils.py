@@ -6,7 +6,7 @@ from typing import List
 
 from config import relay_config
 from log_utils import get_logger
-from db_utils import get_longname
+from db_utils import get_longname, get_shortname
 from plugin_loader import load_plugins
 
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
@@ -115,6 +115,7 @@ def on_meshtastic_message(packet, loop=None):
         )
 
         longname = get_longname(sender) or sender
+        shortname = get_shortname(sender) or sender
         meshnet_name = relay_config["meshtastic"]["meshnet_name"]
 
         formatted_message = f"[{longname}/{meshnet_name}]: {text}"
@@ -149,6 +150,7 @@ def on_meshtastic_message(packet, loop=None):
                         room["id"],
                         formatted_message,
                         longname,
+                        shortname,
                         meshnet_name,
                     ),
                     loop=loop,

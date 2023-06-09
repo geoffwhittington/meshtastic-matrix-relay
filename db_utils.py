@@ -10,6 +10,9 @@ def initialize_database():
             "CREATE TABLE IF NOT EXISTS longnames (meshtastic_id TEXT PRIMARY KEY, longname TEXT)"
         )
         cursor.execute(
+            "CREATE TABLE IF NOT EXISTS shortnames (meshtastic_id TEXT PRIMARY KEY, shortname TEXT)"
+        )
+        cursor.execute(
             "CREATE TABLE IF NOT EXISTS plugin_data (plugin_name TEXT, meshtastic_id TEXT, data TEXT, PRIMARY KEY (plugin_name, meshtastic_id))"
         )
         conn.commit()
@@ -81,7 +84,6 @@ def save_longname(meshtastic_id, longname):
         )
         conn.commit()
 
-
 def update_longnames(nodes):
     if nodes:
         for node in nodes.values():
@@ -90,3 +92,29 @@ def update_longnames(nodes):
                 meshtastic_id = user["id"]
                 longname = user.get("longName", "N/A")
                 save_longname(meshtastic_id, longname)
+
+def get_shortname(meshtastic_id):
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT shortname FROM shortnames WHERE meshtastic_id=?", (meshtastic_id,))
+        result = cursor.fetchone()
+    return result[0] if result else None
+
+def save_shortname(meshtastic_id, shortname):
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT OR REPLACE INTO shortnames (meshtastic_id, shortname) VALUES (?, ?)",
+            (meshtastic_id, shortname),
+        )
+        conn.commit()
+
+def update_shortnames(nodes):
+    if nodes:
+        for node in nodes.values():
+            user = node.get("user")
+            if user:
+                meshtastic_id = user["id"]
+                shortname = user.get("shortName", "N/A")
+                save_shortname(meshtastic_id, shortname)

@@ -93,13 +93,14 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
 
 
 # Send message to the Matrix room
-async def matrix_relay(room_id, message, longname, meshnet_name):
+async def matrix_relay(room_id, message, longname, shortname, meshnet_name):
     matrix_client = await connect_matrix()
     try:
         content = {
             "msgtype": "m.text",
             "body": message,
             "meshtastic_longname": longname,
+            "meshtastic_shortname": shortname,
             "meshtastic_meshnet": meshnet_name,
         }
         await asyncio.wait_for(
@@ -156,6 +157,7 @@ async def on_room_message(
     text = event.body.strip()
 
     longname = event.source["content"].get("meshtastic_longname")
+    shortname = event.source["content"].get("meshtastic_shortname", None)
     meshnet_name = event.source["content"].get("meshtastic_meshnet")
     suppress = event.source["content"].get("mmrelay_suppress")
     local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
@@ -168,9 +170,11 @@ async def on_room_message(
         full_display_name = f"{longname}/{meshnet_name}"
         if meshnet_name != local_meshnet_name:
             logger.info(f"Processing message from remote meshnet: {text}")
-            short_longname = longname[:3]
             short_meshnet_name = meshnet_name[:4]
-            prefix = f"{short_longname}/{short_meshnet_name}: "
+            # If shortname is None, truncate the longname to 3 characters
+            if shortname is None:
+                shortname = longname[:3]           
+            prefix = f"{shortname}/{short_meshnet_name}: "
             text = re.sub(
                 rf"^\[{full_display_name}\]: ", "", text
             )  # Remove the original prefix from the text
