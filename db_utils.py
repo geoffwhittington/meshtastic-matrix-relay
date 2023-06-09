@@ -111,8 +111,8 @@ def save_shortname(meshtastic_id, shortname):
         conn.commit()
 
 def update_shortname(nodes):
-    if meshtastic_interface.nodes:
-        for node in meshtastic_interface.nodes.values():
+    if nodes:
+        for node in nodes.values():
             user = node.get("user")
             if user:
                 meshtastic_id = user["id"]
