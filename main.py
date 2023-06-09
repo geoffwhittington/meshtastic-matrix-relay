@@ -28,7 +28,6 @@ from meshtastic_utils import (
 
 logger = get_logger(name="M<>M Relay")
 meshtastic_interface = connect_meshtastic()
-logger.debug(f"meshtastic_interface: {meshtastic_interface}")
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 matrix_access_token = relay_config["matrix"]["access_token"]
 
