@@ -149,6 +149,7 @@ def on_meshtastic_message(packet, loop=None):
                         room["id"],
                         formatted_message,
                         longname,
+                        shortname,
                         meshnet_name,
                     ),
                     loop=loop,
