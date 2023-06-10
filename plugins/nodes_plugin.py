@@ -54,14 +54,15 @@ $shortname $longname / $devicemodel / $battery $voltage / $snr / $lastseen
                 snr = f"{info['snr']} dB"
             else:
                 snr = ""
-            if "voltage" in info["deviceMetrics"]:
-                voltage = f"{info['deviceMetrics']['voltage']}V"
-            else:
-                voltage = "?V"
-            if "batteryLevel" in info["deviceMetrics"]:
-                battery = f"{info['deviceMetrics']['batteryLevel']}%"
-            else:
-                battery = "?%"
+
+            voltage = "?V"
+            battery = "?%"
+            if "deviceMetrics" in info:
+                if "voltage" in info["deviceMetrics"]:
+                    voltage = f"{info['deviceMetrics']['voltage']}V"
+                if "batteryLevel" in info["deviceMetrics"]:
+                    battery = f"{info['deviceMetrics']['batteryLevel']}%"
+
             response += f"{info['user']['shortName']} {info['user']['longName']} / {info['user']['hwModel']} / {battery} {voltage} / {snr} / {get_relative_time(info['lastHeard'])}\n"
 
         return response
