@@ -17,7 +17,6 @@ class TextLabel(staticmaps.Object):
         self._margin = 4
         self._arrow = 16
         self._font_size = fontSize
-        print(self._font_size)
 
     def latlng(self) -> s2sphere.LatLng:
         return self._latlng
