@@ -51,9 +51,15 @@ class Plugin(BasePlugin):
             telemetry_data.append(
                 {
                     "time": packet_data["time"],
-                    "batteryLevel": packet_data["deviceMetrics"]["batteryLevel"],
-                    "voltage": packet_data["deviceMetrics"]["voltage"],
-                    "airUtilTx": packet_data["deviceMetrics"]["airUtilTx"],
+                    "batteryLevel": packet_data["deviceMetrics"]["batteryLevel"]
+                    if "batteryLevel" in packet_data["deviceMetrics"]
+                    else 0,
+                    "voltage": packet_data["deviceMetrics"]["voltage"]
+                    if "voltage" in packet_data["deviceMetrics"]
+                    else 0,
+                    "airUtilTx": packet_data["deviceMetrics"]["airUtilTx"]
+                    if "airUtilTx" in packet_data["deviceMetrics"]
+                    else 0,
                 }
             )
             self.set_node_data(meshtastic_id=packet["fromId"], node_data=telemetry_data)

@@ -20,8 +20,10 @@ class Plugin(BasePlugin):
 
         for node, info in meshtastic_client.nodes.items():
             if "deviceMetrics" in info:
-                battery_levels.append(info["deviceMetrics"]["batteryLevel"])
-                air_util_tx.append(info["deviceMetrics"]["airUtilTx"])
+                if "batteryLevel" in info["deviceMetrics"]:
+                    battery_levels.append(info["deviceMetrics"]["batteryLevel"])
+                if "airUtilTx" in info["deviceMetrics"]:
+                    air_util_tx.append(info["deviceMetrics"]["airUtilTx"])
             if "snr" in info:
                 snr.append(info["snr"])
 
