@@ -1,5 +1,5 @@
+meshtastic
 Pillow==9.5.0
-meshtastic==2.1.11
 py-staticmaps==0.4.0
 matrix-nio==0.20.2
 matplotlib==3.7.1
