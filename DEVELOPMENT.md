@@ -83,3 +83,21 @@ INFO:meshtastic.matrix.relay:Processing inbound radio message from !613501e4 on 
 INFO:meshtastic.matrix.relay:Relaying Meshtastic message from Alice to Matrix: [Alice/VeryCoolMeshnet]: Hey Bob!
 INFO:meshtastic.matrix.relay:Sent inbound radio message to matrix room: #someroomid:example.matrix.org
 ```
+
+## Persistence
+If you'd like the bridge to run automatically on startup in Linux, you can set up a systemd service.
+```
+[Unit]
+Description=A Meshtastic to [matrix] bridge
+After=multi-user.target
+
+[Service]
+Type=idle
+
+WorkingDirectory=/home/$USER/meshtastic-matrix-relay
+ExecStart=/home/$USER/meshtastic-matrix-relay/.pyenv/bin/python /home/$USER/meshtastic-matrix-relay/main.py
+
+[Install]
+WantedBy=multi-user.target
+```
+In this example, it is assumed that you cloned the git repo into a user's home directory, and set up the venv according to the above.
