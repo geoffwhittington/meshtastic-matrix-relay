@@ -85,19 +85,26 @@ INFO:meshtastic.matrix.relay:Sent inbound radio message to matrix room: #someroo
 ```
 
 ## Persistence
-If you'd like the bridge to run automatically on startup in Linux, you can set up a systemd service.
+If you'd like the bridge to run automatically (and persistently) on startup in Linux, you can set up a systemd service.
+In this example, it is assumed that you have the project a (non-root) user's home directory, and set up the venv according to the above.
+
+Create the file ```~/.config/systemd/user/mmrelay.service```:
 ```
 [Unit]
 Description=A Meshtastic to [matrix] bridge
-After=multi-user.target
+After=default.target
 
 [Service]
 Type=idle
-
-WorkingDirectory=/home/$USER/meshtastic-matrix-relay
-ExecStart=/home/$USER/meshtastic-matrix-relay/.pyenv/bin/python /home/$USER/meshtastic-matrix-relay/main.py
+WorkingDirectory=%h/meshtastic-matrix-relay
+ExecStart=%h/meshtastic-matrix-relay/.pyenv/bin/python %h/meshtastic-matrix-relay/main.py
+Restart=on-failure
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 ```
-In this example, it is assumed that you cloned the git repo into a user's home directory, and set up the venv according to the above.
+The service is enabled and started by
+```
+$ systemctl --user enable mmrelay.service
+$ systemctl --user start mmrelay.service
+```
