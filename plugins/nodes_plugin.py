@@ -57,7 +57,7 @@ $shortname $longname / $devicemodel / $battery $voltage / $snr / $lastseen
 
             last_heard = None
             if "lastHeard" in info:
-                last_header = get_relative_time(info["lastHeard"])
+                last_heard = get_relative_time(info["lastHeard"])
 
             voltage = "?V"
             battery = "?%"
