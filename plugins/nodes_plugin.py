@@ -47,7 +47,7 @@ $shortname $longname / $devicemodel / $battery $voltage / $snr / $lastseen
 
         meshtastic_client = connect_meshtastic()
 
-        response = f">Nodes: {len(meshtastic_client.nodes)}"
+        response = f">**Nodes: {len(meshtastic_client.nodes)}**"
 
         for node, info in meshtastic_client.nodes.items():
             snr = ""
