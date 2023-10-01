@@ -47,7 +47,7 @@ $shortname $longname / $devicemodel / $battery $voltage / $snr / $lastseen
 
         meshtastic_client = connect_meshtastic()
 
-        response = f">Nodes: {len(meshtastic_client.nodes)}\n"
+        response = f">Nodes: {len(meshtastic_client.nodes)}"
 
         for node, info in meshtastic_client.nodes.items():
             snr = ""
@@ -67,9 +67,9 @@ $shortname $longname / $devicemodel / $battery $voltage / $snr / $lastseen
                 if "batteryLevel" in info["deviceMetrics"]:
                     battery = f"{info['deviceMetrics']['batteryLevel']}% "
 
-            response += f">**{info['user']['shortName']}** {info['user']['longName']}\n"\
+            response += f"\n\n>**{info['user']['shortName']}** {info['user']['longName']}\n"\
                         f">{info['user']['hwModel']} {battery}{voltage}\n"\
-                        f">{snr}{last_heard}\n\n"
+                        f">{snr}{last_heard}"
 
         return response
 
