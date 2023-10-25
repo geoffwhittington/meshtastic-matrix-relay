@@ -47,27 +47,30 @@ $shortname $longname / $devicemodel / $battery $voltage / $snr / $lastseen
 
         meshtastic_client = connect_meshtastic()
 
-        response = f"Nodes: {len(meshtastic_client.nodes)}\n"
+        response = f">**Nodes: {len(meshtastic_client.nodes)}**\n\n"
 
         for node, info in meshtastic_client.nodes.items():
+            snr = ""
             if "snr" in info:
-                snr = f"{info['snr']} dB"
-            else:
-                snr = ""
+                if info['snr'] is not None:
+                    snr = f"{info['snr']} dB "
 
             last_heard = None
             if "lastHeard" in info:
                 last_heard = get_relative_time(info["lastHeard"])
 
-            voltage = "?V"
-            battery = "?%"
+            voltage = ""
+            battery = ""
             if "deviceMetrics" in info:
                 if "voltage" in info["deviceMetrics"]:
-                    voltage = f"{info['deviceMetrics']['voltage']}V"
+                    voltage = f"{info['deviceMetrics']['voltage']}V "
                 if "batteryLevel" in info["deviceMetrics"]:
-                    battery = f"{info['deviceMetrics']['batteryLevel']}%"
+                    battery = f"{info['deviceMetrics']['batteryLevel']}% "
 
-            response += f"{info['user']['shortName']} {info['user']['longName']} / {info['user']['hwModel']} / {battery} {voltage} / {snr} / {last_heard}\n"
+            response += f"><hr/>\n\n"\
+                        f">**{info['user']['shortName']}** {info['user']['longName']}\n\n"\
+                        f">{info['user']['hwModel']} {battery}{voltage}\n\n"\
+                        f">{snr}{last_heard}\n\n"
 
         return response
 
@@ -84,7 +87,7 @@ $shortname $longname / $devicemodel / $battery $voltage / $snr / $lastseen
             return False
 
         response = await self.send_matrix_message(
-            room_id=room.room_id, message=self.generate_response(), formatted=False
+            room_id=room.room_id, message=self.generate_response(), formatted=True
         )
 
         return True
