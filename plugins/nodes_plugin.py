@@ -54,8 +54,8 @@ $shortname $longname / $devicemodel / $battery $voltage / $snr / $lastseen
             if "lastHeard" in info and info["lastHeard"] is not None:
                 last_heard = get_relative_time(info["lastHeard"])
 
-            voltage = ""
-            battery = ""
+            voltage = "?V"
+            battery = "?%"
             if "deviceMetrics" in info:
                 if "voltage" in info["deviceMetrics"] and info["deviceMetrics"]["voltage"] is not None:
                     voltage = f"{info['deviceMetrics']['voltage']}V "
