@@ -37,46 +37,39 @@ def on_lost_meshtastic_connection(interface):
             meshtastic_client = None
 
 async def reconnect_meshtastic():
-    global meshtastic_client, reconnect_needed, is_initial_connection
+    global meshtastic_client, reconnect_needed
     attempts = 0
 
     while not meshtastic_client and reconnect_needed:
         attempts += 1
-        connection_type = relay_config["meshtastic"]["connection_type"]
-        target = relay_config["meshtastic"]["serial_port"] if connection_type == "serial" else relay_config["meshtastic"]["host"]
-
-        logger.info(f"Reconnecting to Meshtastic {connection_type} {target} (Attempt {attempts})...")
+        logger.info(f"Reconnecting to Meshtastic (Attempt {attempts})...")
         meshtastic_client = connect_meshtastic()
 
         if meshtastic_client:
-            logger.info(f"Reconnected to Meshtastic {connection_type} {target} successfully.")
+            logger.info("Reconnected to Meshtastic successfully.")
             reconnect_needed = False
-            is_initial_connection = False
         else:
             delay = min(attempts, 10)  # Cap the delay to 10 seconds
-            logger.error(f"Reconnection attempt #{attempts} to {connection_type} {target} failed. Retrying in {delay} secs...")
+            logger.error(f"Reconnection attempt #{attempts} failed. Retrying in {delay} secs...")
             await asyncio.sleep(delay)
-
 
             
 is_initial_connection = True  # Flag to indicate if it's the initial connection attempt
 
 def connect_meshtastic():
-    global meshtastic_client
+    global meshtastic_client, is_initial_connection
     try:
-        # Determine the connection type and target
         connection_type = relay_config["meshtastic"]["connection_type"]
         target = relay_config["meshtastic"]["serial_port"] if connection_type == "serial" else relay_config["meshtastic"]["host"]
 
-        # Attempt the connection
         if connection_type == "serial":
             meshtastic_client = meshtastic.serial_interface.SerialInterface(target)
         else:
             meshtastic_client = meshtastic.tcp_interface.TCPInterface(hostname=target)
 
         logger.info(f"Connected to Meshtastic {connection_type} {target}.")
+        is_initial_connection = False
         return meshtastic_client
-
     except Exception as e:
         logger.error(f"Error establishing Meshtastic connection to {connection_type} {target}: {e}")
         return None
