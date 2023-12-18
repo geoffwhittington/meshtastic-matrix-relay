@@ -22,23 +22,35 @@ def is_reconnect_needed():
     return reconnect_needed
 
 def on_lost_meshtastic_connection(interface):
-    global reconnect_needed, is_initial_connection
+    global reconnect_needed, is_initial_connection, meshtastic_client
     logger.error("Lost connection. Marking for reconnection...")
     reconnect_needed = True
-    is_initial_connection = False  # Indicate it's a reconnection attempt
-    meshtastic_client = None  # Explicitly set to None to ensure reconnection attempt
+    is_initial_connection = False
+    if meshtastic_client:
+        try:
+            meshtastic_client.close()  # Close the connection gracefully
+        except Exception as e:
+            logger.error(f"Error closing Meshtastic connection: {e}")
+        meshtastic_client = None
 
 async def reconnect_meshtastic():
     global meshtastic_client, reconnect_needed
+    attempts = 0
 
     logger.info("Attempting to reconnect...")
-    try:
-        meshtastic_client = connect_meshtastic()
-        if meshtastic_client:
-            logger.info("Reconnected to Meshtastic successfully.")
-            reconnect_needed = False  # Reset the flag after successful reconnection
-    except Exception as e:
-        logger.error(f"Reconnection attempt failed: {e}.")
+    while not meshtastic_client:
+        attempts += 1
+        try:
+            logger.info(f"Reconnecting to serial /dev/ttyACM0 (Attempt {attempts})...")
+            meshtastic_client = connect_meshtastic()
+            if meshtastic_client:
+                logger.info("Reconnected to Meshtastic successfully.")
+                reconnect_needed = False
+                break
+        except Exception as e:
+            delay = attempts * 2  # Increasing delay with each attempt
+            logger.error(f"Reconnection attempt #{attempts} failed: {e}. Retrying in {delay} secs...")
+            await asyncio.sleep(delay)
 
             
 is_initial_connection = True  # Flag to indicate if it's the initial connection attempt
