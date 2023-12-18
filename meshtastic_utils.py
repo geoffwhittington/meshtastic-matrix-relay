@@ -22,25 +22,28 @@ def is_reconnect_needed():
     return reconnect_needed
 
 def on_lost_meshtastic_connection(interface):
-    global reconnect_needed
+    global reconnect_needed, meshtastic_client
     logger.error("Lost connection. Marking for reconnection...")
     reconnect_needed = True  # Set the flag
+    meshtastic_client = None  # Explicitly set to None to ensure reconnection attempt
+
 
 async def reconnect_meshtastic():
     global meshtastic_client, reconnect_needed
     attempts = 0
-    while not meshtastic_client:
+    while True:  # Changed from `while not meshtastic_client`
         attempts += 1
+        logger.info(f"Attempting to reconnect (Attempt {attempts})...")
         try:
-            logger.info(f"Attempting to reconnect (Attempt {attempts})...")
             meshtastic_client = connect_meshtastic()
             if meshtastic_client:
                 logger.info("Reconnected to Meshtastic successfully.")
+                reconnect_needed = False  # Reset the flag after successful reconnection
                 break
         except Exception as e:
             logger.error(f"Reconnection attempt failed: {e}. Retrying in 5 seconds...")
             await asyncio.sleep(5)  # Delay before next attempt
-
+            
 def connect_meshtastic():
     global meshtastic_client
     if meshtastic_client:

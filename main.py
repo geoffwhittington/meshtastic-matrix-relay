@@ -3,6 +3,7 @@ This script connects a Meshtastic mesh network to Matrix chat rooms by relaying 
 It uses Meshtastic-python and Matrix nio client library to interface with the radio and the Matrix server respectively.
 """
 import asyncio
+import traceback
 from nio import (
     RoomMessageText,
     RoomMessageNotice,
@@ -59,6 +60,7 @@ async def main():
         login_response = await matrix_client.login(matrix_access_token)
     except Exception as e:
         matrix_logger.error(f"Error connecting to Matrix server: {e}")
+        traceback.print_exc()  # More detailed error logging
         return
 
     # Join the rooms specified in the config.yaml
@@ -90,14 +92,12 @@ async def main():
             matrix_logger.info("Syncing with server")
             # Check if reconnection is needed
             if is_reconnect_needed():
-                reconnect_meshtastic()  # Perform reconnection
-
-
+                await reconnect_meshtastic()  # Perform reconnection
 
         except Exception as e:
-            matrix_logger.error(f"Error syncing with server: {e}")
+            matrix_logger.error(f"Unexpected error occurred: {e}")
+            traceback.print_exc()  # More detailed error logging
 
-        await asyncio.sleep(60)  # Update longnames & shortnames every 60 seconds
-
+        await asyncio.sleep(20)  # Check every 20 seconds
 
 asyncio.run(main())
