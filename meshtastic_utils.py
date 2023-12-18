@@ -22,85 +22,62 @@ def is_reconnect_needed():
     return reconnect_needed
 
 def on_lost_meshtastic_connection(interface):
-    global reconnect_needed, meshtastic_client
+    global reconnect_needed, is_initial_connection
     logger.error("Lost connection. Marking for reconnection...")
-    reconnect_needed = True  # Set the flag
+    reconnect_needed = True
+    is_initial_connection = False  # Indicate it's a reconnection attempt
     meshtastic_client = None  # Explicitly set to None to ensure reconnection attempt
-
 
 async def reconnect_meshtastic():
     global meshtastic_client, reconnect_needed
-    attempts = 0
-    while True:  # Changed from `while not meshtastic_client`
-        attempts += 1
-        logger.info(f"Attempting to reconnect (Attempt {attempts})...")
-        try:
-            meshtastic_client = connect_meshtastic()
-            if meshtastic_client:
-                logger.info("Reconnected to Meshtastic successfully.")
-                reconnect_needed = False  # Reset the flag after successful reconnection
-                break
-        except Exception as e:
-            logger.error(f"Reconnection attempt failed: {e}. Retrying in 5 seconds...")
-            await asyncio.sleep(5)  # Delay before next attempt
-            
-def connect_meshtastic():
-    global meshtastic_client
-    if meshtastic_client:
-        return meshtastic_client
-    # Initialize Meshtastic interface
-    connection_type = relay_config["meshtastic"]["connection_type"]
-    retry_limit = (
-        relay_config["meshtastic"]["retry_limit"]
-        if "retry_limit" in relay_config["meshtastic"]
-        else 3
-    )
-    attempts = 1
-    successful = False
-    if connection_type == "serial":
-        serial_port = relay_config["meshtastic"]["serial_port"]
-        logger.info(f"Connecting to serial port {serial_port} ...")
-        while not successful and attempts <= retry_limit:
-            try:
-                meshtastic_client = meshtastic.serial_interface.SerialInterface(
-                    serial_port
-                )
-                successful = True
-            except Exception as e:
-                attempts += 1
-                if attempts <= retry_limit:
-                    logger.warn(
-                        f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}"
-                    )
-                    time.sleep(attempts)
-                else:
-                    logger.error(f"Could not connect: {e}")
-                    return None
-    else:
-        target_host = relay_config["meshtastic"]["host"]
-        logger.info(f"Connecting to host {target_host} ...")
-        while not successful and attempts <= retry_limit:
-            try:
-                meshtastic_client = meshtastic.tcp_interface.TCPInterface(
-                    hostname=target_host
-                )
-                successful = True
-            except Exception as e:
-                attempts += 1
-                if attempts <= retry_limit:
-                    logger.warn(
-                        f"Attempt #{attempts-1} failed. Retrying in {attempts} secs... {e}"
-                    )
-                    time.sleep(attempts)
-                else:
-                    logger.error(f"Could not connect: {e}")
-                    return None
 
-    nodeInfo = meshtastic_client.getMyNodeInfo()
-    logger.info(
-        f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}"
-    )
-    return meshtastic_client
+    logger.info("Attempting to reconnect...")
+    try:
+        meshtastic_client = connect_meshtastic()
+        if meshtastic_client:
+            logger.info("Reconnected to Meshtastic successfully.")
+            reconnect_needed = False  # Reset the flag after successful reconnection
+    except Exception as e:
+        logger.error(f"Reconnection attempt failed: {e}.")
+
+            
+is_initial_connection = True  # Flag to indicate if it's the initial connection attempt
+
+def connect_meshtastic():
+    global meshtastic_client, is_initial_connection
+    attempts = 0
+
+    while True:
+        attempts += 1
+        try:
+            # Determine the connection type and target
+            connection_type = relay_config["meshtastic"]["connection_type"]
+            target = relay_config["meshtastic"]["serial_port"] if connection_type == "serial" else relay_config["meshtastic"]["host"]
+
+            # Log connection attempt based on whether it's initial or a reconnection
+            if is_initial_connection:
+                if attempts == 1:
+                    logger.info(f"Connecting to {connection_type} {target}...")
+                else:
+                    logger.info(f"Connecting to {connection_type} {target} (Attempt {attempts})...")
+            else:
+                logger.info(f"Reconnecting to {connection_type} {target} (Attempt {attempts})...")
+
+            # Attempt the connection
+            if connection_type == "serial":
+                meshtastic_client = meshtastic.serial_interface.SerialInterface(target)
+            else:
+                meshtastic_client = meshtastic.tcp_interface.TCPInterface(hostname=target)
+
+            # Connection successful
+            logger.info("Connected to Meshtastic device.")
+            is_initial_connection = False  # Reset the flag after a successful connection
+            return meshtastic_client
+
+        except Exception as e:
+            logger.error(f"Connection attempt #{attempts} failed: {e}. Retrying in {attempts} secs...")
+            time.sleep(attempts)
+
 
 # Callback for new messages from Meshtastic
 def on_meshtastic_message(packet, loop=None):
