@@ -3,7 +3,7 @@ import time
 import meshtastic.tcp_interface
 import meshtastic.serial_interface
 from typing import List
-
+from asyncio import Lock
 from config import relay_config
 from log_utils import get_logger
 from db_utils import get_longname, get_shortname
@@ -12,6 +12,8 @@ from plugin_loader import load_plugins
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 logger = get_logger(name="Meshtastic")
 meshtastic_client = None
+
+reconnection_lock = Lock()
 
 # Define the global flag
 reconnect_needed = False  # This will act as a flag to indicate reconnection requirement
@@ -23,15 +25,16 @@ def is_reconnect_needed():
 
 def on_lost_meshtastic_connection(interface):
     global reconnect_needed, is_initial_connection, meshtastic_client
-    logger.error("Lost connection. Marking for reconnection...")
-    reconnect_needed = True
-    is_initial_connection = False
-    if meshtastic_client:
-        try:
-            meshtastic_client.close()  # Close the connection gracefully
-        except Exception as e:
-            logger.error(f"Error closing Meshtastic connection: {e}")
-        meshtastic_client = None
+    if not reconnect_needed:
+        logger.error("Lost connection. Marking for reconnection...")
+        reconnect_needed = True
+        is_initial_connection = False
+        if meshtastic_client:
+            try:
+                meshtastic_client.close()  # Close the connection gracefully
+            except Exception as e:
+                logger.error(f"Error closing Meshtastic connection: {e}")
+            meshtastic_client = None
 
 async def reconnect_meshtastic():
     global meshtastic_client, reconnect_needed

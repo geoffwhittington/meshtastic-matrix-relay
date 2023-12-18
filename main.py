@@ -25,9 +25,8 @@ from meshtastic_utils import (
     on_meshtastic_message,
     on_lost_meshtastic_connection,
     logger as meshtastic_logger,
-    reconnect_needed,
-    reconnect_meshtastic,
-    is_reconnect_needed
+    is_reconnect_needed,
+    reconnect_meshtastic
 )
 
 logger = get_logger(name="M<>M Relay")
@@ -67,14 +66,12 @@ async def main():
 
     # Register the Meshtastic message callback
     meshtastic_logger.info(f"Listening for inbound radio messages ...")
-    pub.subscribe(
-        on_meshtastic_message, "meshtastic.receive", loop=asyncio.get_event_loop()
-    )
-    pub.subscribe(
-        on_lost_meshtastic_connection,
-        "meshtastic.connection.lost",
-    )
-    # Register the message callback
+    pub.subscribe(on_meshtastic_message, "meshtastic.receive", loop=asyncio.get_event_loop())
+
+    # Subscribe to lost connection event
+    pub.subscribe(on_lost_meshtastic_connection, "meshtastic.connection.lost")
+
+    # Register the Matrix message callback
     matrix_logger.info(f"Listening for inbound matrix messages ...")
     matrix_client.add_event_callback(
         on_room_message, (RoomMessageText, RoomMessageNotice)
