@@ -37,61 +37,49 @@ def on_lost_meshtastic_connection(interface):
             meshtastic_client = None
 
 async def reconnect_meshtastic():
-    global meshtastic_client, reconnect_needed
+    global meshtastic_client, reconnect_needed, is_initial_connection
     attempts = 0
 
-    logger.info("Attempting to reconnect...")
-    while not meshtastic_client:
+    while not meshtastic_client and reconnect_needed:
         attempts += 1
-        try:
-            logger.info(f"Reconnecting to serial /dev/ttyACM0 (Attempt {attempts})...")
-            meshtastic_client = connect_meshtastic()
-            if meshtastic_client:
-                logger.info("Reconnected to Meshtastic successfully.")
-                reconnect_needed = False
-                break
-        except Exception as e:
-            delay = attempts * 2  # Increasing delay with each attempt
-            logger.error(f"Reconnection attempt #{attempts} failed: {e}. Retrying in {delay} secs...")
+        connection_type = relay_config["meshtastic"]["connection_type"]
+        target = relay_config["meshtastic"]["serial_port"] if connection_type == "serial" else relay_config["meshtastic"]["host"]
+
+        logger.info(f"Reconnecting to Meshtastic {connection_type} {target} (Attempt {attempts})...")
+        meshtastic_client = connect_meshtastic()
+
+        if meshtastic_client:
+            logger.info(f"Reconnected to Meshtastic {connection_type} {target} successfully.")
+            reconnect_needed = False
+            is_initial_connection = False
+        else:
+            delay = min(attempts, 10)  # Cap the delay to 10 seconds
+            logger.error(f"Reconnection attempt #{attempts} to {connection_type} {target} failed. Retrying in {delay} secs...")
             await asyncio.sleep(delay)
+
 
             
 is_initial_connection = True  # Flag to indicate if it's the initial connection attempt
 
 def connect_meshtastic():
-    global meshtastic_client, is_initial_connection
-    attempts = 0
+    global meshtastic_client
+    try:
+        # Determine the connection type and target
+        connection_type = relay_config["meshtastic"]["connection_type"]
+        target = relay_config["meshtastic"]["serial_port"] if connection_type == "serial" else relay_config["meshtastic"]["host"]
 
-    while True:
-        attempts += 1
-        try:
-            # Determine the connection type and target
-            connection_type = relay_config["meshtastic"]["connection_type"]
-            target = relay_config["meshtastic"]["serial_port"] if connection_type == "serial" else relay_config["meshtastic"]["host"]
+        # Attempt the connection
+        if connection_type == "serial":
+            meshtastic_client = meshtastic.serial_interface.SerialInterface(target)
+        else:
+            meshtastic_client = meshtastic.tcp_interface.TCPInterface(hostname=target)
 
-            # Log connection attempt based on whether it's initial or a reconnection
-            if is_initial_connection:
-                if attempts == 1:
-                    logger.info(f"Connecting to {connection_type} {target}...")
-                else:
-                    logger.info(f"Connecting to {connection_type} {target} (Attempt {attempts})...")
-            else:
-                logger.info(f"Reconnecting to {connection_type} {target} (Attempt {attempts})...")
+        logger.info(f"Connected to Meshtastic {connection_type} {target}.")
+        return meshtastic_client
 
-            # Attempt the connection
-            if connection_type == "serial":
-                meshtastic_client = meshtastic.serial_interface.SerialInterface(target)
-            else:
-                meshtastic_client = meshtastic.tcp_interface.TCPInterface(hostname=target)
-
-            # Connection successful
-            logger.info("Connected to Meshtastic device.")
-            is_initial_connection = False  # Reset the flag after a successful connection
-            return meshtastic_client
-
-        except Exception as e:
-            logger.error(f"Connection attempt #{attempts} failed: {e}. Retrying in {attempts} secs...")
-            time.sleep(attempts)
+    except Exception as e:
+        logger.error(f"Error establishing Meshtastic connection to {connection_type} {target}: {e}")
+        return None
 
 
 # Callback for new messages from Meshtastic
