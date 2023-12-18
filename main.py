@@ -19,11 +19,23 @@ from matrix_utils import (
 from plugin_loader import load_plugins
 from config import relay_config
 from log_utils import get_logger
+#from meshtastic_utils import (
+#    connect_meshtastic,
+#    on_meshtastic_message,
+#    on_lost_meshtastic_connection,
+#    logger as meshtastic_logger,
+#)
+
+#import meshtastic_utils
+#from meshtastic_utils import logger as meshtastic_logger
+
 from meshtastic_utils import (
     connect_meshtastic,
     on_meshtastic_message,
     on_lost_meshtastic_connection,
     logger as meshtastic_logger,
+    reconnect_needed,  # Add this if it's a variable in meshtastic_utils
+    reconnect_meshtastic  # Add this if it's a function in meshtastic_utils
 )
 
 logger = get_logger(name="M<>M Relay")
@@ -74,9 +86,13 @@ async def main():
             update_longnames(meshtastic_interface.nodes)
             update_shortnames(meshtastic_interface.nodes)
 
-            matrix_logger.info("Syncing with server...")
-            await matrix_client.sync_forever(timeout=30000)
-            matrix_logger.info("Sync completed.")
+            matrix_logger.info("Syncing with server")
+            # Check if reconnection is needed
+            if reconnect_needed:
+                reconnect_needed = False  # Reset the flag
+                await reconnect_meshtastic()  # Perform reconnection
+
+
         except Exception as e:
             matrix_logger.error(f"Error syncing with server: {e}")
 
