@@ -20,16 +20,6 @@ from matrix_utils import (
 from plugin_loader import load_plugins
 from config import relay_config
 from log_utils import get_logger
-#from meshtastic_utils import (
-#    connect_meshtastic,
-#    on_meshtastic_message,
-#    on_lost_meshtastic_connection,
-#    logger as meshtastic_logger,
-#)
-
-#import meshtastic_utils
-#from meshtastic_utils import logger as meshtastic_logger
-
 from meshtastic_utils import (
     connect_meshtastic,
     on_meshtastic_message,
@@ -45,6 +35,14 @@ meshtastic_interface = connect_meshtastic()
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 matrix_access_token = relay_config["matrix"]["access_token"]
 
+# Separate function for Matrix sync
+async def matrix_sync(matrix_client):
+    try:
+        matrix_logger.info("Starting Matrix sync...")
+        await matrix_client.sync_forever(timeout=30000)  # 30 seconds timeout
+    except Exception as e:
+        matrix_logger.error(f"Error during Matrix sync: {e}")
+        traceback.print_exc()
 
 async def main():
     # Initialize the SQLite database
@@ -82,14 +80,16 @@ async def main():
         on_room_message, (RoomMessageText, RoomMessageNotice)
     )
 
-    # Start the Matrix client
+    # Start a separate task for Matrix syncing
+    sync_task = asyncio.create_task(matrix_sync(matrix_client))
+
+    # Main loop
     while True:
         try:
             # Update longnames & shortnames
             update_longnames(meshtastic_interface.nodes)
             update_shortnames(meshtastic_interface.nodes)
 
-            matrix_logger.info("Syncing with server")
             # Check if reconnection is needed
             if is_reconnect_needed():
                 await reconnect_meshtastic()  # Perform reconnection
@@ -99,5 +99,12 @@ async def main():
             traceback.print_exc()  # More detailed error logging
 
         await asyncio.sleep(20)  # Check every 20 seconds
+
+    # Clean up
+    sync_task.cancel()
+    try:
+        await sync_task
+    except asyncio.CancelledError:
+        matrix_logger.info("Matrix sync task cancelled.")
 
 asyncio.run(main())
