@@ -34,8 +34,9 @@ from meshtastic_utils import (
     on_meshtastic_message,
     on_lost_meshtastic_connection,
     logger as meshtastic_logger,
-    reconnect_needed,  # Add this if it's a variable in meshtastic_utils
-    reconnect_meshtastic  # Add this if it's a function in meshtastic_utils
+    reconnect_needed,
+    reconnect_meshtastic,
+    is_reconnect_needed
 )
 
 logger = get_logger(name="M<>M Relay")
@@ -88,9 +89,9 @@ async def main():
 
             matrix_logger.info("Syncing with server")
             # Check if reconnection is needed
-            if reconnect_needed:
-                reconnect_needed = False  # Reset the flag
-                await reconnect_meshtastic()  # Perform reconnection
+            if is_reconnect_needed():
+                reconnect_meshtastic()  # Perform reconnection
+
 
 
         except Exception as e:

@@ -16,6 +16,30 @@ meshtastic_client = None
 # Define the global flag
 reconnect_needed = False  # This will act as a flag to indicate reconnection requirement
 
+# Getter function for reconnect_needed
+def is_reconnect_needed():
+    global reconnect_needed
+    return reconnect_needed
+
+def on_lost_meshtastic_connection(interface):
+    global reconnect_needed
+    logger.error("Lost connection. Marking for reconnection...")
+    reconnect_needed = True  # Set the flag
+
+async def reconnect_meshtastic():
+    global meshtastic_client, reconnect_needed
+    attempts = 0
+    while not meshtastic_client:
+        attempts += 1
+        try:
+            logger.info(f"Attempting to reconnect (Attempt {attempts})...")
+            meshtastic_client = connect_meshtastic()
+            if meshtastic_client:
+                logger.info("Reconnected to Meshtastic successfully.")
+                break
+        except Exception as e:
+            logger.error(f"Reconnection attempt failed: {e}. Retrying in 5 seconds...")
+            await asyncio.sleep(5)  # Delay before next attempt
 
 def connect_meshtastic():
     global meshtastic_client
@@ -74,28 +98,6 @@ def connect_meshtastic():
         f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}"
     )
     return meshtastic_client
-
-
-def on_lost_meshtastic_connection(interface):
-    global reconnect_needed
-    logger.error("Lost connection. Marking for reconnection...")
-    reconnect_needed = True  # Set the flag
-
-async def reconnect_meshtastic():
-    global meshtastic_client, reconnect_needed
-    attempts = 0
-    while not meshtastic_client:
-        attempts += 1
-        try:
-            logger.info(f"Attempting to reconnect (Attempt {attempts})...")
-            meshtastic_client = connect_meshtastic()
-            if meshtastic_client:
-                logger.info("Reconnected to Meshtastic successfully.")
-                break
-        except Exception as e:
-            logger.error(f"Reconnection attempt failed: {e}. Retrying in 5 seconds...")
-            await asyncio.sleep(5)  # Delay before next attempt
-
 
 # Callback for new messages from Meshtastic
 def on_meshtastic_message(packet, loop=None):
