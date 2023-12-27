@@ -26,7 +26,8 @@ from meshtastic_utils import (
     on_lost_meshtastic_connection,
     logger as meshtastic_logger,
     is_reconnect_needed,
-    reconnect_meshtastic
+    reconnect_meshtastic,
+    check_connection
 )
 
 logger = get_logger(name="M<>M Relay")
@@ -80,6 +81,9 @@ async def main():
     # Start a separate task for Matrix syncing
     sync_task = asyncio.create_task(matrix_sync(matrix_client))
 
+    # Start a separate task for checking Meshtastic connection
+    meshtastic_check_task = asyncio.create_task(check_connection())
+
     # Main loop
     while True:
         try:
@@ -89,7 +93,8 @@ async def main():
 
             # Check if reconnection is needed
             if is_reconnect_needed():
-                await reconnect_meshtastic()  # Perform reconnection
+                logger.info("Reconnection needed, attempting...")
+                await reconnect_meshtastic()
 
         except Exception as e:
             matrix_logger.error(f"Unexpected error occurred: {e}")

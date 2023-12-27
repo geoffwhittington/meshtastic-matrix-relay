@@ -23,6 +23,36 @@ def is_reconnect_needed():
     global reconnect_needed
     return reconnect_needed
 
+def is_connected():
+    """
+    Check if the Meshtastic device is connected.
+    Returns True if connected, False otherwise.
+    """
+    if meshtastic_client is None:
+        return False
+
+    if isinstance(meshtastic_client, meshtastic.serial_interface.SerialInterface):
+        # For serial connections, check if the serial port is open
+        return meshtastic_client.interface.is_open()
+
+    elif isinstance(meshtastic_client, meshtastic.tcp_interface.TCPInterface):
+        # For network connections, check if the socket is connected
+        return meshtastic_client.is_connected()
+
+    else:
+        # Unknown connection type
+        logger.error("Unknown Meshtastic connection type.")
+        return False
+
+async def check_connection():
+    global reconnect_needed
+    while True:
+        if not is_connected():  # Assuming 'is_connected' is a method that checks the connection
+            if not reconnect_needed:
+                logger.warning("Connection lost, marking for reconnection...")
+                reconnect_needed = True
+        await asyncio.sleep(30)  # Check every 30 seconds
+
 def on_lost_meshtastic_connection(interface):
     global reconnect_needed, is_initial_connection, meshtastic_client
     if not reconnect_needed:
@@ -39,9 +69,12 @@ def on_lost_meshtastic_connection(interface):
 async def reconnect_meshtastic():
     global meshtastic_client, reconnect_needed
     attempts = 0
+    max_attempts = 5
+    backoff_factor = 2
 
-    while not meshtastic_client and reconnect_needed:
+    while not meshtastic_client and reconnect_needed and attempts < max_attempts:
         attempts += 1
+        delay = min(5 * backoff_factor ** (attempts - 1), 60)  # Exponential backoff with a max delay
         logger.info(f"Reconnecting to Meshtastic (Attempt {attempts})...")
         meshtastic_client = connect_meshtastic()
 
@@ -49,7 +82,6 @@ async def reconnect_meshtastic():
             logger.info("Reconnected to Meshtastic successfully.")
             reconnect_needed = False
         else:
-            delay = min(attempts, 10)  # Cap the delay to 10 seconds
             logger.error(f"Reconnection attempt #{attempts} failed. Retrying in {delay} secs...")
             await asyncio.sleep(delay)
 
@@ -61,6 +93,8 @@ def connect_meshtastic():
     try:
         connection_type = relay_config["meshtastic"]["connection_type"]
         target = relay_config["meshtastic"]["serial_port"] if connection_type == "serial" else relay_config["meshtastic"]["host"]
+
+        logger.info(f"Attempting to connect to Meshtastic {connection_type} {target}...")
 
         if connection_type == "serial":
             meshtastic_client = meshtastic.serial_interface.SerialInterface(target)
