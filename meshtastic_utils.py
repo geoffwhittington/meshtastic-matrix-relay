@@ -17,9 +17,9 @@ logger = get_logger(name="Meshtastic")
 meshtastic_client = None
 
 
-def connect_meshtastic():
+def connect_meshtastic(force_connect=False):
     global meshtastic_client
-    if meshtastic_client:
+    if meshtastic_client and not force_connect:
         return meshtastic_client
     # Initialize Meshtastic interface
     connection_type = relay_config["meshtastic"]["connection_type"]
@@ -78,7 +78,7 @@ def connect_meshtastic():
 
 def on_lost_meshtastic_connection(interface):
     logger.error("Lost connection. Reconnecting...")
-    connect_meshtastic()
+    connect_meshtastic(force_connect=True)
 
 
 # Callback for new messages from Meshtastic
