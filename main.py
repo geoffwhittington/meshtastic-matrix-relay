@@ -70,9 +70,10 @@ async def main():
     # Start the Matrix client
     while True:
         try:
-            # Update longnames & shortnames
-            update_longnames(meshtastic_interface.nodes)
-            update_shortnames(meshtastic_interface.nodes)
+            if meshtastic_interface:
+                # Update longnames & shortnames
+                update_longnames(meshtastic_interface.nodes)
+                update_shortnames(meshtastic_interface.nodes)
 
             matrix_logger.info("Syncing with server...")
             await matrix_client.sync_forever(timeout=30000)
