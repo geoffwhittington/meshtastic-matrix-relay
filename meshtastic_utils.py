@@ -21,6 +21,9 @@ def connect_meshtastic(force_connect=False):
     global meshtastic_client
     if meshtastic_client and not force_connect:
         return meshtastic_client
+
+    meshtastic_client = None
+
     # Initialize Meshtastic interface
     connection_type = relay_config["meshtastic"]["connection_type"]
     retry_limit = (
