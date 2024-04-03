@@ -38,4 +38,3 @@ jobs:
           asset_name: MMRelay_setup.exe
           tag: ${{ github.ref }}
           overwrite: true
-          body: "Windows Installer"
