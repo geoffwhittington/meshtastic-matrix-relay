@@ -40,17 +40,12 @@ def connect_meshtastic(force_connect=False):
                 meshtastic_client = meshtastic.serial_interface.SerialInterface(serial_port)
             
             elif connection_type == "ble":
-                ble_address = relay_config["meshtastic"].get("ble_address")
-                ble_name = relay_config["meshtastic"].get("ble_name")
-
-                if ble_address:
-                    logger.info(f"Connecting to BLE address {ble_address} ...")
-                    meshtastic_client = meshtastic.ble_interface.BLEInterface(address=ble_address)
-                elif ble_name:
-                    logger.info(f"Connecting to BLE name {ble_name} ...")
-                    meshtastic_client = meshtastic.ble_interface.BLEInterface(address=ble_name)
+                ble_node = relay_config["meshtastic"].get("ble_node")
+                if ble_node:
+                    logger.info(f"Connecting to BLE node {ble_node} ...")
+                    meshtastic_client = meshtastic.ble_interface.BLEInterface(address=ble_node)
                 else:
-                    logger.error("No BLE address or name provided.")
+                    logger.error("No BLE node provided.")
                     return None
             
             else:
