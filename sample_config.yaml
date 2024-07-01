@@ -13,7 +13,7 @@ meshtastic:
   connection_type: serial # Choose either "network", "serial", or "ble"
   serial_port: /dev/ttyUSB0 # Only used when connection is "serial"
   host: "meshtastic.local" # Only used when connection is "network"
-  ble_node: "AA:BB:CC:DD:EE:FF" # Only used when connection is "ble" - Can be either an address or a name from a `meshtastic --ble-scan`
+  ble_address: "AA:BB:CC:DD:EE:FF" # Only used when connection is "ble" - Uses either an address or name from a `meshtastic --ble-scan`
   meshnet_name: "Your Meshnet Name" # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
   broadcast_enabled: true # Must be set to true to enable Matrix to Meshtastic messages
 
