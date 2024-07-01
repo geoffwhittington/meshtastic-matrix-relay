@@ -10,11 +10,13 @@ matrix_rooms: # Needs at least 1 room & channel, but supports all Meshtastic cha
     meshtastic_channel: 2
 
 meshtastic:
-  connection_type: serial # Choose either "network" or "serial"
+  connection_type: serial # Choose either "network", "serial", or "ble"
   serial_port: /dev/ttyUSB0 # Only used when connection is "serial"
   host: "meshtastic.local" # Only used when connection is "network"
+  ble_address: "AA:BB:CC:DD:EE:FF" # Only used when connection is "ble" - Choose one. If used, don't set `ble_name`
+  ble_name: "Your BLE Name" # Only used when connection is "ble" - Choose one. If used, don't set `ble_address`
   meshnet_name: "Your Meshnet Name" # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
-  broadcast_enabled: true
+  broadcast_enabled: true # Must be set to true to enable Matrix to Meshtastic messages
 
 logging:
   level: "info"
