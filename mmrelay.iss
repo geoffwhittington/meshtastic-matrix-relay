@@ -26,11 +26,11 @@ Filename: "{app}\mmrelay.bat"; Description: "Launch MM Relay"; Flags: nowait pos
 var
   TokenInfoLabel: TLabel;
   TokenInfoLink: TNewStaticText;
-  MatrixPage : TInputQueryWizardPage;
+  MatrixPage: TInputQueryWizardPage;
   OverwriteConfig: TInputOptionWizardPage;
-  MatrixMeshtasticPage : TInputQueryWizardPage;
-  MeshtasticPage : TInputQueryWizardPage;
-  OptionsPage : TInputOptionWizardPage;
+  MatrixMeshtasticPage: TInputQueryWizardPage;
+  MeshtasticPage: TInputQueryWizardPage;
+  OptionsPage: TInputOptionWizardPage;
   Connection: string;
 
 procedure TokenInfoLinkClick(Sender: TObject);
@@ -60,6 +60,9 @@ begin
   OptionsPage := CreateInputOptionPage(MatrixMeshtasticPage.ID, 
       'Additional Options', 'Provide additional options',
       'Set logging and broadcast options, you can keep the defaults.', False, False);
+
+  // Increase page height
+  WizardForm.ClientHeight := WizardForm.ClientHeight + 50;
   
   OverwriteConfig.Add('Generate configuration (overwrite any current config files)');
   OverwriteConfig.Values[0] := False;
@@ -109,26 +112,9 @@ begin
   OptionsPage.Add('Radio broadcasts enabled');
   OptionsPage.Values[0] := True;
   OptionsPage.Values[1] := True;
-
-  // Adjust the layout to add more space between elements
-  AdjustPageElements(MatrixPage);
-  AdjustPageElements(MeshtasticPage);
-  AdjustPageElements(MatrixMeshtasticPage);
 end;
 
-procedure AdjustPageElements(Page: TInputQueryWizardPage);
-var
-  i, NewTop: Integer;
-begin
-  NewTop := 0;
-  for i := 0 to Page.Edits.Count - 1 do
-  begin
-    Page.Edits[i].Top := NewTop;
-    NewTop := NewTop + Page.Edits[i].Height + 12; // Add more space between elements
-  end;
-end;
-
-function BoolToStr(Value : Boolean): String;
+function BoolToStr(Value: Boolean): String;
 begin
   if Value then
     result := 'true'
@@ -140,76 +126,76 @@ end;
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
   if PageID = OverwriteConfig.ID then
-      Result := False
+    Result := False
   else
-      Result := Not OverwriteConfig.Values[0];
+    Result := Not OverwriteConfig.Values[0];
 end;
 
 procedure AfterInstall(sAppDir: string);
 var
-    config: string;
-    connection_type: string;
-    serial_port: string;
-    host: string;
-    ble_address: string;
-    log_level: string;
-    batch_file: string;
+  config: string;
+  connection_type: string;
+  serial_port: string;
+  host: string;
+  ble_address: string;
+  log_level: string;
+  batch_file: string;
 begin
-    If Not OverwriteConfig.Values[0] then
-      Exit;
+  If Not OverwriteConfig.Values[0] then
+    Exit;
 
-    if (FileExists(sAppDir+'/config.yaml')) then
-    begin
-        RenameFile(sAppDir+'/config.yaml', sAppDir+'/config-old.yaml');
-    end;
+  if (FileExists(sAppDir + '/config.yaml')) then
+  begin
+    RenameFile(sAppDir + '/config.yaml', sAppDir + '/config-old.yaml');
+  end;
 
-    connection_type := MeshtasticPage.Values[0];
-    serial_port := MeshtasticPage.Values[1];
-    host := MeshtasticPage.Values[2];
-    ble_address := MeshtasticPage.Values[3];
+  connection_type := MeshtasticPage.Values[0];
+  serial_port := MeshtasticPage.Values[1];
+  host := MeshtasticPage.Values[2];
+  ble_address := MeshtasticPage.Values[3];
 
-    if OptionsPage.Values[0] then
-    begin
-        log_level := 'debug';
-    end
-    else
-    begin
-        log_level := 'info';
-    end;
+  if OptionsPage.Values[0] then
+  begin
+    log_level := 'debug';
+  end
+  else
+  begin
+    log_level := 'info';
+  end;
 
-    config := 'matrix:' + #13#10 +
-              '  homeserver: "' + MatrixPage.Values[0] + '"' +  #13#10 +
-              '  bot_user_id: "' + MatrixPage.Values[1] + '"' + #13#10 +
-              '  access_token: "' + MatrixPage.Values[2] + '"' + #13#10 +
-              'matrix_rooms:' + #13#10 +
-              '  - id: "' + MatrixMeshtasticPage.Values[0] + '"' + #13#10 +
-              '    meshtastic_channel: ' + MatrixMeshtasticPage.Values[1] + #13#10 +
-              'meshtastic:' + #13#10 +
-              '  connection_type: "' + connection_type + '"' + #13#10;
+  config := 'matrix:' + #13#10 +
+            '  homeserver: "' + MatrixPage.Values[0] + '"' + #13#10 +
+            '  bot_user_id: "' + MatrixPage.Values[1] + '"' + #13#10 +
+            '  access_token: "' + MatrixPage.Values[2] + '"' + #13#10 +
+            'matrix_rooms:' + #13#10 +
+            '  - id: "' + MatrixMeshtasticPage.Values[0] + '"' + #13#10 +
+            '    meshtastic_channel: ' + MatrixMeshtasticPage.Values[1] + #13#10 +
+            'meshtastic:' + #13#10 +
+            '  connection_type: "' + connection_type + '"' + #13#10;
 
-    if connection_type = 'serial' then
-        config := config + '  serial_port: "' + serial_port + '"' + #13#10
-    else if connection_type = 'network' then
-        config := config + '  host: "' + host + '"' + #13#10
-    else if connection_type = 'ble' then
-        config := config + '  ble_address: "' + ble_address + '"' + #13#10;
+  if connection_type = 'serial' then
+    config := config + '  serial_port: "' + serial_port + '"' + #13#10
+  else if connection_type = 'network' then
+    config := config + '  host: "' + host + '"' + #13#10
+  else if connection_type = 'ble' then
+    config := config + '  ble_address: "' + ble_address + '"' + #13#10;
 
-    config := config + '  meshnet_name: "' + MeshtasticPage.Values[4] + '"' + #13#10 +
-              '  broadcast_enabled: ' + BoolToStr(OptionsPage.Values[1]) + #13#10 +
-              'logging:' + #13#10 +
-              '  level: "' + log_level + '"' + #13#10 +
-              'plugins:' + #13#10;
+  config := config + '  meshnet_name: "' + MeshtasticPage.Values[4] + '"' + #13#10 +
+            '  broadcast_enabled: ' + BoolToStr(OptionsPage.Values[1]) + #13#10 +
+            'logging:' + #13#10 +
+            '  level: "' + log_level + '"' + #13#10 +
+            'plugins:' + #13#10;
 
-    if Not SaveStringToFile(sAppDir+'/config.yaml', config, false) then
-    begin
-        MsgBox('Could not create config file "config.yaml". Close any applications that may have it open and re-run setup', mbInformation, MB_OK);
-    end;
+  if Not SaveStringToFile(sAppDir + '/config.yaml', config, false) then
+  begin
+    MsgBox('Could not create config file "config.yaml". Close any applications that may have it open and re-run setup', mbInformation, MB_OK);
+  end;
 
-    batch_file := '"' + sAppDir+ '\mmrelay.exe" config.yaml ' + #13#10 +
-                  'pause';
+  batch_file := '"' + sAppDir + '\mmrelay.exe" config.yaml ' + #13#10 +
+                'pause';
 
-    if Not SaveStringToFile(sAppDir+'/mmrelay.bat', batch_file, false) then
-    begin
-        MsgBox('Could not create batch file "relay.bat". Close any applications that may have it open and re-run setup', mbInformation, MB_OK);
-    end;
+  if Not SaveStringToFile(sAppDir + '/mmrelay.bat', batch_file, false) then
+  begin
+    MsgBox('Could not create batch file "relay.bat". Close any applications that may have it open and re-run setup', mbInformation, MB_OK);
+  end;
 end;
