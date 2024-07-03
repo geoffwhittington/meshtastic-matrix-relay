@@ -58,7 +58,7 @@ begin
       'Matrix <> Meshtastic Setup', 'Configure Matrix <> Meshtastic Settings',
       'Connect a Matrix room with a Meshtastic radio channel.');
   OptionsPage := CreateInputOptionPage(MatrixMeshtasticPage.ID, 
-      'Additional Options', 'Provide additional optios',
+      'Additional Options', 'Provide additional options',
       'Set logging and broadcast options, you can keep the defaults.', False, False);
   
   OverwriteConfig.Add('Generate configuration (overwrite any current config files)');
@@ -84,20 +84,21 @@ begin
   TokenInfoLink.Left := TokenInfoLabel.Left;
   TokenInfoLink.Top := TokenInfoLabel.Top + TokenInfoLabel.Height;
 
-
   MatrixPage.Edits[0].Hint := 'https://example.matrix.org';
   MatrixPage.Edits[1].Hint := '@botuser:example.matrix.org';
   MatrixPage.Edits[2].Hint := 'reaalllllyloooooongsecretttttcodeeeeeeforrrrbot';
 
-  MeshtasticPage.Add('Connection Type (network or serial)?', False);
+  MeshtasticPage.Add('Connection Type (network, serial, or ble)?', False);
   MeshtasticPage.Add('Serial Port (if serial):', False);
   MeshtasticPage.Add('Hostname/IP (If network):', False);
+  MeshtasticPage.Add('BLE Address/Name (if ble):', False);
   MeshtasticPage.Add('Meshnet Name:', False);
-  MeshtasticPage.Edits[0].Hint := 'serial or network';
+
+  MeshtasticPage.Edits[0].Hint := 'network, serial, or ble';
   MeshtasticPage.Edits[1].Hint := 'serial port (if serial)';
   MeshtasticPage.Edits[2].Hint := 'hostname/IP (if network)';
-  MeshtasticPage.Edits[3].Hint := 'Name for radio Meshnet';
-
+  MeshtasticPage.Edits[3].Hint := 'BLE address or name (if ble)';
+  MeshtasticPage.Edits[4].Hint := 'Name for radio Meshnet';
 
   MatrixMeshtasticPage.Add('Matrix Room ID/Alias (example: #someroom:example.matrix.org)', False);
   MatrixMeshtasticPage.Add('Meshtastic Channel # (0 is Primary, 1-7 Secondary)', False);
@@ -133,6 +134,7 @@ var
     connection_type: string;
     serial_port: string;
     host: string;
+    ble_address: string;
     log_level: string;
     batch_file: string;
 begin
@@ -147,6 +149,7 @@ begin
     connection_type := MeshtasticPage.Values[0];
     serial_port := MeshtasticPage.Values[1];
     host := MeshtasticPage.Values[2];
+    ble_address := MeshtasticPage.Values[3];
 
     if OptionsPage.Values[0] then
     begin
@@ -165,10 +168,16 @@ begin
               '  - id: "' + MatrixMeshtasticPage.Values[0] + '"' + #13#10 +
               '    meshtastic_channel: ' + MatrixMeshtasticPage.Values[1] + #13#10 +
               'meshtastic:' + #13#10 +
-              '  connection_type: "' + connection_type + '"' + #13#10 +
-              '  serial_port: "' + serial_port + '"' + #13#10 +
-              '  host: "' + host + '"' + #13#10 +
-              '  meshnet_name: "' + MeshtasticPage.Values[3] + '"' + #13#10 +
+              '  connection_type: "' + connection_type + '"' + #13#10;
+
+    if connection_type = 'serial' then
+        config := config + '  serial_port: "' + serial_port + '"' + #13#10
+    else if connection_type = 'network' then
+        config := config + '  host: "' + host + '"' + #13#10
+    else if connection_type = 'ble' then
+        config := config + '  ble_address: "' + ble_address + '"' + #13#10;
+
+    config := config + '  meshnet_name: "' + MeshtasticPage.Values[4] + '"' + #13#10 +
               '  broadcast_enabled: ' + BoolToStr(OptionsPage.Values[1]) + #13#10 +
               'logging:' + #13#10 +
               '  level: "' + log_level + '"' + #13#10 +
@@ -186,6 +195,4 @@ begin
     begin
         MsgBox('Could not create batch file "relay.bat". Close any applications that may have it open and re-run setup', mbInformation, MB_OK);
     end;
-
-
 end;
