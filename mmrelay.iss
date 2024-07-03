@@ -109,6 +109,23 @@ begin
   OptionsPage.Add('Radio broadcasts enabled');
   OptionsPage.Values[0] := True;
   OptionsPage.Values[1] := True;
+
+  // Adjust the layout to add more space between elements
+  AdjustPageElements(MatrixPage);
+  AdjustPageElements(MeshtasticPage);
+  AdjustPageElements(MatrixMeshtasticPage);
+end;
+
+procedure AdjustPageElements(Page: TInputQueryWizardPage);
+var
+  i, NewTop: Integer;
+begin
+  NewTop := 0;
+  for i := 0 to Page.Edits.Count - 1 do
+  begin
+    Page.Edits[i].Top := NewTop;
+    NewTop := NewTop + Page.Edits[i].Height + 12; // Add more space between elements
+  end;
 end;
 
 function BoolToStr(Value : Boolean): String;
