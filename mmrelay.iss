@@ -64,9 +64,9 @@ begin
   OverwriteConfig.Add('Generate configuration (overwrite any current config files)');
   OverwriteConfig.Values[0] := False;
 
-  MatrixPage.Add('Homeserver: (example: https://matrix.org)', False);
-  MatrixPage.Add('Bot User ID (example: @mybotuser:matrix.org)', False);
-  MatrixPage.Add('Access Token (example: syt_bWvzaGjvdD1_PwsXoZgGItImVxBIZbBK_1XZVW8)', False);
+  MatrixPage.Add('Homeserver (example: https://matrix.org):', False);
+  MatrixPage.Add('Bot user ID (example: @mybotuser:matrix.org):', False);
+  MatrixPage.Add('Access token (example: syt_bWvzaGjvdD1_PwsXoZgGItImVxBIZbBK_1XZVW8):', False);
 
   TokenInfoLabel := TLabel.Create(WizardForm);
   TokenInfoLabel.Caption := 'For instructions on where to find your access token, visit:';
@@ -88,11 +88,11 @@ begin
   MatrixPage.Edits[1].Hint := '@botuser:example.matrix.org';
   MatrixPage.Edits[2].Hint := 'reaalllllyloooooongsecretttttcodeeeeeeforrrrbot';
 
-  MeshtasticPage.Add('Connection Type (network, serial, or ble)?', False);
-  MeshtasticPage.Add('Serial Port (if serial):', False);
-  MeshtasticPage.Add('Hostname/IP (If network):', False);
-  MeshtasticPage.Add('BLE Address/Name (if ble):', False);
-  MeshtasticPage.Add('Meshnet Name:', False);
+  MeshtasticPage.Add('Connection type (network, serial, or ble):', False);
+  MeshtasticPage.Add('Serial port (if serial):', False);
+  MeshtasticPage.Add('Hostname/IP (if network):', False);
+  MeshtasticPage.Add('BLE address/name (if ble):', False);
+  MeshtasticPage.Add('Meshnet name:', False);
 
   MeshtasticPage.Edits[0].Hint := 'network, serial, or ble';
   MeshtasticPage.Edits[1].Hint := 'serial port (if serial)';
@@ -100,8 +100,8 @@ begin
   MeshtasticPage.Edits[3].Hint := 'BLE address or name (if ble)';
   MeshtasticPage.Edits[4].Hint := 'Name for radio Meshnet';
 
-  MatrixMeshtasticPage.Add('Matrix Room ID/Alias (example: #someroom:example.matrix.org)', False);
-  MatrixMeshtasticPage.Add('Meshtastic Channel # (0 is Primary, 1-7 Secondary)', False);
+  MatrixMeshtasticPage.Add('Matrix room ID/alias (example: #someroom:example.matrix.org):', False);
+  MatrixMeshtasticPage.Add('Meshtastic channel # (0 is primary, 1-7 secondary):', False);
   MatrixMeshtasticPage.Edits[0].Hint := '!someroomid:example.matrix.org';
   MatrixMeshtasticPage.Edits[1].Hint := '0-7 (default 0)';
 
