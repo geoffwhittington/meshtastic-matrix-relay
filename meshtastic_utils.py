@@ -41,11 +41,12 @@ def connect_meshtastic(force_connect=False):
             
             elif connection_type == "ble":
                 ble_address = relay_config["meshtastic"].get("ble_address")
+
                 if ble_address:
-                    logger.info(f"Connecting to BLE address or name {ble_address} ...")
+                    logger.info(f"Connecting to BLE address {ble_address} ...")
                     meshtastic_client = meshtastic.ble_interface.BLEInterface(address=ble_address)
                 else:
-                    logger.error("No BLE address or name provided.")
+                    logger.error("No BLE address provided.")
                     return None
             
             else:
@@ -157,3 +158,22 @@ def on_meshtastic_message(packet, loop=None):
                 found_matching_plugin = result.result()
                 if found_matching_plugin:
                     logger.debug(f"Processed {portnum} with plugin {plugin.plugin_name}")
+
+async def check_connection():
+    global meshtastic_client
+    connection_type = relay_config["meshtastic"]["connection_type"]
+    while True:
+        if meshtastic_client:
+            try:
+                # Attempt a read operation to check if the connection is alive
+                meshtastic_client.getMyNodeInfo()
+            except Exception as e:
+                logger.error(f"{connection_type.capitalize()} connection lost: {e}")
+                on_lost_meshtastic_connection(meshtastic_client)
+        await asyncio.sleep(60)  # Check connection every 60 seconds
+
+if __name__ == "__main__":
+    meshtastic_client = connect_meshtastic()
+    loop = asyncio.get_event_loop()
+    loop.create_task(check_connection())
+    loop.run_forever()
