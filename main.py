@@ -3,7 +3,6 @@ This script connects a Meshtastic mesh network to Matrix chat rooms by relaying 
 It uses Meshtastic-python and Matrix nio client library to interface with the radio and the Matrix server respectively.
 """
 import asyncio
-import signal
 from nio import (
     RoomMessageText,
     RoomMessageNotice,
@@ -24,7 +23,6 @@ from meshtastic_utils import (
     connect_meshtastic,
     on_meshtastic_message,
     on_lost_meshtastic_connection,
-    check_connection,
     logger as meshtastic_logger,
 )
 
@@ -33,15 +31,7 @@ meshtastic_interface = connect_meshtastic()
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 matrix_access_token = relay_config["matrix"]["access_token"]
 
-# Function to handle graceful shutdown
-def shutdown(signal, loop):
-    logger.info(f"Received exit signal {signal.name}...")
-    tasks = asyncio.all_tasks(loop=loop)
-    for task in tasks:
-        task.cancel()
-    loop.stop()
-
-async def main(loop):
+async def main():
     # Initialize the SQLite database
     initialize_database()
 
@@ -63,14 +53,18 @@ async def main(loop):
 
     # Register the Meshtastic message callback
     meshtastic_logger.info(f"Listening for inbound radio messages ...")
-    pub.subscribe(on_meshtastic_message, "meshtastic.receive", loop=loop)
-    pub.subscribe(on_lost_meshtastic_connection, "meshtastic.connection.lost", loop=loop)
-    
-    loop.create_task(check_connection(loop))
-
+    pub.subscribe(
+        on_meshtastic_message, "meshtastic.receive", loop=asyncio.get_event_loop()
+    )
+    pub.subscribe(
+        on_lost_meshtastic_connection,
+        "meshtastic.connection.lost",
+    )
     # Register the message callback
     matrix_logger.info(f"Listening for inbound matrix messages ...")
-    matrix_client.add_event_callback(on_room_message, (RoomMessageText, RoomMessageNotice))
+    matrix_client.add_event_callback(
+        on_room_message, (RoomMessageText, RoomMessageNotice)
+    )
 
     # Start the Matrix client
     while True:
@@ -88,12 +82,5 @@ async def main(loop):
 
         await asyncio.sleep(60)  # Update longnames & shortnames every 60 seconds
 
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, shutdown, sig, loop)
 
-    try:
-        loop.run_until_complete(main(loop))
-    finally:
-        loop.close()
+asyncio.run(main())
