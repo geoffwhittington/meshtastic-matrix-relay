@@ -45,7 +45,13 @@ def connect_meshtastic(force_connect=False):
                 ble_address = relay_config["meshtastic"].get("ble_address")
                 if ble_address:
                     logger.info(f"Connecting to BLE address {ble_address} ...")
-                    meshtastic_client = meshtastic.ble_interface.BLEInterface(address=ble_address, disconnected_callback=on_ble_disconnected)
+                    meshtastic_client = meshtastic.ble_interface.BLEInterface(
+                        address=ble_address, 
+                        noProto=False, 
+                        debugOut=None, 
+                        noNodes=False
+                    )
+                    meshtastic_client.client.set_disconnected_callback(on_ble_disconnected)
                 else:
                     logger.error("No BLE address provided.")
                     return None
@@ -70,7 +76,7 @@ def connect_meshtastic(force_connect=False):
 
     return meshtastic_client
 
-def on_ble_disconnected():
+def on_ble_disconnected(client):
     logger.error("BLE disconnected. Reconnecting...")
     asyncio.get_event_loop().create_task(reconnect())
 
