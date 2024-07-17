@@ -30,15 +30,10 @@ def connect_meshtastic(force_connect=False):
 
     # Initialize Meshtastic interface
     connection_type = relay_config["meshtastic"]["connection_type"]
-    retry_limit = (
-        relay_config["meshtastic"]["retry_limit"]
-        if "retry_limit" in relay_config["meshtastic"]
-        else 3
-    )
-    attempts = 1
-    successful = False
+    max_backoff = 60  # maximum backoff time in seconds
+    backoff = 1       # initial backoff time in seconds
 
-    while not successful and attempts <= retry_limit:
+    while True:
         try:
             if connection_type == "serial":
                 serial_port = relay_config["meshtastic"]["serial_port"]
@@ -59,18 +54,14 @@ def connect_meshtastic(force_connect=False):
                 logger.info(f"Connecting to host {target_host} ...")
                 meshtastic_client = meshtastic.tcp_interface.TCPInterface(hostname=target_host)
 
-            successful = True
             nodeInfo = meshtastic_client.getMyNodeInfo()
             logger.info(f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}")
+            break  # exit the retry loop on successful connection
         
         except Exception as e:
-            attempts += 1
-            if attempts <= retry_limit:
-                logger.warning(f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}")
-                time.sleep(attempts)
-            else:
-                logger.error(f"Could not connect: {e}")
-                return None
+            logger.error(f"Connection attempt failed: {e}")
+            time.sleep(backoff)
+            backoff = min(backoff * 2, max_backoff)  # exponential backoff with a maximum limit
 
     return meshtastic_client
 
