@@ -8,6 +8,7 @@ from config import relay_config
 from log_utils import get_logger
 from db_utils import get_longname, get_shortname
 from plugin_loader import load_plugins
+from bleak.exc import BleakDBusError, BleakError
 
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 
@@ -64,7 +65,7 @@ def connect_meshtastic(force_connect=False):
             nodeInfo = meshtastic_client.getMyNodeInfo()
             logger.info(f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}")
         
-        except Exception as e:
+        except (BleakDBusError, BleakError, meshtastic.ble_interface.BLEInterface.BLEError, Exception) as e:
             attempts += 1
             if attempts <= retry_limit:
                 logger.warning(f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}")
@@ -74,10 +75,6 @@ def connect_meshtastic(force_connect=False):
                 return None
 
     return meshtastic_client
-
-def on_ble_disconnected(client):
-    logger.error("BLE disconnected. Reconnecting...")
-    asyncio.get_event_loop().create_task(reconnect())
 
 def on_lost_meshtastic_connection(interface):
     logger.error("Lost connection. Reconnecting...")
@@ -189,7 +186,7 @@ async def check_connection():
             try:
                 # Attempt a read operation to check if the connection is alive
                 meshtastic_client.getMyNodeInfo()
-            except Exception as e:
+            except (BleakDBusError, BleakError, meshtastic.ble_interface.BLEInterface.BLEError, Exception) as e:
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
                 on_lost_meshtastic_connection(meshtastic_client)
         await asyncio.sleep(5)  # Check connection every 5 seconds
