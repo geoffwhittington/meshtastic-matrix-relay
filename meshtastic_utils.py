@@ -76,7 +76,7 @@ def connect_meshtastic(force_connect=False):
 
     return meshtastic_client
 
-def on_lost_meshtastic_connection(interface):
+def on_lost_meshtastic_connection(interface=None):
     logger.error("Lost connection. Reconnecting...")
     asyncio.get_event_loop().create_task(reconnect())
 
