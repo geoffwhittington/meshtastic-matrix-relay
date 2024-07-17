@@ -45,7 +45,7 @@ def connect_meshtastic(force_connect=False):
                 ble_address = relay_config["meshtastic"].get("ble_address")
                 if ble_address:
                     logger.info(f"Connecting to BLE address {ble_address} ...")
-                    meshtastic_client = meshtastic.ble_interface.BLEInterface(address=ble_address)
+                    meshtastic_client = meshtastic.ble_interface.BLEInterface(address=ble_address, disconnected_callback=on_ble_disconnected)
                 else:
                     logger.error("No BLE address provided.")
                     return None
@@ -62,13 +62,17 @@ def connect_meshtastic(force_connect=False):
         except Exception as e:
             attempts += 1
             if attempts <= retry_limit:
-                logger.warn(f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}")
+                logger.warning(f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}")
                 time.sleep(attempts)
             else:
                 logger.error(f"Could not connect: {e}")
                 return None
 
     return meshtastic_client
+
+def on_ble_disconnected():
+    logger.error("BLE disconnected. Reconnecting...")
+    asyncio.get_event_loop().create_task(reconnect())
 
 def on_lost_meshtastic_connection(interface):
     logger.error("Lost connection. Reconnecting...")
