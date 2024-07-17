@@ -69,7 +69,7 @@ def connect_meshtastic(force_connect=False):
 
 async def reconnect(loop):
     global reconnecting
-    backoff = 1
+    backoff = 10  # Initial backoff is now 10 seconds
     max_backoff = 60
     while reconnecting:
         connect_meshtastic(force_connect=True)
