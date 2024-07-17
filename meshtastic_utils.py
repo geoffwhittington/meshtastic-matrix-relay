@@ -22,7 +22,10 @@ def connect_meshtastic(force_connect=False):
 
     # Ensure previous connection is closed
     if meshtastic_client:
-        meshtastic_client.close()
+        try:
+            meshtastic_client.close()
+        except Exception as e:
+            logger.error(f"Error while closing previous connection: {e}")
         meshtastic_client = None
 
     # Initialize Meshtastic interface
@@ -44,7 +47,6 @@ def connect_meshtastic(force_connect=False):
             
             elif connection_type == "ble":
                 ble_address = relay_config["meshtastic"].get("ble_address")
-
                 if ble_address:
                     logger.info(f"Connecting to BLE address {ble_address} ...")
                     meshtastic_client = meshtastic.ble_interface.BLEInterface(address=ble_address)
@@ -64,7 +66,7 @@ def connect_meshtastic(force_connect=False):
         except Exception as e:
             attempts += 1
             if attempts <= retry_limit:
-                logger.warn(f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}")
+                logger.warning(f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}")
                 time.sleep(attempts)
             else:
                 logger.error(f"Could not connect: {e}")
