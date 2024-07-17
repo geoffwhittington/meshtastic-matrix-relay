@@ -64,7 +64,7 @@ def connect_meshtastic(force_connect=False):
         except Exception as e:
             attempts += 1
             if attempts <= retry_limit:
-                logger.warn(f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}")
+                logger.warning(f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}")
                 time.sleep(attempts)
             else:
                 logger.error(f"Could not connect: {e}")
