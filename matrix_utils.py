@@ -140,8 +140,12 @@ async def on_room_message(
     full_display_name = "Unknown user"
     message_timestamp = event.server_timestamp
 
+    # Detailed logging for timestamp comparison
+    logger.debug(f"Message timestamp: {message_timestamp}, Bot start time: {bot_start_time}")
+
     # We do not relay the past
     if message_timestamp < bot_start_time:
+        logger.debug(f"Ignoring old message received at {message_timestamp}")
         return
 
     room_config = None
