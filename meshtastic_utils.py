@@ -72,7 +72,9 @@ async def reconnect(loop):
     backoff = 10  # Initial backoff is now 10 seconds
     max_backoff = 60
     while reconnecting:
-        connect_meshtastic(force_connect=True)
+        meshtastic_client = connect_meshtastic(force_connect=True)
+        if meshtastic_client:
+            logger.info("Reconnection successful.")
         await asyncio.sleep(backoff)
         backoff = min(backoff * 2, max_backoff)
 
