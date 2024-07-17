@@ -47,7 +47,10 @@ def connect_meshtastic(force_connect=False):
 
                 if ble_address:
                     logger.info(f"Connecting to BLE address {ble_address} ...")
-                    meshtastic_client = meshtastic.ble_interface.BLEInterface(address=ble_address)
+                    meshtastic_client = meshtastic.ble_interface.BLEInterface(
+                        address=ble_address, 
+                        disconnected_callback=lambda _: on_lost_meshtastic_connection()
+                    )
                 else:
                     logger.error("No BLE address provided.")
                     return None
@@ -64,7 +67,7 @@ def connect_meshtastic(force_connect=False):
         except Exception as e:
             attempts += 1
             if attempts <= retry_limit:
-                logger.warning(f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}")
+                logger.warn(f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}")
                 time.sleep(attempts)
             else:
                 logger.error(f"Could not connect: {e}")
@@ -72,7 +75,7 @@ def connect_meshtastic(force_connect=False):
 
     return meshtastic_client
 
-def on_lost_meshtastic_connection(interface):
+def on_lost_meshtastic_connection():
     logger.error("Lost connection. Reconnecting...")
     asyncio.get_event_loop().create_task(reconnect())
 
@@ -184,7 +187,7 @@ async def check_connection():
                 meshtastic_client.getMyNodeInfo()
             except Exception as e:
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
-                on_lost_meshtastic_connection(meshtastic_client)
+                on_lost_meshtastic_connection()
         await asyncio.sleep(5)  # Check connection every 5 seconds
 
 if __name__ == "__main__":
