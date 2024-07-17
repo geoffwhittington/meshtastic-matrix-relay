@@ -67,7 +67,7 @@ def connect_meshtastic(force_connect=False):
 
     return meshtastic_client
 
-async def reconnect():
+async def reconnect(loop):
     global reconnecting
     backoff = 1
     max_backoff = 60
@@ -76,13 +76,13 @@ async def reconnect():
         await asyncio.sleep(backoff)
         backoff = min(backoff * 2, max_backoff)
 
-def on_lost_meshtastic_connection(interface):
+def on_lost_meshtastic_connection(interface, loop):
     global reconnecting
     if reconnecting:
         return
     reconnecting = True
     logger.error("Lost connection. Reconnecting...")
-    asyncio.get_event_loop().create_task(reconnect())
+    loop.create_task(reconnect(loop))
 
 def on_meshtastic_message(packet, loop=None):
     from matrix_utils import matrix_relay
@@ -170,7 +170,7 @@ def on_meshtastic_message(packet, loop=None):
                 if found_matching_plugin:
                     logger.debug(f"Processed {portnum} with plugin {plugin.plugin_name}")
 
-async def check_connection():
+async def check_connection(loop):
     global meshtastic_client, reconnecting
     connection_type = relay_config["meshtastic"]["connection_type"]
     while True:
@@ -180,11 +180,5 @@ async def check_connection():
                 meshtastic_client.getMyNodeInfo()
             except Exception as e:
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
-                on_lost_meshtastic_connection(meshtastic_client)
+                on_lost_meshtastic_connection(meshtastic_client, loop)
         await asyncio.sleep(5)  # Check connection every 5 seconds
-
-if __name__ == "__main__":
-    meshtastic_client = connect_meshtastic()
-    loop = asyncio.get_event_loop()
-    loop.create_task(check_connection())
-    loop.run_forever()
