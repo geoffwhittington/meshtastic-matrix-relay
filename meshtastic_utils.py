@@ -51,7 +51,6 @@ def connect_meshtastic(force_connect=False):
                         debugOut=None, 
                         noNodes=False
                     )
-                    meshtastic_client.client.set_disconnected_callback(on_ble_disconnected)
                 else:
                     logger.error("No BLE address provided.")
                     return None
