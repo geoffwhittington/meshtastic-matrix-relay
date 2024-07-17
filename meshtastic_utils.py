@@ -20,7 +20,10 @@ def connect_meshtastic(force_connect=False):
     if meshtastic_client and not force_connect:
         return meshtastic_client
 
-    meshtastic_client = None
+    # Ensure previous connection is closed
+    if meshtastic_client:
+        meshtastic_client.close()
+        meshtastic_client = None
 
     # Initialize Meshtastic interface
     connection_type = relay_config["meshtastic"]["connection_type"]
@@ -170,7 +173,7 @@ async def check_connection():
             except Exception as e:
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
                 on_lost_meshtastic_connection(meshtastic_client)
-        await asyncio.sleep(60)  # Check connection every 60 seconds
+        await asyncio.sleep(5)  # Check connection every 5 seconds
 
 if __name__ == "__main__":
     meshtastic_client = connect_meshtastic()
