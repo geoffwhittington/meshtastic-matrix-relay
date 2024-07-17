@@ -162,7 +162,7 @@ def on_meshtastic_message(packet, loop=None):
                     logger.debug(f"Processed {portnum} with plugin {plugin.plugin_name}")
 
 async def check_connection():
-    global meshtastic_client
+    global meshtastic_client, reconnecting
     connection_type = relay_config["meshtastic"]["connection_type"]
     while True:
         if meshtastic_client:
