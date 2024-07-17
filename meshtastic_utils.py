@@ -14,27 +14,28 @@ matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 logger = get_logger(name="Meshtastic")
 
 meshtastic_client = None
-reconnecting = False
 
 def connect_meshtastic(force_connect=False):
-    global meshtastic_client, reconnecting
+    global meshtastic_client
     if meshtastic_client and not force_connect:
         return meshtastic_client
 
     # Ensure previous connection is closed
     if meshtastic_client:
-        try:
-            meshtastic_client.close()
-        except Exception as e:
-            logger.error(f"Error while closing previous connection: {e}")
+        meshtastic_client.close()
         meshtastic_client = None
 
     # Initialize Meshtastic interface
     connection_type = relay_config["meshtastic"]["connection_type"]
-    max_backoff = 60  # maximum backoff time in seconds
-    backoff = 1       # initial backoff time in seconds
+    retry_limit = (
+        relay_config["meshtastic"]["retry_limit"]
+        if "retry_limit" in relay_config["meshtastic"]
+        else 3
+    )
+    attempts = 1
+    successful = False
 
-    while True:
+    while not successful and attempts <= retry_limit:
         try:
             if connection_type == "serial":
                 serial_port = relay_config["meshtastic"]["serial_port"]
@@ -43,6 +44,7 @@ def connect_meshtastic(force_connect=False):
             
             elif connection_type == "ble":
                 ble_address = relay_config["meshtastic"].get("ble_address")
+
                 if ble_address:
                     logger.info(f"Connecting to BLE address {ble_address} ...")
                     meshtastic_client = meshtastic.ble_interface.BLEInterface(address=ble_address)
@@ -55,36 +57,36 @@ def connect_meshtastic(force_connect=False):
                 logger.info(f"Connecting to host {target_host} ...")
                 meshtastic_client = meshtastic.tcp_interface.TCPInterface(hostname=target_host)
 
+            successful = True
             nodeInfo = meshtastic_client.getMyNodeInfo()
             logger.info(f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}")
-            reconnecting = False
-            break  # exit the retry loop on successful connection
         
         except Exception as e:
-            logger.error(f"Connection attempt failed: {e}")
-            time.sleep(backoff)
-            backoff = min(backoff * 2, max_backoff)  # exponential backoff with a maximum limit
+            attempts += 1
+            if attempts <= retry_limit:
+                logger.warn(f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}")
+                time.sleep(attempts)
+            else:
+                logger.error(f"Could not connect: {e}")
+                return None
 
     return meshtastic_client
 
-async def reconnect(loop):
-    global reconnecting
-    backoff = 10  # Initial backoff is now 10 seconds
-    max_backoff = 60
-    while reconnecting:
-        meshtastic_client = connect_meshtastic(force_connect=True)
-        if meshtastic_client:
-            logger.info("Reconnection successful.")
-        await asyncio.sleep(backoff)
-        backoff = min(backoff * 2, max_backoff)
-
-def on_lost_meshtastic_connection(interface, loop):
-    global reconnecting
-    if reconnecting:
-        return
-    reconnecting = True
+def on_lost_meshtastic_connection(interface):
     logger.error("Lost connection. Reconnecting...")
-    loop.create_task(reconnect(loop))
+    asyncio.get_event_loop().create_task(reconnect())
+
+async def reconnect():
+    backoff_time = 10
+    while True:
+        try:
+            await asyncio.sleep(backoff_time)
+            connect_meshtastic(force_connect=True)
+            logger.info("Reconnected successfully.")
+            break
+        except Exception as e:
+            logger.error(f"Reconnection attempt failed: {e}")
+            backoff_time = min(backoff_time * 2, 300)  # Cap backoff at 5 minutes
 
 def on_meshtastic_message(packet, loop=None):
     from matrix_utils import matrix_relay
@@ -172,8 +174,8 @@ def on_meshtastic_message(packet, loop=None):
                 if found_matching_plugin:
                     logger.debug(f"Processed {portnum} with plugin {plugin.plugin_name}")
 
-async def check_connection(loop):
-    global meshtastic_client, reconnecting
+async def check_connection():
+    global meshtastic_client
     connection_type = relay_config["meshtastic"]["connection_type"]
     while True:
         if meshtastic_client:
@@ -182,5 +184,11 @@ async def check_connection(loop):
                 meshtastic_client.getMyNodeInfo()
             except Exception as e:
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
-                on_lost_meshtastic_connection(meshtastic_client, loop)
+                on_lost_meshtastic_connection(meshtastic_client)
         await asyncio.sleep(5)  # Check connection every 5 seconds
+
+if __name__ == "__main__":
+    meshtastic_client = connect_meshtastic()
+    loop = asyncio.get_event_loop()
+    loop.create_task(check_connection())
+    loop.run_forever()
