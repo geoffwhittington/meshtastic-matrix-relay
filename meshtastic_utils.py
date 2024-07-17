@@ -22,16 +22,15 @@ def connect_meshtastic(force_connect=False):
 
     # Ensure previous connection is closed
     if meshtastic_client:
-        meshtastic_client.close()
+        try:
+            meshtastic_client.close()
+        except Exception as e:
+            logger.warning(f"Error closing previous connection: {e}")
         meshtastic_client = None
 
     # Initialize Meshtastic interface
     connection_type = relay_config["meshtastic"]["connection_type"]
-    retry_limit = (
-        relay_config["meshtastic"]["retry_limit"]
-        if "retry_limit" in relay_config["meshtastic"]
-        else 3
-    )
+    retry_limit = relay_config["meshtastic"].get("retry_limit", 3)
     attempts = 1
     successful = False
 
@@ -44,13 +43,9 @@ def connect_meshtastic(force_connect=False):
             
             elif connection_type == "ble":
                 ble_address = relay_config["meshtastic"].get("ble_address")
-
                 if ble_address:
                     logger.info(f"Connecting to BLE address {ble_address} ...")
-                    meshtastic_client = meshtastic.ble_interface.BLEInterface(
-                        address=ble_address, 
-                        disconnected_callback=lambda _: on_lost_meshtastic_connection()
-                    )
+                    meshtastic_client = meshtastic.ble_interface.BLEInterface(address=ble_address)
                 else:
                     logger.error("No BLE address provided.")
                     return None
@@ -75,7 +70,7 @@ def connect_meshtastic(force_connect=False):
 
     return meshtastic_client
 
-def on_lost_meshtastic_connection():
+def on_lost_meshtastic_connection(interface):
     logger.error("Lost connection. Reconnecting...")
     asyncio.get_event_loop().create_task(reconnect())
 
@@ -187,7 +182,7 @@ async def check_connection():
                 meshtastic_client.getMyNodeInfo()
             except Exception as e:
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
-                on_lost_meshtastic_connection()
+                on_lost_meshtastic_connection(meshtastic_client)
         await asyncio.sleep(5)  # Check connection every 5 seconds
 
 if __name__ == "__main__":
