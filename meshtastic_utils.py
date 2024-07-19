@@ -87,6 +87,7 @@ async def reconnect():
     backoff_time = 10
     while True:
         try:
+            logger.info(f"Reconnection attempt starting in {backoff_time} seconds...")
             await asyncio.sleep(backoff_time)
             meshtastic_client = connect_meshtastic(force_connect=True)
             if meshtastic_client:
