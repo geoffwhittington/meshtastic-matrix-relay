@@ -31,7 +31,6 @@ meshtastic_interface = connect_meshtastic()
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 matrix_access_token = relay_config["matrix"]["access_token"]
 
-
 async def main():
     # Initialize the SQLite database
     initialize_database()

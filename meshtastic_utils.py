@@ -8,27 +8,31 @@ from config import relay_config
 from log_utils import get_logger
 from db_utils import get_longname, get_shortname
 from plugin_loader import load_plugins
+from bleak.exc import BleakDBusError, BleakError
 
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 
 logger = get_logger(name="Meshtastic")
 
 meshtastic_client = None
+main_loop = None
 
 def connect_meshtastic(force_connect=False):
     global meshtastic_client
     if meshtastic_client and not force_connect:
         return meshtastic_client
 
-    meshtastic_client = None
+    # Ensure previous connection is closed
+    if meshtastic_client:
+        try:
+            meshtastic_client.close()
+        except Exception as e:
+            logger.warning(f"Error closing previous connection: {e}")
+        meshtastic_client = None
 
     # Initialize Meshtastic interface
     connection_type = relay_config["meshtastic"]["connection_type"]
-    retry_limit = (
-        relay_config["meshtastic"]["retry_limit"]
-        if "retry_limit" in relay_config["meshtastic"]
-        else 3
-    )
+    retry_limit = relay_config["meshtastic"].get("retry_limit", 3)
     attempts = 1
     successful = False
 
@@ -42,10 +46,15 @@ def connect_meshtastic(force_connect=False):
             elif connection_type == "ble":
                 ble_address = relay_config["meshtastic"].get("ble_address")
                 if ble_address:
-                    logger.info(f"Connecting to BLE address or name {ble_address} ...")
-                    meshtastic_client = meshtastic.ble_interface.BLEInterface(address=ble_address)
+                    logger.info(f"Connecting to BLE address {ble_address} ...")
+                    meshtastic_client = meshtastic.ble_interface.BLEInterface(
+                        address=ble_address, 
+                        noProto=False, 
+                        debugOut=None, 
+                        noNodes=False
+                    )
                 else:
-                    logger.error("No BLE address or name provided.")
+                    logger.error("No BLE address provided.")
                     return None
             
             else:
@@ -57,10 +66,10 @@ def connect_meshtastic(force_connect=False):
             nodeInfo = meshtastic_client.getMyNodeInfo()
             logger.info(f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}")
         
-        except Exception as e:
+        except (BleakDBusError, BleakError, meshtastic.ble_interface.BLEInterface.BLEError, Exception) as e:
             attempts += 1
             if attempts <= retry_limit:
-                logger.warn(f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}")
+                logger.warning(f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}")
                 time.sleep(attempts)
             else:
                 logger.error(f"Could not connect: {e}")
@@ -68,9 +77,25 @@ def connect_meshtastic(force_connect=False):
 
     return meshtastic_client
 
-def on_lost_meshtastic_connection(interface):
+def on_lost_meshtastic_connection(interface=None):
     logger.error("Lost connection. Reconnecting...")
-    connect_meshtastic(force_connect=True)
+    global main_loop
+    if main_loop:
+        asyncio.run_coroutine_threadsafe(reconnect(), main_loop)
+
+async def reconnect():
+    backoff_time = 10
+    while True:
+        try:
+            logger.info(f"Reconnection attempt starting in {backoff_time} seconds...")
+            await asyncio.sleep(backoff_time)
+            meshtastic_client = connect_meshtastic(force_connect=True)
+            if meshtastic_client:
+                logger.info("Reconnected successfully.")
+                break
+        except Exception as e:
+            logger.error(f"Reconnection attempt failed: {e}")
+            backoff_time = min(backoff_time * 2, 300)  # Cap backoff at 5 minutes
 
 def on_meshtastic_message(packet, loop=None):
     from matrix_utils import matrix_relay
@@ -157,3 +182,22 @@ def on_meshtastic_message(packet, loop=None):
                 found_matching_plugin = result.result()
                 if found_matching_plugin:
                     logger.debug(f"Processed {portnum} with plugin {plugin.plugin_name}")
+
+async def check_connection():
+    global meshtastic_client
+    connection_type = relay_config["meshtastic"]["connection_type"]
+    while True:
+        if meshtastic_client:
+            try:
+                # Attempt a read operation to check if the connection is alive
+                meshtastic_client.getMyNodeInfo()
+            except (BleakDBusError, BleakError, meshtastic.ble_interface.BLEInterface.BLEError, Exception) as e:
+                logger.error(f"{connection_type.capitalize()} connection lost: {e}")
+                on_lost_meshtastic_connection(meshtastic_client)
+        await asyncio.sleep(5)  # Check connection every 5 seconds
+
+if __name__ == "__main__":
+    meshtastic_client = connect_meshtastic()
+    main_loop = asyncio.get_event_loop()
+    main_loop.create_task(check_connection())
+    main_loop.run_forever()
