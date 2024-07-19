@@ -15,6 +15,7 @@ matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 logger = get_logger(name="Meshtastic")
 
 meshtastic_client = None
+main_loop = None
 
 def connect_meshtastic(force_connect=False):
     global meshtastic_client
@@ -78,8 +79,9 @@ def connect_meshtastic(force_connect=False):
 
 def on_lost_meshtastic_connection(interface=None):
     logger.error("Lost connection. Reconnecting...")
-    loop = asyncio.get_running_loop()
-    loop.create_task(reconnect())
+    global main_loop
+    if main_loop:
+        asyncio.run_coroutine_threadsafe(reconnect(), main_loop)
 
 async def reconnect():
     backoff_time = 10
@@ -194,6 +196,6 @@ async def check_connection():
 
 if __name__ == "__main__":
     meshtastic_client = connect_meshtastic()
-    loop = asyncio.get_event_loop()
-    loop.create_task(check_connection())
-    loop.run_forever()
+    main_loop = asyncio.get_event_loop()
+    main_loop.create_task(check_connection())
+    main_loop.run_forever()
