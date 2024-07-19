@@ -88,9 +88,10 @@ async def reconnect():
     while True:
         try:
             await asyncio.sleep(backoff_time)
-            connect_meshtastic(force_connect=True)
-            logger.info("Reconnected successfully.")
-            break
+            meshtastic_client = connect_meshtastic(force_connect=True)
+            if meshtastic_client:
+                logger.info("Reconnected successfully.")
+                return
         except Exception as e:
             logger.error(f"Reconnection attempt failed: {e}")
             backoff_time = min(backoff_time * 2, 300)  # Cap backoff at 5 minutes
