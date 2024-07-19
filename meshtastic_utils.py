@@ -78,7 +78,8 @@ def connect_meshtastic(force_connect=False):
 
 def on_lost_meshtastic_connection(interface=None):
     logger.error("Lost connection. Reconnecting...")
-    asyncio.get_event_loop().create_task(reconnect())
+    loop = asyncio.get_running_loop()
+    loop.create_task(reconnect())
 
 async def reconnect():
     backoff_time = 10
