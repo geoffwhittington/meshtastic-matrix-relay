@@ -62,6 +62,12 @@ async def main():
     pub.subscribe(on_meshtastic_message, "meshtastic.receive")
     pub.subscribe(on_lost_meshtastic_connection, "meshtastic.connection.lost")
 
+    # Add a subscriber to log messages published to meshtastic.receive
+    def log_meshtastic_receive(packet, interface):
+        meshtastic_logger.debug("Message published to meshtastic.receive: %s", packet)
+
+    pub.subscribe(log_meshtastic_receive, "meshtastic.receive")
+
     # Register the message callback for Matrix
     matrix_logger.info(f"Listening for inbound Matrix messages ...")
     matrix_client.add_event_callback(

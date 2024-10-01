@@ -67,7 +67,7 @@ def connect_meshtastic(force_connect=False):
         except (BleakDBusError, BleakError, Exception) as e:
             attempts += 1
             if attempts <= retry_limit:
-                logger.warning(f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}")
+                logger.warning(f"Attempt #{attempts - 1} failed. Retrying in {attempts} secs {e}")
                 time.sleep(attempts)
             else:
                 logger.error(f"Could not connect: {e}")
@@ -114,18 +114,36 @@ def on_meshtastic_message(packet, interface):
 
     loop = event_loop
 
-    sender = packet["fromId"]
+    sender = packet.get("fromId", packet.get("from"))
+    logger.debug(f"Processing packet from {sender}")
 
-    if "text" in packet["decoded"] and packet["decoded"]["text"]:
-        text = packet["decoded"]["text"]
+    # For debugging, print the entire 'decoded' content
+    decoded = packet.get("decoded", {})
+    logger.debug("Decoded packet content: %s", decoded)
 
-        if "channel" in packet:
-            channel = packet["channel"]
-        else:
-            if packet["decoded"]["portnum"] == "TEXT_MESSAGE_APP":
+    # Attempt to extract text message
+    text = decoded.get("text")
+    if text:
+        logger.debug(f"Received text message: {text}")
+    else:
+        # Try to decode payload as text
+        payload = decoded.get("payload")
+        if payload:
+            try:
+                text = payload.decode('utf-8')
+                logger.debug(f"Decoded text from payload: {text}")
+            except Exception as e:
+                logger.debug(f"Failed to decode payload as text: {e}")
+                text = None
+
+    if text:
+        # Determine the channel
+        channel = packet.get("channel")
+        if channel is None:
+            if decoded.get("portnum") == "TEXT_MESSAGE_APP" or decoded.get("portnum") == 1:
                 channel = 0
             else:
-                logger.debug(f"Unknown packet")
+                logger.debug(f"Unknown portnum {decoded.get('portnum')}, cannot determine channel")
                 return
 
         # Check if the channel is mapped to a Matrix room in the configuration
@@ -147,9 +165,8 @@ def on_meshtastic_message(packet, interface):
 
         formatted_message = f"[{longname}/{meshnet_name}]: {text}"
 
-        # Temporarily disable plugin processing
+        # Plugin functionality (temporarily disabled for troubleshooting)
         # plugins = load_plugins()
-
         # found_matching_plugin = False
         # for plugin in plugins:
         #     if not found_matching_plugin:
@@ -187,11 +204,9 @@ def on_meshtastic_message(packet, interface):
                 except Exception as e:
                     logger.error(f"Error relaying message to Matrix: {e}")
     else:
-        portnum = packet["decoded"]["portnum"]
-
-        # Handle non-text messages if needed
+        portnum = decoded.get("portnum")
         logger.debug(f"Received non-text message on port {portnum}")
-
+        logger.debug(f"Full packet content: {packet}")
 
 async def check_connection():
     """
