@@ -200,10 +200,6 @@ def on_meshtastic_message(packet, interface):
                     ),
                     loop=loop,
                 )
-    else:
-        # Handle non-text messages if necessary
-        portnum = decoded.get("portnum")
-        logger.debug(f"Received non-text message on port {portnum}")
 
 async def check_connection():
     """
