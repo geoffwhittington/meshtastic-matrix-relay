@@ -24,6 +24,7 @@ from meshtastic_utils import (
     on_meshtastic_message,
     on_lost_meshtastic_connection,
     logger as meshtastic_logger,
+    main_loop as meshtastic_main_loop,  # Import main_loop
 )
 
 logger = get_logger(name="M<>M Relay")
@@ -32,16 +33,19 @@ matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 matrix_access_token = relay_config["matrix"]["access_token"]
 
 async def main():
+    # Set the global event loop for meshtastic_utils
+    meshtastic_main_loop = asyncio.get_event_loop()
+    meshtastic_utils.main_loop = meshtastic_main_loop  # Set the main_loop in meshtastic_utils
+
     # Initialize the SQLite database
     initialize_database()
 
     # Load plugins early
     load_plugins()
 
-    # Connect to Matrix
     matrix_client = await connect_matrix()
 
-    matrix_logger.info("Connecting to Matrix...")
+    matrix_logger.info("Connecting ...")
     try:
         login_response = await matrix_client.login(matrix_access_token)
     except Exception as e:
@@ -54,16 +58,12 @@ async def main():
 
     # Register the Meshtastic message callback
     meshtastic_logger.info(f"Listening for inbound radio messages ...")
-    pub.subscribe(lambda packet, interface=None, loop=None: on_meshtastic_message(packet, interface or meshtastic_interface, loop), "meshtastic.receive")
-    pub.subscribe(
-        on_lost_meshtastic_connection,
-        "meshtastic.connection.lost",
-    )
+    pub.subscribe(on_meshtastic_message, "meshtastic.receive")
+    pub.subscribe(on_lost_meshtastic_connection, "meshtastic.connection.lost")
+
     # Register the message callback for Matrix
     matrix_logger.info(f"Listening for inbound Matrix messages ...")
-    matrix_client.add_event_callback(
-        on_room_message, (RoomMessageText, RoomMessageNotice)
-    )
+    matrix_client.add_event_callback(on_room_message, (RoomMessageText, RoomMessageNotice))
 
     # Start the Matrix client sync loop
     while True:

@@ -15,9 +15,9 @@ matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 logger = get_logger(name="Meshtastic")
 
 meshtastic_client = None
-main_loop = None
+main_loop = None  # Global event loop will be set in main.py
 
-def connect_meshtastic(force_connect=False, on_message_callback=None):
+def connect_meshtastic(force_connect=False):
     global meshtastic_client
     if meshtastic_client and not force_connect:
         return meshtastic_client
@@ -42,21 +42,19 @@ def connect_meshtastic(force_connect=False, on_message_callback=None):
                 serial_port = relay_config["meshtastic"]["serial_port"]
                 logger.info(f"Connecting to serial port {serial_port} ...")
                 meshtastic_client = meshtastic.serial_interface.SerialInterface(serial_port)
-            
             elif connection_type == "ble":
                 ble_address = relay_config["meshtastic"].get("ble_address")
                 if ble_address:
                     logger.info(f"Connecting to BLE address {ble_address} ...")
                     meshtastic_client = meshtastic.ble_interface.BLEInterface(
-                        address=ble_address, 
-                        noProto=False, 
-                        debugOut=None, 
+                        address=ble_address,
+                        noProto=False,
+                        debugOut=None,
                         noNodes=False
                     )
                 else:
                     logger.error("No BLE address provided.")
                     return None
-            
             else:
                 target_host = relay_config["meshtastic"]["host"]
                 logger.info(f"Connecting to host {target_host} ...")
@@ -65,10 +63,6 @@ def connect_meshtastic(force_connect=False, on_message_callback=None):
             successful = True
             nodeInfo = meshtastic_client.getMyNodeInfo()
             logger.info(f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}")
-
-            # Register the callback if provided
-            if on_message_callback:
-                meshtastic_client.onReceive = on_message_callback
 
         except (BleakDBusError, BleakError, meshtastic.ble_interface.BLEInterface.BLEError, Exception) as e:
             attempts += 1
@@ -81,7 +75,7 @@ def connect_meshtastic(force_connect=False, on_message_callback=None):
 
     return meshtastic_client
 
-def on_lost_meshtastic_connection(interface):
+def on_lost_meshtastic_connection(interface=None):
     logger.error("Lost connection. Reconnecting...")
     global main_loop
     if main_loop:
@@ -93,7 +87,7 @@ async def reconnect():
         try:
             logger.info(f"Reconnection attempt starting in {backoff_time} seconds...")
             await asyncio.sleep(backoff_time)
-            meshtastic_client = connect_meshtastic(force_connect=True, on_message_callback=on_meshtastic_message)
+            meshtastic_client = connect_meshtastic(force_connect=True)
             if meshtastic_client:
                 logger.info("Reconnected successfully.")
                 break
@@ -101,21 +95,19 @@ async def reconnect():
             logger.error(f"Reconnection attempt failed: {e}")
             backoff_time = min(backoff_time * 2, 300)  # Cap backoff at 5 minutes
 
-async def check_connection():
-    global meshtastic_client
-    connection_type = relay_config["meshtastic"]["connection_type"]
-    while True:
-        if meshtastic_client:
-            try:
-                # Attempt a read operation to check if the connection is alive
-                meshtastic_client.getMyNodeInfo()
-            except (BleakDBusError, BleakError, meshtastic.ble_interface.BLEInterface.BLEError, Exception) as e:
-                logger.error(f"{connection_type.capitalize()} connection lost: {e}")
-                on_lost_meshtastic_connection(meshtastic_client)
-        await asyncio.sleep(5)  # Check connection every 5 seconds
+def on_meshtastic_message(packet, interface):
+    """
+    Handle incoming Meshtastic messages and relay them to Matrix.
 
-def on_meshtastic_message(packet, interface, loop=None):
+    Args:
+        packet (dict): The packet received from Meshtastic.
+        interface: The Meshtastic interface instance.
+    """
+    global main_loop  # Access the event loop
     from matrix_utils import matrix_relay
+
+    # Use main_loop as the event loop
+    loop = main_loop
 
     sender = packet["fromId"]
 
@@ -200,8 +192,24 @@ def on_meshtastic_message(packet, interface, loop=None):
                 if found_matching_plugin:
                     logger.debug(f"Processed {portnum} with plugin {plugin.plugin_name}")
 
+async def check_connection():
+    """
+    Periodically checks the Meshtastic connection and attempts to reconnect if lost.
+    """
+    global meshtastic_client
+    connection_type = relay_config["meshtastic"]["connection_type"]
+    while True:
+        if meshtastic_client:
+            try:
+                # Attempt a read operation to check if the connection is alive
+                meshtastic_client.getMyNodeInfo()
+            except (BleakDBusError, BleakError, meshtastic.ble_interface.BLEInterface.BLEError, Exception) as e:
+                logger.error(f"{connection_type.capitalize()} connection lost: {e}")
+                on_lost_meshtastic_connection(meshtastic_client)
+        await asyncio.sleep(5)  # Check connection every 5 seconds
+
 if __name__ == "__main__":
-    meshtastic_client = connect_meshtastic(on_message_callback=on_meshtastic_message)
+    meshtastic_client = connect_meshtastic()
     main_loop = asyncio.get_event_loop()
     main_loop.create_task(check_connection())
     main_loop.run_forever()
