@@ -38,9 +38,10 @@ async def main():
     # Load plugins early
     load_plugins()
 
+    # Connect to Matrix
     matrix_client = await connect_matrix()
 
-    matrix_logger.info("Connecting ...")
+    matrix_logger.info("Connecting to Matrix...")
     try:
         login_response = await matrix_client.login(matrix_access_token)
     except Exception as e:
@@ -53,20 +54,18 @@ async def main():
 
     # Register the Meshtastic message callback
     meshtastic_logger.info(f"Listening for inbound radio messages ...")
-    pub.subscribe(
-        on_meshtastic_message, "meshtastic.receive", loop=asyncio.get_event_loop()
-    )
+    pub.subscribe(lambda packet, interface=None, loop=None: on_meshtastic_message(packet, interface or meshtastic_interface, loop), "meshtastic.receive")
     pub.subscribe(
         on_lost_meshtastic_connection,
         "meshtastic.connection.lost",
     )
-    # Register the message callback
-    matrix_logger.info(f"Listening for inbound matrix messages ...")
+    # Register the message callback for Matrix
+    matrix_logger.info(f"Listening for inbound Matrix messages ...")
     matrix_client.add_event_callback(
         on_room_message, (RoomMessageText, RoomMessageNotice)
     )
 
-    # Start the Matrix client
+    # Start the Matrix client sync loop
     while True:
         try:
             if meshtastic_interface:
@@ -81,6 +80,5 @@ async def main():
             matrix_logger.error(f"Error syncing with server: {e}")
 
         await asyncio.sleep(60)  # Update longnames & shortnames every 60 seconds
-
 
 asyncio.run(main())
