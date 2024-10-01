@@ -29,12 +29,20 @@ from meshtastic_utils import (
     logger as meshtastic_logger,
 )
 
+# Initialize logger
 logger = get_logger(name="M<>M Relay")
+
+# Establish Meshtastic interface
 meshtastic_interface = connect_meshtastic()
+
+# Extract Matrix configuration
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 matrix_access_token = relay_config["matrix"]["access_token"]
 
 async def main():
+    """
+    Main asynchronous function to set up and run the relay.
+    """
     # Set the event loop in meshtastic_utils
     meshtastic_utils.event_loop = asyncio.get_event_loop()
 
@@ -44,11 +52,12 @@ async def main():
     # Load plugins early
     load_plugins()
 
+    # Connect to Matrix
     matrix_client = await connect_matrix()
 
-    matrix_logger.info("Connecting ...")
+    matrix_logger.info("Connecting to Matrix...")
     try:
-        login_response = await matrix_client.login(matrix_access_token)
+        await matrix_client.login(matrix_access_token)
     except Exception as e:
         matrix_logger.error(f"Error connecting to Matrix server: {e}")
         return
@@ -58,23 +67,17 @@ async def main():
         await join_matrix_room(matrix_client, room["id"])
 
     # Register the Meshtastic message callback
-    meshtastic_logger.info(f"Listening for inbound radio messages ...")
+    meshtastic_logger.info("Listening for inbound radio messages...")
     pub.subscribe(on_meshtastic_message, "meshtastic.receive")
     pub.subscribe(on_lost_meshtastic_connection, "meshtastic.connection.lost")
 
-    # Add a subscriber to log messages published to meshtastic.receive
-    def log_meshtastic_receive(packet, interface):
-        meshtastic_logger.debug("Message published to meshtastic.receive: %s", packet)
-
-    pub.subscribe(log_meshtastic_receive, "meshtastic.receive")
-
     # Register the message callback for Matrix
-    matrix_logger.info(f"Listening for inbound Matrix messages ...")
+    matrix_logger.info("Listening for inbound Matrix messages...")
     matrix_client.add_event_callback(
         on_room_message, (RoomMessageText, RoomMessageNotice)
     )
 
-    # Start the Matrix client
+    # Start the Matrix client sync loop
     while True:
         try:
             if meshtastic_interface:
@@ -82,13 +85,14 @@ async def main():
                 update_longnames(meshtastic_interface.nodes)
                 update_shortnames(meshtastic_interface.nodes)
 
-            matrix_logger.info("Syncing with server...")
+            matrix_logger.info("Syncing with Matrix server...")
             await matrix_client.sync_forever(timeout=30000)
             matrix_logger.info("Sync completed.")
         except Exception as e:
-            matrix_logger.error(f"Error syncing with server: {e}")
+            matrix_logger.error(f"Error syncing with Matrix server: {e}")
 
-        await asyncio.sleep(60)  # Update longnames & shortnames every 60 seconds
+        # Update longnames & shortnames every 60 seconds
+        await asyncio.sleep(60)
 
 if __name__ == "__main__":
     asyncio.run(main())

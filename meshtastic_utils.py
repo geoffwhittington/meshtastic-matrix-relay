@@ -10,14 +10,26 @@ from db_utils import get_longname, get_shortname
 from plugin_loader import load_plugins
 from bleak.exc import BleakDBusError, BleakError
 
+# Extract matrix rooms configuration
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 
+# Initialize logger
 logger = get_logger(name="Meshtastic")
 
+# Global variables
 meshtastic_client = None
-event_loop = None  # Global event loop will be set from main.py
+event_loop = None  # Will be set from main.py
 
 def connect_meshtastic(force_connect=False):
+    """
+    Establish a connection to the Meshtastic device.
+
+    Args:
+        force_connect (bool): If True, forces a new connection even if one exists.
+
+    Returns:
+        The Meshtastic client interface or None if connection fails.
+    """
     global meshtastic_client
     if meshtastic_client and not force_connect:
         return meshtastic_client
@@ -30,7 +42,7 @@ def connect_meshtastic(force_connect=False):
             logger.warning(f"Error closing previous connection: {e}")
         meshtastic_client = None
 
-    # Initialize Meshtastic interface
+    # Initialize Meshtastic interface based on connection type
     connection_type = relay_config["meshtastic"]["connection_type"]
     retry_limit = relay_config["meshtastic"].get("retry_limit", 3)
     attempts = 1
@@ -76,12 +88,21 @@ def connect_meshtastic(force_connect=False):
     return meshtastic_client
 
 def on_lost_meshtastic_connection(interface=None):
+    """
+    Callback function invoked when the Meshtastic connection is lost.
+
+    Args:
+        interface: The Meshtastic interface instance (unused).
+    """
     logger.error("Lost connection. Reconnecting...")
     global event_loop
     if event_loop:
         asyncio.run_coroutine_threadsafe(reconnect(), event_loop)
 
 async def reconnect():
+    """
+    Asynchronously attempts to reconnect to the Meshtastic device with exponential backoff.
+    """
     backoff_time = 10
     while True:
         try:
@@ -106,8 +127,6 @@ def on_meshtastic_message(packet, interface):
     from matrix_utils import matrix_relay
     global event_loop
 
-    logger.debug("on_meshtastic_message called with packet: %s", packet)
-
     if event_loop is None:
         logger.error("Event loop is not set. Cannot process message.")
         return
@@ -115,26 +134,9 @@ def on_meshtastic_message(packet, interface):
     loop = event_loop
 
     sender = packet.get("fromId", packet.get("from"))
-    logger.debug(f"Processing packet from {sender}")
 
-    # For debugging, print the entire 'decoded' content
     decoded = packet.get("decoded", {})
-    logger.debug("Decoded packet content: %s", decoded)
-
-    # Attempt to extract text message
     text = decoded.get("text")
-    if text:
-        logger.debug(f"Received text message: {text}")
-    else:
-        # Try to decode payload as text
-        payload = decoded.get("payload")
-        if payload:
-            try:
-                text = payload.decode('utf-8')
-                logger.debug(f"Decoded text from payload: {text}")
-            except Exception as e:
-                logger.debug(f"Failed to decode payload as text: {e}")
-                text = None
 
     if text:
         # Determine the channel
@@ -146,7 +148,7 @@ def on_meshtastic_message(packet, interface):
                 logger.debug(f"Unknown portnum {decoded.get('portnum')}, cannot determine channel")
                 return
 
-        # Check if the channel is mapped to a Matrix room in the configuration
+        # Check if the channel is mapped to a Matrix room
         channel_mapped = False
         for room in matrix_rooms:
             if room["meshtastic_channel"] == channel:
@@ -165,30 +167,30 @@ def on_meshtastic_message(packet, interface):
 
         formatted_message = f"[{longname}/{meshnet_name}]: {text}"
 
-        # Plugin functionality (temporarily disabled for troubleshooting)
-        # plugins = load_plugins()
-        # found_matching_plugin = False
-        # for plugin in plugins:
-        #     if not found_matching_plugin:
-        #         result = asyncio.run_coroutine_threadsafe(
-        #             plugin.handle_meshtastic_message(
-        #                 packet, formatted_message, longname, meshnet_name
-        #             ),
-        #             loop=loop,
-        #         )
-        #         found_matching_plugin = result.result()
-        #         if found_matching_plugin:
-        #             logger.debug(f"Processed by plugin {plugin.plugin_name}")
+        # Plugin functionality
+        plugins = load_plugins()
+        found_matching_plugin = False
+        for plugin in plugins:
+            if not found_matching_plugin:
+                result = asyncio.run_coroutine_threadsafe(
+                    plugin.handle_meshtastic_message(
+                        packet, formatted_message, longname, meshnet_name
+                    ),
+                    loop=loop,
+                )
+                found_matching_plugin = result.result()
+                if found_matching_plugin:
+                    logger.debug(f"Processed by plugin {plugin.plugin_name}")
 
-        # if found_matching_plugin:
-        #     return
+        if found_matching_plugin:
+            return
 
-        logger.info(f"Relaying Meshtastic message from {longname} to Matrix: {formatted_message}")
+        logger.info(f"Relaying Meshtastic message from {longname} to Matrix")
 
+        # Relay message to Matrix rooms
         for room in matrix_rooms:
             if room["meshtastic_channel"] == channel:
-                logger.debug(f"Relaying message to Matrix room: {room['id']}")
-                future = asyncio.run_coroutine_threadsafe(
+                asyncio.run_coroutine_threadsafe(
                     matrix_relay(
                         room["id"],
                         formatted_message,
@@ -198,15 +200,10 @@ def on_meshtastic_message(packet, interface):
                     ),
                     loop=loop,
                 )
-                # Handle exceptions
-                try:
-                    future.result()
-                except Exception as e:
-                    logger.error(f"Error relaying message to Matrix: {e}")
     else:
+        # Handle non-text messages if necessary
         portnum = decoded.get("portnum")
         logger.debug(f"Received non-text message on port {portnum}")
-        logger.debug(f"Full packet content: {packet}")
 
 async def check_connection():
     """
