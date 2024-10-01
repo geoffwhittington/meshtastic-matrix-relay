@@ -15,7 +15,6 @@ matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 logger = get_logger(name="Meshtastic")
 
 meshtastic_client = None
-main_loop = None  # Will be set from main.py
 
 def connect_meshtastic(force_connect=False):
     global meshtastic_client
@@ -77,9 +76,8 @@ def connect_meshtastic(force_connect=False):
 
 def on_lost_meshtastic_connection(interface=None):
     logger.error("Lost connection. Reconnecting...")
-    global main_loop
-    if main_loop:
-        asyncio.run_coroutine_threadsafe(reconnect(), main_loop)
+    loop = asyncio.get_event_loop()
+    asyncio.run_coroutine_threadsafe(reconnect(), loop)
 
 async def reconnect():
     backoff_time = 10
@@ -103,11 +101,13 @@ def on_meshtastic_message(packet, interface):
         packet (dict): The packet received from Meshtastic.
         interface: The Meshtastic interface instance.
     """
-    global main_loop  # Access the event loop
     from matrix_utils import matrix_relay
 
-    # Use main_loop as the event loop
-    loop = main_loop
+    # Obtain the event loop
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.get_event_loop()
 
     sender = packet["fromId"]
 
@@ -201,8 +201,8 @@ async def check_connection():
     while True:
         if meshtastic_client:
             try:
-                # Attempt a read operation to check if the connection is alive
-                meshtastic_client.getMyNodeInfo()
+                # Use getMetadata to check the connection (per developer's suggestion)
+                meshtastic_client.localNode.getMetadata()
             except (BleakDBusError, BleakError, meshtastic.ble_interface.BLEInterface.BLEError, Exception) as e:
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
                 on_lost_meshtastic_connection(meshtastic_client)
@@ -210,6 +210,6 @@ async def check_connection():
 
 if __name__ == "__main__":
     meshtastic_client = connect_meshtastic()
-    main_loop = asyncio.get_event_loop()
-    main_loop.create_task(check_connection())
-    main_loop.run_forever()
+    loop = asyncio.get_event_loop()
+    loop.create_task(check_connection())
+    loop.run_forever()

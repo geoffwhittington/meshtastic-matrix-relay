@@ -19,10 +19,6 @@ from matrix_utils import (
 from plugin_loader import load_plugins
 from config import relay_config
 from log_utils import get_logger
-
-# Import meshtastic_utils as a module
-import meshtastic_utils
-
 from meshtastic_utils import (
     connect_meshtastic,
     on_meshtastic_message,
@@ -36,16 +32,12 @@ matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 matrix_access_token = relay_config["matrix"]["access_token"]
 
 async def main():
-    # Set the global event loop for meshtastic_utils
-    meshtastic_utils.main_loop = asyncio.get_event_loop()
-
     # Initialize the SQLite database
     initialize_database()
 
     # Load plugins early
     load_plugins()
 
-    # Connect to Matrix
     matrix_client = await connect_matrix()
 
     matrix_logger.info("Connecting ...")
@@ -64,13 +56,13 @@ async def main():
     pub.subscribe(on_meshtastic_message, "meshtastic.receive")
     pub.subscribe(on_lost_meshtastic_connection, "meshtastic.connection.lost")
 
-    # Register the message callback for Matrix
+    # Register the message callback
     matrix_logger.info(f"Listening for inbound Matrix messages ...")
     matrix_client.add_event_callback(
         on_room_message, (RoomMessageText, RoomMessageNotice)
     )
 
-    # Start the Matrix client sync loop
+    # Start the Matrix client
     while True:
         try:
             if meshtastic_interface:
@@ -86,6 +78,5 @@ async def main():
 
         await asyncio.sleep(60)  # Update longnames & shortnames every 60 seconds
 
-# Ensure the event loop is available before running main()
 if __name__ == "__main__":
     asyncio.run(main())
