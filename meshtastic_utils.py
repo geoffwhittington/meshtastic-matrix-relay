@@ -15,7 +15,7 @@ matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 logger = get_logger(name="Meshtastic")
 
 meshtastic_client = None
-main_loop = None  # Global event loop will be set in main.py
+main_loop = None  # Will be set from main.py
 
 def connect_meshtastic(force_connect=False):
     global meshtastic_client
