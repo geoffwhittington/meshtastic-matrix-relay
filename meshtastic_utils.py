@@ -97,7 +97,7 @@ async def reconnect():
             logger.error(f"Reconnection attempt failed: {e}")
             backoff_time = min(backoff_time * 2, 300)  # Cap backoff at 5 minutes
 
-def on_meshtastic_message(packet, loop=None):
+def on_meshtastic_message(packet, interface=None, loop=None):
     from matrix_utils import matrix_relay
 
     sender = packet["fromId"]
