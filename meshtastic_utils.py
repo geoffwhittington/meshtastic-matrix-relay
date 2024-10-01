@@ -106,6 +106,8 @@ def on_meshtastic_message(packet, interface):
     from matrix_utils import matrix_relay
     global event_loop
 
+    logger.debug("on_meshtastic_message called with packet: %s", packet)
+
     if event_loop is None:
         logger.error("Event loop is not set. Cannot process message.")
         return
@@ -145,30 +147,31 @@ def on_meshtastic_message(packet, interface):
 
         formatted_message = f"[{longname}/{meshnet_name}]: {text}"
 
-        # Plugin functionality
-        plugins = load_plugins()
+        # Temporarily disable plugin processing
+        # plugins = load_plugins()
 
-        found_matching_plugin = False
-        for plugin in plugins:
-            if not found_matching_plugin:
-                result = asyncio.run_coroutine_threadsafe(
-                    plugin.handle_meshtastic_message(
-                        packet, formatted_message, longname, meshnet_name
-                    ),
-                    loop=loop,
-                )
-                found_matching_plugin = result.result()
-                if found_matching_plugin:
-                    logger.debug(f"Processed by plugin {plugin.plugin_name}")
+        # found_matching_plugin = False
+        # for plugin in plugins:
+        #     if not found_matching_plugin:
+        #         result = asyncio.run_coroutine_threadsafe(
+        #             plugin.handle_meshtastic_message(
+        #                 packet, formatted_message, longname, meshnet_name
+        #             ),
+        #             loop=loop,
+        #         )
+        #         found_matching_plugin = result.result()
+        #         if found_matching_plugin:
+        #             logger.debug(f"Processed by plugin {plugin.plugin_name}")
 
-        if found_matching_plugin:
-            return
+        # if found_matching_plugin:
+        #     return
 
         logger.info(f"Relaying Meshtastic message from {longname} to Matrix: {formatted_message}")
 
         for room in matrix_rooms:
             if room["meshtastic_channel"] == channel:
-                asyncio.run_coroutine_threadsafe(
+                logger.debug(f"Relaying message to Matrix room: {room['id']}")
+                future = asyncio.run_coroutine_threadsafe(
                     matrix_relay(
                         room["id"],
                         formatted_message,
@@ -178,22 +181,17 @@ def on_meshtastic_message(packet, interface):
                     ),
                     loop=loop,
                 )
+                # Handle exceptions
+                try:
+                    future.result()
+                except Exception as e:
+                    logger.error(f"Error relaying message to Matrix: {e}")
     else:
         portnum = packet["decoded"]["portnum"]
 
-        plugins = load_plugins()
-        found_matching_plugin = False
-        for plugin in plugins:
-            if not found_matching_plugin:
-                result = asyncio.run_coroutine_threadsafe(
-                    plugin.handle_meshtastic_message(
-                        packet, formatted_message=None, longname=None, meshnet_name=None
-                    ),
-                    loop=loop,
-                )
-                found_matching_plugin = result.result()
-                if found_matching_plugin:
-                    logger.debug(f"Processed {portnum} with plugin {plugin.plugin_name}")
+        # Handle non-text messages if needed
+        logger.debug(f"Received non-text message on port {portnum}")
+
 
 async def check_connection():
     """
