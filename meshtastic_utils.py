@@ -15,6 +15,7 @@ matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 logger = get_logger(name="Meshtastic")
 
 meshtastic_client = None
+event_loop = None  # Global event loop will be set from main.py
 
 def connect_meshtastic(force_connect=False):
     global meshtastic_client
@@ -63,7 +64,7 @@ def connect_meshtastic(force_connect=False):
             nodeInfo = meshtastic_client.getMyNodeInfo()
             logger.info(f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}")
 
-        except (BleakDBusError, BleakError, meshtastic.ble_interface.BLEInterface.BLEError, Exception) as e:
+        except (BleakDBusError, BleakError, Exception) as e:
             attempts += 1
             if attempts <= retry_limit:
                 logger.warning(f"Attempt #{attempts-1} failed. Retrying in {attempts} secs {e}")
@@ -76,8 +77,9 @@ def connect_meshtastic(force_connect=False):
 
 def on_lost_meshtastic_connection(interface=None):
     logger.error("Lost connection. Reconnecting...")
-    loop = asyncio.get_event_loop()
-    asyncio.run_coroutine_threadsafe(reconnect(), loop)
+    global event_loop
+    if event_loop:
+        asyncio.run_coroutine_threadsafe(reconnect(), event_loop)
 
 async def reconnect():
     backoff_time = 10
@@ -102,12 +104,13 @@ def on_meshtastic_message(packet, interface):
         interface: The Meshtastic interface instance.
     """
     from matrix_utils import matrix_relay
+    global event_loop
 
-    # Obtain the event loop
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.get_event_loop()
+    if event_loop is None:
+        logger.error("Event loop is not set. Cannot process message.")
+        return
+
+    loop = event_loop
 
     sender = packet["fromId"]
 
@@ -201,9 +204,9 @@ async def check_connection():
     while True:
         if meshtastic_client:
             try:
-                # Use getMetadata to check the connection (per developer's suggestion)
+                # Use getMetadata to check the connection
                 meshtastic_client.localNode.getMetadata()
-            except (BleakDBusError, BleakError, meshtastic.ble_interface.BLEInterface.BLEError, Exception) as e:
+            except Exception as e:
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
                 on_lost_meshtastic_connection(meshtastic_client)
         await asyncio.sleep(5)  # Check connection every 5 seconds
@@ -211,5 +214,6 @@ async def check_connection():
 if __name__ == "__main__":
     meshtastic_client = connect_meshtastic()
     loop = asyncio.get_event_loop()
+    event_loop = loop  # Set the event loop
     loop.create_task(check_connection())
     loop.run_forever()

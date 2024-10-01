@@ -19,6 +19,9 @@ from matrix_utils import (
 from plugin_loader import load_plugins
 from config import relay_config
 from log_utils import get_logger
+
+# Import meshtastic_utils as a module to set event_loop
+import meshtastic_utils
 from meshtastic_utils import (
     connect_meshtastic,
     on_meshtastic_message,
@@ -32,6 +35,9 @@ matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 matrix_access_token = relay_config["matrix"]["access_token"]
 
 async def main():
+    # Set the event loop in meshtastic_utils
+    meshtastic_utils.event_loop = asyncio.get_event_loop()
+
     # Initialize the SQLite database
     initialize_database()
 
@@ -56,7 +62,7 @@ async def main():
     pub.subscribe(on_meshtastic_message, "meshtastic.receive")
     pub.subscribe(on_lost_meshtastic_connection, "meshtastic.connection.lost")
 
-    # Register the message callback
+    # Register the message callback for Matrix
     matrix_logger.info(f"Listening for inbound Matrix messages ...")
     matrix_client.add_event_callback(
         on_room_message, (RoomMessageText, RoomMessageNotice)
