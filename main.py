@@ -78,9 +78,10 @@ async def main():
         meshtastic_utils.shutting_down = True  # Set the shutting_down flag
         shutdown_event.set()
 
+    loop = asyncio.get_running_loop()
+
     # Handle signals differently based on the platform
     if sys.platform != "win32":
-        loop = asyncio.get_running_loop()
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown()))
     else:
@@ -102,8 +103,9 @@ async def main():
                 sync_task = asyncio.create_task(
                     matrix_client.sync_forever(timeout=30000)
                 )
-                await asyncio.wait(
-                    [sync_task, shutdown_event.wait()],
+                shutdown_task = asyncio.create_task(shutdown_event.wait())
+                done, pending = await asyncio.wait(
+                    [sync_task, shutdown_task],
                     return_when=asyncio.FIRST_COMPLETED,
                 )
                 if shutdown_event.is_set():
@@ -131,8 +133,14 @@ async def main():
                 meshtastic_utils.meshtastic_client.close()
             except Exception as e:
                 meshtastic_logger.warning(f"Error closing Meshtastic client: {e}")
+
+        # Cancel the reconnect task if it exists
+        if meshtastic_utils.reconnect_task:
+            meshtastic_utils.reconnect_task.cancel()
+            meshtastic_logger.info("Cancelled Meshtastic reconnect task.")
+
         # Cancel any remaining tasks
-        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        tasks = [t for t in asyncio.all_tasks(loop) if not t.done()]
         for task in tasks:
             task.cancel()
             try:
