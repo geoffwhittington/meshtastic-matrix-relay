@@ -24,8 +24,6 @@ import meshtastic_utils
 from meshtastic_utils import (
     connect_meshtastic,
     logger as meshtastic_logger,
-    on_lost_meshtastic_connection,
-    on_meshtastic_message,
 )
 
 # Initialize logger

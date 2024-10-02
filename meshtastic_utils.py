@@ -9,7 +9,6 @@ import meshtastic.tcp_interface
 import meshtastic.serial_interface
 import meshtastic.ble_interface
 from bleak.exc import BleakDBusError, BleakError
-from meshtastic import mesh_pb2
 from pubsub import pub
 
 from config import relay_config
@@ -123,18 +122,16 @@ def connect_meshtastic(force_connect=False):
 def on_lost_meshtastic_connection(interface=None):
     """
     Callback function invoked when the Meshtastic connection is lost.
-
-    Args:
-        interface: The Meshtastic interface instance (unused).
     """
     global meshtastic_client, reconnecting, shutting_down
-    if shutting_down:
-        logger.info("Shutdown in progress. Not attempting to reconnect.")
-        return
-    if reconnecting:
-        logger.info("Reconnection already in progress. Skipping additional reconnection attempt.")
-        return
-    reconnecting = True
+    with meshtastic_lock:
+        if shutting_down:
+            logger.info("Shutdown in progress. Not attempting to reconnect.")
+            return
+        if reconnecting:
+            logger.info("Reconnection already in progress. Skipping additional reconnection attempt.")
+            return
+        reconnecting = True
 
     logger.error("Lost connection. Reconnecting...")
     if meshtastic_client:
@@ -180,10 +177,6 @@ async def reconnect():
 def on_meshtastic_message(packet, interface):
     """
     Handle incoming Meshtastic messages and relay them to Matrix.
-
-    Args:
-        packet (dict): The packet received from Meshtastic.
-        interface: The Meshtastic interface instance.
     """
     from matrix_utils import matrix_relay
     global event_loop
@@ -291,8 +284,8 @@ async def check_connection():
     while not shutting_down:
         if meshtastic_client:
             try:
-                # Use getMetadata to check the connection
-                meshtastic_client.localNode.getMetadata()
+                # Use getMyNodeInfo with refresh=True to check the connection
+                meshtastic_client.getMyNodeInfo(refresh=True)
             except Exception as e:
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
                 on_lost_meshtastic_connection(meshtastic_client)
