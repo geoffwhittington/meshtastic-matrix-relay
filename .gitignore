@@ -5,3 +5,4 @@ custom_plugins/*
 meshtastic.sqlite
 __pycache__/
 ./plugins/__pycache__/
+.aider*
