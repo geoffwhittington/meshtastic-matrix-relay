@@ -197,6 +197,7 @@ def on_meshtastic_message(packet, interface):
     """
     Handle incoming Meshtastic messages and relay them to Matrix.
     """
+    logger.info('on_meshtastic_message(packet=%r)', packet)
     from matrix_utils import matrix_relay
     global event_loop
 
