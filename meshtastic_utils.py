@@ -89,8 +89,9 @@ def connect_meshtastic(force_connect=False):
             except (BleakDBusError, BleakError, Exception) as e:
                 attempts += 1
                 if attempts <= retry_limit:
-                    logger.warning(f"Attempt #{attempts - 1} failed. Retrying in {attempts} secs {e}")
-                    time.sleep(attempts)
+                    wait_time = attempts
+                    logger.warning(f"Attempt #{attempts - 1} failed. Retrying in {wait_time} secs {e}")
+                    time.sleep(wait_time)
                 else:
                     logger.error(f"Could not connect: {e}")
                     return None
