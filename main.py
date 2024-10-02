@@ -4,6 +4,7 @@ It uses Meshtastic-python and Matrix nio client library to interface with the ra
 """
 import asyncio
 import signal
+import sys
 from typing import List
 
 from nio import RoomMessageText, RoomMessageNotice
@@ -69,17 +70,22 @@ async def main():
         on_room_message, (RoomMessageText, RoomMessageNotice)
     )
 
-    # Set up shutdown event and signal handlers
+    # Set up shutdown event
     shutdown_event = asyncio.Event()
 
-    def shutdown():
+    async def shutdown():
         matrix_logger.info("Shutdown signal received. Closing down...")
         meshtastic_utils.shutting_down = True  # Set the shutting_down flag
         shutdown_event.set()
 
-    loop = asyncio.get_running_loop()
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, shutdown)
+    # Handle signals differently based on the platform
+    if sys.platform != "win32":
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown()))
+    else:
+        # On Windows, we can't use add_signal_handler, so we'll handle KeyboardInterrupt
+        pass
 
     # Start the Matrix client sync loop
     try:
@@ -96,9 +102,8 @@ async def main():
                 sync_task = asyncio.create_task(
                     matrix_client.sync_forever(timeout=30000)
                 )
-                shutdown_task = asyncio.create_task(shutdown_event.wait())
-                done, pending = await asyncio.wait(
-                    [sync_task, shutdown_task],
+                await asyncio.wait(
+                    [sync_task, shutdown_event.wait()],
                     return_when=asyncio.FIRST_COMPLETED,
                 )
                 if shutdown_event.is_set():
@@ -114,6 +119,8 @@ async def main():
                     break
                 matrix_logger.error(f"Error syncing with Matrix server: {e}")
                 await asyncio.sleep(5)  # Wait before retrying
+    except KeyboardInterrupt:
+        await shutdown()
     finally:
         # Cleanup
         matrix_logger.info("Closing Matrix client...")
