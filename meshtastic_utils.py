@@ -1,19 +1,21 @@
 import asyncio
 import time
+import threading
+import os
+import serial  # For serial port exceptions
+from typing import List
+
 import meshtastic.tcp_interface
 import meshtastic.serial_interface
 import meshtastic.ble_interface
-from typing import List
-from config import relay_config
-from log_utils import get_logger
-from db_utils import get_longname, get_shortname
-from plugin_loader import load_plugins
 from bleak.exc import BleakDBusError, BleakError
 from meshtastic import mesh_pb2
-import threading
 from pubsub import pub
-import serial  # For serial port exceptions
-import os
+
+from config import relay_config
+from db_utils import get_longname, get_shortname
+from log_utils import get_logger
+from plugin_loader import load_plugins
 
 # Extract matrix rooms configuration
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
@@ -27,6 +29,9 @@ event_loop = None  # Will be set from main.py
 
 meshtastic_lock = threading.Lock()  # To prevent race conditions
 
+reconnecting = False
+shutting_down = False
+
 def connect_meshtastic(force_connect=False):
     """
     Establish a connection to the Meshtastic device.
@@ -37,7 +42,11 @@ def connect_meshtastic(force_connect=False):
     Returns:
         The Meshtastic client interface or None if connection fails.
     """
-    global meshtastic_client
+    global meshtastic_client, shutting_down
+    if shutting_down:
+        logger.info("Shutdown in progress. Not attempting to connect.")
+        return None
+
     with meshtastic_lock:
         if meshtastic_client and not force_connect:
             return meshtastic_client
@@ -56,7 +65,7 @@ def connect_meshtastic(force_connect=False):
         attempts = 1
         successful = False
 
-        while not successful and (retry_limit == 0 or attempts <= retry_limit):
+        while not successful and (retry_limit == 0 or attempts <= retry_limit) and not shutting_down:
             try:
                 if connection_type == "serial":
                     serial_port = relay_config["meshtastic"]["serial_port"]
@@ -97,26 +106,46 @@ def connect_meshtastic(force_connect=False):
                 pub.subscribe(on_lost_meshtastic_connection, "meshtastic.connection.lost")
 
             except (serial.SerialException, BleakDBusError, BleakError, Exception) as e:
+                if shutting_down:
+                    logger.info("Shutdown in progress. Aborting connection attempts.")
+                    break
                 attempts += 1
                 if retry_limit == 0 or attempts <= retry_limit:
-                    wait_time = attempts * 2
+                    wait_time = min(attempts * 2, 30)  # Cap wait time to 30 seconds
                     logger.warning(f"Attempt #{attempts - 1} failed. Retrying in {wait_time} secs: {e}")
                     time.sleep(wait_time)
                 else:
                     logger.error(f"Could not connect after {retry_limit} attempts: {e}")
                     return None
 
-        return meshtastic_client
+    return meshtastic_client
 
 def on_lost_meshtastic_connection(interface=None):
     """
     Callback function invoked when the Meshtastic connection is lost.
+
+    Args:
+        interface: The Meshtastic interface instance (unused).
     """
-    global meshtastic_client
+    global meshtastic_client, reconnecting, shutting_down
+    if shutting_down:
+        logger.info("Shutdown in progress. Not attempting to reconnect.")
+        return
+    if reconnecting:
+        logger.info("Reconnection already in progress. Skipping additional reconnection attempt.")
+        return
+    reconnecting = True
+
     logger.error("Lost connection. Reconnecting...")
     if meshtastic_client:
         try:
             meshtastic_client.close()
+        except OSError as e:
+            if e.errno == 9:
+                # Bad file descriptor, already closed
+                pass
+            else:
+                logger.warning(f"Error closing Meshtastic client: {e}")
         except Exception as e:
             logger.warning(f"Error closing Meshtastic client: {e}")
     meshtastic_client = None
@@ -128,12 +157,15 @@ async def reconnect():
     """
     Asynchronously attempts to reconnect to the Meshtastic device with exponential backoff.
     """
-    global meshtastic_client  # Declare global to modify the global variable
+    global meshtastic_client, reconnecting, shutting_down
     backoff_time = 10
-    while True:
+    while not shutting_down:
         try:
             logger.info(f"Reconnection attempt starting in {backoff_time} seconds...")
             await asyncio.sleep(backoff_time)
+            if shutting_down:
+                logger.info("Shutdown in progress. Aborting reconnection attempts.")
+                break
             meshtastic_client = connect_meshtastic(force_connect=True)
             if meshtastic_client:
                 logger.info("Reconnected successfully.")
@@ -141,6 +173,9 @@ async def reconnect():
         except Exception as e:
             logger.error(f"Reconnection attempt failed: {e}")
             backoff_time = min(backoff_time * 2, 300)  # Cap backoff at 5 minutes
+    else:
+        logger.info("Reconnection attempts aborted due to shutdown.")
+    reconnecting = False
 
 def on_meshtastic_message(packet, interface):
     """
@@ -152,6 +187,10 @@ def on_meshtastic_message(packet, interface):
     """
     from matrix_utils import matrix_relay
     global event_loop
+
+    if shutting_down:
+        logger.info("Shutdown in progress. Ignoring incoming messages.")
+        return
 
     if event_loop is None:
         logger.error("Event loop is not set. Cannot process message.")
@@ -247,9 +286,9 @@ async def check_connection():
     """
     Periodically checks the Meshtastic connection and attempts to reconnect if lost.
     """
-    global meshtastic_client
+    global meshtastic_client, shutting_down
     connection_type = relay_config["meshtastic"]["connection_type"]
-    while True:
+    while not shutting_down:
         if meshtastic_client:
             try:
                 # Use getMetadata to check the connection

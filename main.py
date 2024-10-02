@@ -4,30 +4,28 @@ It uses Meshtastic-python and Matrix nio client library to interface with the ra
 """
 import asyncio
 import signal
-from nio import (
-    RoomMessageText,
-    RoomMessageNotice,
-)
-from pubsub import pub
 from typing import List
+
+from nio import RoomMessageText, RoomMessageNotice
+
+from config import relay_config
 from db_utils import initialize_database, update_longnames, update_shortnames
+from log_utils import get_logger
 from matrix_utils import (
     connect_matrix,
     join_matrix_room,
-    on_room_message,
     logger as matrix_logger,
+    on_room_message,
 )
 from plugin_loader import load_plugins
-from config import relay_config
-from log_utils import get_logger
 
 # Import meshtastic_utils as a module to set event_loop
 import meshtastic_utils
 from meshtastic_utils import (
     connect_meshtastic,
-    on_meshtastic_message,
-    on_lost_meshtastic_connection,
     logger as meshtastic_logger,
+    on_lost_meshtastic_connection,
+    on_meshtastic_message,
 )
 
 # Initialize logger
@@ -78,6 +76,7 @@ async def main():
 
     def shutdown():
         matrix_logger.info("Shutdown signal received. Closing down...")
+        meshtastic_utils.shutting_down = True  # Set the shutting_down flag
         shutdown_event.set()
 
     loop = asyncio.get_running_loop()
@@ -107,9 +106,14 @@ async def main():
                 if shutdown_event.is_set():
                     matrix_logger.info("Shutdown event detected. Stopping sync loop...")
                     sync_task.cancel()
-                    await sync_task
+                    try:
+                        await sync_task
+                    except asyncio.CancelledError:
+                        pass
                     break
             except Exception as e:
+                if shutdown_event.is_set():
+                    break
                 matrix_logger.error(f"Error syncing with Matrix server: {e}")
                 await asyncio.sleep(5)  # Wait before retrying
     finally:
@@ -118,12 +122,18 @@ async def main():
         await matrix_client.close()
         if meshtastic_utils.meshtastic_client:
             meshtastic_logger.info("Closing Meshtastic client...")
-            meshtastic_utils.meshtastic_client.close()
+            try:
+                meshtastic_utils.meshtastic_client.close()
+            except Exception as e:
+                meshtastic_logger.warning(f"Error closing Meshtastic client: {e}")
         # Cancel any remaining tasks
         tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
         for task in tasks:
             task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
         matrix_logger.info("Shutdown complete.")
 
 if __name__ == "__main__":
