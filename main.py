@@ -99,8 +99,9 @@ async def main():
                 sync_task = asyncio.create_task(
                     matrix_client.sync_forever(timeout=30000)
                 )
-                await asyncio.wait(
-                    [sync_task, shutdown_event.wait()],
+                shutdown_task = asyncio.create_task(shutdown_event.wait())
+                done, pending = await asyncio.wait(
+                    [sync_task, shutdown_task],
                     return_when=asyncio.FIRST_COMPLETED,
                 )
                 if shutdown_event.is_set():

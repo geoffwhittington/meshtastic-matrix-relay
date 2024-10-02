@@ -12,6 +12,8 @@ from bleak.exc import BleakDBusError, BleakError
 from meshtastic import mesh_pb2
 import threading
 from pubsub import pub
+import serial  # For serial port exceptions
+import os
 
 # Extract matrix rooms configuration
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
@@ -50,15 +52,23 @@ def connect_meshtastic(force_connect=False):
 
         # Initialize Meshtastic interface based on connection type
         connection_type = relay_config["meshtastic"]["connection_type"]
-        retry_limit = relay_config["meshtastic"].get("retry_limit", 3)
+        retry_limit = 0  # 0 for infinite retries
         attempts = 1
         successful = False
 
-        while not successful and attempts <= retry_limit:
+        while not successful and (retry_limit == 0 or attempts <= retry_limit):
             try:
                 if connection_type == "serial":
                     serial_port = relay_config["meshtastic"]["serial_port"]
                     logger.info(f"Connecting to serial port {serial_port} ...")
+
+                    # Check if serial port exists
+                    if not os.path.exists(serial_port):
+                        logger.warning(f"Serial port {serial_port} does not exist. Waiting...")
+                        time.sleep(5)
+                        attempts += 1
+                        continue
+
                     meshtastic_client = meshtastic.serial_interface.SerialInterface(serial_port)
                 elif connection_type == "ble":
                     ble_address = relay_config["meshtastic"].get("ble_address")
@@ -86,28 +96,30 @@ def connect_meshtastic(force_connect=False):
                 pub.subscribe(on_meshtastic_message, "meshtastic.receive")
                 pub.subscribe(on_lost_meshtastic_connection, "meshtastic.connection.lost")
 
-            except (BleakDBusError, BleakError, Exception) as e:
+            except (serial.SerialException, BleakDBusError, BleakError, Exception) as e:
                 attempts += 1
-                if attempts <= retry_limit:
-                    wait_time = attempts
-                    logger.warning(f"Attempt #{attempts - 1} failed. Retrying in {wait_time} secs {e}")
+                if retry_limit == 0 or attempts <= retry_limit:
+                    wait_time = attempts * 2
+                    logger.warning(f"Attempt #{attempts - 1} failed. Retrying in {wait_time} secs: {e}")
                     time.sleep(wait_time)
                 else:
-                    logger.error(f"Could not connect: {e}")
+                    logger.error(f"Could not connect after {retry_limit} attempts: {e}")
                     return None
 
-    return meshtastic_client
+        return meshtastic_client
 
 def on_lost_meshtastic_connection(interface=None):
     """
     Callback function invoked when the Meshtastic connection is lost.
-
-    Args:
-        interface: The Meshtastic interface instance (unused).
     """
     global meshtastic_client
     logger.error("Lost connection. Reconnecting...")
-    meshtastic_client = None  # Set the client to None to indicate disconnection
+    if meshtastic_client:
+        try:
+            meshtastic_client.close()
+        except Exception as e:
+            logger.warning(f"Error closing Meshtastic client: {e}")
+    meshtastic_client = None
     global event_loop
     if event_loop:
         asyncio.run_coroutine_threadsafe(reconnect(), event_loop)
