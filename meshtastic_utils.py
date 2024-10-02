@@ -123,7 +123,7 @@ def on_lost_meshtastic_connection(interface=None):
     """
     Callback function invoked when the Meshtastic connection is lost.
     """
-    global meshtastic_client, reconnecting, shutting_down
+    global meshtastic_client, reconnecting, shutting_down, event_loop
     with meshtastic_lock:
         if shutting_down:
             logger.info("Shutdown in progress. Not attempting to reconnect.")
@@ -132,23 +132,23 @@ def on_lost_meshtastic_connection(interface=None):
             logger.info("Reconnection already in progress. Skipping additional reconnection attempt.")
             return
         reconnecting = True
+        logger.error("Lost connection. Reconnecting...")
 
-    logger.error("Lost connection. Reconnecting...")
-    if meshtastic_client:
-        try:
-            meshtastic_client.close()
-        except OSError as e:
-            if e.errno == 9:
-                # Bad file descriptor, already closed
-                pass
-            else:
+        if meshtastic_client:
+            try:
+                meshtastic_client.close()
+            except OSError as e:
+                if e.errno == 9:
+                    # Bad file descriptor, already closed
+                    pass
+                else:
+                    logger.warning(f"Error closing Meshtastic client: {e}")
+            except Exception as e:
                 logger.warning(f"Error closing Meshtastic client: {e}")
-        except Exception as e:
-            logger.warning(f"Error closing Meshtastic client: {e}")
-    meshtastic_client = None
-    global event_loop
-    if event_loop:
-        asyncio.run_coroutine_threadsafe(reconnect(), event_loop)
+        meshtastic_client = None
+
+        if event_loop:
+            asyncio.run_coroutine_threadsafe(reconnect(), event_loop)
 
 async def reconnect():
     """
@@ -284,8 +284,8 @@ async def check_connection():
     while not shutting_down:
         if meshtastic_client:
             try:
-                # Use getMyNodeInfo with refresh=True to check the connection
-                meshtastic_client.getMyNodeInfo(refresh=True)
+                # Send a ping to check the connection
+                meshtastic_client.sendPing()
             except Exception as e:
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
                 on_lost_meshtastic_connection(meshtastic_client)
