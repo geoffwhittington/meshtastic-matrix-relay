@@ -30,6 +30,7 @@ meshtastic_lock = threading.Lock()  # To prevent race conditions
 
 reconnecting = False
 shutting_down = False
+reconnect_task = None  # To keep track of the reconnect task
 
 def connect_meshtastic(force_connect=False):
     """
@@ -123,7 +124,7 @@ def on_lost_meshtastic_connection(interface=None):
     """
     Callback function invoked when the Meshtastic connection is lost.
     """
-    global meshtastic_client, reconnecting, shutting_down, event_loop
+    global meshtastic_client, reconnecting, shutting_down, event_loop, reconnect_task
     with meshtastic_lock:
         if shutting_down:
             logger.info("Shutdown in progress. Not attempting to reconnect.")
@@ -148,7 +149,7 @@ def on_lost_meshtastic_connection(interface=None):
         meshtastic_client = None
 
         if event_loop:
-            asyncio.run_coroutine_threadsafe(reconnect(), event_loop)
+            reconnect_task = asyncio.run_coroutine_threadsafe(reconnect(), event_loop)
 
 async def reconnect():
     """
@@ -156,23 +157,27 @@ async def reconnect():
     """
     global meshtastic_client, reconnecting, shutting_down
     backoff_time = 10
-    while not shutting_down:
-        try:
-            logger.info(f"Reconnection attempt starting in {backoff_time} seconds...")
-            await asyncio.sleep(backoff_time)
-            if shutting_down:
-                logger.info("Shutdown in progress. Aborting reconnection attempts.")
-                break
-            meshtastic_client = connect_meshtastic(force_connect=True)
-            if meshtastic_client:
-                logger.info("Reconnected successfully.")
-                break
-        except Exception as e:
-            logger.error(f"Reconnection attempt failed: {e}")
-            backoff_time = min(backoff_time * 2, 300)  # Cap backoff at 5 minutes
-    else:
-        logger.info("Reconnection attempts aborted due to shutdown.")
-    reconnecting = False
+    try:
+        while not shutting_down:
+            try:
+                logger.info(f"Reconnection attempt starting in {backoff_time} seconds...")
+                await asyncio.sleep(backoff_time)
+                if shutting_down:
+                    logger.info("Shutdown in progress. Aborting reconnection attempts.")
+                    break
+                meshtastic_client = connect_meshtastic(force_connect=True)
+                if meshtastic_client:
+                    logger.info("Reconnected successfully.")
+                    break
+            except Exception as e:
+                if shutting_down:
+                    break
+                logger.error(f"Reconnection attempt failed: {e}")
+                backoff_time = min(backoff_time * 2, 300)  # Cap backoff at 5 minutes
+    except asyncio.CancelledError:
+        logger.info("Reconnection task was cancelled.")
+    finally:
+        reconnecting = False
 
 def on_meshtastic_message(packet, interface):
     """
