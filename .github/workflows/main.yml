@@ -7,12 +7,9 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-    env:
-      VERSION: ${{ github.ref_name }}  # Extract the version from the GitHub tag
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -26,26 +23,18 @@ jobs:
           pip install pyinstaller
 
       - name: Build executable
-        run: |
-          pyinstaller --name=mmrelay_${{ env.VERSION }} --onefile --console main.py
-          # This will create mmrelay_<version>.exe in the dist folder
+        run: pyinstaller --name=mmrelay.exe --onefile --console main.py
 
       - name: Build installer
         uses: nadeemjazmawe/inno-setup-action-cli@v6.0.5
         with:
-          filepath: "/DAppVersion=${{ env.VERSION }} ./mmrelay.iss"
-          # Pass the version to Inno Setup
-
-      - name: Rename Installer with Version
-        run: |
-          Rename-Item "MMRelay_setup.exe" "MMRelay_setup_${{ env.VERSION }}.exe"
-          # Rename the installer to include the version number
+          filepath: "/DAppVersion=${{ github.ref_name }} ./mmrelay.iss"
 
       - name: Upload setup.exe to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: MMRelay_setup_${{ env.VERSION }}.exe  # Upload the versioned installer
-          asset_name: MMRelay_setup_${{ env.VERSION }}.exe
+          file: MMRelay_setup.exe
+          asset_name: MMRelay_setup.exe
           tag: ${{ github.ref }}
           overwrite: true
