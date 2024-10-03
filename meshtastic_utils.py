@@ -3,6 +3,7 @@ import time
 import threading
 import os
 import serial  # For serial port exceptions
+import serial.tools.list_ports  # Import serial tools for port listing
 from typing import List
 
 import meshtastic.tcp_interface
@@ -31,6 +32,19 @@ meshtastic_lock = threading.Lock()  # To prevent race conditions
 reconnecting = False
 shutting_down = False
 reconnect_task = None  # To keep track of the reconnect task
+
+def serial_port_exists(port_name):
+    """
+    Check if the specified serial port exists.
+
+    Args:
+        port_name (str): The name of the serial port (e.g., 'COM15' or '/dev/ttyACM0').
+
+    Returns:
+        bool: True if the port exists, False otherwise.
+    """
+    ports = [port.device for port in serial.tools.list_ports.comports()]
+    return port_name in ports
 
 def connect_meshtastic(force_connect=False):
     """
@@ -72,7 +86,7 @@ def connect_meshtastic(force_connect=False):
                     logger.info(f"Connecting to serial port {serial_port} ...")
 
                     # Check if serial port exists
-                    if not os.path.exists(serial_port):
+                    if not serial_port_exists(serial_port):
                         logger.warning(f"Serial port {serial_port} does not exist. Waiting...")
                         time.sleep(5)
                         attempts += 1
