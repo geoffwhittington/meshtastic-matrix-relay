@@ -25,10 +25,6 @@ PrivilegesRequiredOverridesAllowed=dialog commandline
 ; Source Executable with Version Number
 Source: "dist\mmrelay_{#AppVersion}.exe"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs; AfterInstall: AfterInstall(ExpandConstant('{app}'));
 
-; Additional Files
-Source: "config.yaml"; DestDir: "{app}"; Flags: ignoreversion
-Source: "mmrelay.bat"; DestDir: "{app}"; Flags: ignoreversion
-
 [Icons]
 ; Application Icons
 Name: "{group}\MM Relay"; Filename: "{app}\mmrelay.bat"

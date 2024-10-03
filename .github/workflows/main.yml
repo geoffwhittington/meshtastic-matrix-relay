@@ -11,7 +11,8 @@ jobs:
       VERSION: ${{ github.ref_name }}  # Extract the version from the GitHub tag
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
       - name: Set up Python
         uses: actions/setup-python@v2
