@@ -18,6 +18,7 @@ from log_utils import get_logger
 from plugin_loader import load_plugins
 from meshtastic_utils import connect_meshtastic
 from PIL import Image
+import meshtastic.protobuf.portnums_pb2
 
 matrix_homeserver = relay_config["matrix"]["homeserver"]
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
@@ -93,7 +94,7 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
 
 
 # Send message to the Matrix room
-async def matrix_relay(room_id, message, longname, shortname, meshnet_name):
+async def matrix_relay(room_id, message, longname, shortname, meshnet_name, portnum):
     matrix_client = await connect_matrix()
     try:
         content = {
@@ -102,6 +103,7 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name):
             "meshtastic_longname": longname,
             "meshtastic_shortname": shortname,
             "meshtastic_meshnet": meshnet_name,
+            "meshtastic_portnum": portnum,
         }
         await asyncio.wait_for(
             matrix_client.room_send(
@@ -215,9 +217,16 @@ async def on_room_message(
             meshtastic_logger.info(
                 f"Relaying message from {full_display_name} to radio broadcast"
             )
-            meshtastic_interface.sendText(
-                text=full_message, channelIndex=meshtastic_channel
-            )
+            if event.source["content"].get("meshtastic_portnum") == "DETECTION_SENSOR_APP":
+                meshtastic_interface.sendData(
+                    data=full_message.encode('utf-8'),
+                    channelIndex=meshtastic_channel,
+                    portNum=meshtastic.protobuf.portnums_pb2.PortNum.DETECTION_SENSOR_APP,
+                )
+            else:
+                meshtastic_interface.sendText(
+                    text=full_message, channelIndex=meshtastic_channel
+                )
 
         else:
             logger.debug(

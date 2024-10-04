@@ -197,7 +197,6 @@ def on_meshtastic_message(packet, interface):
     """
     Handle incoming Meshtastic messages and relay them to Matrix.
     """
-    logger.info('on_meshtastic_message(packet=%r)', packet)
     from matrix_utils import matrix_relay
     global event_loop
 
@@ -221,6 +220,8 @@ def on_meshtastic_message(packet, interface):
         channel = packet.get("channel")
         if channel is None:
             if decoded.get("portnum") == "TEXT_MESSAGE_APP" or decoded.get("portnum") == 1:
+                channel = 0
+            elif decoded.get("portnum") == "DETECTION_SENSOR_APP":
                 channel = 0
             else:
                 logger.debug(f"Unknown portnum {decoded.get('portnum')}, cannot determine channel")
@@ -275,6 +276,7 @@ def on_meshtastic_message(packet, interface):
                         longname,
                         shortname,
                         meshnet_name,
+                        decoded.get("portnum"),
                     ),
                     loop=loop,
                 )
