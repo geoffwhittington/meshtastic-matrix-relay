@@ -132,12 +132,19 @@ def create_meshtastic_frame(root):
     broadcast_enabled_checkbox = tk.Checkbutton(frame, variable=broadcast_enabled_var)
     broadcast_enabled_checkbox.grid(row=4, column=1, sticky="w")
 
+    detection_sensor_label = tk.Label(frame, text="Detection Messages Enabled:")
+    detection_sensor_label.grid(row=5, column=0, sticky="w")
+    detection_sensor_var = tk.BooleanVar(value=config["meshtastic"]["detection_sensor"])
+    detection_sensor_checkbox = tk.Checkbutton(frame, variable=detection_sensor_var)
+    detection_sensor_checkbox.grid(row=5, column=1, sticky="w")
+
     return {
         "connection_type": connection_type_var,
         "serial_port": serial_port_var,
         "host": host_var,
         "meshnet_name": meshnet_name_var,
         "broadcast_enabled": broadcast_enabled_var,
+        "detection_sensor": detection_sensor_var
     }
 
 def create_logging_frame(root):

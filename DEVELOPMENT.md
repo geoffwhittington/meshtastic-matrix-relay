@@ -48,6 +48,7 @@ meshtastic:
   host: "meshtastic.local" # Only used when connection is "network"
   meshnet_name: "Your Meshnet Name" # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
   broadcast_enabled: true
+  detection_sensor: true
 
 logging:
   level: "info"

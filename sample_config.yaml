@@ -16,6 +16,7 @@ meshtastic:
   ble_address: "AA:BB:CC:DD:EE:FF" # Only used when connection is "ble" - Uses either an address or name from a `meshtastic --ble-scan`
   meshnet_name: "Your Meshnet Name" # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
   broadcast_enabled: true # Must be set to true to enable Matrix to Meshtastic messages
+  detection_sensor: true # Must be set to true to forward messages of Meshtastic's detection sensor module
 
 logging:
   level: "info"

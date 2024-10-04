@@ -221,6 +221,8 @@ def on_meshtastic_message(packet, interface):
         if channel is None:
             if decoded.get("portnum") == "TEXT_MESSAGE_APP" or decoded.get("portnum") == 1:
                 channel = 0
+            elif decoded.get("portnum") == "DETECTION_SENSOR_APP":
+                channel = 0
             else:
                 logger.debug(f"Unknown portnum {decoded.get('portnum')}, cannot determine channel")
                 return
@@ -234,6 +236,10 @@ def on_meshtastic_message(packet, interface):
 
         if not channel_mapped:
             logger.debug(f"Skipping message from unmapped channel {channel}")
+            return
+        if (decoded.get("portnum") == "DETECTION_SENSOR_APP"
+            and not relay_config["meshtastic"].get("detection_sensor", False)):
+            logger.debug("Detection sensor packet received, but detection sensor processing is disabled.")
             return
 
         logger.info(f"Processing inbound radio message from {sender} on channel {channel}")
@@ -274,6 +280,7 @@ def on_meshtastic_message(packet, interface):
                         longname,
                         shortname,
                         meshnet_name,
+                        decoded.get("portnum"),
                     ),
                     loop=loop,
                 )
