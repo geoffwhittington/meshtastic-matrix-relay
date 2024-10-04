@@ -214,16 +214,22 @@ async def on_room_message(
 
     if not found_matching_plugin and event.sender != bot_user_id:
         if relay_config["meshtastic"]["broadcast_enabled"]:
-            meshtastic_logger.info(
-                f"Relaying message from {full_display_name} to radio broadcast"
-            )
             if event.source["content"].get("meshtastic_portnum") == "DETECTION_SENSOR_APP":
-                meshtastic_interface.sendData(
-                    data=full_message.encode('utf-8'),
-                    channelIndex=meshtastic_channel,
-                    portNum=meshtastic.protobuf.portnums_pb2.PortNum.DETECTION_SENSOR_APP,
-                )
+                if relay_config["meshtastic"].get("detection_sensor", False):
+                    meshtastic_interface.sendData(
+                        data=full_message.encode("utf-8"),
+                        channelIndex=meshtastic_channel,
+                        portNum=meshtastic.protobuf.portnums_pb2.PortNum.DETECTION_SENSOR_APP,
+                    )
+                else:
+                    meshtastic_logger.debug(
+                        f"Detection sensor packet received from {full_display_name}, "
+                        + "but detection sensor processing is disabled."
+                    )
             else:
+                meshtastic_logger.info(
+                    f"Relaying message from {full_display_name} to radio broadcast"
+                )
                 meshtastic_interface.sendText(
                     text=full_message, channelIndex=meshtastic_channel
                 )

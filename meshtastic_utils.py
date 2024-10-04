@@ -237,6 +237,10 @@ def on_meshtastic_message(packet, interface):
         if not channel_mapped:
             logger.debug(f"Skipping message from unmapped channel {channel}")
             return
+        if (decoded.get("portnum") == "DETECTION_SENSOR_APP"
+            and not relay_config["meshtastic"].get("detection_sensor", False)):
+            logger.debug("Detection sensor packet received, but detection sensor processing is disabled.")
+            return
 
         logger.info(f"Processing inbound radio message from {sender} on channel {channel}")
 
