@@ -2,7 +2,6 @@ import asyncio
 import time
 import re
 import certifi
-import io
 import ssl
 from typing import List, Union
 from nio import (
@@ -12,6 +11,8 @@ from nio import (
     RoomMessageText,
     RoomMessageNotice,
     UploadResponse,
+    WhoamiResponse,
+    WhoamiError,
 )
 from config import relay_config
 from log_utils import get_logger
@@ -51,13 +52,36 @@ async def connect_matrix():
     # Initialize the Matrix client with custom SSL context
     config = AsyncClientConfig(encryption_enabled=False)
     matrix_client = AsyncClient(
-        matrix_homeserver, bot_user_id, config=config, ssl=ssl_context
+        homeserver=matrix_homeserver,
+        user=bot_user_id,
+        config=config,
+        ssl=ssl_context,
     )
-    matrix_client.access_token = matrix_access_token
-    response = await matrix_client.get_displayname(bot_user_id)
-    bot_user_name = response.displayname
-    return matrix_client
 
+    # Set the access_token and user_id
+    matrix_client.access_token = matrix_access_token
+    matrix_client.user_id = bot_user_id
+
+    # Attempt to retrieve the device_id using whoami()
+    whoami_response = await matrix_client.whoami()
+    if isinstance(whoami_response, WhoamiError):
+        logger.error(f"Failed to retrieve device_id: {whoami_response.message}")
+        matrix_client.device_id = None
+    else:
+        matrix_client.device_id = whoami_response.device_id
+        if matrix_client.device_id:
+            logger.info(f"Retrieved device_id: {matrix_client.device_id}")
+        else:
+            logger.warning("device_id not returned by whoami()")
+
+    # Fetch the bot's display name
+    response = await matrix_client.get_displayname(bot_user_id)
+    if hasattr(response, 'displayname'):
+        bot_user_name = response.displayname
+    else:
+        bot_user_name = bot_user_id  # Fallback if display name is not set
+
+    return matrix_client
 
 async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
     """Join a Matrix room by its ID or alias."""

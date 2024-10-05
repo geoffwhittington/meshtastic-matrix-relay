@@ -5,6 +5,7 @@ It uses Meshtastic-python and Matrix nio client library to interface with the ra
 import asyncio
 import signal
 import sys
+import logging  # Add this line
 from typing import List
 
 from nio import RoomMessageText, RoomMessageNotice
@@ -32,7 +33,9 @@ logger = get_logger(name="M<>M Relay")
 
 # Extract Matrix configuration
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
-matrix_access_token = relay_config["matrix"]["access_token"]
+
+# Set the logging level for 'nio' to ERROR to suppress warnings
+logging.getLogger('nio').setLevel(logging.ERROR)  # Add this line
 
 async def main():
     """
@@ -52,12 +55,8 @@ async def main():
 
     # Connect to Matrix
     matrix_client = await connect_matrix()
-
-    matrix_logger.info("Connecting to Matrix...")
-    try:
-        await matrix_client.login(matrix_access_token)
-    except Exception as e:
-        matrix_logger.error(f"Error connecting to Matrix server: {e}")
+    if matrix_client is None:
+        logger.error("Failed to connect to Matrix. Exiting.")
         return
 
     # Join the rooms specified in the config.yaml
