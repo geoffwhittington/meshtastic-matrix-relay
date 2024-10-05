@@ -56,14 +56,9 @@ async def main():
 
     # Connect to Matrix
     matrix_client = await connect_matrix()
-
-    # Remove the login call since we're using an access token
-    # matrix_logger.info("Connecting to Matrix...")
-    # try:
-    #     await matrix_client.login(matrix_access_token)
-    # except Exception as e:
-    #     matrix_logger.error(f"Error connecting to Matrix server: {e}")
-    #     return
+    if matrix_client is None:
+        logger.error("Failed to connect to Matrix. Exiting.")
+        return
 
     # Join the rooms specified in the config.yaml
     for room in matrix_rooms:

@@ -12,6 +12,8 @@ from nio import (
     RoomMessageText,
     RoomMessageNotice,
     UploadResponse,
+    LoginResponse,
+    LoginError,
 )
 from config import relay_config
 from log_utils import get_logger
@@ -52,19 +54,26 @@ async def connect_matrix():
     config = AsyncClientConfig(encryption_enabled=False)
     matrix_client = AsyncClient(
         homeserver=matrix_homeserver,
-        user=bot_user_id,  # Pass bot_user_id as 'user'
+        user=bot_user_id,
         config=config,
         ssl=ssl_context,
-        access_token=matrix_access_token,  # Pass access_token here
     )
 
-    # No need to set matrix_client.user_id or matrix_client.logged_in
+    # Log in using the access token
+    login_response = await matrix_client.login(token=matrix_access_token)
+    if isinstance(login_response, LoginError):
+        logger.error(f"Failed to login: {login_response.message}")
+        return None
+
+    # Now we are logged in
 
     # Fetch the bot's display name
     response = await matrix_client.get_displayname(bot_user_id)
-    bot_user_name = response.displayname
+    if hasattr(response, 'displayname'):
+        bot_user_name = response.displayname
+    else:
+        bot_user_name = bot_user_id  # Fallback if display name is not set
     return matrix_client
-
 
 async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
     """Join a Matrix room by its ID or alias."""
