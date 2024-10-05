@@ -2,9 +2,8 @@ import asyncio
 import time
 import re
 import certifi
-import io
 import ssl
-from typing import List, Union
+from typing import List
 from nio import (
     AsyncClient,
     AsyncClientConfig,
@@ -12,8 +11,6 @@ from nio import (
     RoomMessageText,
     RoomMessageNotice,
     UploadResponse,
-    LoginResponse,
-    LoginError,
 )
 from config import relay_config
 from log_utils import get_logger
@@ -59,13 +56,11 @@ async def connect_matrix():
         ssl=ssl_context,
     )
 
-    # Log in using the access token
-    login_response = await matrix_client.login(token=matrix_access_token)
-    if isinstance(login_response, LoginError):
-        logger.error(f"Failed to login: {login_response.message}")
-        return None
+    # Set the access_token and user_id
+    matrix_client.access_token = matrix_access_token
+    matrix_client.user_id = bot_user_id
 
-    # Now we are logged in
+    # Now we can proceed without the device_id
 
     # Fetch the bot's display name
     response = await matrix_client.get_displayname(bot_user_id)
@@ -73,6 +68,7 @@ async def connect_matrix():
         bot_user_name = response.displayname
     else:
         bot_user_name = bot_user_id  # Fallback if display name is not set
+
     return matrix_client
 
 async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:

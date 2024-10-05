@@ -33,7 +33,6 @@ logger = get_logger(name="M<>M Relay")
 
 # Extract Matrix configuration
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
-matrix_access_token = relay_config["matrix"]["access_token"]
 
 # Set the logging level for 'nio' to ERROR to suppress warnings
 logging.getLogger('nio').setLevel(logging.ERROR)  # Add this line
