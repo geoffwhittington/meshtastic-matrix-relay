@@ -3,7 +3,7 @@ import time
 import re
 import certifi
 import ssl
-from typing import List
+from typing import List, Union
 from nio import (
     AsyncClient,
     AsyncClientConfig,
@@ -11,6 +11,8 @@ from nio import (
     RoomMessageText,
     RoomMessageNotice,
     UploadResponse,
+    WhoamiResponse,
+    WhoamiError,
 )
 from config import relay_config
 from log_utils import get_logger
@@ -60,7 +62,17 @@ async def connect_matrix():
     matrix_client.access_token = matrix_access_token
     matrix_client.user_id = bot_user_id
 
-    # Now we can proceed without the device_id
+    # Attempt to retrieve the device_id using whoami()
+    whoami_response = await matrix_client.whoami()
+    if isinstance(whoami_response, WhoamiError):
+        logger.error(f"Failed to retrieve device_id: {whoami_response.message}")
+        matrix_client.device_id = None
+    else:
+        matrix_client.device_id = whoami_response.device_id
+        if matrix_client.device_id:
+            logger.info(f"Retrieved device_id: {matrix_client.device_id}")
+        else:
+            logger.warning("device_id not returned by whoami()")
 
     # Fetch the bot's display name
     response = await matrix_client.get_displayname(bot_user_id)
