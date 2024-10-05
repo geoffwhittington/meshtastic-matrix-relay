@@ -51,11 +51,14 @@ async def connect_matrix():
     # Initialize the Matrix client with custom SSL context
     config = AsyncClientConfig(encryption_enabled=False)
     matrix_client = AsyncClient(
-        matrix_homeserver, bot_user_id, config=config, ssl=ssl_context
+        homeserver=matrix_homeserver,
+        user=bot_user_id,  # Pass bot_user_id as 'user'
+        config=config,
+        ssl=ssl_context,
+        access_token=matrix_access_token,  # Pass access_token here
     )
-    matrix_client.access_token = matrix_access_token
-    matrix_client.user_id = bot_user_id  # Add this line
-    matrix_client.logged_in = True       # Add this line
+
+    # No need to set matrix_client.user_id or matrix_client.logged_in
 
     # Fetch the bot's display name
     response = await matrix_client.get_displayname(bot_user_id)
