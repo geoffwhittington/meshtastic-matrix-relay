@@ -54,6 +54,10 @@ async def connect_matrix():
         matrix_homeserver, bot_user_id, config=config, ssl=ssl_context
     )
     matrix_client.access_token = matrix_access_token
+    matrix_client.user_id = bot_user_id  # Add this line
+    matrix_client.logged_in = True       # Add this line
+
+    # Fetch the bot's display name
     response = await matrix_client.get_displayname(bot_user_id)
     bot_user_name = response.displayname
     return matrix_client
