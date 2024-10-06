@@ -358,7 +358,7 @@ async def check_connection():
         if meshtastic_client:
             try:
                 # Send a ping to check the connection
-                meshtastic_client.sendPing()
+                meshtastic_client.localNode.getMetadata()
             except Exception as e:
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
                 on_lost_meshtastic_connection(meshtastic_client)
