@@ -2,6 +2,7 @@ import asyncio
 import time
 import threading
 import os
+import socket  # Import socket for TCP exceptions
 import serial  # For serial port exceptions
 import serial.tools.list_ports  # Import serial tools for port listing
 from typing import List
@@ -108,37 +109,64 @@ def connect_meshtastic(force_connect=False):
                         return None
                 elif connection_type == "network":
                     target_host = relay_config["meshtastic"]["host"]
-                    logger.info(f"Connecting to host {target_host} ...")
-
-                    # Ensure previous network connection is closed properly
-                    if meshtastic_client:
-                        try:
-                            meshtastic_client.close()
-                        except Exception as e:
-                            logger.warning(f"Error closing previous network connection: {e}")
-                        meshtastic_client = None
-
-                    meshtastic_client = meshtastic.tcp_interface.TCPInterface(hostname=target_host)
-
-                    # Check if network connection is established
-                    if not meshtastic_client.isConnected:
-                        logger.warning(f"Failed to connect to {target_host}. Retrying...")
-                        time.sleep(5)
-                        attempts += 1
-                        continue
+                    target_port = relay_config["meshtastic"].get("port", 4403)
+                    logger.info(f"Connecting to host {target_host}:{target_port} ...")
+                    meshtastic_client = meshtastic.tcp_interface.TCPInterface(
+                        hostname=target_host,
+                        portNumber=target_port
+                    )
                 else:
-                    logger.error(f"Unsupported connection type: {connection_type}")
+                    logger.error(f"Invalid connection_type: {connection_type}")
                     return None
 
                 successful = True
                 nodeInfo = meshtastic_client.getMyNodeInfo()
-                logger.info(f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}")
+                if nodeInfo and 'user' in nodeInfo:
+                    logger.info(f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}")
+                else:
+                    logger.info("Connected to Meshtastic device.")
 
                 # Subscribe to message events
                 pub.subscribe(on_meshtastic_message, "meshtastic.receive")
                 pub.subscribe(on_lost_meshtastic_connection, "meshtastic.connection.lost")
 
-            except (serial.SerialException, BleakDBusError, BleakError, OSError, Exception) as e:
+            except (serial.SerialException, serial.SerialTimeoutException) as e:
+                if shutting_down:
+                    logger.info("Shutdown in progress. Aborting connection attempts.")
+                    break
+                attempts += 1
+                if retry_limit == 0 or attempts <= retry_limit:
+                    wait_time = min(attempts * 2, 30)  # Cap wait time to 30 seconds
+                    logger.warning(f"Attempt #{attempts - 1} failed. Retrying in {wait_time} secs: {e}")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Could not connect after {retry_limit} attempts: {e}")
+                    return None
+            except (BleakError, BleakDBusError) as e:
+                if shutting_down:
+                    logger.info("Shutdown in progress. Aborting connection attempts.")
+                    break
+                attempts += 1
+                if retry_limit == 0 or attempts <= retry_limit:
+                    wait_time = min(attempts * 2, 30)  # Cap wait time to 30 seconds
+                    logger.warning(f"Attempt #{attempts - 1} failed. Retrying in {wait_time} secs: {e}")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Could not connect after {retry_limit} attempts: {e}")
+                    return None
+            except (socket.error, OSError) as e:
+                if shutting_down:
+                    logger.info("Shutdown in progress. Aborting connection attempts.")
+                    break
+                attempts += 1
+                if retry_limit == 0 or attempts <= retry_limit:
+                    wait_time = min(attempts * 2, 30)  # Cap wait time to 30 seconds
+                    logger.warning(f"Attempt #{attempts - 1} failed. Retrying in {wait_time} secs: {e}")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Could not connect after {retry_limit} attempts: {e}")
+                    return None
+            except Exception as e:
                 if shutting_down:
                     logger.info("Shutdown in progress. Aborting connection attempts.")
                     break
@@ -336,9 +364,4 @@ async def check_connection():
                 on_lost_meshtastic_connection(meshtastic_client)
         await asyncio.sleep(5)  # Check connection every 5 seconds
 
-if __name__ == "__main__":
-    meshtastic_client = connect_meshtastic()
-    loop = asyncio.get_event_loop()
-    event_loop = loop  # Set the event loop
-    loop.create_task(check_connection())
-    loop.run_forever()
+# Note: Removed the __main__ block as it is not needed in this module
