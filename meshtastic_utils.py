@@ -357,7 +357,7 @@ async def check_connection():
     while not shutting_down:
         if meshtastic_client:
             try:
-                # Send a ping to check the connection
+                # This method was recommended to us by a Meshtastic python package maintainer
                 meshtastic_client.localNode.getMetadata()
             except Exception as e:
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
