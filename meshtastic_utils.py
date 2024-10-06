@@ -106,10 +106,29 @@ def connect_meshtastic(force_connect=False):
                     else:
                         logger.error("No BLE address provided.")
                         return None
-                else:
+                elif connection_type == "network":
                     target_host = relay_config["meshtastic"]["host"]
                     logger.info(f"Connecting to host {target_host} ...")
+
+                    # Ensure previous network connection is closed properly
+                    if meshtastic_client:
+                        try:
+                            meshtastic_client.close()
+                        except Exception as e:
+                            logger.warning(f"Error closing previous network connection: {e}")
+                        meshtastic_client = None
+
                     meshtastic_client = meshtastic.tcp_interface.TCPInterface(hostname=target_host)
+
+                    # Check if network connection is established
+                    if not meshtastic_client.isConnected:
+                        logger.warning(f"Failed to connect to {target_host}. Retrying...")
+                        time.sleep(5)
+                        attempts += 1
+                        continue
+                else:
+                    logger.error(f"Unsupported connection type: {connection_type}")
+                    return None
 
                 successful = True
                 nodeInfo = meshtastic_client.getMyNodeInfo()
@@ -119,7 +138,7 @@ def connect_meshtastic(force_connect=False):
                 pub.subscribe(on_meshtastic_message, "meshtastic.receive")
                 pub.subscribe(on_lost_meshtastic_connection, "meshtastic.connection.lost")
 
-            except (serial.SerialException, BleakDBusError, BleakError, Exception) as e:
+            except (serial.SerialException, BleakDBusError, BleakError, OSError, Exception) as e:
                 if shutting_down:
                     logger.info("Shutdown in progress. Aborting connection attempts.")
                     break
