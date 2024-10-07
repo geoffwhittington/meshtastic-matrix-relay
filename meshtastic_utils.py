@@ -2,7 +2,6 @@ import asyncio
 import time
 import threading
 import os
-import socket  # Import socket for TCP exceptions
 import serial  # For serial port exceptions
 import serial.tools.list_ports  # Import serial tools for port listing
 from typing import List
@@ -107,66 +106,20 @@ def connect_meshtastic(force_connect=False):
                     else:
                         logger.error("No BLE address provided.")
                         return None
-                elif connection_type == "network":
-                    target_host = relay_config["meshtastic"]["host"]
-                    target_port = relay_config["meshtastic"].get("port", 4403)
-                    logger.info(f"Connecting to host {target_host}:{target_port} ...")
-                    meshtastic_client = meshtastic.tcp_interface.TCPInterface(
-                        hostname=target_host,
-                        portNumber=target_port
-                    )
                 else:
-                    logger.error(f"Invalid connection_type: {connection_type}")
-                    return None
+                    target_host = relay_config["meshtastic"]["host"]
+                    logger.info(f"Connecting to host {target_host} ...")
+                    meshtastic_client = meshtastic.tcp_interface.TCPInterface(hostname=target_host)
 
                 successful = True
                 nodeInfo = meshtastic_client.getMyNodeInfo()
-                if nodeInfo and 'user' in nodeInfo:
-                    logger.info(f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}")
-                else:
-                    logger.info("Connected to Meshtastic device.")
+                logger.info(f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}")
 
                 # Subscribe to message events
                 pub.subscribe(on_meshtastic_message, "meshtastic.receive")
                 pub.subscribe(on_lost_meshtastic_connection, "meshtastic.connection.lost")
 
-            except (serial.SerialException, serial.SerialTimeoutException) as e:
-                if shutting_down:
-                    logger.info("Shutdown in progress. Aborting connection attempts.")
-                    break
-                attempts += 1
-                if retry_limit == 0 or attempts <= retry_limit:
-                    wait_time = min(attempts * 2, 30)  # Cap wait time to 30 seconds
-                    logger.warning(f"Attempt #{attempts - 1} failed. Retrying in {wait_time} secs: {e}")
-                    time.sleep(wait_time)
-                else:
-                    logger.error(f"Could not connect after {retry_limit} attempts: {e}")
-                    return None
-            except (BleakError, BleakDBusError) as e:
-                if shutting_down:
-                    logger.info("Shutdown in progress. Aborting connection attempts.")
-                    break
-                attempts += 1
-                if retry_limit == 0 or attempts <= retry_limit:
-                    wait_time = min(attempts * 2, 30)  # Cap wait time to 30 seconds
-                    logger.warning(f"Attempt #{attempts - 1} failed. Retrying in {wait_time} secs: {e}")
-                    time.sleep(wait_time)
-                else:
-                    logger.error(f"Could not connect after {retry_limit} attempts: {e}")
-                    return None
-            except (socket.error, OSError) as e:
-                if shutting_down:
-                    logger.info("Shutdown in progress. Aborting connection attempts.")
-                    break
-                attempts += 1
-                if retry_limit == 0 or attempts <= retry_limit:
-                    wait_time = min(attempts * 2, 30)  # Cap wait time to 30 seconds
-                    logger.warning(f"Attempt #{attempts - 1} failed. Retrying in {wait_time} secs: {e}")
-                    time.sleep(wait_time)
-                else:
-                    logger.error(f"Could not connect after {retry_limit} attempts: {e}")
-                    return None
-            except Exception as e:
+            except (serial.SerialException, BleakDBusError, BleakError, Exception) as e:
                 if shutting_down:
                     logger.info("Shutdown in progress. Aborting connection attempts.")
                     break
@@ -357,11 +310,16 @@ async def check_connection():
     while not shutting_down:
         if meshtastic_client:
             try:
-                # This method was recommended to us by a Meshtastic python package maintainer
-                meshtastic_client.localNode.getMetadata()
+                # Send a ping to check the connection
+                meshtastic_client.sendPing()
             except Exception as e:
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
                 on_lost_meshtastic_connection(meshtastic_client)
         await asyncio.sleep(5)  # Check connection every 5 seconds
 
-# Note: Removed the __main__ block as it is not needed in this module
+if __name__ == "__main__":
+    meshtastic_client = connect_meshtastic()
+    loop = asyncio.get_event_loop()
+    event_loop = loop  # Set the event loop
+    loop.create_task(check_connection())
+    loop.run_forever()
