@@ -46,10 +46,10 @@ See our Wiki page [Getting Started With Matrix & MM Relay](https://github.com/ge
 Join us!
 
 - In our project's room: 
-  [#mmrelay:matrix.org](https://matrix.to/#/#mmrelay:matrix.org)
+  [#mmrelay:meshnet.club](https://matrix.to/#/#mmrelay:meshnet.club)
 
 - Which is a part of the Meshtastic Community Matrix space *(an unofficial group of enthusiasts)*:
-  [#meshtastic-community:matrix.org](https://matrix.to/#/#meshtastic-community:matrix.org)  
+  [#meshtastic-community:meshnet.club](https://matrix.to/#/#meshtastic-community:meshnet.club)  
 
 ## Supported Platforms
 
