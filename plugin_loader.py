@@ -80,6 +80,7 @@ def load_plugins_from_directory(directory, recursive=False):
         logger.warning(f"Directory {directory} does not exist.")
     return plugins
 
+
 def load_plugins():
     global sorted_active_plugins
     if sorted_active_plugins:
@@ -100,7 +101,7 @@ def load_plugins():
     from plugins.debug_plugin import Plugin as DebugPlugin
 
     # Initial list of core plugins
-    plugins = [
+    core_plugins = [
         HealthPlugin(),
         MapPlugin(),
         MeshRelayPlugin(),
@@ -112,6 +113,8 @@ def load_plugins():
         DropPlugin(),
         DebugPlugin(),
     ]
+
+    plugins = core_plugins.copy()
 
     # Load custom plugins (non-recursive)
     custom_plugins_dir = os.path.join(os.path.dirname(__file__), 'plugins', 'custom')
@@ -128,7 +131,7 @@ def load_plugins():
             if repo_url:
                 clone_or_update_repo(repo_url, tag, community_plugins_dir)
             else:
-                logger.error(f"Repository URL not specified for a community plugin")
+                logger.error("Repository URL not specified for a community plugin")
                 logger.error("Please specify the repository URL in config.yaml")
                 sys.exit(1)
 
@@ -138,13 +141,33 @@ def load_plugins():
     # Filter and sort active plugins by priority
     active_plugins = []
     for plugin in plugins:
-        if plugin.config.get("active", False):
-            plugin.priority = plugin.config.get("priority", plugin.priority)
+        plugin_name = getattr(plugin, 'plugin_name', plugin.__class__.__name__)
+
+        # Determine if the plugin is active based on the configuration
+        if plugin in core_plugins:
+            # Core plugins: default to active unless specified otherwise
+            plugin_config = config.get('plugins', {}).get(plugin_name, {})
+            is_active = plugin_config.get("active", True)
+        else:
+            # Custom and community plugins: default to inactive unless specified
+            if plugin_name in config.get('custom-plugins', {}):
+                plugin_config = config.get('custom-plugins', {}).get(plugin_name, {})
+            elif plugin_name in community_plugins_config:
+                plugin_config = community_plugins_config.get(plugin_name, {})
+            else:
+                plugin_config = {}
+
+            is_active = plugin_config.get("active", False)
+
+        if is_active:
+            plugin.priority = plugin_config.get("priority", getattr(plugin, 'priority', 100))
             active_plugins.append(plugin)
             try:
                 plugin.start()
             except Exception as e:
-                logger.error(f"Error starting plugin {plugin}: {e}")
+                logger.error(f"Error starting plugin {plugin_name}: {e}")
+        else:
+            logger.info(f"Plugin '{plugin_name}' is inactive or not configured, skipping")
 
     sorted_active_plugins = sorted(active_plugins, key=lambda plugin: plugin.priority)
     return sorted_active_plugins
