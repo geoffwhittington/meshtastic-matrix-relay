@@ -42,7 +42,7 @@ Produce high-level details about your mesh
 ## Custom plugins
 It is possible to create custom plugins to add new features or modify the relay's behavior. Check more info in [example_plugins/README.md](https://github.com/geoffwhittington/meshtastic-matrix-relay/tree/main/example_plugins)
 
-## Install a community pluggin
+## Install a community plugin
 To install plugins, simply modify the config.yaml file and add the user's repository under the community-plugins section.
 
 ```
