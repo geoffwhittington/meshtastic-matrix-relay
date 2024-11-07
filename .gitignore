@@ -1,8 +1,14 @@
 .pyenv
 .vscode
 config.yaml
-custom_plugins/*
 meshtastic.sqlite
 __pycache__/
-./plugins/__pycache__/
+plugins/__pycache__/
 .aider*
+*.pyc
+*.pyo
+*.pyd
+*$py.class
+custom_plugins/
+plugins/custom/
+plugins/community/

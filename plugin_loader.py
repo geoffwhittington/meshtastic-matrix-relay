@@ -1,12 +1,41 @@
 import os
 import importlib.util
+import hashlib
 from log_utils import get_logger
 
 logger = get_logger(name="Plugins")
-
 sorted_active_plugins = []
 
+def load_plugins_from_directory(directory, recursive=False):
+    plugins = []
+    if os.path.isdir(directory):
+        for root, dirs, files in os.walk(directory):
+            for filename in files:
+                if filename.endswith('.py'):
+                    plugin_path = os.path.join(root, filename)
+                    module_name = "plugin_" + hashlib.md5(plugin_path.encode('utf-8')).hexdigest()
+                    spec = importlib.util.spec_from_file_location(module_name, plugin_path)
+                    plugin_module = importlib.util.module_from_spec(spec)
+                    try:
+                        spec.loader.exec_module(plugin_module)
+                        if hasattr(plugin_module, 'Plugin'):
+                            plugins.append(plugin_module.Plugin())
+                        else:
+                            logger.warning(f"{plugin_path} does not define a Plugin class.")
+                    except Exception as e:
+                        logger.error(f"Error loading plugin {plugin_path}: {e}")
+            if not recursive:
+                break
+    else:
+        logger.warning(f"Directory {directory} does not exist.")
+    return plugins
+
 def load_plugins():
+    global sorted_active_plugins
+    if sorted_active_plugins:
+        return sorted_active_plugins
+
+    # Import core plugins
     from plugins.health_plugin import Plugin as HealthPlugin
     from plugins.map_plugin import Plugin as MapPlugin
     from plugins.mesh_relay_plugin import Plugin as MeshRelayPlugin
@@ -18,11 +47,7 @@ def load_plugins():
     from plugins.drop_plugin import Plugin as DropPlugin
     from plugins.debug_plugin import Plugin as DebugPlugin
 
-    global sorted_active_plugins
-    if sorted_active_plugins:
-        return sorted_active_plugins
-
-    # List of core plugins
+    # Initial list of core plugins
     plugins = [
         HealthPlugin(),
         MapPlugin(),
@@ -36,19 +61,13 @@ def load_plugins():
         DebugPlugin(),
     ]
 
-    # Load custom plugins from the 'custom_plugins' directory
-    custom_plugins_dir = os.path.join(os.path.dirname(__file__), 'custom_plugins')
-    if os.path.isdir(custom_plugins_dir):
-        for filename in os.listdir(custom_plugins_dir):
-            if filename.endswith('.py'):
-                plugin_path = os.path.join(custom_plugins_dir, filename)
-                spec = importlib.util.spec_from_file_location("custom_plugin", plugin_path)
-                custom_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(custom_module)
-                if hasattr(custom_module, 'Plugin'):
-                    plugins.append(custom_module.Plugin())
-                else:
-                    logger.warning(f"{filename} does not define a Plugin class.")
+    # Load custom plugins (non-recursive)
+    custom_plugins_dir = os.path.join(os.path.dirname(__file__), 'plugins', 'custom')
+    plugins.extend(load_plugins_from_directory(custom_plugins_dir, recursive=False))
+
+    # Load community plugins (recursive)
+    community_plugins_dir = os.path.join(os.path.dirname(__file__), 'plugins', 'community')
+    plugins.extend(load_plugins_from_directory(community_plugins_dir, recursive=True))
 
     # Filter and sort active plugins by priority
     active_plugins = []
@@ -56,7 +75,10 @@ def load_plugins():
         if plugin.config.get("active", False):
             plugin.priority = plugin.config.get("priority", plugin.priority)
             active_plugins.append(plugin)
-            plugin.start()
+            try:
+                plugin.start()
+            except Exception as e:
+                logger.error(f"Error starting plugin {plugin}: {e}")
 
     sorted_active_plugins = sorted(active_plugins, key=lambda plugin: plugin.priority)
     return sorted_active_plugins
