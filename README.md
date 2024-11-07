@@ -28,7 +28,9 @@ A powerful and easy-to-use relay between Meshtastic devices and Matrix chat room
 The latest installer is available [here](https://github.com/geoffwhittington/meshtastic-matrix-relay/releases)
 
 ### Plugins
+M<>M Relay supports plugins for extending its functionality, enabling customization and enhancement of the relay to suit specific needs. Plugins can add new features, integrate with other services, or modify the behavior of the relay without changing the core code.
 
+## Core Plugins
 Generate a map of your nodes
 
 <img  src="https://user-images.githubusercontent.com/1770544/235247915-47750b4f-d505-4792-a458-54a5f24c1523.png"  width="500"/>
@@ -36,6 +38,24 @@ Generate a map of your nodes
 Produce high-level details about your mesh
 
 <img  src="https://user-images.githubusercontent.com/1770544/235245873-1ddc773b-a4cd-4c67-b0a5-b55a29504b73.png"  width="500"/>
+
+## Custom plugins
+It is possible to create custom plugins to add new features or modify the relay's behavior. Check more info in [example_plugins/README.md](https://github.com/geoffwhittington/meshtastic-matrix-relay/tree/main/example_plugins)
+
+## Install a community pluggin
+To install plugins, simply modify the config.yaml file and add the user's repository under the community-plugins section.
+
+```
+community-plugins:
+  weather_plugin:
+    active: true
+    repository: https://github.com/anotheruser/weather_plugin.git
+    tag: master
+
+```
+
+
+**Note:** If the plugin requires additional dependencies, they will be installed automatically if a requirements.txt file is present in the plugin's directory.
 
 ## Getting Started with Matrix
 

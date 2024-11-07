@@ -21,10 +21,27 @@ meshtastic:
 logging:
   level: "info"
 
-plugins: # Optional plugins
-  health:
+plugins:
+  health_plugin:
     active: true
-  map:
+  map_plugin:
     active: true
-  nodes:
+  nodes_plugin:
     active: true
+  # Other core plugins...
+
+custom-plugins:
+  my_custom_plugin:
+    active: true
+  another_custom_plugin:
+    active: false
+
+community-plugins:
+  sample_plugin:
+    active: true
+    repository: https://github.com/username/sample_plugin.git
+    tag: master
+  advanced_plugin:
+    active: false
+    repository: https://github.com/username/advanced_plugin.git
+    tag: v1.2.0
