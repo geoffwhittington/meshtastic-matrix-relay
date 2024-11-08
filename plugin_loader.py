@@ -5,23 +5,11 @@ import hashlib
 import subprocess
 import yaml
 from log_utils import get_logger
+from config import relay_config, get_app_path  # Import get_app_path from config.py
 
 logger = get_logger(name="Plugins")
 sorted_active_plugins = []
 plugins_loaded = False  # Add this flag to track if plugins have been loaded
-
-def load_config():
-    config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
-    if not os.path.isfile(config_path):
-        logger.error(f"Configuration file not found: {config_path}")
-        return {}
-    with open(config_path, 'r') as f:
-        try:
-            config = yaml.safe_load(f)
-            return config
-        except yaml.YAMLError as e:
-            logger.error(f"Error parsing configuration file: {e}")
-            return {}
 
 def clone_or_update_repo(repo_url, tag, plugins_dir):
     # Extract the repository name from the URL
@@ -92,7 +80,7 @@ def load_plugins():
 
     logger.debug("Loading plugins...")  # Optional: Log when plugins are being loaded
 
-    config = load_config()
+    config = relay_config  # Use relay_config loaded in config.py
 
     # Import core plugins
     from plugins.health_plugin import Plugin as HealthPlugin
@@ -123,18 +111,18 @@ def load_plugins():
     plugins = core_plugins.copy()
 
     # Load custom plugins (non-recursive)
-    custom_plugins_dir = os.path.join(os.path.dirname(__file__), 'plugins', 'custom')
+    custom_plugins_dir = os.path.join(get_app_path(), 'plugins', 'custom')  # Use get_app_path()
     plugins.extend(load_plugins_from_directory(custom_plugins_dir, recursive=False))
 
     # Process and download community plugins
     community_plugins_config = config.get('community-plugins', {})
-    community_plugins_dir = os.path.join(os.path.dirname(__file__), 'plugins', 'community')
+    community_plugins_dir = os.path.join(get_app_path(), 'plugins', 'community')  # Use get_app_path()
 
     # Create community plugins directory if needed
     if any(plugin_info.get('active', False) for plugin_info in community_plugins_config.values()):
         os.makedirs(community_plugins_dir, exist_ok=True)
 
-    for plugin_info in community_plugins_config.values():
+    for plugin_name, plugin_info in community_plugins_config.items():
         if plugin_info.get('active', False):
             repo_url = plugin_info.get('repository')
             tag = plugin_info.get('tag', 'master')
@@ -181,5 +169,4 @@ def load_plugins():
                 logger.debug(f"Plugin '{plugin_name}' is inactive or not configured, skipping")  # Changed to DEBUG level
 
     sorted_active_plugins = sorted(active_plugins, key=lambda plugin: plugin.priority)
-    plugins_loaded = True  # Set the flag to indicate that plugins have been loaded
-    return sorted_active_plugins
+    plugins_loaded = True  # Set the flag to indicate that plugins have been load
