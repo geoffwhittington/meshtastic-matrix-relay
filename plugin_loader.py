@@ -8,6 +8,7 @@ from log_utils import get_logger
 
 logger = get_logger(name="Plugins")
 sorted_active_plugins = []
+plugins_loaded = False  # Add this flag to track if plugins have been loaded
 
 def load_config():
     config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
@@ -38,6 +39,7 @@ def clone_or_update_repo(repo_url, tag, plugins_dir):
             sys.exit(1)
     else:
         try:
+            os.makedirs(plugins_dir, exist_ok=True)
             subprocess.check_call(['git', 'clone', '--branch', tag, repo_url], cwd=plugins_dir)
             logger.info(f"Cloned repository {repo_name} from {repo_url} at {tag}")
         except subprocess.CalledProcessError as e:
@@ -77,14 +79,18 @@ def load_plugins_from_directory(directory, recursive=False):
             if not recursive:
                 break
     else:
-        logger.warning(f"Directory {directory} does not exist.")
+        if not plugins_loaded:  # Only log the missing directory once
+            logger.debug(f"Directory {directory} does not exist.")  # Changed to DEBUG level
     return plugins
-
 
 def load_plugins():
     global sorted_active_plugins
-    if sorted_active_plugins:
+    global plugins_loaded
+
+    if plugins_loaded:
         return sorted_active_plugins
+
+    logger.debug("Loading plugins...")  # Optional: Log when plugins are being loaded
 
     config = load_config()
 
@@ -124,6 +130,10 @@ def load_plugins():
     community_plugins_config = config.get('community-plugins', {})
     community_plugins_dir = os.path.join(os.path.dirname(__file__), 'plugins', 'community')
 
+    # Create community plugins directory if needed
+    if any(plugin_info.get('active', False) for plugin_info in community_plugins_config.values()):
+        os.makedirs(community_plugins_dir, exist_ok=True)
+
     for plugin_info in community_plugins_config.values():
         if plugin_info.get('active', False):
             repo_url = plugin_info.get('repository')
@@ -145,9 +155,9 @@ def load_plugins():
 
         # Determine if the plugin is active based on the configuration
         if plugin in core_plugins:
-            # Core plugins: default to active unless specified otherwise
+            # Core plugins: default to inactive unless specified otherwise
             plugin_config = config.get('plugins', {}).get(plugin_name, {})
-            is_active = plugin_config.get("active", True)
+            is_active = plugin_config.get("active", False)
         else:
             # Custom and community plugins: default to inactive unless specified
             if plugin_name in config.get('custom-plugins', {}):
@@ -167,7 +177,9 @@ def load_plugins():
             except Exception as e:
                 logger.error(f"Error starting plugin {plugin_name}: {e}")
         else:
-            logger.info(f"Plugin '{plugin_name}' is inactive or not configured, skipping")
+            if not plugins_loaded:  # Only log about inactive plugins once
+                logger.debug(f"Plugin '{plugin_name}' is inactive or not configured, skipping")  # Changed to DEBUG level
 
     sorted_active_plugins = sorted(active_plugins, key=lambda plugin: plugin.priority)
+    plugins_loaded = True  # Set the flag to indicate that plugins have been loaded
     return sorted_active_plugins

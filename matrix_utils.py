@@ -16,11 +16,12 @@ from nio import (
 )
 from config import relay_config
 from log_utils import get_logger
-from plugin_loader import load_plugins
+# Do not import plugin_loader here to avoid circular imports
 from meshtastic_utils import connect_meshtastic
 from PIL import Image
 import meshtastic.protobuf.portnums_pb2
 
+# Extract Matrix configuration
 matrix_homeserver = relay_config["matrix"]["homeserver"]
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 matrix_access_token = relay_config["matrix"]["access_token"]
@@ -35,12 +36,13 @@ logger = get_logger(name="Matrix")
 
 matrix_client = None
 
-
 def bot_command(command, payload):
     return f"{bot_user_name}: !{command}" in payload
 
-
 async def connect_matrix():
+    """
+    Establish a connection to the Matrix homeserver.
+    """
     global matrix_client
     global bot_user_name
     if matrix_client:
@@ -116,7 +118,6 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
     except Exception as e:
         logger.error(f"Error joining room '{room_id_or_alias}': {e}")
 
-
 # Send message to the Matrix room
 async def matrix_relay(room_id, message, longname, shortname, meshnet_name, portnum):
     matrix_client = await connect_matrix()
@@ -144,7 +145,6 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
     except Exception as e:
         logger.error(f"Error sending radio message to matrix room {room_id}: {e}")
 
-
 def truncate_message(
     text, max_bytes=227
 ):  # 227 is the maximum that we can run without an error so far.  228 throws an error.
@@ -157,7 +157,6 @@ def truncate_message(
     """
     truncated_text = text.encode("utf-8")[:max_bytes].decode("utf-8", "ignore")
     return truncated_text
-
 
 # Callback for new messages in Matrix room
 async def on_room_message(
@@ -199,7 +198,7 @@ async def on_room_message(
             short_meshnet_name = meshnet_name[:4]
             # If shortname is None, truncate the longname to 3 characters
             if shortname is None:
-                shortname = longname[:3]           
+                shortname = longname[:3]
             prefix = f"{shortname}/{short_meshnet_name}: "
             text = re.sub(
                 rf"^\[{full_display_name}\]: ", "", text
@@ -221,9 +220,8 @@ async def on_room_message(
         truncated_message = f"{prefix}{text}"
 
     # Plugin functionality
-    plugins = load_plugins()
-    meshtastic_interface = connect_meshtastic()
-    from meshtastic_utils import logger as meshtastic_logger
+    from plugin_loader import load_plugins  # Import here to avoid circular imports
+    plugins = load_plugins()  # Load plugins within the function
 
     found_matching_plugin = False
     for plugin in plugins:
@@ -233,6 +231,9 @@ async def on_room_message(
             )
             if found_matching_plugin:
                 logger.debug(f"Processed by plugin {plugin.plugin_name}")
+
+    meshtastic_interface = connect_meshtastic()
+    from meshtastic_utils import logger as meshtastic_logger
 
     meshtastic_channel = room_config["meshtastic_channel"]
 
@@ -263,7 +264,6 @@ async def on_room_message(
                 f"Broadcast not supported: Message from {full_display_name} dropped."
             )
 
-
 async def upload_image(
     client: AsyncClient, image: Image.Image, filename: str
 ) -> UploadResponse:
@@ -279,7 +279,6 @@ async def upload_image(
     )
 
     return response
-
 
 async def send_room_image(
     client: AsyncClient, room_id: str, upload_response: UploadResponse
