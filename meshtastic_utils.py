@@ -15,7 +15,7 @@ from pubsub import pub
 from config import relay_config
 from db_utils import get_longname, get_shortname
 from log_utils import get_logger
-from plugin_loader import load_plugins
+# Do not import plugin_loader here to avoid circular imports
 
 # Extract matrix rooms configuration
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
@@ -251,7 +251,9 @@ def on_meshtastic_message(packet, interface):
         formatted_message = f"[{longname}/{meshnet_name}]: {text}"
 
         # Plugin functionality
-        plugins = load_plugins()
+        from plugin_loader import load_plugins  # Import here to avoid circular imports
+        plugins = load_plugins()  # Load plugins within the function
+
         found_matching_plugin = False
         for plugin in plugins:
             if not found_matching_plugin:
@@ -287,6 +289,7 @@ def on_meshtastic_message(packet, interface):
     else:
         # Handle non-text messages via plugins
         portnum = decoded.get("portnum")
+        from plugin_loader import load_plugins  # Import here to avoid circular imports
         plugins = load_plugins()
         found_matching_plugin = False
         for plugin in plugins:
