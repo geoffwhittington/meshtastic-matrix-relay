@@ -10,5 +10,9 @@ plugins/__pycache__/
 *.pyd
 *$py.class
 custom_plugins/
-plugins/custom/
-plugins/community/
+plugins/custom/*
+plugins/community/*
+
+# Allow the directories themselves to be tracked
+!plugins/custom/.gitkeep
+!plugins/community/.gitkeep
