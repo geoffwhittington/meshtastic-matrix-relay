@@ -6,7 +6,7 @@ You can run the relay using Python 3.9 on Linux, MacOS, and Windows. We would en
 
 Clone the repository:
 
-```
+```bash
 git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
 ```
 
@@ -35,24 +35,24 @@ matrix:
   access_token: "reaalllllyloooooongsecretttttcodeeeeeeforrrrbot" # See: https://t2bot.io/docs/access_tokens/
   bot_user_id: "@botuser:example.matrix.org"
 
-matrix_rooms: # Needs at least 1 room & channel, but supports all Meshtastic channels
-  - id: "#someroomalias:example.matrix.org" # Matrix room aliases & IDs supported
+matrix_rooms:
+  - id: "#someroomalias:example.matrix.org"
     meshtastic_channel: 0
   - id: "!someroomid:example.matrix.org"
     meshtastic_channel: 2
 
 meshtastic:
-  connection_type: serial # Choose either "network" or "serial"
-  serial_port: /dev/ttyUSB0 # Only used when connection is "serial"
-  host: "meshtastic.local" # Only used when connection is "network"
-  meshnet_name: "Your Meshnet Name" # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
+  connection_type: serial
+  serial_port: /dev/ttyUSB0
+  host: "meshtastic.local"
+  meshnet_name: "Your Meshnet Name"
   broadcast_enabled: true
   detection_sensor: true
 
 logging:
   level: "info"
 
-plugins: # Optional plugins
+plugins:
   health:
     active: true
   map:
@@ -76,8 +76,7 @@ python main.py
 Example output:
 
 ```bash
-
-$ python main.py
+python main.py
 INFO:meshtastic.matrix.relay:Starting Meshtastic <==> Matrix Relay...
 INFO:meshtastic.matrix.relay:Connecting to radio at meshtastic.local ...
 INFO:meshtastic.matrix.relay:Connected to radio at meshtastic.local.
@@ -92,14 +91,11 @@ INFO:meshtastic.matrix.relay:Sent inbound radio message to matrix room: #someroo
 
 ## Persistence
 
-If you'd like the bridge to run automatically (and persistently) on startup in Linux, you can set up a systemd service.
-In this example, it is assumed that you have the project a (non-root) user's home directory, and set up the venv according to the above.
+To run the bridge automatically on startup in Linux, set up a systemd service:
 
-Create the file `~/.config/systemd/user/mmrelay.service`:
-
-```bash
+```systemd
 [Unit]
-Description=A Meshtastic to [matrix] bridge
+Description=A Meshtastic to Matrix bridge
 After=default.target
 
 [Service]
@@ -112,9 +108,9 @@ Restart=on-failure
 WantedBy=default.target
 ```
 
-The service is enabled and started by
+Enable and start the service:
 
 ```bash
-$ systemctl --user enable mmrelay.service
-$ systemctl --user start mmrelay.service
+systemctl --user enable mmrelay.service
+systemctl --user start mmrelay.service
 ```
