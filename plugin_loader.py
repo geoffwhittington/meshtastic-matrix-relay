@@ -4,12 +4,12 @@ import os
 import subprocess
 import sys
 
-from config import get_app_path, relay_config  # Import get_app_path from config.py
+from config import get_app_path, relay_config
 from log_utils import get_logger
 
 logger = get_logger(name="Plugins")
 sorted_active_plugins = []
-plugins_loaded = False  # Add this flag to track if plugins have been loaded
+plugins_loaded = False
 
 
 def clone_or_update_repo(repo_url, tag, plugins_dir):
@@ -66,7 +66,7 @@ def load_plugins_from_directory(directory, recursive=False):
                 if filename.endswith(".py"):
                     plugin_path = os.path.join(root, filename)
                     module_name = (
-                        "plugin_" + hashlib.md5(plugin_path.encode("utf-8")).hexdigest()
+                        "plugin_" + hashlib.sha256(plugin_path.encode("utf-8")).hexdigest()
                     )
                     spec = importlib.util.spec_from_file_location(
                         module_name, plugin_path
@@ -88,7 +88,7 @@ def load_plugins_from_directory(directory, recursive=False):
         if not plugins_loaded:  # Only log the missing directory once
             logger.debug(
                 f"Directory {directory} does not exist."
-            )  # Changed to DEBUG level
+            )
     return plugins
 
 
@@ -99,7 +99,7 @@ def load_plugins():
     if plugins_loaded:
         return sorted_active_plugins
 
-    logger.debug("Loading plugins...")  # Optional: Log when plugins are being loaded
+    logger.debug("Loading plugins...")
 
     config = relay_config  # Use relay_config loaded in config.py
 
@@ -150,7 +150,7 @@ def load_plugins():
     ):
         os.makedirs(community_plugins_dir, exist_ok=True)
 
-    for plugin_name, plugin_info in community_plugins_config.items():
+    for plugin_info in community_plugins_config.items():
         if plugin_info.get("active", False):
             repo_url = plugin_info.get("repository")
             tag = plugin_info.get("tag", "master")

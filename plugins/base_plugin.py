@@ -134,7 +134,7 @@ class BasePlugin(ABC):
     def matches(self, payload):
         from matrix_utils import bot_command
 
-        if type(payload) == str:
+        if isinstance(payload, str):
             return bot_command(self.plugin_name, payload)
         return False
 
