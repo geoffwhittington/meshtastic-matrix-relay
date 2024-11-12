@@ -1,9 +1,9 @@
 meshtastic
-Pillow==9.5.0
+Pillow==11
 py-staticmaps==0.4.0
 matrix-nio==0.25.2
 matplotlib==3.9.0
-requests==2.31.0
+requests==2.32.3
 markdown==3.4.3
 haversine==2.8.0
 schedule==1.2.0
