@@ -1,13 +1,12 @@
-import json
-import io
-import re
 import base64
 import json
+import re
 from typing import List
+
 from meshtastic import mesh_pb2
 
-from plugins.base_plugin import BasePlugin
 from config import relay_config
+from plugins.base_plugin import BasePlugin
 
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 
@@ -20,10 +19,10 @@ class Plugin(BasePlugin):
         """
         Packets are either a dict, string dict or string
         """
-        if type(dict_obj) is not dict:
+        if not isinstance(dict_obj, dict):
             try:
                 dict_obj = json.loads(dict_obj)
-            except:
+            except (json.JSONDecodeError, TypeError):
                 dict_obj = {"decoded": {"text": dict_obj}}
 
         return self.strip_raw(dict_obj)
@@ -32,8 +31,7 @@ class Plugin(BasePlugin):
         packet = self.normalize(packet)
 
         if "decoded" in packet and "payload" in packet["decoded"]:
-            if type(packet["decoded"]["payload"]) is bytes:
-                text = packet["decoded"]["payload"]
+            if isinstance(packet["decoded"]["payload"], bytes):
                 packet["decoded"]["payload"] = base64.b64encode(
                     packet["decoded"]["payload"]
                 ).decode("utf-8")
@@ -84,7 +82,7 @@ class Plugin(BasePlugin):
         return False
 
     def matches(self, payload):
-        if type(payload) == str:
+        if isinstance(payload, str):
             match = re.match(r"^Processed (.+) radio packet$", payload)
             return match
         return False
@@ -111,7 +109,7 @@ class Plugin(BasePlugin):
 
         try:
             packet = json.loads(packet_json)
-        except Exception as e:
+        except (json.JSONDecodeError, TypeError) as e:
             self.logger.error(f"Error processing embedded packet: {e}")
             return
 
@@ -125,7 +123,7 @@ class Plugin(BasePlugin):
         meshPacket.decoded.want_response = False
         meshPacket.id = meshtastic_client._generatePacketId()
 
-        self.logger.debug(f"Relaying packet to Radio")
+        self.logger.debug("Relaying packet to Radio")
 
         meshtastic_client._sendPacket(
             meshPacket=meshPacket, destinationId=packet["toId"]

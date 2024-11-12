@@ -1,8 +1,9 @@
 import re
+
 from haversine import haversine
-from plugins.base_plugin import BasePlugin
+
 from meshtastic_utils import connect_meshtastic
-from meshtastic import mesh_pb2
+from plugins.base_plugin import BasePlugin
 
 
 class Plugin(BasePlugin):
@@ -10,7 +11,7 @@ class Plugin(BasePlugin):
     special_node = "!NODE_MSGS!"
 
     def get_position(self, meshtastic_client, node_id):
-        for node, info in meshtastic_client.nodes.items():
+        for _node, info in meshtastic_client.nodes.items():
             if info["user"]["id"] == node_id:
                 return info["position"]
         return None
@@ -47,7 +48,7 @@ class Plugin(BasePlugin):
                             (packet_location[0], packet_location[1]),
                             message["location"],
                         )
-                    except:
+                    except (ValueError, TypeError):
                         distance_km = 1000
                     radius_km = (
                         self.config["radius_km"] if "radius_km" in self.config else 5
@@ -82,7 +83,7 @@ class Plugin(BasePlugin):
             drop_message = match.group(1)
 
             position = {}
-            for node, info in meshtastic_client.nodes.items():
+            for _node, info in meshtastic_client.nodes.items():
                 if info["user"]["id"] == packet["fromId"]:
                     position = info["position"]
 

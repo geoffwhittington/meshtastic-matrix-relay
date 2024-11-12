@@ -14,17 +14,16 @@ git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
 
 Create a Python virtual environment in the project directory:
 
-```
+```bash
 python3 -m venv .pyenv
 ```
 
 Activate the virtual environment and install dependencies:
 
-```
+```bash
 source .pyenv/bin/activate
 pip install -r requirements.txt
 ```
-
 
 ### Configuration
 
@@ -36,15 +35,15 @@ matrix:
   access_token: "reaalllllyloooooongsecretttttcodeeeeeeforrrrbot" # See: https://t2bot.io/docs/access_tokens/
   bot_user_id: "@botuser:example.matrix.org"
 
-matrix_rooms:  # Needs at least 1 room & channel, but supports all Meshtastic channels
+matrix_rooms: # Needs at least 1 room & channel, but supports all Meshtastic channels
   - id: "#someroomalias:example.matrix.org" # Matrix room aliases & IDs supported
     meshtastic_channel: 0
   - id: "!someroomid:example.matrix.org"
     meshtastic_channel: 2
 
 meshtastic:
-  connection_type: serial  # Choose either "network" or "serial"
-  serial_port: /dev/ttyUSB0  # Only used when connection is "serial"
+  connection_type: serial # Choose either "network" or "serial"
+  serial_port: /dev/ttyUSB0 # Only used when connection is "serial"
   host: "meshtastic.local" # Only used when connection is "network"
   meshnet_name: "Your Meshnet Name" # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
   broadcast_enabled: true
@@ -53,7 +52,7 @@ meshtastic:
 logging:
   level: "info"
 
-plugins:  # Optional plugins
+plugins: # Optional plugins
   health:
     active: true
   map:
@@ -61,16 +60,22 @@ plugins:  # Optional plugins
 ```
 
 ## Usage
+
 Activate the virtual environment:
-```
+
+```bash
 source .pyenv/bin/activate
 ```
+
 Run the `main.py` script:
-```
+
+```bash
 python main.py
 ```
+
 Example output:
-```
+
+```bash
 
 $ python main.py
 INFO:meshtastic.matrix.relay:Starting Meshtastic <==> Matrix Relay...
@@ -86,11 +91,13 @@ INFO:meshtastic.matrix.relay:Sent inbound radio message to matrix room: #someroo
 ```
 
 ## Persistence
+
 If you'd like the bridge to run automatically (and persistently) on startup in Linux, you can set up a systemd service.
 In this example, it is assumed that you have the project a (non-root) user's home directory, and set up the venv according to the above.
 
-Create the file ```~/.config/systemd/user/mmrelay.service```:
-```
+Create the file `~/.config/systemd/user/mmrelay.service`:
+
+```bash
 [Unit]
 Description=A Meshtastic to [matrix] bridge
 After=default.target
@@ -104,8 +111,10 @@ Restart=on-failure
 [Install]
 WantedBy=default.target
 ```
+
 The service is enabled and started by
-```
+
+```bash
 $ systemctl --user enable mmrelay.service
 $ systemctl --user start mmrelay.service
 ```

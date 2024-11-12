@@ -1,5 +1,3 @@
-import re
-
 from plugins.base_plugin import BasePlugin
 
 
@@ -8,7 +6,7 @@ class Plugin(BasePlugin):
 
     @property
     def description(self):
-        return f"Check connectivity with the relay"
+        return "Check connectivity with the relay"
 
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
@@ -41,5 +39,5 @@ class Plugin(BasePlugin):
         if not self.matches(full_message):
             return False
 
-        response = await self.send_matrix_message(room.room_id, "pong!")
+        await self.send_matrix_message(room.room_id, "pong!")
         return True

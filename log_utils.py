@@ -1,4 +1,5 @@
 import logging
+
 from config import relay_config
 
 
@@ -12,7 +13,7 @@ def get_logger(name):
     handler = logging.StreamHandler()
     handler.setFormatter(
         logging.Formatter(
-            fmt=f"%(asctime)s %(levelname)s:%(name)s:%(message)s",
+            fmt="%(asctime)s %(levelname)s:%(name)s:%(message)s",
             datefmt="%Y-%m-%d %H:%M:%S %z",
         )
     )

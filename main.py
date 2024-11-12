@@ -2,31 +2,26 @@
 This script connects a Meshtastic mesh network to Matrix chat rooms by relaying messages between them.
 It uses Meshtastic-python and Matrix nio client library to interface with the radio and the Matrix server respectively.
 """
+
 import asyncio
+import logging
 import signal
 import sys
-import logging  # Add this line
 from typing import List
 
-from nio import RoomMessageText, RoomMessageNotice
-
-from config import relay_config
-from db_utils import initialize_database, update_longnames, update_shortnames
-from log_utils import get_logger
-from matrix_utils import (
-    connect_matrix,
-    join_matrix_room,
-    logger as matrix_logger,
-    on_room_message,
-)
-from plugin_loader import load_plugins
+from nio import RoomMessageNotice, RoomMessageText
 
 # Import meshtastic_utils as a module to set event_loop
 import meshtastic_utils
-from meshtastic_utils import (
-    connect_meshtastic,
-    logger as meshtastic_logger,
-)
+from config import relay_config
+from db_utils import initialize_database, update_longnames, update_shortnames
+from log_utils import get_logger
+from matrix_utils import connect_matrix, join_matrix_room
+from matrix_utils import logger as matrix_logger
+from matrix_utils import on_room_message
+from meshtastic_utils import connect_meshtastic
+from meshtastic_utils import logger as meshtastic_logger
+from plugin_loader import load_plugins
 
 # Initialize logger
 logger = get_logger(name="M<>M Relay")
@@ -35,7 +30,8 @@ logger = get_logger(name="M<>M Relay")
 matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 
 # Set the logging level for 'nio' to ERROR to suppress warnings
-logging.getLogger('nio').setLevel(logging.ERROR)  # Add this line
+logging.getLogger("nio").setLevel(logging.ERROR)
+
 
 async def main():
     """
@@ -147,6 +143,7 @@ async def main():
             except asyncio.CancelledError:
                 pass
         matrix_logger.info("Shutdown complete.")
+
 
 if __name__ == "__main__":
     try:
