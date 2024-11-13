@@ -1,7 +1,7 @@
 import io
 import math
 import re
-import secrets
+import random
 
 import s2sphere
 import staticmaps
@@ -145,8 +145,9 @@ class TextLabel(staticmaps.Object):
 
 def anonymize_location(lat, lon, radius=1000):
     # Generate cryptographically secure random offsets
-    lat_offset = secrets.uniform(-radius / 111320, radius / 111320)
-    lon_offset = secrets.uniform(
+    secure_random = random.SystemRandom()  # Use SystemRandom for secure random numbers
+    lat_offset = secure_random.uniform(-radius / 111320, radius / 111320)
+    lon_offset = secure_random.uniform(
         -radius / (111320 * math.cos(lat)), radius / (111320 * math.cos(lat))
     )
 
