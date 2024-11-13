@@ -150,7 +150,7 @@ def load_plugins():
     ):
         os.makedirs(community_plugins_dir, exist_ok=True)
 
-    for plugin_info in community_plugins_config.items():
+    for plugin_info in community_plugins_config.values():
         if plugin_info.get("active", False):
             repo_url = plugin_info.get("repository")
             tag = plugin_info.get("tag", "master")
