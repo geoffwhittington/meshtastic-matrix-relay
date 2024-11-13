@@ -1,6 +1,6 @@
 # Development
 
-You can run the relay using Python 3.9 on Linux, MacOS, and Windows. We would enjoy pull requests to fix or enhance the relay
+The relay is compatible with Python 3.9 and newer on Linux, macOS, and Windows. We encourage contributions to fix bugs or add enhancements.
 
 ## Installation
 
@@ -27,37 +27,7 @@ pip install -r requirements.txt
 
 ### Configuration
 
-Create a `config.yaml` in the project directory with the appropriate values. A sample configuration is provided below:
-
-```yaml
-matrix:
-  homeserver: "https://example.matrix.org"
-  access_token: "reaalllllyloooooongsecretttttcodeeeeeeforrrrbot" # See: https://t2bot.io/docs/access_tokens/
-  bot_user_id: "@botuser:example.matrix.org"
-
-matrix_rooms:
-  - id: "#someroomalias:example.matrix.org"
-    meshtastic_channel: 0
-  - id: "!someroomid:example.matrix.org"
-    meshtastic_channel: 2
-
-meshtastic:
-  connection_type: serial
-  serial_port: /dev/ttyUSB0
-  host: "meshtastic.local"
-  meshnet_name: "Your Meshnet Name"
-  broadcast_enabled: true
-  detection_sensor: true
-
-logging:
-  level: "info"
-
-plugins:
-  health:
-    active: true
-  map:
-    active: true
-```
+To configure the relay, create a `config.yaml` file in the project directory. You can refer to the provided `sample_config.yaml` for an example configuration.
 
 ## Usage
 
@@ -114,3 +84,31 @@ Enable and start the service:
 systemctl --user enable mmrelay.service
 systemctl --user start mmrelay.service
 ```
+
+### Contributing & Code Quality Checks
+
+We use **Trunk** for automated code quality checks and formatting. Contributors are expected to run these checks before submitting a pull request.
+
+#### Installing Trunk
+
+Follow these steps to set up Trunk:
+
+1. Install Trunk via the official installation script:
+
+   ```bash
+   curl -fsSL https://get.trunk.io | bash
+   ```
+
+2. Initialize Trunk in your local environment:
+
+   ```bash
+   trunk init
+   ```
+
+3. To check your code and automatically fix issues, run:
+
+   ```bash
+   trunk check --all --fix
+   ```
+
+Refer to the [Trunk documentation](https://trunk.io/docs) for more details on using Trunk effectively.
