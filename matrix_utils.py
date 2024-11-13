@@ -241,6 +241,20 @@ async def on_room_message(
             if found_matching_plugin:
                 logger.debug(f"Processed by plugin {plugin.plugin_name}")
 
+    # Check if the message is a command directed at the bot
+    is_command = False
+    for plugin in plugins:
+        for command in plugin.get_matrix_commands():
+            if bot_command(command, text):
+                is_command = True
+                break
+        if is_command:
+            break
+
+    if is_command:
+        logger.debug("Message is a command, not sending to mesh")
+        return
+
     meshtastic_interface = connect_meshtastic()
     from meshtastic_utils import logger as meshtastic_logger
 
