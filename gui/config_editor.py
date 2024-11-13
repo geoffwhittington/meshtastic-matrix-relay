@@ -212,7 +212,8 @@ def create_plugins_frame(root):
                     width=len(nested_var_value) + 1,
                 )  # Change the width here
                 entry.bind(
-                    "<KeyRelease>", lambda event, entry=entry: update_entry_width(event, entry)
+                    "<KeyRelease>",
+                    lambda event, entry=entry: update_entry_width(event, entry),
                 )
 
             entry.grid(row=0, column=2 * j + 2)

@@ -66,7 +66,8 @@ def load_plugins_from_directory(directory, recursive=False):
                 if filename.endswith(".py"):
                     plugin_path = os.path.join(root, filename)
                     module_name = (
-                        "plugin_" + hashlib.sha256(plugin_path.encode("utf-8")).hexdigest()
+                        "plugin_"
+                        + hashlib.sha256(plugin_path.encode("utf-8")).hexdigest()
                     )
                     spec = importlib.util.spec_from_file_location(
                         module_name, plugin_path
@@ -86,9 +87,7 @@ def load_plugins_from_directory(directory, recursive=False):
                 break
     else:
         if not plugins_loaded:  # Only log the missing directory once
-            logger.debug(
-                f"Directory {directory} does not exist."
-            )
+            logger.debug(f"Directory {directory} does not exist.")
     return plugins
 
 
