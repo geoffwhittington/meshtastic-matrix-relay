@@ -1,3 +1,5 @@
+# Note: This file is very outdated and will not work with the latest version of the relay.
+# It may be updated in the future, but for now, it is not recommended to use this file.
 import glob
 import os
 import tkinter as tk
@@ -210,7 +212,7 @@ def create_plugins_frame(root):
                     width=len(nested_var_value) + 1,
                 )  # Change the width here
                 entry.bind(
-                    "<KeyRelease>", lambda event: update_entry_width(event, entry)
+                    "<KeyRelease>", lambda event, entry=entry: update_entry_width(event, entry)
                 )
 
             entry.grid(row=0, column=2 * j + 2)

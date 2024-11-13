@@ -14,7 +14,7 @@ class Plugin(BasePlugin):
         url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,weathercode,cloudcover&forecast_days=1&current_weather=true"
 
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=10)
             data = response.json()
 
             # Extract relevant weather data

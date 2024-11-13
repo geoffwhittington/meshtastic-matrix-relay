@@ -2,7 +2,7 @@ import io
 import math
 import random
 import re
-
+import secrets
 import s2sphere
 import staticmaps
 from nio import AsyncClient, UploadResponse
@@ -144,9 +144,9 @@ class TextLabel(staticmaps.Object):
 
 
 def anonymize_location(lat, lon, radius=1000):
-    # Generate random offsets for latitude and longitude
-    lat_offset = random.uniform(-radius / 111320, radius / 111320)
-    lon_offset = random.uniform(
+    # Generate cryptographically secure random offsets
+    lat_offset = secrets.uniform(-radius / 111320, radius / 111320)
+    lon_offset = secrets.uniform(
         -radius / (111320 * math.cos(lat)), radius / (111320 * math.cos(lat))
     )
 
