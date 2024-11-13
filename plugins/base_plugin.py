@@ -71,7 +71,7 @@ class BasePlugin(ABC):
         schedule_thread.start()
         self.logger.debug(f"Scheduled with priority={self.priority}")
 
-    @abstractmethod
+    # trunk-ignore(ruff/B027)
     def background_job(self):
         pass
 
