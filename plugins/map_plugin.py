@@ -9,11 +9,15 @@ from nio import AsyncClient, UploadResponse
 from PIL import Image
 
 from plugins.base_plugin import BasePlugin
+from log_utils import get_logger
+
+# Initialize logger using log_utils.py
+logger = get_logger(name="Plugin:map")
 
 
 class TextLabel(staticmaps.Object):
     def __init__(self, latlng: s2sphere.LatLng, text: str, fontSize: int = 12) -> None:
-        staticmaps.Object.__init__(self)
+        super().__init__()
         self._latlng = latlng
         self._text = text
         self._margin = 4
@@ -59,99 +63,18 @@ class TextLabel(staticmaps.Object):
             fill=(0, 0, 0, 255),
         )
 
-    def render_cairo(self, renderer: staticmaps.CairoRenderer) -> None:
-        x, y = renderer.transformer().ll2pixel(self.latlng())
-
-        ctx = renderer.context()
-        ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
-
-        ctx.set_font_size(self._font_size)
-        x_bearing, y_bearing, tw, th, _, _ = ctx.text_extents(self._text)
-
-        w = max(self._arrow, tw + 2 * self._margin)
-        h = th + 2 * self._margin
-
-        path = [
-            (x, y),
-            (x + self._arrow / 2, y - self._arrow),
-            (x + w / 2, y - self._arrow),
-            (x + w / 2, y - self._arrow - h),
-            (x - w / 2, y - self._arrow - h),
-            (x - w / 2, y - self._arrow),
-            (x - self._arrow / 2, y - self._arrow),
-        ]
-
-        ctx.set_source_rgb(1, 1, 1)
-        ctx.new_path()
-        for p in path:
-            ctx.line_to(*p)
-        ctx.close_path()
-        ctx.fill()
-
-        ctx.set_source_rgb(1, 0, 0)
-        ctx.set_line_width(1)
-        ctx.new_path()
-        for p in path:
-            ctx.line_to(*p)
-        ctx.close_path()
-        ctx.stroke()
-
-        ctx.set_source_rgb(0, 0, 0)
-        ctx.set_line_width(1)
-        ctx.move_to(
-            x - tw / 2 - x_bearing, y - self._arrow - h / 2 - y_bearing - th / 2
-        )
-        ctx.show_text(self._text)
-        ctx.stroke()
-
-    def render_svg(self, renderer: staticmaps.SvgRenderer) -> None:
-        x, y = renderer.transformer().ll2pixel(self.latlng())
-
-        # guess text extents
-        tw = len(self._text) * self._font_size * 0.5
-        th = self._font_size * 1.2
-
-        w = max(self._arrow, tw + 2 * self._margin)
-        h = th + 2 * self._margin
-
-        path = renderer.drawing().path(
-            fill="#ffffff",
-            stroke="#ff0000",
-            stroke_width=1,
-            opacity=1.0,
-        )
-        path.push(f"M {x} {y}")
-        path.push(f" l {self._arrow / 2} {-self._arrow}")
-        path.push(f" l {w / 2 - self._arrow / 2} 0")
-        path.push(f" l 0 {-h}")
-        path.push(f" l {-w} 0")
-        path.push(f" l 0 {h}")
-        path.push(f" l {w / 2 - self._arrow / 2} 0")
-        path.push("Z")
-        renderer.group().add(path)
-
-        renderer.group().add(
-            renderer.drawing().text(
-                self._text,
-                text_anchor="middle",
-                dominant_baseline="central",
-                insert=(x, y - self._arrow - h / 2),
-                font_family="sans-serif",
-                font_size=f"{self._font_size}px",
-                fill="#000000",
-            )
-        )
-
 
 def anonymize_location(lat, lon, radius=1000):
+    # Convert latitude to radians for math.cos
+    lat_rad = math.radians(lat)
+
+    # Ensure math.cos(lat_rad) is not zero to avoid division by zero
+    cos_lat = math.cos(lat_rad)
+    if abs(cos_lat) < 1e-6:
+        cos_lat = 1e-6  # Small value to prevent division by zero
+
     # Generate random offsets for latitude and longitude
-    # trunk-ignore(bandit/B311)
     lat_offset = random.uniform(-radius / 111320, radius / 111320)
-    # Prevent division by zero in case cos(lat) is zero
-    cos_lat = math.cos(lat)
-    if cos_lat == 0:
-        cos_lat = 0.000001  # Small value to prevent division by zero
-    # trunk-ignore(bandit/B311)
     lon_offset = random.uniform(
         -radius / (111320 * cos_lat), radius / (111320 * cos_lat)
     )
@@ -165,10 +88,17 @@ def anonymize_location(lat, lon, radius=1000):
 
 def get_map(locations, zoom=None, image_size=None, anonymize=True, radius=10000):
     """
-    Anonymize a location to 10km by default
+    Generate a map image with the given locations.
     """
     context = staticmaps.Context()
-    context.set_tile_provider(staticmaps.tile_provider_OSM)
+
+    # Use a tile provider with headers
+    tile_provider = staticmaps.TileProvider(
+        url="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        attribution="© OpenStreetMap contributors",
+        headers={"User-Agent": "MyApp/1.0"},
+    )
+    context.set_tile_provider(tile_provider)
 
     # Set default zoom if not provided
     if zoom is not None:
@@ -188,14 +118,17 @@ def get_map(locations, zoom=None, image_size=None, anonymize=True, radius=10000)
             )
         context.add_object(TextLabel(radio, location["label"], fontSize=50))
 
-    # Render the map with a timeout to prevent hanging
+    # Render the map with exception handling to prevent hanging
     try:
         if image_size:
-            return context.render_pillow(image_size[0], image_size[1])
+            logger.debug(f"Rendering map with size {image_size}")
+            image = context.render_pillow(image_size[0], image_size[1])
         else:
-            return context.render_pillow(1000, 1000)
+            logger.debug("Rendering map with default size 1000x1000")
+            image = context.render_pillow(1000, 1000)
+        return image
     except Exception as e:
-        print(f"Error rendering map: {e}")
+        logger.error(f"Error rendering map: {e}")
         return None
 
 
@@ -310,8 +243,23 @@ class Plugin(BasePlugin):
                     }
                 )
 
+        if not locations:
+            await matrix_client.room_send(
+                room_id=room.room_id,
+                message_type="m.room.message",
+                content={
+                    "msgtype": "m.text",
+                    "body": "No nodes with valid positions found.",
+                },
+            )
+            return True
+
         anonymize = self.config["anonymize"] if "anonymize" in self.config else True
         radius = self.config["radius"] if "radius" in self.config else 1000
+
+        logger.debug(
+            f"Generating map with zoom={zoom}, image_size={image_size}, anonymize={anonymize}, radius={radius}"
+        )
 
         pillow_image = get_map(
             locations=locations,
