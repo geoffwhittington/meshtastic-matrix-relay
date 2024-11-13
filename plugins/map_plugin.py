@@ -144,11 +144,19 @@ class TextLabel(staticmaps.Object):
 
 
 def anonymize_location(lat, lon, radius=1000):
+    # Convert latitude to radians for math.cos
+    lat_rad = math.radians(lat)
+
+    # Ensure math.cos(lat_rad) is not zero to avoid division by zero
+    cos_lat = math.cos(lat_rad)
+    if cos_lat == 0:
+        cos_lat = 0.000001  # Small value to prevent division by zero
+
     # Generate cryptographically secure random offsets
     secure_random = random.SystemRandom()  # Use SystemRandom for secure random numbers
     lat_offset = secure_random.uniform(-radius / 111320, radius / 111320)
     lon_offset = secure_random.uniform(
-        -radius / (111320 * math.cos(lat)), radius / (111320 * math.cos(lat))
+        -radius / (111320 * cos_lat), radius / (111320 * cos_lat)
     )
 
     # Apply the offsets to the location coordinates
@@ -164,7 +172,10 @@ def get_map(locations, zoom=None, image_size=None, anonymize=True, radius=10000)
     """
     context = staticmaps.Context()
     context.set_tile_provider(staticmaps.tile_provider_OSM)
-    context.set_zoom(zoom)
+
+    # Set default zoom if not provided
+    if zoom is not None:
+        context.set_zoom(zoom)
 
     for location in locations:
         if anonymize:
@@ -180,11 +191,15 @@ def get_map(locations, zoom=None, image_size=None, anonymize=True, radius=10000)
             )
         context.add_object(TextLabel(radio, location["label"], fontSize=50))
 
-    # render non-anti-aliased png
-    if image_size:
-        return context.render_pillow(image_size[0], image_size[1])
-    else:
-        return context.render_pillow(1000, 1000)
+    # Render the map with a timeout to prevent hanging
+    try:
+        if image_size:
+            return context.render_pillow(image_size[0], image_size[1])
+        else:
+            return context.render_pillow(1000, 1000)
+    except Exception as e:
+        print(f"Error rendering map: {e}")
+        return None
 
 
 async def upload_image(client: AsyncClient, image: Image.Image) -> UploadResponse:
@@ -213,8 +228,18 @@ async def send_room_image(
 
 
 async def send_image(client: AsyncClient, room_id: str, image: Image.Image):
-    response = await upload_image(client=client, image=image)
-    await send_room_image(client, room_id, upload_response=response)
+    if image is None:
+        await client.room_send(
+            room_id=room_id,
+            message_type="m.room.message",
+            content={
+                "msgtype": "m.text",
+                "body": "Failed to generate map image.",
+            },
+        )
+    else:
+        response = await upload_image(client=client, image=image)
+        await send_room_image(client, room_id, upload_response=response)
 
 
 class Plugin(BasePlugin):
@@ -261,10 +286,10 @@ class Plugin(BasePlugin):
         try:
             zoom = int(zoom)
         except (ValueError, TypeError):
-            zoom = self.config["zoom"] if "zoom" in self.config else 8
+            zoom = self.config["zoom"] if "zoom" in self.config else None
 
-        if zoom < 0 or zoom > 30:
-            zoom = 8
+        if zoom is not None and (zoom < 0 or zoom > 30):
+            zoom = None
 
         try:
             image_size = (int(image_size[0]), int(image_size[1]))
