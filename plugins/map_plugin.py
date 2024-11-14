@@ -145,15 +145,18 @@ class TextLabel(staticmaps.Object):
 
 
 def anonymize_location(lat, lon, radius=1000):
-    # Generate random offsets for latitude and longitude
-    # trunk-ignore(bandit/B311)
-    lat_offset = random.uniform(-radius / 111320, radius / 111320)
-    # Prevent division by zero in case cos(lat) is zero
-    cos_lat = math.cos(lat)
+    # Convert latitude to radians for math.cos
+    lat_rad = math.radians(lat)
+
+    # Ensure math.cos(lat_rad) is not zero to avoid division by zero
+    cos_lat = math.cos(lat_rad)
     if cos_lat == 0:
         cos_lat = 0.000001  # Small value to prevent division by zero
-    # trunk-ignore(bandit/B311)
-    lon_offset = random.uniform(
+
+    # Generate cryptographically secure random offsets
+    secure_random = random.SystemRandom()  # Use SystemRandom for secure random numbers
+    lat_offset = secure_random.uniform(-radius / 111320, radius / 111320)
+    lon_offset = secure_random.uniform(
         -radius / (111320 * cos_lat), radius / (111320 * cos_lat)
     )
 
