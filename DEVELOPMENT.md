@@ -1,12 +1,12 @@
 # Development
 
-You can run the relay using Python 3.9 on Linux, MacOS, and Windows. We would enjoy pull requests to fix or enhance the relay
+The relay is compatible with Python 3.9 and newer on Linux, macOS, and Windows. We encourage contributions to fix bugs or add enhancements.
 
 ## Installation
 
 Clone the repository:
 
-```
+```bash
 git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
 ```
 
@@ -14,65 +14,39 @@ git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
 
 Create a Python virtual environment in the project directory:
 
-```
+```bash
 python3 -m venv .pyenv
 ```
 
 Activate the virtual environment and install dependencies:
 
-```
+```bash
 source .pyenv/bin/activate
 pip install -r requirements.txt
 ```
 
-
 ### Configuration
 
-Create a `config.yaml` in the project directory with the appropriate values. A sample configuration is provided below:
-
-```yaml
-matrix:
-  homeserver: "https://example.matrix.org"
-  access_token: "reaalllllyloooooongsecretttttcodeeeeeeforrrrbot" # See: https://t2bot.io/docs/access_tokens/
-  bot_user_id: "@botuser:example.matrix.org"
-
-matrix_rooms:  # Needs at least 1 room & channel, but supports all Meshtastic channels
-  - id: "#someroomalias:example.matrix.org" # Matrix room aliases & IDs supported
-    meshtastic_channel: 0
-  - id: "!someroomid:example.matrix.org"
-    meshtastic_channel: 2
-
-meshtastic:
-  connection_type: serial  # Choose either "network" or "serial"
-  serial_port: /dev/ttyUSB0  # Only used when connection is "serial"
-  host: "meshtastic.local" # Only used when connection is "network"
-  meshnet_name: "Your Meshnet Name" # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
-  broadcast_enabled: true
-  detection_sensor: true
-
-logging:
-  level: "info"
-
-plugins:  # Optional plugins
-  health:
-    active: true
-  map:
-    active: true
-```
+To configure the relay, create a `config.yaml` file in the project directory. You can refer to the provided `sample_config.yaml` for an example configuration.
 
 ## Usage
+
 Activate the virtual environment:
-```
+
+```bash
 source .pyenv/bin/activate
 ```
+
 Run the `main.py` script:
-```
+
+```bash
 python main.py
 ```
-Example output:
-```
 
-$ python main.py
+Example output:
+
+```bash
+python main.py
 INFO:meshtastic.matrix.relay:Starting Meshtastic <==> Matrix Relay...
 INFO:meshtastic.matrix.relay:Connecting to radio at meshtastic.local ...
 INFO:meshtastic.matrix.relay:Connected to radio at meshtastic.local.
@@ -86,13 +60,12 @@ INFO:meshtastic.matrix.relay:Sent inbound radio message to matrix room: #someroo
 ```
 
 ## Persistence
-If you'd like the bridge to run automatically (and persistently) on startup in Linux, you can set up a systemd service.
-In this example, it is assumed that you have the project a (non-root) user's home directory, and set up the venv according to the above.
 
-Create the file ```~/.config/systemd/user/mmrelay.service```:
-```
+To run the bridge automatically on startup in Linux, set up a systemd service:
+
+```systemd
 [Unit]
-Description=A Meshtastic to [matrix] bridge
+Description=A Meshtastic to Matrix bridge
 After=default.target
 
 [Service]
@@ -104,8 +77,38 @@ Restart=on-failure
 [Install]
 WantedBy=default.target
 ```
-The service is enabled and started by
+
+Enable and start the service:
+
+```bash
+systemctl --user enable mmrelay.service
+systemctl --user start mmrelay.service
 ```
-$ systemctl --user enable mmrelay.service
-$ systemctl --user start mmrelay.service
-```
+
+### Contributing & Code Quality Checks
+
+We use **Trunk** for automated code quality checks and formatting. Contributors are expected to run these checks before submitting a pull request.
+
+#### Installing Trunk
+
+Follow these steps to set up Trunk:
+
+1. Install Trunk via the official installation script:
+
+   ```bash
+   curl -fsSL https://get.trunk.io | bash
+   ```
+
+2. Initialize Trunk in your local environment:
+
+   ```bash
+   trunk init
+   ```
+
+3. To check your code and automatically fix issues, run:
+
+   ```bash
+   trunk check --all --fix
+   ```
+
+Refer to the [Trunk documentation](https://trunk.io/docs) for more details on using Trunk effectively.

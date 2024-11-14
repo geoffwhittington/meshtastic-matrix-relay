@@ -1,4 +1,3 @@
-import re
 import requests
 
 from plugins.base_plugin import BasePlugin
@@ -9,13 +8,13 @@ class Plugin(BasePlugin):
 
     @property
     def description(self):
-        return f"Show weather forecast for a radio node using GPS location"
+        return "Show weather forecast for a radio node using GPS location"
 
     def generate_forecast(self, latitude, longitude):
         url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,weathercode,cloudcover&forecast_days=1&current_weather=true"
 
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=10)
             data = response.json()
 
             # Extract relevant weather data

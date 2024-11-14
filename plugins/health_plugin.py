@@ -1,5 +1,5 @@
-import re
 import statistics
+
 from plugins.base_plugin import BasePlugin
 
 
@@ -18,7 +18,7 @@ class Plugin(BasePlugin):
         air_util_tx = []
         snr = []
 
-        for node, info in meshtastic_client.nodes.items():
+        for _node, info in meshtastic_client.nodes.items():
             if "deviceMetrics" in info:
                 if "batteryLevel" in info["deviceMetrics"]:
                     battery_levels.append(info["deviceMetrics"]["batteryLevel"])
@@ -49,13 +49,12 @@ SNR: {avg_snr:.2f} / {mdn_snr:.2f} (avg / median)
         return False
 
     async def handle_room_message(self, room, event, full_message):
-        from matrix_utils import connect_matrix
 
         full_message = full_message.strip()
         if not self.matches(full_message):
             return False
 
-        response = await self.send_matrix_message(
+        await self.send_matrix_message(
             room.room_id, self.generate_response(), formatted=False
         )
 

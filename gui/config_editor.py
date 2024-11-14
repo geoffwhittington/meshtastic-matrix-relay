@@ -1,30 +1,27 @@
-import os
+# Note: This file is very outdated and will not work with the latest version of the relay.
+# It may be updated in the future, but for now, it is not recommended to use this file.
 import glob
-import yaml
-import webbrowser
+import os
 import tkinter as tk
-from tkinter import messagebox
-from tkinter import ttk
+import webbrowser
 from collections import OrderedDict
+from tkinter import messagebox, ttk
+
+import yaml
 
 
 def create_default_config():
     default_config = {
-        "matrix": {
-            "homeserver": "",
-            "bot_user_id": "",
-            "access_token": ""
-        },
+        "matrix": {"homeserver": "", "bot_user_id": "", "access_token": ""},
         "matrix_rooms": [],
-        "logging": {
-            "level": "info"
-        },
-        "plugins": []
+        "logging": {"level": "info"},
+        "plugins": [],
     }
 
     with open("config.yaml", "w") as f:
         yaml.dump(default_config, f)
     return default_config
+
 
 def load_config():
     try:
@@ -33,29 +30,37 @@ def load_config():
     except FileNotFoundError:
         return create_default_config()
 
+
 def validate_config():
     room_ids = [frame.room_id_var.get() for frame in matrix_rooms_frames]
-    meshtastic_channels = [int(frame.meshtastic_channel_var.get()) for frame in matrix_rooms_frames]
+    meshtastic_channels = [
+        int(frame.meshtastic_channel_var.get()) for frame in matrix_rooms_frames
+    ]
 
     if len(room_ids) != len(set(room_ids)):
-        messagebox.showerror("Error", "Each Matrix room must be unique. Please check the room IDs.")
+        messagebox.showerror(
+            "Error", "Each Matrix room must be unique. Please check the room IDs."
+        )
         return False
 
     if len(meshtastic_channels) != len(set(meshtastic_channels)):
-        messagebox.showerror("Error", "Each Meshtastic channel must be unique. Please check the channel numbers.")
+        messagebox.showerror(
+            "Error",
+            "Each Meshtastic channel must be unique. Please check the channel numbers.",
+        )
         return False
 
     return True
+
 
 def save_config(config):
     with open("config.yaml", "w") as f:
         ordered_yaml_dump(config, f)
 
 
-def update_minsize(): # Function that prevents the window from resizing too small
+def update_minsize():  # Function that prevents the window from resizing too small
     root.update_idletasks()
     root.minsize(root.winfo_width(), root.winfo_height())
-    
 
 
 class Hyperlink(tk.Label):
@@ -76,6 +81,7 @@ class Hyperlink(tk.Label):
     def on_click(self, event):
         webbrowser.open(self.cget("text"))
 
+
 # Functions
 def ordered_yaml_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
     class OrderedDumper(Dumper):
@@ -83,8 +89,7 @@ def ordered_yaml_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
 
     def _dict_representer(dumper, data):
         return dumper.represent_mapping(
-            yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-            data.items()
+            yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, data.items()
         )
 
     OrderedDumper.add_representer(OrderedDict, _dict_representer)
@@ -97,6 +102,7 @@ def get_plugin_names():
     plugin_names = [os.path.basename(p)[:-10] for p in plugin_files]
     return plugin_names
 
+
 def create_meshtastic_frame(root):
     frame = tk.LabelFrame(root, text="Meshtastic", padx=5, pady=5)
     frame.pack(fill="x", padx=5, pady=5)
@@ -105,7 +111,9 @@ def create_meshtastic_frame(root):
     connection_type_var = tk.StringVar(value=config["meshtastic"]["connection_type"])
 
     for i, ctype in enumerate(connection_types):
-        radio_button = tk.Radiobutton(frame, text=ctype, variable=connection_type_var, value=ctype)
+        radio_button = tk.Radiobutton(
+            frame, text=ctype, variable=connection_type_var, value=ctype
+        )
         radio_button.grid(row=0, column=i, padx=5)
 
     serial_port_label = tk.Label(frame, text="Serial Port:")
@@ -128,7 +136,9 @@ def create_meshtastic_frame(root):
 
     broadcast_enabled_label = tk.Label(frame, text="Broadcast Enabled:")
     broadcast_enabled_label.grid(row=4, column=0, sticky="w")
-    broadcast_enabled_var = tk.BooleanVar(value=config["meshtastic"]["broadcast_enabled"])
+    broadcast_enabled_var = tk.BooleanVar(
+        value=config["meshtastic"]["broadcast_enabled"]
+    )
     broadcast_enabled_checkbox = tk.Checkbutton(frame, variable=broadcast_enabled_var)
     broadcast_enabled_checkbox.grid(row=4, column=1, sticky="w")
 
@@ -144,8 +154,9 @@ def create_meshtastic_frame(root):
         "host": host_var,
         "meshnet_name": meshnet_name_var,
         "broadcast_enabled": broadcast_enabled_var,
-        "detection_sensor": detection_sensor_var
+        "detection_sensor": detection_sensor_var,
     }
+
 
 def create_logging_frame(root):
     frame = tk.LabelFrame(root, text="Logging", padx=5, pady=5)
@@ -155,10 +166,13 @@ def create_logging_frame(root):
     logging_level_var = tk.StringVar(value=config["logging"]["level"])
 
     for i, level in enumerate(logging_options):
-        radio_button = tk.Radiobutton(frame, text=level, variable=logging_level_var, value=level)
+        radio_button = tk.Radiobutton(
+            frame, text=level, variable=logging_level_var, value=level
+        )
         radio_button.grid(row=0, column=i, padx=5)
 
     return logging_level_var
+
 
 def create_plugins_frame(root):
     frame = tk.LabelFrame(root, text="Plugins", padx=5, pady=5)
@@ -192,8 +206,15 @@ def create_plugins_frame(root):
                 entry = tk.Checkbutton(plugin_frame, variable=nested_var)
             else:
                 nested_var = tk.StringVar(value=nested_var_value)
-                entry = tk.Entry(plugin_frame, textvariable=nested_var, width=len(nested_var_value) + 1)  # Change the width here
-                entry.bind('<KeyRelease>', lambda event: update_entry_width(event, entry))
+                entry = tk.Entry(
+                    plugin_frame,
+                    textvariable=nested_var,
+                    width=len(nested_var_value) + 1,
+                )  # Change the width here
+                entry.bind(
+                    "<KeyRelease>",
+                    lambda event, entry=entry: update_entry_width(event, entry),
+                )
 
             entry.grid(row=0, column=2 * j + 2)
 
@@ -202,17 +223,14 @@ def create_plugins_frame(root):
     return plugin_vars
 
 
-
 # Add the update_entry_width function
 def update_entry_width(event, entry):
     if isinstance(entry, tk.Entry):
         entry.config(width=len(entry.get()) + 1)
 
 
-
-
 def apply_changes():
-    
+
     # Check if config is valid
     if not validate_config():
         return
@@ -229,10 +247,14 @@ def apply_changes():
     for room_frame in matrix_rooms_frames:
         room_id = room_frame.room_id_var.get()
         meshtastic_channel = room_frame.meshtastic_channel_var.get()
-        config["matrix_rooms"].append({"id": room_id, "meshtastic_channel": int(meshtastic_channel)})
-    
+        config["matrix_rooms"].append(
+            {"id": room_id, "meshtastic_channel": int(meshtastic_channel)}
+        )
+
     # Sort matrix_rooms by meshtastic_channel and add to new_config
-    new_config["matrix_rooms"] = sorted(config["matrix_rooms"], key=lambda x: x["meshtastic_channel"])
+    new_config["matrix_rooms"] = sorted(
+        config["matrix_rooms"], key=lambda x: x["meshtastic_channel"]
+    )
 
     new_config["logging"] = config["logging"]
     new_config["plugins"] = config["plugins"]
@@ -267,8 +289,9 @@ def add_matrix_room(room=None, meshtastic_channel=None):
     room_frame.grid(row=len(matrix_rooms_frames), column=0, padx=5, pady=5, sticky="ew")
 
     room_frame.room_id_var = tk.StringVar(value=room or "")
-    room_frame.meshtastic_channel_var = tk.StringVar(value=str(meshtastic_channel) if meshtastic_channel is not None else "")
-
+    room_frame.meshtastic_channel_var = tk.StringVar(
+        value=str(meshtastic_channel) if meshtastic_channel is not None else ""
+    )
 
     room_id_label = tk.Label(room_frame, text="ID:")
     room_id_label.grid(row=0, column=0)
@@ -279,11 +302,14 @@ def add_matrix_room(room=None, meshtastic_channel=None):
     meshtastic_channel_label = tk.Label(room_frame, text="Meshtastic Channel:")
     meshtastic_channel_label.grid(row=0, column=2)
 
-    meshtastic_channel_entry = tk.Entry(room_frame, textvariable=room_frame.meshtastic_channel_var, width=5)
+    meshtastic_channel_entry = tk.Entry(
+        room_frame, textvariable=room_frame.meshtastic_channel_var, width=5
+    )
     meshtastic_channel_entry.grid(row=0, column=3)
 
     matrix_rooms_frames.append(room_frame)
-    update_minsize()  
+    update_minsize()
+
 
 def remove_matrix_room():
     if len(matrix_rooms_frames) <= 1:
@@ -293,6 +319,7 @@ def remove_matrix_room():
         frame_to_remove = matrix_rooms_frames.pop()
         frame_to_remove.destroy()
         update_minsize()
+
 
 # GUI
 config = load_config()
@@ -330,7 +357,9 @@ for i, key in enumerate(matrix_keys):
     matrix_vars[key] = var
 
 # Add instruction label
-instruction_label = tk.Label(matrix_frame, text="For instructions on where to find your access token, visit:")
+instruction_label = tk.Label(
+    matrix_frame, text="For instructions on where to find your access token, visit:"
+)
 instruction_label.grid(row=3, column=0, columnspan=2, sticky="ew")
 
 # Add hyperlink label

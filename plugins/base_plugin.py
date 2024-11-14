@@ -1,16 +1,18 @@
-import markdown
-import schedule
 import threading
 import time
 from abc import ABC, abstractmethod
-from log_utils import get_logger
+
+import markdown
+import schedule
+
 from config import relay_config
 from db_utils import (
-    store_plugin_data,
+    delete_plugin_data,
     get_plugin_data,
     get_plugin_data_for_node,
-    delete_plugin_data,
+    store_plugin_data,
 )
+from log_utils import get_logger
 
 
 class BasePlugin(ABC):
@@ -20,7 +22,7 @@ class BasePlugin(ABC):
 
     @property
     def description(self):
-        return f""
+        return ""
 
     def __init__(self) -> None:
         super().__init__()
@@ -69,6 +71,7 @@ class BasePlugin(ABC):
         schedule_thread.start()
         self.logger.debug(f"Scheduled with priority={self.priority}")
 
+    # trunk-ignore(ruff/B027)
     def background_job(self):
         pass
 
@@ -131,7 +134,7 @@ class BasePlugin(ABC):
     def matches(self, payload):
         from matrix_utils import bot_command
 
-        if type(payload) == str:
+        if isinstance(payload, str):
             return bot_command(self.plugin_name, payload)
         return False
 

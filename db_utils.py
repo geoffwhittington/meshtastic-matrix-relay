@@ -84,6 +84,7 @@ def save_longname(meshtastic_id, longname):
         )
         conn.commit()
 
+
 def update_longnames(nodes):
     if nodes:
         for node in nodes.values():
@@ -93,13 +94,16 @@ def update_longnames(nodes):
                 longname = user.get("longName", "N/A")
                 save_longname(meshtastic_id, longname)
 
+
 def get_shortname(meshtastic_id):
     with sqlite3.connect("meshtastic.sqlite") as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT shortname FROM shortnames WHERE meshtastic_id=?", (meshtastic_id,))
+            "SELECT shortname FROM shortnames WHERE meshtastic_id=?", (meshtastic_id,)
+        )
         result = cursor.fetchone()
     return result[0] if result else None
+
 
 def save_shortname(meshtastic_id, shortname):
     with sqlite3.connect("meshtastic.sqlite") as conn:
@@ -109,6 +113,7 @@ def save_shortname(meshtastic_id, shortname):
             (meshtastic_id, shortname),
         )
         conn.commit()
+
 
 def update_shortnames(nodes):
     if nodes:

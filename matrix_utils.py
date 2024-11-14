@@ -1,25 +1,28 @@
 import asyncio
-import time
+import io
 import re
-import certifi
 import ssl
+import time
 from typing import List, Union
+
+import certifi
+import meshtastic.protobuf.portnums_pb2
 from nio import (
     AsyncClient,
     AsyncClientConfig,
     MatrixRoom,
-    RoomMessageText,
     RoomMessageNotice,
+    RoomMessageText,
     UploadResponse,
-    WhoamiResponse,
     WhoamiError,
 )
+from PIL import Image
+
 from config import relay_config
 from log_utils import get_logger
+
 # Do not import plugin_loader here to avoid circular imports
 from meshtastic_utils import connect_meshtastic
-from PIL import Image
-import meshtastic.protobuf.portnums_pb2
 
 # Extract Matrix configuration
 matrix_homeserver = relay_config["matrix"]["homeserver"]
@@ -36,8 +39,10 @@ logger = get_logger(name="Matrix")
 
 matrix_client = None
 
+
 def bot_command(command, payload):
     return f"{bot_user_name}: !{command}" in payload
+
 
 async def connect_matrix():
     """
@@ -78,12 +83,13 @@ async def connect_matrix():
 
     # Fetch the bot's display name
     response = await matrix_client.get_displayname(bot_user_id)
-    if hasattr(response, 'displayname'):
+    if hasattr(response, "displayname"):
         bot_user_name = response.displayname
     else:
         bot_user_name = bot_user_id  # Fallback if display name is not set
 
     return matrix_client
+
 
 async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
     """Join a Matrix room by its ID or alias."""
@@ -118,6 +124,7 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
     except Exception as e:
         logger.error(f"Error joining room '{room_id_or_alias}': {e}")
 
+
 # Send message to the Matrix room
 async def matrix_relay(room_id, message, longname, shortname, meshnet_name, portnum):
     matrix_client = await connect_matrix()
@@ -141,9 +148,10 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
         logger.info(f"Sent inbound radio message to matrix room: {room_id}")
 
     except asyncio.TimeoutError:
-        logger.error(f"Timed out while waiting for Matrix response")
+        logger.error("Timed out while waiting for Matrix response")
     except Exception as e:
         logger.error(f"Error sending radio message to matrix room {room_id}: {e}")
+
 
 def truncate_message(
     text, max_bytes=227
@@ -157,6 +165,7 @@ def truncate_message(
     """
     truncated_text = text.encode("utf-8")[:max_bytes].decode("utf-8", "ignore")
     return truncated_text
+
 
 # Callback for new messages in Matrix room
 async def on_room_message(
@@ -217,10 +226,10 @@ async def on_room_message(
         logger.debug(f"Processing matrix message from [{full_display_name}]: {text}")
         full_message = f"{prefix}{text}"
         text = truncate_message(text)
-        truncated_message = f"{prefix}{text}"
 
     # Plugin functionality
     from plugin_loader import load_plugins  # Import here to avoid circular imports
+
     plugins = load_plugins()  # Load plugins within the function
 
     found_matching_plugin = False
@@ -232,6 +241,20 @@ async def on_room_message(
             if found_matching_plugin:
                 logger.debug(f"Processed by plugin {plugin.plugin_name}")
 
+    # Check if the message is a command directed at the bot
+    is_command = False
+    for plugin in plugins:
+        for command in plugin.get_matrix_commands():
+            if bot_command(command, text):
+                is_command = True
+                break
+        if is_command:
+            break
+
+    if is_command:
+        logger.debug("Message is a command, not sending to mesh")
+        return
+
     meshtastic_interface = connect_meshtastic()
     from meshtastic_utils import logger as meshtastic_logger
 
@@ -239,7 +262,10 @@ async def on_room_message(
 
     if not found_matching_plugin and event.sender != bot_user_id:
         if relay_config["meshtastic"]["broadcast_enabled"]:
-            if event.source["content"].get("meshtastic_portnum") == "DETECTION_SENSOR_APP":
+            if (
+                event.source["content"].get("meshtastic_portnum")
+                == "DETECTION_SENSOR_APP"
+            ):
                 if relay_config["meshtastic"].get("detection_sensor", False):
                     meshtastic_interface.sendData(
                         data=full_message.encode("utf-8"),
@@ -264,6 +290,7 @@ async def on_room_message(
                 f"Broadcast not supported: Message from {full_display_name} dropped."
             )
 
+
 async def upload_image(
     client: AsyncClient, image: Image.Image, filename: str
 ) -> UploadResponse:
@@ -280,10 +307,11 @@ async def upload_image(
 
     return response
 
+
 async def send_room_image(
     client: AsyncClient, room_id: str, upload_response: UploadResponse
 ):
-    response = await client.room_send(
+    await client.room_send(
         room_id=room_id,
         message_type="m.room.message",
         content={"msgtype": "m.image", "url": upload_response.content_uri, "body": ""},

@@ -1,7 +1,7 @@
 import re
 
-from plugins.base_plugin import BasePlugin
 from plugin_loader import load_plugins
+from plugins.base_plugin import BasePlugin
 
 
 class Plugin(BasePlugin):
@@ -9,7 +9,7 @@ class Plugin(BasePlugin):
 
     @property
     def description(self):
-        return f"List supported relay commands"
+        return "List supported relay commands"
 
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
@@ -47,5 +47,5 @@ class Plugin(BasePlugin):
                 commands.extend(plugin.get_matrix_commands())
             reply = "Available commands: " + ", ".join(commands)
 
-        response = await self.send_matrix_message(room.room_id, reply)
+        await self.send_matrix_message(room.room_id, reply)
         return True

@@ -1,11 +1,13 @@
-import staticmaps
-import s2sphere
-import math
-import random
 import io
+import math
 import re
-from PIL import Image
+import secrets
+
+import s2sphere
+import staticmaps
 from nio import AsyncClient, UploadResponse
+from PIL import Image
+
 from plugins.base_plugin import BasePlugin
 
 
@@ -142,9 +144,9 @@ class TextLabel(staticmaps.Object):
 
 
 def anonymize_location(lat, lon, radius=1000):
-    # Generate random offsets for latitude and longitude
-    lat_offset = random.uniform(-radius / 111320, radius / 111320)
-    lon_offset = random.uniform(
+    # Generate cryptographically secure random offsets
+    lat_offset = secrets.uniform(-radius / 111320, radius / 111320)
+    lon_offset = secrets.uniform(
         -radius / (111320 * math.cos(lat)), radius / (111320 * math.cos(lat))
     )
 
@@ -202,7 +204,7 @@ async def upload_image(client: AsyncClient, image: Image.Image) -> UploadRespons
 async def send_room_image(
     client: AsyncClient, room_id: str, upload_response: UploadResponse
 ):
-    response = await client.room_send(
+    await client.room_send(
         room_id=room_id,
         message_type="m.room.message",
         content={"msgtype": "m.image", "url": upload_response.content_uri, "body": ""},
@@ -220,7 +222,7 @@ class Plugin(BasePlugin):
     @property
     def description(self):
         return (
-            f"Map of mesh radio nodes. Supports `zoom` and `size` options to customize"
+            "Map of mesh radio nodes. Supports `zoom` and `size` options to customize"
         )
 
     async def handle_meshtastic_message(
@@ -257,7 +259,7 @@ class Plugin(BasePlugin):
 
         try:
             zoom = int(zoom)
-        except:
+        except (ValueError, TypeError):
             zoom = self.config["zoom"] if "zoom" in self.config else 8
 
         if zoom < 0 or zoom > 30:
@@ -265,7 +267,7 @@ class Plugin(BasePlugin):
 
         try:
             image_size = (int(image_size[0]), int(image_size[1]))
-        except:
+        except (ValueError, TypeError):
             image_size = (
                 self.config["image_width"] if "image_width" in self.config else 1000,
                 self.config["image_height"] if "image_height" in self.config else 1000,
@@ -275,7 +277,7 @@ class Plugin(BasePlugin):
             image_size = (1000, 1000)
 
         locations = []
-        for node, info in meshtastic_client.nodes.items():
+        for _node, info in meshtastic_client.nodes.items():
             if "position" in info and "latitude" in info["position"]:
                 locations.append(
                     {
