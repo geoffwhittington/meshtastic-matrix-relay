@@ -21,25 +21,27 @@ meshtastic:
 logging:
   level: info
 
+#Note: Some plugins are experimental and some need maintenance.
 plugins:
   health:
     active: true
   nodes:
     active: true
-  # Other core plugins..  (Note: Some plugins are experimental and some may need maintenance.)
+  # Other core plugins..  
 
-custom-plugins:
-  my_custom_plugin:
-    active: true
-  another_custom_plugin:
-    active: false
 
-community-plugins:
-  sample_plugin:
-    active: true
-    repository: https://github.com/username/sample_plugin.git
-    tag: master
-  advanced_plugin:
-    active: false
-    repository: https://github.com/username/advanced_plugin.git
-    tag: v1.2.0
+#community-plugins: # Note: Community plugins are a new feature. Only install plugins from developers that you trust.
+#  sample_plugin:
+#    active: true
+#    repository: https://github.com/username/sample_plugin.git
+#    tag: master
+#  advanced_plugin:
+#    active: false
+#    repository: https://github.com/username/advanced_plugin.git
+#    tag: v1.2.0
+
+#custom-plugins:
+#  my_custom_plugin:
+#    active: true
+#  another_custom_plugin:
+#    active: false
