@@ -10,15 +10,11 @@ from nio import AsyncClient, UploadResponse
 from PIL import Image
 
 from plugins.base_plugin import BasePlugin
-from log_utils import get_logger  # Use your existing logging system
-
-# Initialize logger using log_utils.py
-logger = get_logger(name="Plugin:map")
 
 
 class TextLabel(staticmaps.Object):
     def __init__(self, latlng: s2sphere.LatLng, text: str, fontSize: int = 12) -> None:
-        super().__init__()
+        staticmaps.Object.__init__(self)
         self._latlng = latlng
         self._text = text
         self._margin = 4
@@ -149,16 +145,14 @@ class TextLabel(staticmaps.Object):
 
 
 def anonymize_location(lat, lon, radius=1000):
-    # Convert latitude to radians for math.cos
-    lat_rad = math.radians(lat)
-
-    # Ensure math.cos(lat_rad) is not zero to avoid division by zero
-    cos_lat = math.cos(lat_rad)
-    if abs(cos_lat) < 1e-6:
-        cos_lat = 1e-6  # Small value to prevent division by zero
-
     # Generate random offsets for latitude and longitude
+    # trunk-ignore(bandit/B311)
     lat_offset = random.uniform(-radius / 111320, radius / 111320)
+    # Prevent division by zero in case cos(lat) is zero
+    cos_lat = math.cos(lat)
+    if cos_lat == 0:
+        cos_lat = 0.000001  # Small value to prevent division by zero
+    # trunk-ignore(bandit/B311)
     lon_offset = random.uniform(
         -radius / (111320 * cos_lat), radius / (111320 * cos_lat)
     )
@@ -172,17 +166,10 @@ def anonymize_location(lat, lon, radius=1000):
 
 def get_map(locations, zoom=None, image_size=None, anonymize=True, radius=10000):
     """
-    Generate a map image with the given locations.
+    Anonymize a location to 10km by default
     """
     context = staticmaps.Context()
-
-    # Use a tile provider with headers
-    tile_provider = staticmaps.TileProvider(
-        url="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        attribution="© OpenStreetMap contributors",
-        headers={"User-Agent": "MyApp/1.0"},
-    )
-    context.set_tile_provider(tile_provider)
+    context.set_tile_provider(staticmaps.tile_provider_OSM)
 
     # Set default zoom if not provided
     if zoom is not None:
@@ -202,17 +189,14 @@ def get_map(locations, zoom=None, image_size=None, anonymize=True, radius=10000)
             )
         context.add_object(TextLabel(radio, location["label"], fontSize=50))
 
-    # Render the map with exception handling to prevent hanging
+    # Render the map with a timeout to prevent hanging
     try:
         if image_size:
-            logger.debug(f"Rendering map with size {image_size}")
-            image = context.render_pillow(image_size[0], image_size[1])
+            return context.render_pillow(image_size[0], image_size[1])
         else:
-            logger.debug("Rendering map with default size 1000x1000")
-            image = context.render_pillow(1000, 1000)
-        return image
+            return context.render_pillow(1000, 1000)
     except Exception as e:
-        logger.error(f"Error rendering map: {e}")
+        print(f"Error rendering map: {e}")
         return None
 
 
@@ -327,23 +311,8 @@ class Plugin(BasePlugin):
                     }
                 )
 
-        if not locations:
-            await matrix_client.room_send(
-                room_id=room.room_id,
-                message_type="m.room.message",
-                content={
-                    "msgtype": "m.text",
-                    "body": "No nodes with valid positions found.",
-                },
-            )
-            return True
-
         anonymize = self.config["anonymize"] if "anonymize" in self.config else True
         radius = self.config["radius"] if "radius" in self.config else 1000
-
-        logger.debug(
-            f"Generating map with zoom={zoom}, image_size={image_size}, anonymize={anonymize}, radius={radius}"
-        )
 
         pillow_image = get_map(
             locations=locations,
