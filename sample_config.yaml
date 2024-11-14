@@ -22,13 +22,11 @@ logging:
   level: info
 
 plugins:
-  health_plugin:
+  health:
     active: true
-  map_plugin:
+  nodes:
     active: true
-  nodes_plugin:
-    active: true
-  # Other core plugins...
+  # Other core plugins..  (Note: Some plugins are experimental and some may need maintenance.)
 
 custom-plugins:
   my_custom_plugin:
