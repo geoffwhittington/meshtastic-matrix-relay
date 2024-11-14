@@ -193,11 +193,6 @@ def load_plugins():
                 plugin.start()
             except Exception as e:
                 logger.error(f"Error starting plugin {plugin_name}: {e}")
-        else:
-            if not plugins_loaded:  # Only log about inactive plugins once
-                logger.debug(
-                    f"Plugin '{plugin_name}' is inactive or not configured, skipping"
-                )  # Changed to DEBUG level
 
     sorted_active_plugins = sorted(active_plugins, key=lambda plugin: plugin.priority)
     plugins_loaded = True  # Set the flag to indicate that plugins have been load
