@@ -1,13 +1,15 @@
-import staticmaps
-import s2sphere
-import math
-import random
 import io
-import re
-from PIL import Image, ImageDraw, ImageFont
-from nio import AsyncClient, UploadResponse
-from plugins.base_plugin import BasePlugin
+import math
 import os
+import random
+import re
+
+import s2sphere
+import staticmaps
+from nio import AsyncClient, UploadResponse
+from PIL import Image, ImageFont
+
+from plugins.base_plugin import BasePlugin
 
 
 class TextLabel(staticmaps.Object):
@@ -51,20 +53,22 @@ class TextLabel(staticmaps.Object):
                 try:
                     font = ImageFont.truetype(path, self._font_size)
                     break
-                except Exception as e:
+                except Exception:
                     pass
 
         if not font:
             # If emoji font not found, use default font
             font = ImageFont.load_default()
-            self._text = self._text.encode('ascii', 'ignore').decode('ascii')  # Remove non-ASCII characters
+            self._text = self._text.encode("ascii", "ignore").decode(
+                "ascii"
+            )  # Remove non-ASCII characters
 
         # Get the size of the text using textsize or textbbox
         try:
             bbox = renderer.draw().textbbox((0, 0), self._text, font=font)
             tw = bbox[2] - bbox[0]
             th = bbox[3] - bbox[1]
-        except Exception as e:
+        except Exception:
             # Fallback in case of an error
             tw, th = renderer.draw().textsize(self._text, font=font)
 
@@ -240,7 +244,7 @@ class Plugin(BasePlugin):
     @property
     def description(self):
         return (
-            f"Map of mesh radio nodes. Supports `zoom` and `size` options to customize"
+            "Map of mesh radio nodes. Supports `zoom` and `size` options to customize"
         )
 
     async def handle_meshtastic_message(
@@ -295,7 +299,7 @@ class Plugin(BasePlugin):
             image_size = (1000, 1000)
 
         locations = []
-        for node, info in meshtastic_client.nodes.items():
+        for _node, info in meshtastic_client.nodes.items():
             if "position" in info and "latitude" in info["position"]:
                 locations.append(
                     {
