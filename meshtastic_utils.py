@@ -12,7 +12,7 @@ from bleak.exc import BleakDBusError, BleakError
 from pubsub import pub
 
 from config import relay_config
-from db_utils import get_longname, get_shortname
+from db_utils import get_longname, get_shortname, save_longname, save_shortname
 from log_utils import get_logger
 
 # Do not import plugin_loader here to avoid circular imports
@@ -135,7 +135,12 @@ def connect_meshtastic(force_connect=False):
                     on_lost_meshtastic_connection, "meshtastic.connection.lost"
                 )
 
-            except (serial.SerialException, BleakDBusError, BleakError, Exception) as e:
+            except (
+                serial.SerialException,
+                BleakDBusError,
+                BleakError,
+                Exception,
+            ) as e:
                 if shutting_down:
                     logger.info("Shutdown in progress. Aborting connection attempts.")
                     break
@@ -147,7 +152,9 @@ def connect_meshtastic(force_connect=False):
                     )
                     time.sleep(wait_time)
                 else:
-                    logger.error(f"Could not connect after {retry_limit} attempts: {e}")
+                    logger.error(
+                        f"Could not connect after {retry_limit} attempts: {e}"
+                    )
                     return None
 
     return meshtastic_client
@@ -184,7 +191,9 @@ def on_lost_meshtastic_connection(interface=None):
         meshtastic_client = None
 
         if event_loop:
-            reconnect_task = asyncio.run_coroutine_threadsafe(reconnect(), event_loop)
+            reconnect_task = asyncio.run_coroutine_threadsafe(
+                reconnect(), event_loop
+            )
 
 
 async def reconnect():
@@ -201,7 +210,9 @@ async def reconnect():
                 )
                 await asyncio.sleep(backoff_time)
                 if shutting_down:
-                    logger.info("Shutdown in progress. Aborting reconnection attempts.")
+                    logger.info(
+                        "Shutdown in progress. Aborting reconnection attempts."
+                    )
                     break
                 meshtastic_client = connect_meshtastic(force_connect=True)
                 if meshtastic_client:
@@ -237,6 +248,9 @@ def on_meshtastic_message(packet, interface):
     loop = event_loop
 
     sender = packet.get("fromId", packet.get("from"))
+    if sender is None:
+        logger.warning("Sender ID is None. Using 'Unknown' as sender.")
+        sender = 'Unknown'
 
     decoded = packet.get("decoded", {})
     text = decoded.get("text")
@@ -280,8 +294,34 @@ def on_meshtastic_message(packet, interface):
             f"Processing inbound radio message from {sender} on channel {channel}"
         )
 
-        longname = get_longname(sender) or sender
-        shortname = get_shortname(sender) or sender
+        # Attempt to get longname from database
+        longname = get_longname(sender)
+        shortname = get_shortname(sender)
+
+        if not longname or not shortname:
+            # Try to get node info from interface.nodes
+            node = interface.nodes.get(sender)
+            if node:
+                user = node.get("user")
+                if user:
+                    if not longname:
+                        longname = user.get("longName")
+                        if longname:
+                            save_longname(sender, longname)
+                    if not shortname:
+                        shortname = user.get("shortName")
+                        if shortname:
+                            save_shortname(sender, shortname)
+            else:
+                # Node info not available yet
+                logger.debug(f"Node info for sender {sender} not available yet.")
+
+        # If still not available, use sender ID as longname and shortname
+        if not longname:
+            longname = str(sender)
+        if not shortname:
+            shortname = str(sender)
+
         meshnet_name = relay_config["meshtastic"]["meshnet_name"]
 
         formatted_message = f"[{longname}/{meshnet_name}]: {text}"
@@ -334,7 +374,10 @@ def on_meshtastic_message(packet, interface):
             if not found_matching_plugin:
                 result = asyncio.run_coroutine_threadsafe(
                     plugin.handle_meshtastic_message(
-                        packet, formatted_message=None, longname=None, meshnet_name=None
+                        packet,
+                        formatted_message=None,
+                        longname=None,
+                        meshnet_name=None,
                     ),
                     loop=loop,
                 )
