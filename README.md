@@ -38,9 +38,9 @@ Produce high-level details about your mesh:
 
 ![Mesh Details Screenshot](https://user-images.githubusercontent.com/1770544/235245873-1ddc773b-a4cd-4c67-b0a5-b55a29504b73.png)
 
-## Custom plugins
+## Community & custom plugins
 
-It is possible to create custom plugins. Check more info in [example_plugins/README.md](https://github.com/geoffwhittington/meshtastic-matrix-relay/tree/main/example_plugins).
+It is possible to create custom plugins and to also easily share them with the community. Check [example_plugins/README.md](https://github.com/geoffwhittington/meshtastic-matrix-relay/tree/main/example_plugins) and also the [Community Plugins Development Guide](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Community-Plugins).
 
 ### Install a community plugin
 
