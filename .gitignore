@@ -10,7 +10,7 @@ plugins/__pycache__/
 *.pyd
 *$py.class
 custom_plugins/
-mmrelay.log
+logs/*
 plugins/custom/*
 plugins/community/*
 

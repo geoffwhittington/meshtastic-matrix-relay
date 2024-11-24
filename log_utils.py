@@ -1,5 +1,6 @@
 import logging
 import os
+from logging.handlers import RotatingFileHandler
 from config import relay_config
 
 def get_logger(name):
@@ -20,14 +21,20 @@ def get_logger(name):
 
     # Check if file logging is enabled
     if relay_config["logging"].get("log_to_file", False):
-        # Default to `mmrelay.log` if no filename is provided
-        log_file = relay_config["logging"].get("filename", "mmrelay.log")
+        # Default to `logs/mmrelay.log` if no filename is provided
+        log_file = relay_config["logging"].get("filename", "logs/mmrelay.log")
 
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        # Only create directories if the path is not the default
+        if log_file != "logs/mmrelay.log":
+            log_dir = os.path.dirname(log_file)
+            if log_dir:  # Ensure non-empty directory paths exist
+                os.makedirs(log_dir, exist_ok=True)
 
-        # Add file handler
-        file_handler = logging.FileHandler(log_file)
+        # Set up size-based log rotation
+        max_bytes = relay_config["logging"].get("max_log_size", 10 * 1024 * 1024)  # Default 10 MB
+        backup_count = relay_config["logging"].get("backup_count", 5)  # Default to 5 backups
+        file_handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
+
         file_handler.setFormatter(
             logging.Formatter(
                 fmt="%(asctime)s %(levelname)s:%(name)s:%(message)s",
