@@ -40,7 +40,7 @@ Produce high-level details about your mesh:
 
 ## Community & custom plugins
 
-It is possible to create custom plugins and to also easily share them with the community. Check [example_plugins/README.md](https://github.com/geoffwhittington/meshtastic-matrix-relay/tree/main/example_plugins) and also the [Community Plugins Development Guide](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Community-Plugins).
+It is possible to create custom plugins and to also easily share them with the community. Check [example_plugins/README.md](https://github.com/geoffwhittington/meshtastic-matrix-relay/tree/main/example_plugins) and also the [Community Plugins Development Guide](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Community-Plugins-Development-Guide).
 
 ### Install a community plugin
 
@@ -48,10 +48,10 @@ Add the repository under the `community-plugins` section in `config.yaml`:
 
 ```yaml
 community-plugins:
-  weather_plugin:
+  example-plugin:
     active: true
-    repository: https://github.com/anotheruser/weather_plugin.git
-    tag: master
+    repository: https://github.com/jeremiah-k/mmr-plugin-template.git
+    tag: main
 ```
 
 ### Getting Started with Matrix
