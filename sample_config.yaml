@@ -22,8 +22,8 @@ logging:
   level: info
   #log_to_file: true            # Default is false
   #filename: logs/mmrelay.log   # Default location
-  #max_log_size: 10485760       # 10 MB (default if omitted)
-  #backup_count: 5              # Keep 5 backups (default if omitted)
+  #max_log_size: 10485760       # 10 MB default if omitted
+  #backup_count: 3              # Keeps 1 backup as the default if omitted
 
 #Note: Some plugins are experimental and some need maintenance.
 plugins:
