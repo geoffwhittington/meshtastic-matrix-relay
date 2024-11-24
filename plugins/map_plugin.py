@@ -6,11 +6,13 @@ import re
 
 import s2sphere
 import staticmaps
+from log_utils import get_logger
 from nio import AsyncClient, UploadResponse
 from PIL import Image, ImageFont
 
 from plugins.base_plugin import BasePlugin
 
+logger = get_logger(__name__)
 
 class TextLabel(staticmaps.Object):
     def __init__(self, latlng: s2sphere.LatLng, text: str, fontSize: int = 12) -> None:
@@ -53,7 +55,8 @@ class TextLabel(staticmaps.Object):
                 try:
                     font = ImageFont.truetype(path, self._font_size)
                     break
-                except Exception:
+                except OSError:
+                    logger.warning(f"Failed to load font from {path}")
                     pass
 
         if not font:
@@ -281,7 +284,7 @@ class Plugin(BasePlugin):
 
         try:
             zoom = int(zoom)
-        except:
+        except ValueError:
             zoom = self.config.get("zoom", 13)
 
         if zoom < 0 or zoom > 30:
@@ -289,7 +292,7 @@ class Plugin(BasePlugin):
 
         try:
             image_size = (int(image_size[0]), int(image_size[1]))
-        except:
+        except (ValueError, TypeError):
             image_size = (
                 self.config.get("image_width", 1000),
                 self.config.get("image_height", 1000),
