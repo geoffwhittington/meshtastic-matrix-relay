@@ -30,7 +30,7 @@ M<>M Relay supports plugins for extending its functionality, enabling customizat
 
 ## Core Plugins
 
-Generate a map of your nodes:
+~~Generate a map of your nodes:~~ _(As of 11/24/24 this plugin is currently broken but hopefully will be fixed soon, time permitting.)_
 
 ![Map Plugin Screenshot](https://user-images.githubusercontent.com/1770544/235247915-47750b4f-d505-4792-a458-54a5f24c1523.png)
 
