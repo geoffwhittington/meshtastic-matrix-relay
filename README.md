@@ -42,7 +42,7 @@ Produce high-level details about your mesh:
 
 It is possible to create custom plugins and to also easily share them with the community. Check [example_plugins/README.md](https://github.com/geoffwhittington/meshtastic-matrix-relay/tree/main/example_plugins) and also the [Community Plugins Development Guide](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Community-Plugin-Development-Guide).
 
-Visit our recently added [Community Plugins List](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Community-Plugin-List)!
+✨️ Visit our recently added [Community Plugins List](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Community-Plugin-List)!
 
 ### Install a community plugin
 
