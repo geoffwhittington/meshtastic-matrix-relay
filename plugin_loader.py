@@ -58,13 +58,17 @@ def clone_or_update_repo(repo_url, tag, plugins_dir):
             sys.exit(1)
 
 
-def load_plugins_from_directory(directory, recursive=False):
+def load_plugins_from_directory(directory, recursive=False, plugin_names=None):
     plugins = []
     if os.path.isdir(directory):
         for root, _dirs, files in os.walk(directory):
             for filename in files:
                 if filename.endswith(".py"):
                     plugin_path = os.path.join(root, filename)
+                    # Extract plugin name from file
+                    plugin_file_name = os.path.splitext(filename)[0]
+                    if plugin_names and plugin_file_name not in plugin_names:
+                        continue  # Skip loading this plugin
                     module_name = (
                         "plugin_"
                         + hashlib.sha256(plugin_path.encode("utf-8")).hexdigest()
@@ -149,19 +153,26 @@ def load_plugins():
     ):
         os.makedirs(community_plugins_dir, exist_ok=True)
 
-    for plugin_info in community_plugins_config.values():
+    active_community_plugins = []
+    for plugin_name, plugin_info in community_plugins_config.items():
         if plugin_info.get("active", False):
             repo_url = plugin_info.get("repository")
             tag = plugin_info.get("tag", "master")
             if repo_url:
                 clone_or_update_repo(repo_url, tag, community_plugins_dir)
+                active_community_plugins.append(plugin_name)
             else:
-                logger.error("Repository URL not specified for a community plugin")
+                logger.error(f"Repository URL not specified for plugin {plugin_name}")
                 logger.error("Please specify the repository URL in config.yaml")
                 sys.exit(1)
 
     # Load community plugins (recursive)
-    plugins.extend(load_plugins_from_directory(community_plugins_dir, recursive=True))
+    # Only load active community plugins
+    plugins.extend(
+        load_plugins_from_directory(
+            community_plugins_dir, recursive=True, plugin_names=active_community_plugins
+        )
+    )
 
     # Filter and sort active plugins by priority
     active_plugins = []
@@ -177,12 +188,13 @@ def load_plugins():
             # Custom and community plugins: default to inactive unless specified
             if plugin_name in config.get("custom-plugins", {}):
                 plugin_config = config.get("custom-plugins", {}).get(plugin_name, {})
+                is_active = plugin_config.get("active", False)
             elif plugin_name in community_plugins_config:
                 plugin_config = community_plugins_config.get(plugin_name, {})
+                is_active = plugin_config.get("active", False)
             else:
                 plugin_config = {}
-
-            is_active = plugin_config.get("active", False)
+                is_active = False
 
         if is_active:
             plugin.priority = plugin_config.get(
@@ -195,4 +207,6 @@ def load_plugins():
                 logger.error(f"Error starting plugin {plugin_name}: {e}")
 
     sorted_active_plugins = sorted(active_plugins, key=lambda plugin: plugin.priority)
-    plugins_loaded = True  # Set the flag to indicate that plugins have been load
+    plugins_loaded = True  # Set the flag to indicate that plugins have been loaded
+
+    return sorted_active_plugins
