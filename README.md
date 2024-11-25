@@ -30,7 +30,7 @@ M<>M Relay supports plugins for extending its functionality, enabling customizat
 
 ## Core Plugins
 
-Generate a map of your nodes:
+~~Generate a map of your nodes:~~ _(As of 11/24/24 this plugin is currently broken but hopefully will be fixed soon, time permitting.)_
 
 ![Map Plugin Screenshot](https://user-images.githubusercontent.com/1770544/235247915-47750b4f-d505-4792-a458-54a5f24c1523.png)
 
@@ -38,9 +38,9 @@ Produce high-level details about your mesh:
 
 ![Mesh Details Screenshot](https://user-images.githubusercontent.com/1770544/235245873-1ddc773b-a4cd-4c67-b0a5-b55a29504b73.png)
 
-## Custom plugins
+## Community & custom plugins
 
-It is possible to create custom plugins. Check more info in [example_plugins/README.md](https://github.com/geoffwhittington/meshtastic-matrix-relay/tree/main/example_plugins).
+It is possible to create custom plugins and to also easily share them with the community. Check [example_plugins/README.md](https://github.com/geoffwhittington/meshtastic-matrix-relay/tree/main/example_plugins) and also the [Community Plugins Development Guide](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Community-Plugins-Development-Guide).
 
 ### Install a community plugin
 
@@ -48,10 +48,10 @@ Add the repository under the `community-plugins` section in `config.yaml`:
 
 ```yaml
 community-plugins:
-  weather_plugin:
+  example-plugin:
     active: true
-    repository: https://github.com/anotheruser/weather_plugin.git
-    tag: master
+    repository: https://github.com/jeremiah-k/mmr-plugin-template.git
+    tag: main
 ```
 
 ### Getting Started with Matrix
