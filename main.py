@@ -21,7 +21,7 @@ from matrix_utils import logger as matrix_logger
 from matrix_utils import on_room_message
 from meshtastic_utils import connect_meshtastic
 from meshtastic_utils import logger as meshtastic_logger
-from plugin_loader import load_plugins
+import plugin_loader  # Changed from 'from plugin_loader import load_plugins'
 
 # Initialize logger
 logger = get_logger(name="M<>M Relay")
@@ -44,7 +44,7 @@ async def main():
     initialize_database()
 
     # Load plugins early
-    load_plugins()
+    plugin_loader.load_plugins()  # Updated function call
 
     # Connect to Meshtastic
     meshtastic_utils.meshtastic_client = connect_meshtastic()
