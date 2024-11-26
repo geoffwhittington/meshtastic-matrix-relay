@@ -8,9 +8,8 @@ from config import get_app_path, relay_config
 from log_utils import get_logger
 
 logger = get_logger(name="Plugins")
-sorted_active_plugins = []
 plugins_loaded = False
-
+sorted_active_plugins = []  # Store the loaded plugins here
 
 def clone_or_update_repo(repo_url, tag, plugins_dir):
     # Extract the repository name from the URL
