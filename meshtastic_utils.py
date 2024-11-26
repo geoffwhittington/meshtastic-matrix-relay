@@ -233,9 +233,6 @@ def on_meshtastic_message(packet, interface):
     """
     Handle incoming Meshtastic messages and relay them to Matrix.
     """
-    # Import plugin_loader module to avoid circular imports
-    import plugin_loader  # Import here to avoid circular imports
-
     from matrix_utils import matrix_relay
 
     global event_loop
@@ -331,7 +328,9 @@ def on_meshtastic_message(packet, interface):
         formatted_message = f"[{longname}/{meshnet_name}]: {text}"
 
         # Plugin functionality
-        plugins = plugin_loader.load_plugins()  # Load plugins within the function
+        from plugin_loader import load_plugins  # Import here to avoid circular imports
+
+        plugins = load_plugins()  # Load plugins within the function
 
         found_matching_plugin = False
         for plugin in plugins:
@@ -368,8 +367,9 @@ def on_meshtastic_message(packet, interface):
     else:
         # Handle non-text messages via plugins
         portnum = decoded.get("portnum")
+        from plugin_loader import load_plugins  # Import here to avoid circular imports
 
-        plugins = plugin_loader.load_plugins()
+        plugins = load_plugins()
         found_matching_plugin = False
         for plugin in plugins:
             if not found_matching_plugin:
