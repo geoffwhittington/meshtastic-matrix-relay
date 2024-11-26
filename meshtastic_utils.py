@@ -247,7 +247,7 @@ def on_meshtastic_message(packet, interface):
 
     loop = event_loop
 
-    sender = packet.get("fromId")
+    sender = packet.get('fromId') or packet.get('from')
 
     decoded = packet.get("decoded", {})
     text = decoded.get("text")
