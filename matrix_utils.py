@@ -21,10 +21,8 @@ from PIL import Image
 from config import relay_config
 from log_utils import get_logger
 
+# Do not import plugin_loader here to avoid circular imports
 from meshtastic_utils import connect_meshtastic
-
-# Import plugin_loader module to access loaded plugins
-import plugin_loader
 
 # Extract Matrix configuration
 matrix_homeserver = relay_config["matrix"]["homeserver"]
@@ -230,7 +228,9 @@ async def on_room_message(
         text = truncate_message(text)
 
     # Plugin functionality
-    plugins = plugin_loader.sorted_active_plugins  # Use loaded plugins
+    import plugin_loader  # Import here to avoid circular imports
+
+    plugins = plugin_loader.load_plugins()  # Load plugins within the function
 
     found_matching_plugin = False
     for plugin in plugins:
