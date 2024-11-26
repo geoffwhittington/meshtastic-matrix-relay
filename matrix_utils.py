@@ -228,9 +228,9 @@ async def on_room_message(
         text = truncate_message(text)
 
     # Plugin functionality
-    import plugin_loader  # Import here to avoid circular imports
+    from plugin_loader import load_plugins  # Import here to avoid circular imports
 
-    plugins = plugin_loader.load_plugins()  # Load plugins within the function
+    plugins = load_plugins()  # Load plugins within the function
 
     found_matching_plugin = False
     for plugin in plugins:

@@ -24,10 +24,11 @@ def get_logger(name):
         # Default to `logs/mmrelay.log` if no filename is provided
         log_file = relay_config["logging"].get("filename", "logs/mmrelay.log")
 
-        # Always create directories regardless of the log file path
-        log_dir = os.path.dirname(log_file)
-        if log_dir:  # Ensure non-empty directory paths exist
-            os.makedirs(log_dir, exist_ok=True)
+        # Only create directories if the path is not the default
+        if log_file != "logs/mmrelay.log":
+            log_dir = os.path.dirname(log_file)
+            if log_dir:  # Ensure non-empty directory paths exist
+                os.makedirs(log_dir, exist_ok=True)
 
         # Set up size-based log rotation
         max_bytes = relay_config["logging"].get("max_log_size", 10 * 1024 * 1024)  # Default 10 MB
