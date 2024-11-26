@@ -43,9 +43,6 @@ async def main():
     # Initialize the SQLite database
     initialize_database()
 
-    # Load plugins early
-    load_plugins()
-
     # Connect to Meshtastic
     meshtastic_utils.meshtastic_client = connect_meshtastic()
 
