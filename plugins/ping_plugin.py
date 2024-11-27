@@ -13,14 +13,23 @@ class Plugin(BasePlugin):
     ):
         if "decoded" in packet and "text" in packet["decoded"]:
             message = packet["decoded"]["text"].strip()
-            if re.search(r"\bping\b", message, re.IGNORECASE) or "!ping" in message:
+
+            # Match "ping" anywhere in the message with optional punctuation
+            match = re.search(r"\b(ping[\?!]{0,5})\b", message, re.IGNORECASE)
+            if match:
                 from meshtastic_utils import connect_meshtastic
 
                 meshtastic_client = connect_meshtastic()
                 channel = packet.get("channel", 0)  # Default to channel 0 if not provided
-                reply_message = "pong!"
-                if longname:
-                    reply_message = f"{longname}: pong!"
+
+                # Get the matched case and punctuation
+                matched_text = match.group(1)
+                base_response = "pong"
+                if len(re.findall(r"[!?]", matched_text)) > 5:
+                    reply_message = "Pong..."
+                else:
+                    # Preserve case and punctuation
+                    reply_message = re.sub(r"ping", base_response, matched_text, flags=re.IGNORECASE)
 
                 meshtastic_client.sendText(
                     text=reply_message, channelIndex=channel
