@@ -29,8 +29,15 @@ class Plugin(BasePlugin):
                 if punctuation_count > 5:
                     reply_message = "Pong..."
                 else:
-                    # Replace "ping" with "pong" and preserve case and punctuation
-                    reply_message = re.sub(r"ping", "pong", matched_text, flags=re.IGNORECASE)
+                    # Replace "ping" with "pong" while preserving case and punctuation
+                    base_response = "pong"
+                    if matched_text.isupper():
+                        base_response = base_response.upper()
+                    elif matched_text[0].isupper():
+                        base_response = base_response.capitalize()
+
+                    # Add the same punctuation from the input
+                    reply_message = base_response + re.sub(r"[a-zA-Z]", "", matched_text)
 
                 meshtastic_client.sendText(
                     text=reply_message, channelIndex=channel
