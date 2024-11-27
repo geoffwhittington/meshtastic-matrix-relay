@@ -1,7 +1,8 @@
 import re
 import string
-import logging
+
 from plugins.base_plugin import BasePlugin
+
 
 class Plugin(BasePlugin):
     plugin_name = "ping"
@@ -11,46 +12,48 @@ class Plugin(BasePlugin):
     def description(self):
         return "Check connectivity with the relay or respond to pings over the mesh"
 
-    async def handle_meshtastic_message(
-        self, packet, formatted_message, longname, meshnet_name
-    ):
-        if "decoded" in packet and "text" in packet["decoded"]:
-            message = packet["decoded"]["text"].strip()
 
-            # Create a regex pattern that matches "ping" followed by 0-5 punctuation marks
-            pattern = rf"\b(ping[{re.escape(string.punctuation)}]{{0,5}})\b"
-            match = re.search(pattern, message, re.IGNORECASE)
-            if match:
-                from meshtastic_utils import connect_meshtastic
+async def handle_meshtastic_message(
+    self, packet, formatted_message, longname, meshnet_name
+):
+    if "decoded" in packet and "text" in packet["decoded"]:
+        message = packet["decoded"]["text"].strip()
 
-                meshtastic_client = connect_meshtastic()
-                channel = packet.get("channel", 0)  # Default to channel 0 if not provided
+        # Updated regex to match optional punctuation before and after "ping"
+        match = re.search(r"(?<!\w)([!?]*)(ping)([!?]*)(?!\w)", message, re.IGNORECASE)
+        if match:
+            from meshtastic_utils import connect_meshtastic
 
-                matched_text = match.group(1)
+            meshtastic_client = connect_meshtastic()
+            channel = packet.get("channel", 0)  # Default to channel 0 if not provided
 
-                base_response = "pong"
+            # Extract matched text and punctuation
+            pre_punc = match.group(1)
+            matched_text = match.group(2)
+            post_punc = match.group(3)
 
-                # Preserve case of the matched word
-                if matched_text.isupper():
-                    base_response = base_response.upper()
-                elif matched_text[0].isupper():
-                    base_response = base_response.capitalize()
+            total_punc_length = len(pre_punc) + len(post_punc)
 
-                # Extract punctuation from the matched text
-                punctuation_part = re.sub(r'^ping', '', matched_text, flags=re.IGNORECASE)
-                if len(punctuation_part) > 5:
-                    reply_message = "Pong..."
-                else:
-                    reply_message = base_response + punctuation_part
+            # Define the base response
+            base_response = "pong"
 
-                # Send the reply back to the same channel
-                try:
-                    meshtastic_client.sendText(
-                        text=reply_message, channelIndex=channel
-                    )
-                except Exception as e:
-                    self.logger.error(f"Error sending text: {e}")
-                return True
+            # Preserve case of the matched word
+            if matched_text.isupper():
+                base_response = base_response.upper()
+            elif matched_text[0].isupper():
+                base_response = base_response.capitalize()
+            else:
+                base_response = base_response.lower()
+
+            # Construct the reply message
+            if total_punc_length > 5:
+                reply_message = "Pong..."
+            else:
+                reply_message = pre_punc + base_response + post_punc
+
+            # Send the reply back to the same channel
+            meshtastic_client.sendText(text=reply_message, channelIndex=channel)
+            return True
 
     def get_matrix_commands(self):
         return [self.plugin_name]
