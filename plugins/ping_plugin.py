@@ -15,7 +15,7 @@ class Plugin(BasePlugin):
             message = packet["decoded"]["text"].strip()
 
             # Match "ping" anywhere in the message with optional punctuation
-            match = re.search(r"\b(ping[\?!]{0,5})\b", message, re.IGNORECASE)
+            match = re.search(r"\b(ping[\?!]*)\b", message, re.IGNORECASE)
             if match:
                 from meshtastic_utils import connect_meshtastic
 
@@ -24,12 +24,13 @@ class Plugin(BasePlugin):
 
                 # Get the matched case and punctuation
                 matched_text = match.group(1)
-                base_response = "pong"
-                if len(re.findall(r"[!?]", matched_text)) > 5:
+                punctuation_count = len(re.findall(r"[!?]", matched_text))
+
+                if punctuation_count > 5:
                     reply_message = "Pong..."
                 else:
-                    # Preserve case and punctuation
-                    reply_message = re.sub(r"ping", base_response, matched_text, flags=re.IGNORECASE)
+                    # Replace "ping" with "pong" and preserve case and punctuation
+                    reply_message = re.sub(r"ping", "pong", matched_text, flags=re.IGNORECASE)
 
                 meshtastic_client.sendText(
                     text=reply_message, channelIndex=channel
