@@ -25,13 +25,13 @@ logging:
   #max_log_size: 10485760       # 10 MB default if omitted
   #backup_count: 3              # Keeps 1 backup as the default if omitted
 
-#Note: Some plugins are experimental and some need maintenance.
+#These are core Plugins - Note: Some plugins are experimental and some need maintenance.
 plugins:
   health:
     active: true
   nodes:
     active: true
-  # Other core plugins..
+
 #community-plugins: # Note: Community plugins are a new feature. Please report any issues.
 #  sample_plugin:
 #    active: true
