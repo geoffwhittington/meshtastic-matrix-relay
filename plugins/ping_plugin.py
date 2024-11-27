@@ -26,18 +26,18 @@ class Plugin(BasePlugin):
                 matched_text = match.group(1)
                 base_response = "pong"
 
-                # Preserve case
+                # Match and preserve case
                 if matched_text.isupper():
                     base_response = base_response.upper()
                 elif matched_text[0].isupper():
                     base_response = base_response.capitalize()
 
-                # Add the exact punctuation from the input
-                reply_message = base_response + matched_text[len("ping"):]
-
-                # Handle excessive punctuation (more than 5 ! or ?)
-                if len(re.findall(r"[!?]", matched_text)) > 5:
+                # Preserve punctuation from the original match
+                punctuation = re.sub(r"[a-zA-Z]", "", matched_text)
+                if len(punctuation) > 5:  # Handle excessive punctuation
                     reply_message = "Pong..."
+                else:
+                    reply_message = base_response + punctuation
 
                 meshtastic_client.sendText(
                     text=reply_message, channelIndex=channel
