@@ -48,6 +48,8 @@ class Plugin(BasePlugin):
                     meshtastic_client.sendText(
                         text=reply_message, channelIndex=channel
                     )
+                except Exception as e:
+                    self.logger.error(f"Error sending text: {e}")
                 return True
 
     def get_matrix_commands(self):

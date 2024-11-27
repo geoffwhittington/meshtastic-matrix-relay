@@ -32,7 +32,6 @@ plugins:
   nodes:
     active: true
   # Other core plugins..
-
 #community-plugins: # Note: Community plugins are a new feature. Please report any issues.
 #  sample_plugin:
 #    active: true

@@ -6,13 +6,14 @@ import re
 
 import s2sphere
 import staticmaps
-from log_utils import get_logger
 from nio import AsyncClient, UploadResponse
 from PIL import Image, ImageFont
 
+from log_utils import get_logger
 from plugins.base_plugin import BasePlugin
 
 logger = get_logger(__name__)
+
 
 class TextLabel(staticmaps.Object):
     def __init__(self, latlng: s2sphere.LatLng, text: str, fontSize: int = 12) -> None:
