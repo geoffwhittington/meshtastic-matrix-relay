@@ -1,32 +1,31 @@
 from plugins.base_plugin import BasePlugin
-
+import re
 
 class Plugin(BasePlugin):
     plugin_name = "ping"
 
     @property
     def description(self):
-        return "Check connectivity with the relay"
+        return "Check connectivity with the relay or respond to pings over the mesh"
 
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
     ):
-        if (
-            "decoded" in packet
-            and "portnum" in packet["decoded"]
-            and packet["decoded"]["portnum"] == "TEXT_MESSAGE_APP"
-            and "text" in packet["decoded"]
-        ):
-            message = packet["decoded"]["text"]
-            message = message.strip()
-            if f"!{self.plugin_name}" not in message:
-                return
+        if "decoded" in packet and "text" in packet["decoded"]:
+            message = packet["decoded"]["text"].strip()
+            if re.search(r"\bping\b", message, re.IGNORECASE) or "!ping" in message:
+                from meshtastic_utils import connect_meshtastic
 
-            from meshtastic_utils import connect_meshtastic
+                meshtastic_client = connect_meshtastic()
+                channel = packet.get("channel", 0)  # Default to channel 0 if not provided
+                reply_message = "pong!"
+                if longname:
+                    reply_message = f"{longname}: pong!"
 
-            meshtastic_client = connect_meshtastic()
-            meshtastic_client.sendText(text="pong!", destinationId=packet["fromId"])
-            return True
+                meshtastic_client.sendText(
+                    text=reply_message, channelIndex=channel
+                )
+                return True
 
     def get_matrix_commands(self):
         return [self.plugin_name]
