@@ -28,8 +28,12 @@ class BasePlugin(ABC):
         super().__init__()
         self.logger = get_logger(f"Plugin:{self.plugin_name}")
         self.config = {"active": False}
-        if "plugins" in relay_config and self.plugin_name in relay_config["plugins"]:
-            self.config = relay_config["plugins"][self.plugin_name]
+        plugin_levels = ["plugins", "community-plugins", "custom-plugins"]
+
+        for level in plugin_levels:
+            if level in relay_config and self.plugin_name in relay_config[level]:
+                self.config = relay_config[level][self.plugin_name]
+                break
 
     def start(self):
         if "schedule" not in self.config or (
