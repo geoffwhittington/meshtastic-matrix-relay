@@ -3,6 +3,11 @@ import string
 
 from plugins.base_plugin import BasePlugin
 
+def match_case(source, target):
+    return ''.join(
+        c.upper() if s.isupper() else c.lower()
+        for s, c in zip(source, target)
+    )
 
 class Plugin(BasePlugin):
     plugin_name = "ping"
@@ -40,13 +45,8 @@ class Plugin(BasePlugin):
                 # Define the base response
                 base_response = "pong"
 
-                # Preserve case of the matched word
-                if matched_text.isupper():
-                    base_response = base_response.upper()
-                elif matched_text[0].isupper():
-                    base_response = base_response.capitalize()
-                else:
-                    base_response = base_response.lower()
+                # Adjust base_response to match the case pattern of matched_text
+                base_response = match_case(matched_text, base_response)
 
                 # Construct the reply message
                 if total_punc_length > 5:
