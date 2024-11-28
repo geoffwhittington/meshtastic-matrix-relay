@@ -152,9 +152,7 @@ def connect_meshtastic(force_connect=False):
                     )
                     time.sleep(wait_time)
                 else:
-                    logger.error(
-                        f"Could not connect after {retry_limit} attempts: {e}"
-                    )
+                    logger.error(f"Could not connect after {retry_limit} attempts: {e}")
                     return None
 
     return meshtastic_client
@@ -191,9 +189,7 @@ def on_lost_meshtastic_connection(interface=None):
         meshtastic_client = None
 
         if event_loop:
-            reconnect_task = asyncio.run_coroutine_threadsafe(
-                reconnect(), event_loop
-            )
+            reconnect_task = asyncio.run_coroutine_threadsafe(reconnect(), event_loop)
 
 
 async def reconnect():
@@ -210,9 +206,7 @@ async def reconnect():
                 )
                 await asyncio.sleep(backoff_time)
                 if shutting_down:
-                    logger.info(
-                        "Shutdown in progress. Aborting reconnection attempts."
-                    )
+                    logger.info("Shutdown in progress. Aborting reconnection attempts.")
                     break
                 meshtastic_client = connect_meshtastic(force_connect=True)
                 if meshtastic_client:
@@ -247,7 +241,7 @@ def on_meshtastic_message(packet, interface):
 
     loop = event_loop
 
-    sender = packet.get('fromId') or packet.get('from')
+    sender = packet.get("fromId") or packet.get("from")
 
     decoded = packet.get("decoded", {})
     text = decoded.get("text")

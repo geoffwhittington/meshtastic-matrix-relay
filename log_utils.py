@@ -1,7 +1,9 @@
 import logging
 import os
 from logging.handlers import RotatingFileHandler
+
 from config import relay_config
+
 
 def get_logger(name):
     logger = logging.getLogger(name=name)
@@ -31,9 +33,15 @@ def get_logger(name):
                 os.makedirs(log_dir, exist_ok=True)
 
         # Set up size-based log rotation
-        max_bytes = relay_config["logging"].get("max_log_size", 10 * 1024 * 1024)  # Default 10 MB
-        backup_count = relay_config["logging"].get("backup_count", 1)  # Default to 1 backup
-        file_handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
+        max_bytes = relay_config["logging"].get(
+            "max_log_size", 10 * 1024 * 1024
+        )  # Default 10 MB
+        backup_count = relay_config["logging"].get(
+            "backup_count", 1
+        )  # Default to 1 backup
+        file_handler = RotatingFileHandler(
+            log_file, maxBytes=max_bytes, backupCount=backup_count
+        )
 
         file_handler.setFormatter(
             logging.Formatter(
