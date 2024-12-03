@@ -1,6 +1,6 @@
 import re
 import string
-
+import asyncio
 from plugins.base_plugin import BasePlugin
 
 def match_case(source, target):
@@ -22,6 +22,11 @@ class Plugin(BasePlugin):
     ):
         if "decoded" in packet and "text" in packet["decoded"]:
             message = packet["decoded"]["text"].strip()
+            channel = packet.get("channel", 0)  # Default to channel 0 if not provided
+
+            if not self.is_channel_enabled(channel):
+                self.logger.debug(f"Channel {channel} not enabled for plugin '{self.plugin_name}'")
+                return False
 
             # Updated regex to match optional punctuation before and after "ping"
             match = re.search(
@@ -31,9 +36,6 @@ class Plugin(BasePlugin):
                 from meshtastic_utils import connect_meshtastic
 
                 meshtastic_client = connect_meshtastic()
-                channel = packet.get(
-                    "channel", 0
-                )  # Default to channel 0 if not provided
 
                 # Extract matched text and punctuation
                 pre_punc = match.group(1)
@@ -53,6 +55,9 @@ class Plugin(BasePlugin):
                     reply_message = "Pong..."
                 else:
                     reply_message = pre_punc + base_response + post_punc
+
+                # Wait for the response delay
+                await asyncio.sleep(self.get_response_delay())
 
                 # Send the reply back to the same channel
                 meshtastic_client.sendText(text=reply_message, channelIndex=channel)

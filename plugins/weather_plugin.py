@@ -1,5 +1,5 @@
 import requests
-
+import asyncio
 from plugins.base_plugin import BasePlugin
 
 
@@ -36,21 +36,30 @@ class Plugin(BasePlugin):
                     1: "⛅️ Partly Cloudy" if is_day else "🌙⛅️ Clear",
                     2: "🌤️ Mostly Clear" if is_day else "🌙🌤️ Mostly Clear",
                     3: "🌥️ Mostly Cloudy" if is_day else "🌙🌥️ Mostly Clear",
-                    4: "☁️ Cloudy" if is_day else "🌙☁️ Cloudy",
-                    5: "🌧️ Rainy" if is_day else "🌙🌧️ Rainy",
-                    6: "⛈️ Thunderstorm" if is_day else "🌙⛈️ Thunderstorm",
-                    7: "❄️ Snowy" if is_day else "🌙❄️ Snowy",
-                    8: "🌧️❄️ Wintry Mix" if is_day else "🌙🌧️❄️ Wintry Mix",
-                    9: "🌫️ Foggy" if is_day else "🌙🌫️ Foggy",
-                    10: "💨 Windy" if is_day else "🌙💨 Windy",
-                    11: "🌧️☈️ Stormy/Hail" if is_day else "🌙🌧️☈️ Stormy/Hail",
-                    12: "🌫️ Foggy" if is_day else "🌙🌫️ Foggy",
-                    13: "🌫️ Foggy" if is_day else "🌙🌫️ Foggy",
-                    14: "🌫️ Foggy" if is_day else "🌙🌫️ Foggy",
-                    15: "🌋 Volcanic Ash" if is_day else "🌙🌋 Volcanic Ash",
-                    16: "🌧️ Rainy" if is_day else "🌙🌧️ Rainy",
-                    17: "🌫️ Foggy" if is_day else "🌙🌫️ Foggy",
-                    18: "🌪️ Tornado" if is_day else "🌙🌪️ Tornado",
+                    45: "🌫️ Foggy" if is_day else "🌙🌫️ Foggy",
+                    48: "🌫️ Foggy" if is_day else "🌙🌫️ Foggy",
+                    51: "🌧️ Light Drizzle",
+                    53: "🌧️ Moderate Drizzle",
+                    55: "🌧️ Heavy Drizzle",
+                    56: "🌧️ Freezing Drizzle",
+                    57: "🌧️ Freezing Drizzle",
+                    61: "🌧️ Light Rain",
+                    63: "🌧️ Moderate Rain",
+                    65: "🌧️ Heavy Rain",
+                    66: "🌧️ Freezing Rain",
+                    67: "🌧️ Freezing Rain",
+                    71: "❄️ Light Snow",
+                    73: "❄️ Moderate Snow",
+                    75: "❄️ Heavy Snow",
+                    77: "❄️ Snow Grains",
+                    80: "🌧️ Light Rain Showers",
+                    81: "🌧️ Moderate Rain Showers",
+                    82: "🌧️ Heavy Rain Showers",
+                    85: "❄️ Light Snow Showers",
+                    86: "❄️ Heavy Snow Showers",
+                    95: "⛈️ Thunderstorm",
+                    96: "⛈️ Thunderstorm with Hail",
+                    99: "⛈️ Thunderstorm with Hail",
                 }
 
                 return weather_mapping.get(weather_code, "❓ Unknown")
@@ -77,6 +86,11 @@ class Plugin(BasePlugin):
         ):
             message = packet["decoded"]["text"]
             message = message.strip()
+            channel = packet.get("channel", 0)  # Default to channel 0 if not provided
+
+            if not self.is_channel_enabled(channel):
+                self.logger.debug(f"Channel {channel} not enabled for plugin '{self.plugin_name}'")
+                return False
 
             if f"!{self.plugin_name}" not in message:
                 return False
@@ -97,6 +111,9 @@ class Plugin(BasePlugin):
                         latitude=requesting_node["position"]["latitude"],
                         longitude=requesting_node["position"]["longitude"],
                     )
+
+                # Wait for the response delay
+                await asyncio.sleep(self.get_response_delay())
 
                 meshtastic_client.sendText(
                     text=weather_notice,

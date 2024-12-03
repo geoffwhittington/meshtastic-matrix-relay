@@ -35,6 +35,27 @@ class BasePlugin(ABC):
                 self.config = relay_config[level][self.plugin_name]
                 break
 
+        # Get the list of mapped channels
+        self.mapped_channels = [
+            room.get("meshtastic_channel") for room in relay_config.get("matrix_rooms", [])
+        ]
+
+        # Get the channels specified for this plugin, or default to all mapped channels
+        self.channels = self.config.get("channels", self.mapped_channels)
+
+        # Validate the channels
+        invalid_channels = [ch for ch in self.channels if ch not in self.mapped_channels]
+        if invalid_channels:
+            self.logger.warning(
+                f"Plugin '{self.plugin_name}': Channels {invalid_channels} are not mapped in configuration."
+            )
+
+        # Get the response delay
+        self.response_delay = self.config.get(
+            "plugin_response_delay",
+            relay_config.get("meshtastic", {}).get("plugin_response_delay", 3)
+        )
+
     def start(self):
         if "schedule" not in self.config or (
             "at" not in self.config["schedule"]
@@ -91,6 +112,12 @@ class BasePlugin(ABC):
 
         return data
 
+    def get_response_delay(self):
+        return self.response_delay
+
+    def is_channel_enabled(self, channel):
+        return channel in self.channels
+
     def get_matrix_commands(self):
         return [self.plugin_name]
 
@@ -144,10 +171,10 @@ class BasePlugin(ABC):
 
     @abstractmethod
     async def handle_meshtastic_message(
-        packet, formatted_message, longname, meshnet_name
+        self, packet, formatted_message, longname, meshnet_name
     ):
         print("Base plugin: handling Meshtastic message")
 
     @abstractmethod
-    async def handle_room_message(room, event, full_message):
+    async def handle_room_message(self, room, event, full_message):
         print("Base plugin: handling room message")
