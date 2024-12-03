@@ -35,6 +35,7 @@ plugins:
   weather:
     active: true
     channels: [1,3,5]
+    units: imperial # Options: metric, imperial - Default is metric
 
 #community-plugins: # Note: Community plugins are a new feature. Please report any issues.
 #  sample_plugin:
