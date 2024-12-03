@@ -1,6 +1,7 @@
 import requests
 import asyncio
 from plugins.base_plugin import BasePlugin
+from meshtastic.mesh_interface import BROADCAST_NUM
 
 
 class Plugin(BasePlugin):
@@ -11,7 +12,15 @@ class Plugin(BasePlugin):
         return "Show weather forecast for a radio node using GPS location"
 
     def generate_forecast(self, latitude, longitude):
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,weathercode,cloudcover&forecast_days=1&current_weather=true"
+        units = self.config.get("units", "metric")  # Default to metric
+        temperature_unit = "°C" if units == "metric" else "°F"
+
+        url = (
+            f"https://api.open-meteo.com/v1/forecast?"
+            f"latitude={latitude}&longitude={longitude}&"
+            f"hourly=temperature_2m,precipitation_probability,weathercode,cloudcover&"
+            f"forecast_days=1&current_weather=true"
+        )
 
         try:
             response = requests.get(url, timeout=10)
@@ -29,6 +38,16 @@ class Plugin(BasePlugin):
             forecast_5h_temp = data["hourly"]["temperature_2m"][5]
             forecast_5h_precipitation = data["hourly"]["precipitation_probability"][5]
             forecast_5h_weather_code = data["hourly"]["weathercode"][5]
+
+            if units == "imperial":
+                # Convert temperatures from Celsius to Fahrenheit
+                current_temp = current_temp * 9 / 5 + 32
+                forecast_2h_temp = forecast_2h_temp * 9 / 5 + 32
+                forecast_5h_temp = forecast_5h_temp * 9 / 5 + 32
+
+            current_temp = round(current_temp, 1)
+            forecast_2h_temp = round(forecast_2h_temp, 1)
+            forecast_5h_temp = round(forecast_5h_temp, 1)
 
             def weather_code_to_text(weather_code, is_day):
                 weather_mapping = {
@@ -65,15 +84,24 @@ class Plugin(BasePlugin):
                 return weather_mapping.get(weather_code, "❓ Unknown")
 
             # Generate one-line weather forecast
-            forecast = f"Now: {weather_code_to_text(current_weather_code, is_day)} - {current_temp}°C | "
-            forecast += f"+2h: {weather_code_to_text(forecast_2h_weather_code, is_day)} - {forecast_2h_temp}°C {forecast_2h_precipitation}% | "
-            forecast += f"+5h: {weather_code_to_text(forecast_5h_weather_code, is_day)} - {forecast_5h_temp}°C {forecast_5h_precipitation}%"
+            forecast = (
+                f"Now: {weather_code_to_text(current_weather_code, is_day)} - "
+                f"{current_temp}{temperature_unit} | "
+            )
+            forecast += (
+                f"+2h: {weather_code_to_text(forecast_2h_weather_code, is_day)} - "
+                f"{forecast_2h_temp}{temperature_unit} {forecast_2h_precipitation}% | "
+            )
+            forecast += (
+                f"+5h: {weather_code_to_text(forecast_5h_weather_code, is_day)} - "
+                f"{forecast_5h_temp}{temperature_unit} {forecast_5h_precipitation}%"
+            )
 
             return forecast
 
         except requests.exceptions.RequestException as e:
-            print(f"Error: {e}")
-            return None
+            self.logger.error(f"Error fetching weather data: {e}")
+            return "Error fetching weather data."
 
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
@@ -84,12 +112,13 @@ class Plugin(BasePlugin):
             and packet["decoded"]["portnum"] == "TEXT_MESSAGE_APP"
             and "text" in packet["decoded"]
         ):
-            message = packet["decoded"]["text"]
-            message = message.strip()
+            message = packet["decoded"]["text"].strip()
             channel = packet.get("channel", 0)  # Default to channel 0 if not provided
 
             if not self.is_channel_enabled(channel):
-                self.logger.debug(f"Channel {channel} not enabled for plugin '{self.plugin_name}'")
+                self.logger.debug(
+                    f"Channel {channel} not enabled for plugin '{self.plugin_name}'"
+                )
                 return False
 
             if f"!{self.plugin_name}" not in message:
@@ -115,10 +144,31 @@ class Plugin(BasePlugin):
                 # Wait for the response delay
                 await asyncio.sleep(self.get_response_delay())
 
-                meshtastic_client.sendText(
-                    text=weather_notice,
-                    destinationId=packet["fromId"],
-                )
+                # Determine if the original message was a DM or broadcast
+                toId = packet.get("to")
+                myId = meshtastic_client.myInfo.my_node_num  # Get relay's own node number
+
+                if toId == myId:
+                    # Direct message to us
+                    is_direct_message = True
+                elif toId == BROADCAST_NUM:
+                    is_direct_message = False
+                else:
+                    # Message to someone else; we may ignore it
+                    is_direct_message = False
+
+                if is_direct_message:
+                    # Respond via DM
+                    meshtastic_client.sendText(
+                        text=weather_notice,
+                        destinationId=packet["fromId"],
+                    )
+                else:
+                    # Respond in the same channel (broadcast)
+                    meshtastic_client.sendText(
+                        text=weather_notice,
+                        channelIndex=channel,
+                    )
             return True
 
     def get_matrix_commands(self):
