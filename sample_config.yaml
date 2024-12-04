@@ -17,7 +17,7 @@ meshtastic:
   meshnet_name: Your Meshnet Name # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
   broadcast_enabled: true # Must be set to true to enable Matrix to Meshtastic messages
   detection_sensor: true # Must be set to true to forward messages of Meshtastic's detection sensor module
-  plugin_response_delay: 3 # Default response delay in seconds for plugins; can be overridden per plugin
+  plugin_response_delay: 3 # Default response delay in seconds for plugins that respond on the mesh;
 
 logging:
   level: info
@@ -30,13 +30,11 @@ logging:
 plugins:
   ping:
     active: true
-    #plugin_response_delay: 3 # Only applies to plugins that respond to messages; if not set, default is 3 seconds
     #channels: [2,3,5] # List of channels the plugin will respond to; DMs are always processed if the plugin is active
   weather:
     active: true
     units: imperial # Options: metric, imperial - Default is metric
     #channels: [] # Empty list, will only respond to DMs
-    #plugin_response_delay: 3 # If unset, defaults to 3 seconds
   nodes:
     active: true
     # Does not need to specify channels, as it's a Matrix-only plugin

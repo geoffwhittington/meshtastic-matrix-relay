@@ -54,11 +54,8 @@ class BasePlugin(ABC):
                 f"Plugin '{self.plugin_name}': Channels {invalid_channels} are not mapped in configuration."
             )
 
-        # Get the response delay
-        self.response_delay = self.config.get(
-            "plugin_response_delay",
-            relay_config.get("meshtastic", {}).get("plugin_response_delay", 3)
-        )
+        # Get the response delay from the meshtastic config only
+        self.response_delay = relay_config.get("meshtastic", {}).get("plugin_response_delay", 3)
 
     def start(self):
         if "schedule" not in self.config or (
@@ -119,7 +116,7 @@ class BasePlugin(ABC):
     # Modified method to accept is_direct_message parameter
     def is_channel_enabled(self, channel, is_direct_message=False):
         if is_direct_message:
-            return True  # Always respond to DMs if the plugin is enabled
+            return True  # Always respond to DMs if the plugin is active
         else:
             return channel in self.channels
 
