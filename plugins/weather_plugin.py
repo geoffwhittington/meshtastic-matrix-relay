@@ -115,7 +115,24 @@ class Plugin(BasePlugin):
             message = packet["decoded"]["text"].strip()
             channel = packet.get("channel", 0)  # Default to channel 0 if not provided
 
-            if not self.is_channel_enabled(channel):
+            from meshtastic_utils import connect_meshtastic
+
+            meshtastic_client = connect_meshtastic()
+
+            # Determine if the message is a direct message
+            toId = packet.get("to")
+            myId = meshtastic_client.myInfo.my_node_num  # Get relay's own node number
+
+            if toId == myId:
+                # Direct message to us
+                is_direct_message = True
+            elif toId == BROADCAST_NUM:
+                is_direct_message = False
+            else:
+                # Message to someone else; we may ignore it
+                is_direct_message = False
+
+            if not self.is_channel_enabled(channel, is_direct_message=is_direct_message):
                 self.logger.debug(
                     f"Channel {channel} not enabled for plugin '{self.plugin_name}'"
                 )
@@ -124,12 +141,10 @@ class Plugin(BasePlugin):
             if f"!{self.plugin_name}" not in message:
                 return False
 
-            from meshtastic_utils import connect_meshtastic
-
-            meshtastic_client = connect_meshtastic()
-            if packet["fromId"] in meshtastic_client.nodes:
+            fromId = packet.get("fromId")
+            if fromId in meshtastic_client.nodes:
                 weather_notice = "Cannot determine location"
-                requesting_node = meshtastic_client.nodes.get(packet["fromId"])
+                requesting_node = meshtastic_client.nodes.get(fromId)
                 if (
                     requesting_node
                     and "position" in requesting_node
@@ -144,24 +159,11 @@ class Plugin(BasePlugin):
                 # Wait for the response delay
                 await asyncio.sleep(self.get_response_delay())
 
-                # Determine if the original message was a DM or broadcast
-                toId = packet.get("to")
-                myId = meshtastic_client.myInfo.my_node_num  # Get relay's own node number
-
-                if toId == myId:
-                    # Direct message to us
-                    is_direct_message = True
-                elif toId == BROADCAST_NUM:
-                    is_direct_message = False
-                else:
-                    # Message to someone else; we may ignore it
-                    is_direct_message = False
-
                 if is_direct_message:
                     # Respond via DM
                     meshtastic_client.sendText(
                         text=weather_notice,
-                        destinationId=packet["fromId"],
+                        destinationId=fromId,
                     )
                 else:
                     # Respond in the same channel (broadcast)

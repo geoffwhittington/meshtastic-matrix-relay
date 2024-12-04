@@ -115,8 +115,11 @@ class BasePlugin(ABC):
     def get_response_delay(self):
         return self.response_delay
 
-    def is_channel_enabled(self, channel):
-        return channel in self.channels
+    def is_channel_enabled(self, channel, is_direct_message=False):
+        if is_direct_message:
+            return True  # Always respond to DMs if the plugin is enabled
+        else:
+            return channel in self.channels
 
     def get_matrix_commands(self):
         return [self.plugin_name]
