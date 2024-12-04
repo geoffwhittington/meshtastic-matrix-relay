@@ -35,9 +35,10 @@ plugins:
   weather:
     active: true
     units: imperial # Options: metric, imperial - Default is metric
-    #channels: [1,3,5] # Again, if not set, defaults to all mapped channels
+    #channels: [] # Empty list, will only respond to DMs
   nodes:
     active: true
+    # Does not need to specify channels, as it's a Matrix-only plugin
 
 #community-plugins: # Note: Community plugins are a new feature. Please report any issues.
 #  sample_plugin:
