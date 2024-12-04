@@ -132,14 +132,16 @@ class Plugin(BasePlugin):
                 # Message to someone else; we may ignore it
                 is_direct_message = False
 
+            # Pass is_direct_message to is_channel_enabled
             if not self.is_channel_enabled(channel, is_direct_message=is_direct_message):
-                self.logger.debug(
-                    f"Channel {channel} not enabled for plugin '{self.plugin_name}'"
-                )
+                # Channel not enabled for plugin
                 return False
 
             if f"!{self.plugin_name}" not in message:
                 return False
+
+            # Log that the plugin is processing the message
+            self.logger.debug(f"Processing message with plugin '{self.plugin_name}'")
 
             fromId = packet.get("fromId")
             if fromId in meshtastic_client.nodes:
@@ -172,6 +174,8 @@ class Plugin(BasePlugin):
                         channelIndex=channel,
                     )
             return True
+        else:
+            return False  # Not a text message or port does not match
 
     def get_matrix_commands(self):
         return []
@@ -180,4 +184,4 @@ class Plugin(BasePlugin):
         return [self.plugin_name]
 
     async def handle_room_message(self, room, event, full_message):
-        return False
+        return False  # Not handling Matrix messages in this plugin

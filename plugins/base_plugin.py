@@ -43,6 +43,10 @@ class BasePlugin(ABC):
         # Get the channels specified for this plugin, or default to all mapped channels
         self.channels = self.config.get("channels", self.mapped_channels)
 
+        # Ensure channels is a list
+        if not isinstance(self.channels, list):
+            self.channels = [self.channels]
+
         # Validate the channels
         invalid_channels = [ch for ch in self.channels if ch not in self.mapped_channels]
         if invalid_channels:
@@ -65,7 +69,7 @@ class BasePlugin(ABC):
             self.logger.debug(f"Started with priority={self.priority}")
             return
 
-        # Schedule the email-checking function to run every minute
+        # Schedule the background job based on the configuration
         if "at" in self.config["schedule"] and "hours" in self.config["schedule"]:
             schedule.every(self.config["schedule"]["hours"]).hours.at(
                 self.config["schedule"]["at"]
@@ -98,23 +102,21 @@ class BasePlugin(ABC):
 
     # trunk-ignore(ruff/B027)
     def background_job(self):
-        pass
+        pass  # Implement in subclass if needed
 
     def strip_raw(self, data):
-        if type(data) is not dict:
-            return data
-
-        if "raw" in data:
-            del data["raw"]
-
-        for k, v in data.items():
-            data[k] = self.strip_raw(v)
-
+        if isinstance(data, dict):
+            data.pop("raw", None)
+            for k, v in data.items():
+                data[k] = self.strip_raw(v)
+        elif isinstance(data, list):
+            data = [self.strip_raw(item) for item in data]
         return data
 
     def get_response_delay(self):
         return self.response_delay
 
+    # Modified method to accept is_direct_message parameter
     def is_channel_enabled(self, channel, is_direct_message=False):
         if is_direct_message:
             return True  # Always respond to DMs if the plugin is enabled
@@ -136,7 +138,7 @@ class BasePlugin(ABC):
                 "msgtype": "m.text",
                 "format": "org.matrix.custom.html" if formatted else None,
                 "body": message,
-                "formatted_body": markdown.markdown(message),
+                "formatted_body": markdown.markdown(message) if formatted else None,
             },
         )
 
@@ -145,15 +147,15 @@ class BasePlugin(ABC):
 
     def store_node_data(self, meshtastic_id, node_data):
         data = self.get_node_data(meshtastic_id=meshtastic_id)
-        data = data[-self.max_data_rows_per_node :]
-        if type(node_data) is list:
+        data = data[-self.max_data_rows_per_node:]
+        if isinstance(node_data, list):
             data.extend(node_data)
         else:
             data.append(node_data)
         store_plugin_data(self.plugin_name, meshtastic_id, data)
 
     def set_node_data(self, meshtastic_id, node_data):
-        node_data = node_data[-self.max_data_rows_per_node :]
+        node_data = node_data[-self.max_data_rows_per_node:]
         store_plugin_data(self.plugin_name, meshtastic_id, node_data)
 
     def delete_node_data(self, meshtastic_id):
@@ -176,8 +178,8 @@ class BasePlugin(ABC):
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
     ):
-        print("Base plugin: handling Meshtastic message")
+        pass  # Implement in subclass
 
     @abstractmethod
     async def handle_room_message(self, room, event, full_message):
-        print("Base plugin: handling room message")
+        pass  # Implement in subclass

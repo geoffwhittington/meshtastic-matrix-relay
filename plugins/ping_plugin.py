@@ -44,10 +44,9 @@ class Plugin(BasePlugin):
                 # Message to someone else; we may ignore it
                 is_direct_message = False
 
+            # Pass is_direct_message to is_channel_enabled
             if not self.is_channel_enabled(channel, is_direct_message=is_direct_message):
-                self.logger.debug(
-                    f"Channel {channel} not enabled for plugin '{self.plugin_name}'"
-                )
+                # Removed unnecessary logging
                 return False
 
             # Updated regex to match optional punctuation before and after "ping"
@@ -55,6 +54,9 @@ class Plugin(BasePlugin):
                 r"(?<!\w)([!?]*)(ping)([!?]*)(?!\w)", message, re.IGNORECASE
             )
             if match:
+                # Log that the plugin is processing the message
+                self.logger.debug(f"Processing message with plugin '{self.plugin_name}'")
+
                 # Extract matched text and punctuation
                 pre_punc = match.group(1)
                 matched_text = match.group(2)
@@ -89,6 +91,8 @@ class Plugin(BasePlugin):
                     # Send the reply back to the same channel
                     meshtastic_client.sendText(text=reply_message, channelIndex=channel)
                 return True
+            else:
+                return False  # No match, do not process
 
     def get_matrix_commands(self):
         return [self.plugin_name]
