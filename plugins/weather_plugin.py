@@ -1,7 +1,9 @@
-import requests
 import asyncio
-from plugins.base_plugin import BasePlugin
+
+import requests
 from meshtastic.mesh_interface import BROADCAST_NUM
+
+from plugins.base_plugin import BasePlugin
 
 
 class Plugin(BasePlugin):
@@ -133,7 +135,9 @@ class Plugin(BasePlugin):
                 is_direct_message = False
 
             # Pass is_direct_message to is_channel_enabled
-            if not self.is_channel_enabled(channel, is_direct_message=is_direct_message):
+            if not self.is_channel_enabled(
+                channel, is_direct_message=is_direct_message
+            ):
                 # Channel not enabled for plugin
                 return False
 

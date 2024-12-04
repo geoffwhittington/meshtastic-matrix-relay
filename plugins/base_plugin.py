@@ -37,7 +37,8 @@ class BasePlugin(ABC):
 
         # Get the list of mapped channels
         self.mapped_channels = [
-            room.get("meshtastic_channel") for room in relay_config.get("matrix_rooms", [])
+            room.get("meshtastic_channel")
+            for room in relay_config.get("matrix_rooms", [])
         ]
 
         # Get the channels specified for this plugin, or default to all mapped channels
@@ -48,14 +49,18 @@ class BasePlugin(ABC):
             self.channels = [self.channels]
 
         # Validate the channels
-        invalid_channels = [ch for ch in self.channels if ch not in self.mapped_channels]
+        invalid_channels = [
+            ch for ch in self.channels if ch not in self.mapped_channels
+        ]
         if invalid_channels:
             self.logger.warning(
                 f"Plugin '{self.plugin_name}': Channels {invalid_channels} are not mapped in configuration."
             )
 
         # Get the response delay from the meshtastic config only
-        self.response_delay = relay_config.get("meshtastic", {}).get("plugin_response_delay", 3)
+        self.response_delay = relay_config.get("meshtastic", {}).get(
+            "plugin_response_delay", 3
+        )
 
     def start(self):
         if "schedule" not in self.config or (
@@ -144,7 +149,7 @@ class BasePlugin(ABC):
 
     def store_node_data(self, meshtastic_id, node_data):
         data = self.get_node_data(meshtastic_id=meshtastic_id)
-        data = data[-self.max_data_rows_per_node:]
+        data = data[-self.max_data_rows_per_node :]
         if isinstance(node_data, list):
             data.extend(node_data)
         else:
@@ -152,7 +157,7 @@ class BasePlugin(ABC):
         store_plugin_data(self.plugin_name, meshtastic_id, data)
 
     def set_node_data(self, meshtastic_id, node_data):
-        node_data = node_data[-self.max_data_rows_per_node:]
+        node_data = node_data[-self.max_data_rows_per_node :]
         store_plugin_data(self.plugin_name, meshtastic_id, node_data)
 
     def delete_node_data(self, meshtastic_id):

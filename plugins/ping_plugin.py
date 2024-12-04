@@ -1,14 +1,15 @@
+import asyncio
 import re
 import string
-import asyncio
-from plugins.base_plugin import BasePlugin
+
 from meshtastic.mesh_interface import BROADCAST_NUM
+
+from plugins.base_plugin import BasePlugin
 
 
 def match_case(source, target):
-    return ''.join(
-        c.upper() if s.isupper() else c.lower()
-        for s, c in zip(source, target)
+    return "".join(
+        c.upper() if s.isupper() else c.lower() for s, c in zip(source, target)
     )
 
 
@@ -45,7 +46,9 @@ class Plugin(BasePlugin):
                 is_direct_message = False
 
             # Pass is_direct_message to is_channel_enabled
-            if not self.is_channel_enabled(channel, is_direct_message=is_direct_message):
+            if not self.is_channel_enabled(
+                channel, is_direct_message=is_direct_message
+            ):
                 # Removed unnecessary logging
                 return False
 
@@ -55,7 +58,9 @@ class Plugin(BasePlugin):
             )
             if match:
                 # Log that the plugin is processing the message
-                self.logger.debug(f"Processing message with plugin '{self.plugin_name}'")
+                self.logger.debug(
+                    f"Processing message with plugin '{self.plugin_name}'"
+                )
 
                 # Extract matched text and punctuation
                 pre_punc = match.group(1)
