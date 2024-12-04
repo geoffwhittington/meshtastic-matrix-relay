@@ -294,10 +294,6 @@ def on_meshtastic_message(packet, interface):
             )
             return
 
-        logger.info(
-            f"Processing inbound radio message from {sender} on channel {channel}"
-        )
-
         # Attempt to get longname from database
         longname = get_longname(sender)
         shortname = get_shortname(sender)
@@ -357,6 +353,9 @@ def on_meshtastic_message(packet, interface):
             logger.debug("Message was handled by a plugin. Not relaying to Matrix.")
             return
 
+        logger.info(
+            f"Processing inbound radio message from {sender} on channel {channel}"
+        )
         logger.info(f"Relaying Meshtastic message from {longname} to Matrix")
 
         # Relay message to Matrix rooms
