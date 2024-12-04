@@ -36,6 +36,7 @@ plugins:
     active: true
     units: imperial # Options: metric, imperial - Default is metric
     #channels: [] # Empty list, will only respond to DMs
+    #plugin_response_delay: 3 # If unset, defaults to 3 seconds
   nodes:
     active: true
     # Does not need to specify channels, as it's a Matrix-only plugin
