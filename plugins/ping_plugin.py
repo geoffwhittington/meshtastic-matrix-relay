@@ -58,9 +58,7 @@ class Plugin(BasePlugin):
             )
             if match:
                 # Log that the plugin is processing the message
-                self.logger.debug(
-                    f"Processing message with plugin '{self.plugin_name}'"
-                )
+                self.logger.info(f"Processing message with plugin '{self.plugin_name}'")
 
                 # Extract matched text and punctuation
                 pre_punc = match.group(1)

@@ -206,7 +206,9 @@ async def reconnect():
                 )
                 await asyncio.sleep(backoff_time)
                 if shutting_down:
-                    logger.debug("Shutdown in progress. Aborting reconnection attempts.")
+                    logger.debug(
+                        "Shutdown in progress. Aborting reconnection attempts."
+                    )
                     break
                 meshtastic_client = connect_meshtastic(force_connect=True)
                 if meshtastic_client:

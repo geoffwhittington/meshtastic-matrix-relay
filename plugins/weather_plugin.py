@@ -67,7 +67,9 @@ class Plugin(BasePlugin):
                     2: "⛅️ Partly cloudy" if is_day else "🌙⛅️ Partly cloudy",
                     3: "☁️ Overcast" if is_day else "🌙☁️ Overcast",
                     45: "🌫️ Fog" if is_day else "🌙🌫️ Fog",
-                    48: "🌫️ Depositing rime fog" if is_day else "🌙🌫️ Depositing rime fog",
+                    48: (
+                        "🌫️ Depositing rime fog" if is_day else "🌙🌫️ Depositing rime fog"
+                    ),
                     51: "🌧️ Light drizzle",
                     53: "🌧️ Moderate drizzle",
                     55: "🌧️ Dense drizzle",
@@ -154,7 +156,7 @@ class Plugin(BasePlugin):
                 return False
 
             # Log that the plugin is processing the message
-            self.logger.debug(f"Processing message with plugin '{self.plugin_name}'")
+            self.logger.info(f"Processing message with plugin '{self.plugin_name}'")
 
             fromId = packet.get("fromId")
             if fromId in meshtastic_client.nodes:
