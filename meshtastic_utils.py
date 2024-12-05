@@ -60,7 +60,7 @@ def connect_meshtastic(force_connect=False):
     """
     global meshtastic_client, shutting_down
     if shutting_down:
-        logger.info("Shutdown in progress. Not attempting to connect.")
+        logger.debug("Shutdown in progress. Not attempting to connect.")
         return None
 
     with meshtastic_lock:
@@ -142,7 +142,7 @@ def connect_meshtastic(force_connect=False):
                 Exception,
             ) as e:
                 if shutting_down:
-                    logger.info("Shutdown in progress. Aborting connection attempts.")
+                    logger.debug("Shutdown in progress. Aborting connection attempts.")
                     break
                 attempts += 1
                 if retry_limit == 0 or attempts <= retry_limit:
@@ -165,7 +165,7 @@ def on_lost_meshtastic_connection(interface=None):
     global meshtastic_client, reconnecting, shutting_down, event_loop, reconnect_task
     with meshtastic_lock:
         if shutting_down:
-            logger.info("Shutdown in progress. Not attempting to reconnect.")
+            logger.debug("Shutdown in progress. Not attempting to reconnect.")
             return
         if reconnecting:
             logger.info(
@@ -206,7 +206,7 @@ async def reconnect():
                 )
                 await asyncio.sleep(backoff_time)
                 if shutting_down:
-                    logger.info("Shutdown in progress. Aborting reconnection attempts.")
+                    logger.debug("Shutdown in progress. Aborting reconnection attempts.")
                     break
                 meshtastic_client = connect_meshtastic(force_connect=True)
                 if meshtastic_client:
@@ -232,7 +232,7 @@ def on_meshtastic_message(packet, interface):
     global event_loop
 
     if shutting_down:
-        logger.info("Shutdown in progress. Ignoring incoming messages.")
+        logger.debug("Shutdown in progress. Ignoring incoming messages.")
         return
 
     if event_loop is None:
