@@ -33,13 +33,22 @@ class Plugin(BasePlugin):
             current_weather_code = data["current_weather"]["weathercode"]
             is_day = data["current_weather"]["is_day"]
 
-            forecast_2h_temp = data["hourly"]["temperature_2m"][2]
-            forecast_2h_precipitation = data["hourly"]["precipitation_probability"][2]
-            forecast_2h_weather_code = data["hourly"]["weathercode"][2]
+            # Get indices for +2h and +5h forecasts
+            # Assuming hourly data starts from current hour
+            forecast_2h_index = 2
+            forecast_5h_index = 5
 
-            forecast_5h_temp = data["hourly"]["temperature_2m"][5]
-            forecast_5h_precipitation = data["hourly"]["precipitation_probability"][5]
-            forecast_5h_weather_code = data["hourly"]["weathercode"][5]
+            forecast_2h_temp = data["hourly"]["temperature_2m"][forecast_2h_index]
+            forecast_2h_precipitation = data["hourly"]["precipitation_probability"][
+                forecast_2h_index
+            ]
+            forecast_2h_weather_code = data["hourly"]["weathercode"][forecast_2h_index]
+
+            forecast_5h_temp = data["hourly"]["temperature_2m"][forecast_5h_index]
+            forecast_5h_precipitation = data["hourly"]["precipitation_probability"][
+                forecast_5h_index
+            ]
+            forecast_5h_weather_code = data["hourly"]["weathercode"][forecast_5h_index]
 
             if units == "imperial":
                 # Convert temperatures from Celsius to Fahrenheit
@@ -53,34 +62,34 @@ class Plugin(BasePlugin):
 
             def weather_code_to_text(weather_code, is_day):
                 weather_mapping = {
-                    0: "☀️ Sunny" if is_day else "🌙 Clear",
-                    1: "⛅️ Partly Cloudy" if is_day else "🌙⛅️ Clear",
-                    2: "🌤️ Mostly Clear" if is_day else "🌙🌤️ Mostly Clear",
-                    3: "🌥️ Mostly Cloudy" if is_day else "🌙🌥️ Mostly Clear",
-                    45: "🌫️ Foggy" if is_day else "🌙🌫️ Foggy",
-                    48: "🌫️ Foggy" if is_day else "🌙🌫️ Foggy",
-                    51: "🌧️ Light Drizzle",
-                    53: "🌧️ Moderate Drizzle",
-                    55: "🌧️ Heavy Drizzle",
-                    56: "🌧️ Freezing Drizzle",
-                    57: "🌧️ Freezing Drizzle",
-                    61: "🌧️ Light Rain",
-                    63: "🌧️ Moderate Rain",
-                    65: "🌧️ Heavy Rain",
-                    66: "🌧️ Freezing Rain",
-                    67: "🌧️ Freezing Rain",
-                    71: "❄️ Light Snow",
-                    73: "❄️ Moderate Snow",
-                    75: "❄️ Heavy Snow",
-                    77: "❄️ Snow Grains",
-                    80: "🌧️ Light Rain Showers",
-                    81: "🌧️ Moderate Rain Showers",
-                    82: "🌧️ Heavy Rain Showers",
-                    85: "❄️ Light Snow Showers",
-                    86: "❄️ Heavy Snow Showers",
+                    0: "☀️ Clear sky" if is_day else "🌙 Clear sky",
+                    1: "🌤️ Mainly clear" if is_day else "🌙🌤️ Mainly clear",
+                    2: "⛅️ Partly cloudy" if is_day else "🌙⛅️ Partly cloudy",
+                    3: "☁️ Overcast" if is_day else "🌙☁️ Overcast",
+                    45: "🌫️ Fog" if is_day else "🌙🌫️ Fog",
+                    48: "🌫️ Depositing rime fog" if is_day else "🌙🌫️ Depositing rime fog",
+                    51: "🌧️ Light drizzle",
+                    53: "🌧️ Moderate drizzle",
+                    55: "🌧️ Dense drizzle",
+                    56: "🌧️ Light freezing drizzle",
+                    57: "🌧️ Dense freezing drizzle",
+                    61: "🌧️ Light rain",
+                    63: "🌧️ Moderate rain",
+                    65: "🌧️ Heavy rain",
+                    66: "🌧️ Light freezing rain",
+                    67: "🌧️ Heavy freezing rain",
+                    71: "❄️ Light snow fall",
+                    73: "❄️ Moderate snow fall",
+                    75: "❄️ Heavy snow fall",
+                    77: "❄️ Snow grains",
+                    80: "🌧️ Light rain showers",
+                    81: "🌧️ Moderate rain showers",
+                    82: "🌧️ Violent rain showers",
+                    85: "❄️ Light snow showers",
+                    86: "❄️ Heavy snow showers",
                     95: "⛈️ Thunderstorm",
-                    96: "⛈️ Thunderstorm with Hail",
-                    99: "⛈️ Thunderstorm with Hail",
+                    96: "⛈️ Thunderstorm with slight hail",
+                    99: "⛈️ Thunderstorm with heavy hail",
                 }
 
                 return weather_mapping.get(weather_code, "❓ Unknown")
@@ -141,7 +150,7 @@ class Plugin(BasePlugin):
                 # Channel not enabled for plugin
                 return False
 
-            if f"!{self.plugin_name}" not in message:
+            if f"!{self.plugin_name}" not in message.lower():
                 return False
 
             # Log that the plugin is processing the message
