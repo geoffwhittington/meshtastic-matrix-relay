@@ -60,7 +60,7 @@ def connect_meshtastic(force_connect=False):
     """
     global meshtastic_client, shutting_down
     if shutting_down:
-        logger.info("Shutdown in progress. Not attempting to connect.")
+        logger.debug("Shutdown in progress. Not attempting to connect.")
         return None
 
     with meshtastic_lock:
@@ -142,7 +142,7 @@ def connect_meshtastic(force_connect=False):
                 Exception,
             ) as e:
                 if shutting_down:
-                    logger.info("Shutdown in progress. Aborting connection attempts.")
+                    logger.debug("Shutdown in progress. Aborting connection attempts.")
                     break
                 attempts += 1
                 if retry_limit == 0 or attempts <= retry_limit:
@@ -165,7 +165,7 @@ def on_lost_meshtastic_connection(interface=None):
     global meshtastic_client, reconnecting, shutting_down, event_loop, reconnect_task
     with meshtastic_lock:
         if shutting_down:
-            logger.info("Shutdown in progress. Not attempting to reconnect.")
+            logger.debug("Shutdown in progress. Not attempting to reconnect.")
             return
         if reconnecting:
             logger.info(
@@ -206,7 +206,9 @@ async def reconnect():
                 )
                 await asyncio.sleep(backoff_time)
                 if shutting_down:
-                    logger.info("Shutdown in progress. Aborting reconnection attempts.")
+                    logger.debug(
+                        "Shutdown in progress. Aborting reconnection attempts."
+                    )
                     break
                 meshtastic_client = connect_meshtastic(force_connect=True)
                 if meshtastic_client:
@@ -232,7 +234,7 @@ def on_meshtastic_message(packet, interface):
     global event_loop
 
     if shutting_down:
-        logger.info("Shutdown in progress. Ignoring incoming messages.")
+        logger.debug("Shutdown in progress. Ignoring incoming messages.")
         return
 
     if event_loop is None:
@@ -242,9 +244,22 @@ def on_meshtastic_message(packet, interface):
     loop = event_loop
 
     sender = packet.get("fromId") or packet.get("from")
+    toId = packet.get("to")
 
     decoded = packet.get("decoded", {})
     text = decoded.get("text")
+
+    # Determine if the message is a direct message
+    myId = interface.myInfo.my_node_num  # Get relay's own node number
+    from meshtastic.mesh_interface import BROADCAST_NUM
+
+    if toId == myId:
+        is_direct_message = True
+    elif toId == BROADCAST_NUM:
+        is_direct_message = False
+    else:
+        # Message to someone else; we may ignore it
+        is_direct_message = False
 
     if text:
         # Determine the channel
@@ -280,10 +295,6 @@ def on_meshtastic_message(packet, interface):
                 "Detection sensor packet received, but detection sensor processing is disabled."
             )
             return
-
-        logger.info(
-            f"Processing inbound radio message from {sender} on channel {channel}"
-        )
 
         # Attempt to get longname from database
         longname = get_longname(sender)
@@ -335,9 +346,20 @@ def on_meshtastic_message(packet, interface):
                 if found_matching_plugin:
                     logger.debug(f"Processed by plugin {plugin.plugin_name}")
 
+        # **Added DM Check Here**
+        # If the message is a DM or handled by a plugin, do not relay it to Matrix
+        if is_direct_message:
+            logger.debug(
+                f"Received a direct message from {longname}. Not relaying to Matrix."
+            )
+            return
         if found_matching_plugin:
+            logger.debug("Message was handled by a plugin. Not relaying to Matrix.")
             return
 
+        logger.info(
+            f"Processing inbound radio message from {sender} on channel {channel}"
+        )
         logger.info(f"Relaying Meshtastic message from {longname} to Matrix")
 
         # Relay message to Matrix rooms

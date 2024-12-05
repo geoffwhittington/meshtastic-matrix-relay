@@ -1,13 +1,17 @@
+import asyncio
 import re
 import string
 
+from meshtastic.mesh_interface import BROADCAST_NUM
+
 from plugins.base_plugin import BasePlugin
 
+
 def match_case(source, target):
-    return ''.join(
-        c.upper() if s.isupper() else c.lower()
-        for s, c in zip(source, target)
+    return "".join(
+        c.upper() if s.isupper() else c.lower() for s, c in zip(source, target)
     )
+
 
 class Plugin(BasePlugin):
     plugin_name = "ping"
@@ -22,18 +26,39 @@ class Plugin(BasePlugin):
     ):
         if "decoded" in packet and "text" in packet["decoded"]:
             message = packet["decoded"]["text"].strip()
+            channel = packet.get("channel", 0)  # Default to channel 0 if not provided
+
+            from meshtastic_utils import connect_meshtastic
+
+            meshtastic_client = connect_meshtastic()
+
+            # Determine if the message is a direct message
+            toId = packet.get("to")
+            myId = meshtastic_client.myInfo.my_node_num  # Get relay's own node number
+
+            if toId == myId:
+                # Direct message to us
+                is_direct_message = True
+            elif toId == BROADCAST_NUM:
+                is_direct_message = False
+            else:
+                # Message to someone else; we may ignore it
+                is_direct_message = False
+
+            # Pass is_direct_message to is_channel_enabled
+            if not self.is_channel_enabled(
+                channel, is_direct_message=is_direct_message
+            ):
+                # Removed unnecessary logging
+                return False
 
             # Updated regex to match optional punctuation before and after "ping"
             match = re.search(
                 r"(?<!\w)([!?]*)(ping)([!?]*)(?!\w)", message, re.IGNORECASE
             )
             if match:
-                from meshtastic_utils import connect_meshtastic
-
-                meshtastic_client = connect_meshtastic()
-                channel = packet.get(
-                    "channel", 0
-                )  # Default to channel 0 if not provided
+                # Log that the plugin is processing the message
+                self.logger.info(f"Processing message with plugin '{self.plugin_name}'")
 
                 # Extract matched text and punctuation
                 pre_punc = match.group(1)
@@ -54,9 +79,23 @@ class Plugin(BasePlugin):
                 else:
                     reply_message = pre_punc + base_response + post_punc
 
-                # Send the reply back to the same channel
-                meshtastic_client.sendText(text=reply_message, channelIndex=channel)
+                # Wait for the response delay
+                await asyncio.sleep(self.get_response_delay())
+
+                fromId = packet.get("fromId")
+
+                if is_direct_message:
+                    # Send reply as DM
+                    meshtastic_client.sendText(
+                        text=reply_message,
+                        destinationId=fromId,
+                    )
+                else:
+                    # Send the reply back to the same channel
+                    meshtastic_client.sendText(text=reply_message, channelIndex=channel)
                 return True
+            else:
+                return False  # No match, do not process
 
     def get_matrix_commands(self):
         return [self.plugin_name]
