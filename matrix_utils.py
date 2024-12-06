@@ -147,7 +147,7 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
         if emoji:
             content["meshtastic_emoji"] = 1
 
-        await asyncio.wait_for(
+        response = await asyncio.wait_for(
             matrix_client.room_send(
                 room_id=room_id,
                 message_type="m.room.message",
@@ -162,7 +162,7 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
         # We'll store for main text messages
         if meshtastic_id is not None and not emote:
             from db_utils import store_message_map
-            store_message_map(meshtastic_id, matrix_client.last_event_id, room_id, meshtastic_text if meshtastic_text else message)
+            store_message_map(meshtastic_id, response.event_id, room_id, meshtastic_text if meshtastic_text else message)
 
     except asyncio.TimeoutError:
         logger.error("Timed out while waiting for Matrix response")
