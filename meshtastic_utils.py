@@ -226,6 +226,12 @@ async def reconnect():
 
 
 def on_meshtastic_message(packet, interface):
+    # Filter out TEXT_MESSAGE_APP packets with emoji or replyId
+    if packet.get('decoded', {}).get('portnum') == 'TEXT_MESSAGE_APP':
+        decoded = packet.get('decoded', {})
+        if 'emoji' in decoded or 'replyId' in decoded:
+            logger.debug('Filtered out reaction/tapback packet.')
+            return
     """
     Handle incoming Meshtastic messages and relay them to Matrix.
     """
