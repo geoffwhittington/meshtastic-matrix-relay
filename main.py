@@ -61,9 +61,8 @@ async def main():
 
     # Register the message callback for Matrix
     matrix_logger.info("Listening for inbound Matrix messages...")
-    matrix_client.add_event_callback(
-        on_room_message, (RoomMessageText, RoomMessageNotice)
-    )
+    matrix_client.add_event_callback(on_room_message, RoomMessageText)
+    matrix_client.add_event_callback(on_room_message, RoomMessageNotice)
 
     # Set up shutdown event
     shutdown_event = asyncio.Event()

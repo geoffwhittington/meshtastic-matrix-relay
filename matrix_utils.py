@@ -3,7 +3,7 @@ import io
 import re
 import ssl
 import time
-from typing import List, Union, Optional
+from typing import List, Union
 
 import certifi
 import meshtastic.protobuf.portnums_pb2
@@ -89,13 +89,10 @@ async def connect_matrix():
     else:
         bot_user_name = bot_user_id  # Fallback if display name is not set
 
-    # Register callbacks for different event types, including ReactionEvent
-    matrix_client.add_event_callback(
-        on_room_message,
-        RoomMessageText,
-        RoomMessageNotice,
-        ReactionEvent,  # Register ReactionEvent
-    )
+    # Register callbacks for different event types
+    matrix_client.add_event_callback(on_room_message, RoomMessageText)
+    matrix_client.add_event_callback(on_room_message, RoomMessageNotice)
+    matrix_client.add_event_callback(on_room_message, ReactionEvent)
 
     return matrix_client
 
