@@ -3,7 +3,7 @@ import io
 import re
 import ssl
 import time
-from typing import List, Union
+from typing import List, Union, Optional
 
 import certifi
 import meshtastic.protobuf.portnums_pb2
@@ -17,7 +17,6 @@ from nio import (
     WhoamiError,
     ReactionEvent,  # Add ReactionEvent here
 )
-
 from PIL import Image
 
 from config import relay_config
@@ -90,6 +89,14 @@ async def connect_matrix():
     else:
         bot_user_name = bot_user_id  # Fallback if display name is not set
 
+    # Register callbacks for different event types, including ReactionEvent
+    matrix_client.add_event_callback(
+        on_room_message,
+        RoomMessageText,
+        RoomMessageNotice,
+        ReactionEvent,  # Register ReactionEvent
+    )
+
     return matrix_client
 
 
@@ -130,7 +137,19 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
 # Add ReactionEvent to callbacks so we catch m.reaction events
 # Previously we only listened for (RoomMessageText, RoomMessageNotice)
 # Now we include ReactionEvent as well
-async def matrix_relay(room_id, message, longname, shortname, meshnet_name, portnum, meshtastic_id=None, meshtastic_replyId=None, meshtastic_text=None, emote=False, emoji=False):
+async def matrix_relay(
+    room_id,
+    message,
+    longname,
+    shortname,
+    meshnet_name,
+    portnum,
+    meshtastic_id=None,
+    meshtastic_replyId=None,
+    meshtastic_text=None,
+    emote=False,
+    emoji=False,
+):
     matrix_client = await connect_matrix()
     try:
         content = {
@@ -166,7 +185,13 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
         # preventing reaction-to-reaction loops.
         if meshtastic_id is not None and not emote:
             from db_utils import store_message_map
-            store_message_map(meshtastic_id, response.event_id, room_id, meshtastic_text if meshtastic_text else message)
+
+            store_message_map(
+                meshtastic_id,
+                response.event_id,
+                room_id,
+                meshtastic_text if meshtastic_text else message,
+            )
 
     except asyncio.TimeoutError:
         logger.error("Timed out while waiting for Matrix response")
@@ -193,6 +218,7 @@ async def on_room_message(
     room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice, ReactionEvent]
 ) -> None:
     from db_utils import get_message_map_by_matrix_event_id
+
     full_display_name = "Unknown user"
     message_timestamp = event.server_timestamp
 
@@ -209,6 +235,9 @@ async def on_room_message(
     # Only relay supported rooms
     if not room_config:
         return
+
+    # Enhanced logging to include event type
+    logger.debug(f"Received event of type '{event.type}' from '{event.sender}'")
 
     # Check if this is a reaction event
     # Reaction events come as ReactionEvent now
@@ -239,9 +268,6 @@ async def on_room_message(
     if suppress:
         return
 
-    logger.debug(f"Received reaction event: {event}")
-    logger.debug(f"Relation: {event.relation}")
-
     if is_reaction and relay_reactions:
         # We have a Matrix reaction
         # Get the original message from DB
@@ -250,7 +276,9 @@ async def on_room_message(
             if orig:
                 meshtastic_id, matrix_room_id, meshtastic_text = orig
                 # If the text is longer than 40 chars, abbreviate
-                abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
+                abbreviated_text = (
+                    meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
+                )
                 display_name_response = await matrix_client.get_displayname(event.sender)
                 full_display_name = display_name_response.displayname or event.sender
                 short_display_name = full_display_name[:5]
@@ -259,6 +287,7 @@ async def on_room_message(
                 reaction_message = f"{prefix}reacted {reaction_emoji} to \"{abbreviated_text}\""
                 meshtastic_interface = connect_meshtastic()
                 from meshtastic_utils import logger as meshtastic_logger
+
                 meshtastic_channel = room_config["meshtastic_channel"]
                 if relay_config["meshtastic"]["broadcast_enabled"]:
                     meshtastic_logger.info(
@@ -300,6 +329,7 @@ async def on_room_message(
 
     # Plugin functionality
     from plugin_loader import load_plugins
+
     plugins = load_plugins()
 
     found_matching_plugin = False
