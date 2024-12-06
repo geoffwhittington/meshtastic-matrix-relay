@@ -9,7 +9,7 @@ import signal
 import sys
 from typing import List
 
-from nio import RoomMessageNotice, RoomMessageText
+from nio import RoomMessageNotice, RoomMessageText, ReactionEvent
 
 # Import meshtastic_utils as a module to set event_loop
 import meshtastic_utils
@@ -61,8 +61,11 @@ async def main():
 
     # Register the message callback for Matrix
     matrix_logger.info("Listening for inbound Matrix messages...")
-    matrix_client.add_event_callback(on_room_message, RoomMessageText)
-    matrix_client.add_event_callback(on_room_message, RoomMessageNotice)
+    matrix_client.add_event_callback(
+        on_room_message, (RoomMessageText, RoomMessageNotice)
+    )
+    # Add ReactionEvent callback so we can handle matrix reactions
+    matrix_client.add_event_callback(on_room_message, ReactionEvent)
 
     # Set up shutdown event
     shutdown_event = asyncio.Event()
