@@ -15,6 +15,7 @@ from nio import (
     RoomMessageText,
     UploadResponse,
     WhoamiError,
+    ReactionEvent,  # Add ReactionEvent here
 )
 
 from PIL import Image
@@ -126,7 +127,9 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
         logger.error(f"Error joining room '{room_id_or_alias}': {e}")
 
 
-# Send message to the Matrix room
+# Add ReactionEvent to callbacks so we catch m.reaction events
+# Previously we only listened for (RoomMessageText, RoomMessageNotice)
+# Now we include ReactionEvent as well
 async def matrix_relay(room_id, message, longname, shortname, meshnet_name, portnum, meshtastic_id=None, meshtastic_replyId=None, meshtastic_text=None, emote=False, emoji=False):
     matrix_client = await connect_matrix()
     try:
@@ -187,7 +190,7 @@ def truncate_message(
 
 # Callback for new messages in Matrix room
 async def on_room_message(
-    room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice]
+    room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice, ReactionEvent]
 ) -> None:
     from db_utils import get_message_map_by_matrix_event_id
     full_display_name = "Unknown user"
@@ -208,18 +211,23 @@ async def on_room_message(
         return
 
     # Check if this is a reaction event
-    # Reaction events have content like: content: { "m.relates_to": { "rel_type": "m.annotation", "event_id": ..., "key": ... } }
-    # This is different from a normal text message
+    # Reaction events come as ReactionEvent now
     relates_to = event.source["content"].get("m.relates_to")
     is_reaction = False
     reaction_emoji = None
     original_matrix_event_id = None
-    if relates_to and relates_to.get("rel_type") == "m.annotation" and "event_id" in relates_to and "key" in relates_to:
+    # If event is ReactionEvent, it must have relates_to for sure
+    # ReactionEvent does not have a body. We rely on m.relates_to
+    if isinstance(event, ReactionEvent):
+        # ReactionEvent has the reaction key in m.relates_to["key"]
         is_reaction = True
-        reaction_emoji = relates_to["key"]
-        original_matrix_event_id = relates_to["event_id"]
+        if relates_to and "event_id" in relates_to and "key" in relates_to:
+            reaction_emoji = relates_to["key"]
+            original_matrix_event_id = relates_to["event_id"]
 
-    text = event.body.strip() if not is_reaction else ""
+    # For normal messages (RoomMessageText, RoomMessageNotice) we use event.body
+    text = event.body.strip() if (not is_reaction and hasattr(event, "body")) else ""
+
     longname = event.source["content"].get("meshtastic_longname")
     shortname = event.source["content"].get("meshtastic_shortname", None)
     meshnet_name = event.source["content"].get("meshtastic_meshnet")
@@ -234,30 +242,29 @@ async def on_room_message(
     if is_reaction and relay_reactions:
         # We have a Matrix reaction
         # Get the original message from DB
-        orig = get_message_map_by_matrix_event_id(original_matrix_event_id)
-        if orig:
-            meshtastic_id, matrix_room_id, meshtastic_text = orig
-            # If the text is longer than 40 chars, abbreviate
-            abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
-            # Construct reaction message (Matrix->Meshtastic direction)
-            # We do NOT create an emote here, just a normal text for Meshtastic
-            # Keep the existing prefix logic
-            display_name_response = await matrix_client.get_displayname(event.sender)
-            full_display_name = display_name_response.displayname or event.sender
-            short_display_name = full_display_name[:5]
-            prefix = f"{short_display_name}[M]: "
-            reaction_message = f"{prefix}reacted {reaction_emoji} to \"{abbreviated_text}\""
-            # Send to Meshtastic (if broadcast_enabled)
-            meshtastic_interface = connect_meshtastic()
-            from meshtastic_utils import logger as meshtastic_logger
-            meshtastic_channel = room_config["meshtastic_channel"]
-            if relay_config["meshtastic"]["broadcast_enabled"]:
-                meshtastic_logger.info(
-                    f"Relaying reaction from {full_display_name} to radio broadcast"
-                )
-                meshtastic_interface.sendText(
-                    text=reaction_message, channelIndex=meshtastic_channel
-                )
+        if original_matrix_event_id:
+            orig = get_message_map_by_matrix_event_id(original_matrix_event_id)
+            if orig:
+                meshtastic_id, matrix_room_id, meshtastic_text = orig
+                # If the text is longer than 40 chars, abbreviate
+                abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
+                display_name_response = await matrix_client.get_displayname(event.sender)
+                full_display_name = display_name_response.displayname or event.sender
+                short_display_name = full_display_name[:5]
+                prefix = f"{short_display_name}[M]: "
+                # Use the actual reaction_emoji
+                reaction_message = f"{prefix}reacted {reaction_emoji} to \"{abbreviated_text}\""
+                meshtastic_interface = connect_meshtastic()
+                from meshtastic_utils import logger as meshtastic_logger
+                meshtastic_channel = room_config["meshtastic_channel"]
+                if relay_config["meshtastic"]["broadcast_enabled"]:
+                    meshtastic_logger.info(
+                        f"Relaying reaction from {full_display_name} to radio broadcast"
+                    )
+                    # Relay the reaction to the meshnet
+                    meshtastic_interface.sendText(
+                        text=reaction_message, channelIndex=meshtastic_channel
+                    )
         return
 
     if longname and meshnet_name:
