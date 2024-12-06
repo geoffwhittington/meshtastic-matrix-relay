@@ -234,7 +234,7 @@ async def on_room_message(
         return
 
     # Enhanced logging to include event type
-    logger.debug(f"Received event of type '{event.type}' from '{event.sender}'")
+    logger.debug(f"Received event of type '{event.source['type']}' from '{event.sender}'")
 
     # Check if this is a reaction event
     # Reaction events come as ReactionEvent now
