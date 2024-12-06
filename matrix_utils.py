@@ -150,14 +150,14 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
         if emoji:
             content["meshtastic_emoji"] = 1
 
-        # Use the response from room_send to get event_id
+        # Increased timeout to give matrix more time to respond
         response = await asyncio.wait_for(
             matrix_client.room_send(
                 room_id=room_id,
                 message_type="m.room.message",
                 content=content,
             ),
-            timeout=0.5,
+            timeout=5.0,  # Changed from 0.5 to 5.0 seconds
         )
         logger.info(f"Sent inbound radio message to matrix room: {room_id}")
 
@@ -271,7 +271,6 @@ async def on_room_message(
         full_display_name = f"{longname}/{meshnet_name}"
         if meshnet_name != local_meshnet_name:
             # A message from a remote meshnet
-            # If reaction filtering is needed, no effect here since this is a normal message
             logger.info(f"Processing message from remote meshnet: {text}")
             short_meshnet_name = meshnet_name[:4]
             # If shortname is None, truncate the longname to 3 characters
