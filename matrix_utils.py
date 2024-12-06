@@ -147,6 +147,7 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
         if emoji:
             content["meshtastic_emoji"] = 1
 
+        # Use the response from room_send to get event_id
         response = await asyncio.wait_for(
             matrix_client.room_send(
                 room_id=room_id,
@@ -157,9 +158,9 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
         )
         logger.info(f"Sent inbound radio message to matrix room: {room_id}")
 
-        # If this is not a reaction message, store the mapping
-        # Reaction messages may not map well to original meshtastic_id as a primary message
-        # We'll store for main text messages
+        # If this is not a reaction message (emote=False), we store it
+        # This ensures that reaction messages are never stored as originals,
+        # preventing reaction-to-reaction loops.
         if meshtastic_id is not None and not emote:
             from db_utils import store_message_map
             store_message_map(meshtastic_id, response.event_id, room_id, meshtastic_text if meshtastic_text else message)
@@ -236,13 +237,11 @@ async def on_room_message(
         orig = get_message_map_by_matrix_event_id(original_matrix_event_id)
         if orig:
             meshtastic_id, matrix_room_id, meshtastic_text = orig
-            # We must create a message for Meshtastic describing the reaction
-            # If text is longer than 40 chars, abbreviate
+            # If the text is longer than 40 chars, abbreviate
             abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
-            # Construct reaction message
-            # For matrix->meshtastic we use the short form for name and meshnet: 3 chars for each
-            # We do not have longname/shortname for matrix senders, we just do the usual prefix
-            # This code mimics what we do for normal messages
+            # Construct reaction message (Matrix->Meshtastic direction)
+            # We do NOT create an emote here, just a normal text for Meshtastic
+            # Keep the existing prefix logic
             display_name_response = await matrix_client.get_displayname(event.sender)
             full_display_name = display_name_response.displayname or event.sender
             short_display_name = full_display_name[:5]
@@ -271,12 +270,11 @@ async def on_room_message(
             # If shortname is None, truncate the longname to 3 characters
             if shortname is None:
                 shortname = longname[:3]
-            prefix = f"{shortname}/{short_meshnet_name}: "
             text = re.sub(
                 rf"^\[{full_display_name}\]: ", "", text
             )  # Remove the original prefix from the text
             text = truncate_message(text)
-            full_message = f"{prefix}{text}"
+            full_message = f"{shortname}/{short_meshnet_name}: {text}"
         else:
             # This is a message from a local user, it should be ignored
             return

@@ -287,8 +287,9 @@ def on_meshtastic_message(packet, interface):
             matrix_event_id, matrix_room_id, meshtastic_text = orig
             abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
             # Construct emote message
+            # Add a newline and a bullet to create a nice list-style formatting in m.emote
             full_display_name = f"{longname}/{meshnet_name}"
-            reaction_message = f"[{full_display_name}] reacted {text if text else '👍'} to \"{abbreviated_text}\""
+            reaction_message = f"\n* [{full_display_name}] reacted {text if text else '👍'} to \"{abbreviated_text}\""
             # Send as m.emote
             asyncio.run_coroutine_threadsafe(
                 matrix_relay(
