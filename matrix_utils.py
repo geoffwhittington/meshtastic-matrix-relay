@@ -239,6 +239,9 @@ async def on_room_message(
     if suppress:
         return
 
+    logger.debug(f"Received reaction event: {event}")
+    logger.debug(f"Relation: {event.relation}")
+
     if is_reaction and relay_reactions:
         # We have a Matrix reaction
         # Get the original message from DB
