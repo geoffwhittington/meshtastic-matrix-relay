@@ -292,7 +292,7 @@ def on_meshtastic_message(packet, interface):
             # Use the actual text as reaction, or if no text is given, just use the emoji we know was set
             reaction_symbol = text if (text and text.strip()) else '👍'
             # Construct emote message (with a newline and bullet)
-            reaction_message = f"\n* [{full_display_name}] reacted {reaction_symbol} to \"{abbreviated_text}\""
+            reaction_message = f"\n [{full_display_name}] reacted {reaction_symbol} to \"{abbreviated_text}\""
             # Send as m.emote
             asyncio.run_coroutine_threadsafe(
                 matrix_relay(

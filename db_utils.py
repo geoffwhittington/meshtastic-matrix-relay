@@ -6,6 +6,7 @@ import sqlite3
 def initialize_database():
     with sqlite3.connect("meshtastic.sqlite") as conn:
         cursor = conn.cursor()
+        # Updated table schema: matrix_event_id is now PRIMARY KEY, meshtastic_id is not necessarily unique
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS longnames (meshtastic_id TEXT PRIMARY KEY, longname TEXT)"
         )
@@ -15,9 +16,9 @@ def initialize_database():
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS plugin_data (plugin_name TEXT, meshtastic_id TEXT, data TEXT, PRIMARY KEY (plugin_name, meshtastic_id))"
         )
-        # New table to map Meshtastic messages to Matrix events
+        # Changed the schema for message_map: matrix_event_id is now primary key
         cursor.execute(
-            "CREATE TABLE IF NOT EXISTS message_map (meshtastic_id INTEGER PRIMARY KEY, matrix_event_id TEXT, matrix_room_id TEXT, meshtastic_text TEXT)"
+            "CREATE TABLE IF NOT EXISTS message_map (meshtastic_id INTEGER, matrix_event_id TEXT PRIMARY KEY, matrix_room_id TEXT, meshtastic_text TEXT)"
         )
         conn.commit()
 
@@ -129,7 +130,6 @@ def update_shortnames(nodes):
                 save_shortname(meshtastic_id, shortname)
 
 
-# New functions for message mapping
 def store_message_map(meshtastic_id, matrix_event_id, matrix_room_id, meshtastic_text):
     with sqlite3.connect("meshtastic.sqlite") as conn:
         cursor = conn.cursor()

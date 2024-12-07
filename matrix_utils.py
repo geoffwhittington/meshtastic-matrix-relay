@@ -15,7 +15,7 @@ from nio import (
     RoomMessageText,
     UploadResponse,
     WhoamiError,
-    ReactionEvent,  # Add ReactionEvent here
+    ReactionEvent,
 )
 
 from PIL import Image
@@ -161,9 +161,9 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
         )
         logger.info(f"Sent inbound radio message to matrix room: {room_id}")
 
-        # If this is not a reaction message (emote=False), we store it
-        # This ensures that reaction messages are never stored as originals,
-        # preventing reaction-to-reaction loops.
+        # Only store if this is not a reaction message (emote=True with emoji=True is a reaction)
+        # For inbound meshtastic messages, we store them here as before.
+        # Already handled meshtastic->matrix message storing logic here.
         if meshtastic_id is not None and not emote:
             from db_utils import store_message_map
             store_message_map(meshtastic_id, response.event_id, room_id, meshtastic_text if meshtastic_text else message)
@@ -192,7 +192,7 @@ def truncate_message(
 async def on_room_message(
     room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice, ReactionEvent]
 ) -> None:
-    from db_utils import get_message_map_by_matrix_event_id
+    from db_utils import get_message_map_by_matrix_event_id, store_message_map
     full_display_name = "Unknown user"
     message_timestamp = event.server_timestamp
 
@@ -246,13 +246,11 @@ async def on_room_message(
             orig = get_message_map_by_matrix_event_id(original_matrix_event_id)
             if orig:
                 meshtastic_id, matrix_room_id, meshtastic_text = orig
-                # If the text is longer than 40 chars, abbreviate
-                abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
                 display_name_response = await matrix_client.get_displayname(event.sender)
                 full_display_name = display_name_response.displayname or event.sender
                 short_display_name = full_display_name[:5]
                 prefix = f"{short_display_name}[M]: "
-                # Use the actual reaction_emoji
+                abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
                 reaction_message = f"{prefix}reacted {reaction_emoji} to \"{abbreviated_text}\""
                 meshtastic_interface = connect_meshtastic()
                 from meshtastic_utils import logger as meshtastic_logger
@@ -316,6 +314,12 @@ async def on_room_message(
                 break
         if is_command:
             break
+
+    # Store this matrix-originated message in DB so we can reference it later for reactions
+    # Only store if it's not a reaction and not a command, and from a mapped room
+    # This ensures that all normal matrix messages are recorded
+    if not is_reaction and not is_command and event.sender != bot_user_id:
+        store_message_map(None, event.event_id, room.room_id, text)
 
     if is_command:
         logger.debug("Message is a command, not sending to mesh")
