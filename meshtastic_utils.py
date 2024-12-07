@@ -12,7 +12,7 @@ from bleak.exc import BleakDBusError, BleakError
 from pubsub import pub
 
 from config import relay_config
-from db_utils import get_longname, get_shortname, save_longname, save_shortname, get_message_map_by_meshtastic_id
+from db_utils import get_longname, get_shortname, save_longname, save_shortname
 from log_utils import get_logger
 
 # Do not import plugin_loader here to avoid circular imports
@@ -226,16 +226,15 @@ async def reconnect():
 
 
 def on_meshtastic_message(packet, interface):
-    # Apply reaction filtering based on config
-    relay_reactions = relay_config["meshtastic"].get("relay_reactions", True)
-
-    # Filter out TEXT_MESSAGE_APP packets with emoji or replyId if relay_reactions is False
+    # Filter out TEXT_MESSAGE_APP packets with emoji or replyId
     if packet.get('decoded', {}).get('portnum') == 'TEXT_MESSAGE_APP':
         decoded = packet.get('decoded', {})
-        if not relay_reactions and ('emoji' in decoded or 'replyId' in decoded):
-            logger.debug('Filtered out reaction/tapback packet due to relay_reactions=false.')
+        if 'emoji' in decoded or 'replyId' in decoded:
+            logger.debug('Filtered out reaction/tapback packet.')
             return
-
+    """
+    Handle incoming Meshtastic messages and relay them to Matrix.
+    """
     from matrix_utils import matrix_relay
 
     global event_loop
@@ -255,8 +254,6 @@ def on_meshtastic_message(packet, interface):
 
     decoded = packet.get("decoded", {})
     text = decoded.get("text")
-    replyId = decoded.get("replyId")
-    emoji_flag = 'emoji' in decoded and decoded['emoji'] == 1
 
     # Determine if the message is a direct message
     myId = interface.myInfo.my_node_num  # Get relay's own node number
@@ -269,50 +266,6 @@ def on_meshtastic_message(packet, interface):
     else:
         # Message to someone else; we may ignore it
         is_direct_message = False
-
-    meshnet_name = relay_config["meshtastic"]["meshnet_name"]
-
-    # If this is a reaction packet (has replyId and emoji) and relay_reactions is True
-    # we will convert it into an emote in Matrix.
-    # We'll need to find the original message from the DB using replyId.
-    # replyId corresponds to meshtastic_id in DB.
-    if replyId and emoji_flag and relay_reactions:
-        # This is a reaction message
-        # Get user names
-        longname = get_longname(sender) or str(sender)
-        shortname = get_shortname(sender) or str(sender)
-        # Retrieve original message
-        orig = get_message_map_by_meshtastic_id(replyId)
-        if orig:
-            matrix_event_id, matrix_room_id, meshtastic_text = orig
-            abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
-            # Construct emote message
-            # Add a newline and a bullet to create a nice list-style formatting in m.emote
-            full_display_name = f"{longname}/{meshnet_name}"
-            # Use the actual text as reaction, or if no text is given, just use the emoji we know was set
-            reaction_symbol = text if (text and text.strip()) else '👍'
-            # Construct emote message (with a newline and bullet)
-            reaction_message = f"\n [{full_display_name}] reacted {reaction_symbol} to \"{abbreviated_text}\""
-            # Send as m.emote
-            asyncio.run_coroutine_threadsafe(
-                matrix_relay(
-                    matrix_room_id,
-                    reaction_message,
-                    longname,
-                    shortname,
-                    meshnet_name,
-                    decoded.get("portnum"),
-                    meshtastic_id=packet.get("id"),
-                    meshtastic_replyId=replyId,
-                    meshtastic_text=meshtastic_text,
-                    emote=True,
-                    emoji=True
-                ),
-                loop=loop,
-            )
-        else:
-            logger.debug("Original message for reaction not found in DB.")
-        return
 
     if text:
         # Determine the channel
@@ -377,6 +330,8 @@ def on_meshtastic_message(packet, interface):
         if not shortname:
             shortname = str(sender)
 
+        meshnet_name = relay_config["meshtastic"]["meshnet_name"]
+
         formatted_message = f"[{longname}/{meshnet_name}]: {text}"
 
         # Plugin functionality
@@ -424,8 +379,6 @@ def on_meshtastic_message(packet, interface):
                         shortname,
                         meshnet_name,
                         decoded.get("portnum"),
-                        meshtastic_id=packet.get("id"),
-                        meshtastic_text=text
                     ),
                     loop=loop,
                 )
