@@ -176,7 +176,7 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
 
 def truncate_message(
     text, max_bytes=227
-):  # 227 is the maximum that we can run without an error so far.  228 throws an error.
+):  # 227 is the maximum that we can run without an error so far. 228 throws an error.
     """
     Truncate the given text to fit within the specified byte size.
 
@@ -221,9 +221,11 @@ async def on_room_message(
     if isinstance(event, ReactionEvent):
         # ReactionEvent has the reaction key in m.relates_to["key"]
         is_reaction = True
+        logger.debug(f"Processing Matrix reaction event: {event.source}")
         if relates_to and "event_id" in relates_to and "key" in relates_to:
             reaction_emoji = relates_to["key"]
             original_matrix_event_id = relates_to["event_id"]
+            logger.debug(f"Original matrix event ID: {original_matrix_event_id}, Reaction emoji: {reaction_emoji}")
 
     # For normal messages (RoomMessageText, RoomMessageNotice) we use event.body
     text = event.body.strip() if (not is_reaction and hasattr(event, "body")) else ""
@@ -244,6 +246,7 @@ async def on_room_message(
         # Get the original message from DB
         if original_matrix_event_id:
             orig = get_message_map_by_matrix_event_id(original_matrix_event_id)
+            logger.debug(f"Database lookup result for matrix event ID {original_matrix_event_id}: {orig}")
             if orig:
                 meshtastic_id, matrix_room_id, meshtastic_text = orig
                 display_name_response = await matrix_client.get_displayname(event.sender)
@@ -260,6 +263,7 @@ async def on_room_message(
                         f"Relaying reaction from {full_display_name} to radio broadcast"
                     )
                     # Relay the reaction to the meshnet
+                    logger.debug(f"Sending reaction to Meshtastic: {reaction_message}")
                     meshtastic_interface.sendText(
                         text=reaction_message, channelIndex=meshtastic_channel
                     )
@@ -319,6 +323,7 @@ async def on_room_message(
     # Only store if it's not a reaction and not a command, and from a mapped room
     # This ensures that all normal matrix messages are recorded
     if not is_reaction and not is_command and event.sender != bot_user_id:
+        logger.debug(f"Storing matrix message: event_id={event.event_id}, room_id={room.room_id}, text={text}")
         store_message_map(None, event.event_id, room.room_id, text)
 
     if is_command:
