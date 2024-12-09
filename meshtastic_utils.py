@@ -287,7 +287,7 @@ def on_meshtastic_message(packet, interface):
             matrix_event_id, matrix_room_id, meshtastic_text = orig
             abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
             full_display_name = f"{longname}/{meshnet_name}"
-            reaction_symbol = text.strip() if (text and text.strip()) else '👍'
+            reaction_symbol = text.strip() if (text and text.strip()) else '⚠️'
             reaction_message = f"\n [{full_display_name}] reacted {reaction_symbol} to \"{abbreviated_text}\""
             # Send as an emote message
             asyncio.run_coroutine_threadsafe(
