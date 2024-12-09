@@ -40,7 +40,7 @@ def get_logger(name):
             "backup_count", 1
         )  # Default to 1 backup
         file_handler = RotatingFileHandler(
-            log_file, maxBytes=max_bytes, backupCount=backup_count
+            log_file, maxBytes=max_bytes, backupCount=backup_count, encoding='utf-8'
         )
 
         file_handler.setFormatter(
