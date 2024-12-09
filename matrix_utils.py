@@ -127,9 +127,6 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
         logger.error(f"Error joining room '{room_id_or_alias}': {e}")
 
 
-# Add ReactionEvent to callbacks so we catch m.reaction events
-# Previously we only listened for (RoomMessageText, RoomMessageNotice)
-# Now we include ReactionEvent as well
 async def matrix_relay(room_id, message, longname, shortname, meshnet_name, portnum, meshtastic_id=None, meshtastic_replyId=None, meshtastic_text=None, emote=False, emoji=False):
     matrix_client = await connect_matrix()
     try:
@@ -161,9 +158,7 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
         )
         logger.info(f"Sent inbound radio message to matrix room: {room_id}")
 
-        # Only store if this is not a reaction message (emote=True with emoji=True is a reaction)
-        # For inbound meshtastic messages, we store them here as before.
-        # Already handled meshtastic->matrix message storing logic here.
+        # For inbound meshtastic->matrix messages, we store mapping here if meshtastic_id is present and not a reaction
         if meshtastic_id is not None and not emote:
             from db_utils import store_message_map
             store_message_map(meshtastic_id, response.event_id, room_id, meshtastic_text if meshtastic_text else message)
@@ -227,7 +222,6 @@ async def on_room_message(
             original_matrix_event_id = relates_to["event_id"]
             logger.debug(f"Original matrix event ID: {original_matrix_event_id}, Reaction emoji: {reaction_emoji}")
 
-    # For normal messages (RoomMessageText, RoomMessageNotice) we use event.body
     text = event.body.strip() if (not is_reaction and hasattr(event, "body")) else ""
 
     longname = event.source["content"].get("meshtastic_longname")
@@ -319,12 +313,7 @@ async def on_room_message(
         if is_command:
             break
 
-    # Store this matrix-originated message in DB so we can reference it later for reactions
-    # Only store if it's not a reaction and not a command, and from a mapped room
-    # This ensures that all normal matrix messages are recorded
-    if not is_reaction and not is_command and event.sender != bot_user_id:
-        logger.debug(f"Storing matrix message: event_id={event.event_id}, room_id={room.room_id}, text={text}")
-        store_message_map(None, event.event_id, room.room_id, text)
+    # Removed premature storage of message_map here. We now wait until we have meshtastic_id.
 
     if is_command:
         logger.debug("Message is a command, not sending to mesh")
@@ -342,11 +331,15 @@ async def on_room_message(
                 == "DETECTION_SENSOR_APP"
             ):
                 if relay_config["meshtastic"].get("detection_sensor", False):
-                    meshtastic_interface.sendData(
+                    # Send detection sensor data
+                    sent_packet = meshtastic_interface.sendData(
                         data=full_message.encode("utf-8"),
                         channelIndex=meshtastic_channel,
                         portNum=meshtastic.protobuf.portnums_pb2.PortNum.DETECTION_SENSOR_APP,
                     )
+                    # If we got a packet with id, store mapping now
+                    if sent_packet and hasattr(sent_packet, 'id') and not is_reaction:
+                        store_message_map(sent_packet.id, event.event_id, room.room_id, text)
                 else:
                     meshtastic_logger.debug(
                         f"Detection sensor packet received from {full_display_name}, "
@@ -356,9 +349,12 @@ async def on_room_message(
                 meshtastic_logger.info(
                     f"Relaying message from {full_display_name} to radio broadcast"
                 )
-                meshtastic_interface.sendText(
+                sent_packet = meshtastic_interface.sendText(
                     text=full_message, channelIndex=meshtastic_channel
                 )
+                # If we got a packet with id, store mapping now
+                if sent_packet and hasattr(sent_packet, 'id') and not is_reaction:
+                    store_message_map(sent_packet.id, event.event_id, room.room_id, text)
         else:
             logger.debug(
                 f"Broadcast not supported: Message from {full_display_name} dropped."
