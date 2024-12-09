@@ -240,7 +240,6 @@ async def on_room_message(
         # Get the original message from DB
         if original_matrix_event_id:
             orig = get_message_map_by_matrix_event_id(original_matrix_event_id)
-            logger.debug(f"Database lookup result for matrix event ID {original_matrix_event_id}: {orig}")
             if orig:
                 meshtastic_id, matrix_room_id, meshtastic_text = orig
                 display_name_response = await matrix_client.get_displayname(event.sender)
