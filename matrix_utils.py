@@ -179,14 +179,10 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
         # For inbound meshtastic->matrix messages, store mapping here if meshtastic_id is present and not a reaction
         if meshtastic_id is not None and not emote:
             from db_utils import store_message_map
+            # Store original meshnet_name for reference
+            # If none provided, use local meshnet_name
             meshtastic_meshnet = meshnet_name if meshnet_name else relay_config["meshtastic"]["meshnet_name"]
-            store_message_map(
-                meshtastic_id,
-                response.event_id,
-                room_id,
-                meshtastic_text if meshtastic_text else message,
-                meshtastic_meshnet=meshtastic_meshnet
-            )
+            store_message_map(meshtastic_id, response.event_id, room_id, meshtastic_text if meshtastic_text else message, meshtastic_meshnet=meshtastic_meshnet)
 
     except asyncio.TimeoutError:
         logger.error("Timed out while waiting for Matrix response")
@@ -284,6 +280,10 @@ async def on_room_message(
                 short_display_name = full_display_name[:5]
                 prefix = f"{short_display_name}[M]: "
                 abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
+
+                # Use the original message's meshnet name to maintain correct referencing
+                effective_meshnet_name = meshtastic_meshnet if meshtastic_meshnet else relay_config["meshtastic"]["meshnet_name"]
+
                 reaction_message = f"{prefix}reacted {reaction_emoji} to \"{abbreviated_text}\""
                 meshtastic_interface = connect_meshtastic()
                 from meshtastic_utils import logger as meshtastic_logger
@@ -292,9 +292,6 @@ async def on_room_message(
                     meshtastic_logger.info(
                         f"Relaying reaction from {full_display_name} to radio broadcast"
                     )
-                    # Use the original message's meshtastic_meshnet when relaying this reaction
-                    # to ensure that if it was a remote-originated message, it can be recognized as such.
-                    effective_meshnet_name = meshtastic_meshnet if meshtastic_meshnet else relay_config["meshtastic"]["meshnet_name"]
                     logger.debug(f"Sending reaction to Meshtastic with meshnet={effective_meshnet_name}: {reaction_message}")
                     # Just sendText; we do not store reactions to DB here since it's emote.
                     meshtastic_interface.sendText(
@@ -383,27 +380,23 @@ async def on_room_message(
                     )
                     # If we got a packet with an id and it's not a reaction, store mapping
                     if sent_packet and hasattr(sent_packet, 'id'):
-                        # Store the meshnet origin for reference
-                        meshtastic_meshnet = meshnet_name if meshnet_name else local_meshnet_name
-                        store_message_map(sent_packet.id, event.event_id, room.room_id, text, meshtastic_meshnet=meshtastic_meshnet)
+                        # Store remote or local meshnet name
+                        origin_meshnet = meshnet_name if meshnet_name else local_meshnet_name
+                        store_message_map(sent_packet.id, event.event_id, room.room_id, text, meshtastic_meshnet=origin_meshnet)
                 else:
                     meshtastic_logger.debug(
-                        f"Detection sensor packet received from {full_display_name}, "
-                        + "but detection sensor processing is disabled."
+                        f"Detection sensor packet received from {full_display_name}, but detection sensor processing is disabled."
                     )
             else:
-                # Normal text message going from Matrix to Meshtastic
                 meshtastic_logger.info(
                     f"Relaying message from {full_display_name} to radio broadcast"
                 )
                 sent_packet = meshtastic_interface.sendText(
                     text=full_message, channelIndex=meshtastic_channel
                 )
-                # If we got a packet with id and it's not a reaction, store mapping
                 if sent_packet and hasattr(sent_packet, 'id'):
-                    # Store the meshnet origin for reference
-                    meshtastic_meshnet = meshnet_name if meshnet_name else local_meshnet_name
-                    store_message_map(sent_packet.id, event.event_id, room.room_id, text, meshtastic_meshnet=meshtastic_meshnet)
+                    origin_meshnet = meshnet_name if meshnet_name else local_meshnet_name
+                    store_message_map(sent_packet.id, event.event_id, room.room_id, text, meshtastic_meshnet=origin_meshnet)
         else:
             logger.debug(
                 f"Broadcast not supported: Message from {full_display_name} dropped."
