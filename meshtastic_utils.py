@@ -226,13 +226,9 @@ async def reconnect():
 
 def on_meshtastic_message(packet, interface):
     """
-    Callback for messages received from the Meshtastic network.
-    Depending on the message type and configuration, we may relay it to Matrix.
-    Also applies relay_reactions logic: if disabled, reaction packets are filtered out.
-
-    With meshtastic_meshnet tracking in the DB, we can identify remote messages.
-    If a reaction comes in, we relay it as text to Matrix. If that message originated
-    from another meshnet, the remote relay on Matrix side will pick it up and forward it.
+    Handle incoming Meshtastic messages. For reaction messages, we now ensure that when relaying to Matrix,
+    we use the original message's meshtastic_meshnet from the DB so that remote-originated messages can properly
+    have their reactions relayed across multiple meshnets.
     """
     # Apply reaction filtering based on config
     relay_reactions = relay_config["meshtastic"].get("relay_reactions", True)
@@ -267,8 +263,8 @@ def on_meshtastic_message(packet, interface):
     emoji_flag = 'emoji' in decoded and decoded['emoji'] == 1
 
     # Determine if this is a direct message to the relay node
-    myId = interface.myInfo.my_node_num  # Relay's own node number
     from meshtastic.mesh_interface import BROADCAST_NUM
+    myId = interface.myInfo.my_node_num
 
     if toId == myId:
         is_direct_message = True
@@ -280,29 +276,32 @@ def on_meshtastic_message(packet, interface):
 
     meshnet_name = relay_config["meshtastic"]["meshnet_name"]
 
-    # Handle reaction messages (Meshtastic -> Matrix)
+    # Reaction handling (Meshtastic -> Matrix)
     # If replyId and emoji_flag are present and relay_reactions is True, we relay as text reactions in Matrix
     if replyId and emoji_flag and relay_reactions:
         longname = get_longname(sender) or str(sender)
         shortname = get_shortname(sender) or str(sender)
-        # Retrieve the original mapped message from DB using meshtastic_id=replyId
         orig = get_message_map_by_meshtastic_id(replyId)
         if orig:
             # orig = (matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
             matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet = orig
             abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
-            full_display_name = f"{longname}/{meshnet_name}"
-            # Use the actual text as reaction symbol if provided, else fallback to a default
+
+            # Use the original message's meshnet for the display_name to ensure correct bridging
+            effective_meshnet_name = meshtastic_meshnet if meshtastic_meshnet else meshnet_name
+            full_display_name = f"{longname}/{effective_meshnet_name}"
+
             reaction_symbol = text.strip() if (text and text.strip()) else '⚠️'
             reaction_message = f"\n [{full_display_name}] reacted {reaction_symbol} to \"{abbreviated_text}\""
-            # Send as an emote message
+
+            # Relay the reaction as emote to Matrix, preserving the original meshnet name
             asyncio.run_coroutine_threadsafe(
                 matrix_relay(
                     matrix_room_id,
                     reaction_message,
                     longname,
                     shortname,
-                    meshnet_name,
+                    effective_meshnet_name,
                     decoded.get("portnum"),
                     meshtastic_id=packet.get("id"),
                     meshtastic_replyId=replyId,
@@ -431,7 +430,7 @@ def on_meshtastic_message(packet, interface):
                     loop=loop,
                 )
     else:
-        # Handle non-text messages (e.g. data packets) via plugins only
+        # Non-text messages via plugins
         portnum = decoded.get("portnum")
         from plugin_loader import load_plugins
         plugins = load_plugins()
