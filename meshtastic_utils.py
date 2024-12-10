@@ -229,6 +229,10 @@ def on_meshtastic_message(packet, interface):
     Callback for messages received from the Meshtastic network.
     Depending on the message type and configuration, we may relay it to Matrix.
     Also applies relay_reactions logic: if disabled, reaction packets are filtered out.
+
+    With meshtastic_meshnet tracking in the DB, we can identify remote messages.
+    If a reaction comes in, we relay it as text to Matrix. If that message originated
+    from another meshnet, the remote relay on Matrix side will pick it up and forward it.
     """
     # Apply reaction filtering based on config
     relay_reactions = relay_config["meshtastic"].get("relay_reactions", True)
@@ -281,12 +285,14 @@ def on_meshtastic_message(packet, interface):
     if replyId and emoji_flag and relay_reactions:
         longname = get_longname(sender) or str(sender)
         shortname = get_shortname(sender) or str(sender)
-        # Retrieve the original mapped message from DB
+        # Retrieve the original mapped message from DB using meshtastic_id=replyId
         orig = get_message_map_by_meshtastic_id(replyId)
         if orig:
-            matrix_event_id, matrix_room_id, meshtastic_text = orig
+            # orig = (matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
+            matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet = orig
             abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
             full_display_name = f"{longname}/{meshnet_name}"
+            # Use the actual text as reaction symbol if provided, else fallback to a default
             reaction_symbol = text.strip() if (text and text.strip()) else '⚠️'
             reaction_message = f"\n [{full_display_name}] reacted {reaction_symbol} to \"{abbreviated_text}\""
             # Send as an emote message
@@ -409,6 +415,8 @@ def on_meshtastic_message(packet, interface):
         logger.info(f"Relaying Meshtastic message from {longname} to Matrix")
         for room in matrix_rooms:
             if room["meshtastic_channel"] == channel:
+                # For inbound meshtastic->matrix messages, store meshnet_name in message_map
+                # so that future reactions can properly identify origin.
                 asyncio.run_coroutine_threadsafe(
                     matrix_relay(
                         room["id"],
