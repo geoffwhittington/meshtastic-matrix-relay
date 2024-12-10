@@ -277,12 +277,34 @@ async def on_room_message(
                 meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet = orig
                 display_name_response = await matrix_client.get_displayname(event.sender)
                 full_display_name = display_name_response.displayname or event.sender
-                short_display_name = full_display_name[:5]
-                prefix = f"{short_display_name}[M]: "
-                abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
+
+                # If this reaction is from a remote meshnet, we treat it as a regular message.
+                if meshnet_name and meshnet_name != relay_config["meshtastic"]["meshnet_name"]:
+                    logger.info(f"Relaying reaction from remote meshnet: {meshnet_name}")
+                    short_meshnet_name = meshnet_name[:4]
+                    reaction_message = f"{shortname}/{short_meshnet_name} reacted {reaction_emoji} to \"{meshtastic_text[:40]}{'...' if len(meshtastic_text) > 40 else ''}\""
+
+                    # Relay the remote reaction to the local meshnet.
+                    meshtastic_interface = connect_meshtastic()
+                    from meshtastic_utils import logger as meshtastic_logger
+                    meshtastic_channel = room_config["meshtastic_channel"]
+
+                    if relay_config["meshtastic"]["broadcast_enabled"]:
+                        meshtastic_logger.info(
+                            f"Relaying reaction from remote meshnet {meshnet_name} to radio broadcast"
+                        )
+                        logger.debug(f"Sending reaction to Meshtastic with meshnet={meshnet_name}: {reaction_message}")
+                        # Just sendText; we do not store reactions to DB here since it's emote.
+                        meshtastic_interface.sendText(
+                            text=reaction_message, channelIndex=meshtastic_channel
+                        )
+                    return
 
                 # Use the original message's meshnet name to maintain correct referencing
                 effective_meshnet_name = meshtastic_meshnet if meshtastic_meshnet else relay_config["meshtastic"]["meshnet_name"]
+                short_display_name = full_display_name[:5]
+                prefix = f"{short_display_name}[M]: "
+                abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
 
                 reaction_message = f"{prefix}reacted {reaction_emoji} to \"{abbreviated_text}\""
                 meshtastic_interface = connect_meshtastic()
@@ -297,6 +319,7 @@ async def on_room_message(
                     meshtastic_interface.sendText(
                         text=reaction_message, channelIndex=meshtastic_channel
                     )
+
         return
 
     local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]

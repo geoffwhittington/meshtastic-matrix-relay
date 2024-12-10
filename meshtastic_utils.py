@@ -287,7 +287,7 @@ def on_meshtastic_message(packet, interface):
             matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet = orig
             abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
 
-            # Use the original message's meshnet for the display_name to ensure correct bridging
+            # Ensure that meshnet_name is always included, using the original message's meshnet for accuracy.
             effective_meshnet_name = meshtastic_meshnet if meshtastic_meshnet else meshnet_name
             full_display_name = f"{longname}/{effective_meshnet_name}"
 
