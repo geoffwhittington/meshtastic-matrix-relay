@@ -372,7 +372,7 @@ async def on_room_message(
             text = truncate_message(text)
             full_message = f"{shortname}/{short_meshnet_name}: {text}"
         else:
-            # Loopback message, ignore
+            # If this message is from our local meshnet (loopback), we ignore it
             return
     else:
         # Normal matrix user message
@@ -384,6 +384,7 @@ async def on_room_message(
         full_message = f"{prefix}{text}"
         text = truncate_message(text)
 
+    # Plugin functionality
     from plugin_loader import load_plugins
     plugins = load_plugins()
 
@@ -396,7 +397,7 @@ async def on_room_message(
             if found_matching_plugin:
                 logger.debug(f"Processed by plugin {plugin.plugin_name}")
 
-    # Commands
+    # Check if the message is a command directed at the bot
     is_command = False
     for plugin in plugins:
         for command in plugin.get_matrix_commands():
@@ -406,6 +407,7 @@ async def on_room_message(
         if is_command:
             break
 
+    # If this is a command, we do not send it to the mesh
     if is_command:
         logger.debug("Message is a command, not sending to mesh")
         return
@@ -415,6 +417,7 @@ async def on_room_message(
     from meshtastic_utils import logger as meshtastic_logger
     meshtastic_channel = room_config["meshtastic_channel"]
 
+    # If message is from Matrix and broadcast_enabled is True, relay to Meshtastic
     if not found_matching_plugin and event.sender != bot_user_id:
         if relay_config["meshtastic"]["broadcast_enabled"]:
             if portnum == "DETECTION_SENSOR_APP":
@@ -424,6 +427,7 @@ async def on_room_message(
                         channelIndex=meshtastic_channel,
                         portNum=meshtastic.protobuf.portnums_pb2.PortNum.DETECTION_SENSOR_APP,
                     )
+                    # If we got a packet with an id and it's not a reaction, store mapping
                     if sent_packet and hasattr(sent_packet, 'id'):
                         store_message_map(sent_packet.id, event.event_id, room.room_id, text, meshtastic_meshnet=local_meshnet_name)
                 else:
