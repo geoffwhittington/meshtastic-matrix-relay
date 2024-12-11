@@ -33,7 +33,6 @@ reconnecting = False
 shutting_down = False
 reconnect_task = None  # To keep track of the reconnect task
 
-
 def serial_port_exists(port_name):
     """
     Check if the specified serial port exists.
@@ -41,7 +40,6 @@ def serial_port_exists(port_name):
     """
     ports = [port.device for port in serial.tools.list_ports.comports()]
     return port_name in ports
-
 
 def connect_meshtastic(force_connect=False):
     """
@@ -154,7 +152,6 @@ def connect_meshtastic(force_connect=False):
 
     return meshtastic_client
 
-
 def on_lost_meshtastic_connection(interface=None):
     """
     Callback invoked when the Meshtastic connection is lost.
@@ -189,7 +186,6 @@ def on_lost_meshtastic_connection(interface=None):
         if event_loop:
             reconnect_task = asyncio.run_coroutine_threadsafe(reconnect(), event_loop)
 
-
 async def reconnect():
     """
     Asynchronously attempts to reconnect with exponential backoff.
@@ -222,7 +218,6 @@ async def reconnect():
         logger.info("Reconnection task was cancelled.")
     finally:
         reconnecting = False
-
 
 def on_meshtastic_message(packet, interface):
     """
@@ -452,7 +447,6 @@ def on_meshtastic_message(packet, interface):
                         f"Processed {portnum} with plugin {plugin.plugin_name}"
                     )
 
-
 async def check_connection():
     """
     Periodically checks the Meshtastic connection by sending a ping.
@@ -468,7 +462,6 @@ async def check_connection():
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
                 on_lost_meshtastic_connection(meshtastic_client)
         await asyncio.sleep(5)  # Check connection every 5 seconds
-
 
 if __name__ == "__main__":
     # If running this standalone (normally the main.py does the loop), just try connecting and run forever.
