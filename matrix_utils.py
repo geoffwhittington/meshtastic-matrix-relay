@@ -41,11 +41,9 @@ logger = get_logger(name="Matrix")
 
 matrix_client = None
 
-
 def bot_command(command, payload):
     # Checks if the given command is directed at the bot
     return f"{bot_user_name}: !{command}" in payload
-
 
 async def connect_matrix():
     """
@@ -94,7 +92,6 @@ async def connect_matrix():
 
     return matrix_client
 
-
 async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
     """Join a Matrix room by its ID or alias."""
     try:
@@ -129,7 +126,6 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
     except Exception as e:
         logger.error(f"Error joining room '{room_id_or_alias}': {e}")
 
-
 async def matrix_relay(room_id, message, longname, shortname, meshnet_name, portnum, meshtastic_id=None, meshtastic_replyId=None, meshtastic_text=None, emote=False, emoji=False):
     """
     Relay a message from Meshtastic to Matrix, optionally storing message maps.
@@ -138,7 +134,7 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
     :param message: The text message to send.
     :param longname: The sender's longname on the meshnet.
     :param shortname: The sender's shortname on the meshnet.
-    :param meshnet_name: The meshnet name (either local or remote).
+    :param meshnet_name: The meshnet name passed in, but we will always override with our own relay's meshnet_name.
     :param portnum: The portnum or message type source from Meshtastic.
     :param meshtastic_id: The Meshtastic ID of the message, if any.
     :param meshtastic_replyId: The Meshtastic replyId if this is a reaction.
@@ -148,12 +144,14 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
     """
     matrix_client = await connect_matrix()
     try:
+        # Always use our own local meshnet_name for outgoing events
+        local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
         content = {
             "msgtype": "m.text" if not emote else "m.emote",
             "body": message,
             "meshtastic_longname": longname,
             "meshtastic_shortname": shortname,
-            "meshtastic_meshnet": meshnet_name,
+            "meshtastic_meshnet": local_meshnet_name,
             "meshtastic_portnum": portnum,
         }
         if meshtastic_id is not None:
@@ -179,15 +177,13 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
         # For inbound meshtastic->matrix messages, store mapping here if meshtastic_id is present and not a reaction
         if meshtastic_id is not None and not emote:
             from db_utils import store_message_map
-            # Store meshnet_name for reference. If none provided, use local meshnet_name
-            meshtastic_meshnet = meshnet_name if meshnet_name else relay_config["meshtastic"]["meshnet_name"]
-            store_message_map(meshtastic_id, response.event_id, room_id, meshtastic_text if meshtastic_text else message, meshtastic_meshnet=meshtastic_meshnet)
+            # Always store our own local meshnet_name to identify origin
+            store_message_map(meshtastic_id, response.event_id, room_id, meshtastic_text if meshtastic_text else message, meshtastic_meshnet=local_meshnet_name)
 
     except asyncio.TimeoutError:
         logger.error("Timed out while waiting for Matrix response")
     except Exception as e:
         logger.error(f"Error sending radio message to matrix room {room_id}: {e}")
-
 
 def truncate_message(
     text, max_bytes=227
@@ -202,15 +198,13 @@ def truncate_message(
     truncated_text = text.encode("utf-8")[:max_bytes].decode("utf-8", "ignore")
     return truncated_text
 
-
 # Callback for new messages in Matrix room
 async def on_room_message(
     room: MatrixRoom, event: Union[RoomMessageText, RoomMessageNotice, ReactionEvent]
 ) -> None:
     """
-    Handle new messages and reactions in Matrix. For reactions, we now ensure that when relaying back
-    to Meshtastic, we use the original message's meshtastic_meshnet from the DB so that remote-originated
-    messages get properly relayed across multiple meshnets.
+    Handle new messages and reactions in Matrix. For reactions, we ensure that when relaying back
+    to Meshtastic, we always apply our local meshnet_name to outgoing events.
     """
     from db_utils import get_message_map_by_matrix_event_id, store_message_map
     full_display_name = "Unknown user"
@@ -245,8 +239,6 @@ async def on_room_message(
             original_matrix_event_id = relates_to["event_id"]
             logger.debug(f"Original matrix event ID: {original_matrix_event_id}, Reaction emoji: {reaction_emoji}")
 
-    # Extract the text if this is a normal message (non-reaction)
-    # Reaction events have no body, so for reactions we won't have text.
     text = event.body.strip() if (not is_reaction and hasattr(event, "body")) else ""
 
     longname = event.source["content"].get("meshtastic_longname")
@@ -268,7 +260,6 @@ async def on_room_message(
 
     # If this is a reaction and relay_reactions is True, attempt to relay it
     if is_reaction and relay_reactions:
-        # We have a Matrix reaction, let's find the original Meshtastic message info
         if original_matrix_event_id:
             orig = get_message_map_by_matrix_event_id(original_matrix_event_id)
             if orig:
@@ -280,7 +271,9 @@ async def on_room_message(
                 # If this reaction is from a remote meshnet, we treat it as a regular message and relay to local meshnet.
                 if meshnet_name and meshnet_name != relay_config["meshtastic"]["meshnet_name"]:
                     logger.info(f"Relaying reaction from remote meshnet: {meshnet_name}")
-                    short_meshnet_name = meshnet_name[:4]
+                    # Always use our local meshnet_name for outgoing events
+                    local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
+                    short_meshnet_name = local_meshnet_name[:4]
 
                     # Format the reaction message for relaying to the local meshnet.
                     reaction_message = f"{shortname}/{short_meshnet_name} reacted {reaction_emoji} to \"{meshtastic_text[:40]}{'...' if len(meshtastic_text) > 40 else ''}\""
@@ -294,8 +287,7 @@ async def on_room_message(
                         meshtastic_logger.info(
                             f"Relaying reaction from remote meshnet {meshnet_name} to radio broadcast"
                         )
-                        logger.debug(f"Sending reaction to Meshtastic with meshnet={meshnet_name}: {reaction_message}")
-                        # Just sendText; we do not store reactions to DB here since it's emote.
+                        logger.debug(f"Sending reaction to Meshtastic with meshnet={local_meshnet_name}: {reaction_message}")
                         meshtastic_interface.sendText(
                             text=reaction_message, channelIndex=meshtastic_channel
                         )
@@ -306,8 +298,8 @@ async def on_room_message(
                 prefix = f"{short_display_name}[M]: "
                 abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
 
-                # Use the original message's meshnet name for relaying, default to local if not available.
-                reaction_meshnet = meshtastic_meshnet if meshtastic_meshnet else relay_config["meshtastic"]["meshnet_name"]
+                # Always use our local meshnet_name for outgoing events
+                local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
                 reaction_message = f"{prefix}reacted {reaction_emoji} to \"{abbreviated_text}\""
                 meshtastic_interface = connect_meshtastic()
                 from meshtastic_utils import logger as meshtastic_logger
@@ -317,12 +309,10 @@ async def on_room_message(
                     meshtastic_logger.info(
                         f"Relaying reaction from {full_display_name} to radio broadcast"
                     )
-                    logger.debug(f"Sending reaction to Meshtastic with meshnet={reaction_meshnet}: {reaction_message}")
-                    # Just sendText; we do not store reactions to DB here since it's emote.
+                    logger.debug(f"Sending reaction to Meshtastic with meshnet={local_meshnet_name}: {reaction_message}")
                     meshtastic_interface.sendText(
                         text=reaction_message, channelIndex=meshtastic_channel
                     )
-                # End of Matrix->Meshtastic reaction handling.
                 return
 
     local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
@@ -408,8 +398,7 @@ async def on_room_message(
                     )
                     # If we got a packet with an id and it's not a reaction, store mapping
                     if sent_packet and hasattr(sent_packet, 'id'):
-                        # Store the meshnet name where this message originated
-                        store_message_map(sent_packet.id, event.event_id, room.room_id, text, meshtastic_meshnet=meshnet_name)
+                        store_message_map(sent_packet.id, event.event_id, room.room_id, text, meshtastic_meshnet=local_meshnet_name)
                 else:
                     meshtastic_logger.debug(
                         f"Detection sensor packet received from {full_display_name}, but detection sensor processing is disabled."
@@ -422,8 +411,7 @@ async def on_room_message(
                     text=full_message, channelIndex=meshtastic_channel
                 )
                 if sent_packet and hasattr(sent_packet, 'id'):
-                    # Store the meshnet name where this message originated
-                    store_message_map(sent_packet.id, event.event_id, room.room_id, text, meshtastic_meshnet=meshnet_name)
+                    store_message_map(sent_packet.id, event.event_id, room.room_id, text, meshtastic_meshnet=local_meshnet_name)
         else:
             logger.debug(
                 f"Broadcast not supported: Message from {full_display_name} dropped."
@@ -448,7 +436,6 @@ async def upload_image(
     )
 
     return response
-
 
 async def send_room_image(
     client: AsyncClient, room_id: str, upload_response: UploadResponse

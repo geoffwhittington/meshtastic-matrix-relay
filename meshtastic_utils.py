@@ -282,9 +282,8 @@ def on_meshtastic_message(packet, interface):
             matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet = orig
             abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
 
-            # Ensure that meshnet_name is always included, using the original message's meshnet for accuracy.
-            effective_meshnet_name = meshtastic_meshnet if meshtastic_meshnet else meshnet_name
-            full_display_name = f"{longname}/{effective_meshnet_name}"
+            # Ensure that meshnet_name is always included, using the our own meshnet for accuracy.
+            full_display_name = f"{longname}/{meshnet_name}"
 
             reaction_symbol = text.strip() if (text and text.strip()) else '⚠️'
             reaction_message = f"\n [{full_display_name}] reacted {reaction_symbol} to \"{abbreviated_text}\""
@@ -296,7 +295,7 @@ def on_meshtastic_message(packet, interface):
                     reaction_message,
                     longname,
                     shortname,
-                    effective_meshnet_name,
+                    meshnet_name,
                     decoded.get("portnum"),
                     meshtastic_id=packet.get("id"),
                     meshtastic_replyId=replyId,
