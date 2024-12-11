@@ -260,22 +260,19 @@ async def on_room_message(
 
     # If this is a reaction and relay_reactions is True, attempt to relay it
     if is_reaction and relay_reactions:
-        if original_matrix_event_id:
-            orig = get_message_map_by_matrix_event_id(original_matrix_event_id)
-            if orig:
-                # orig = (meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
-                meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet = orig
-                display_name_response = await matrix_client.get_displayname(event.sender)
-                full_display_name = display_name_response.displayname or event.sender
+        # Check if we need to relay a reaction from a remote meshnet to our local meshnet.
+        if meshnet_name and meshnet_name != relay_config["meshtastic"]["meshnet_name"]:
+            logger.info(f"Relaying reaction from remote meshnet: {meshnet_name}")
+            # Always use our local meshnet_name for outgoing events
+            local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
+            short_meshnet_name = local_meshnet_name[:4]
 
-                # If this reaction is from a remote meshnet, we treat it as a regular message and relay to local meshnet.
-                if meshnet_name and meshnet_name != relay_config["meshtastic"]["meshnet_name"]:
-                    logger.info(f"Relaying reaction from remote meshnet: {meshnet_name}")
-                    # Always use our local meshnet_name for outgoing events
-                    local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
-                    short_meshnet_name = local_meshnet_name[:4]
-
-                    # Format the reaction message for relaying to the local meshnet.
+            # Format the reaction message for relaying to the local meshnet.
+            # We need the original message text, which we will get from the database using the original_matrix_event_id
+            if original_matrix_event_id:
+                orig = get_message_map_by_matrix_event_id(original_matrix_event_id)
+                if orig:
+                    meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet = orig
                     reaction_message = f"{shortname}/{short_meshnet_name} reacted {reaction_emoji} to \"{meshtastic_text[:40]}{'...' if len(meshtastic_text) > 40 else ''}\""
 
                     # Relay the remote reaction to the local meshnet.
@@ -291,7 +288,20 @@ async def on_room_message(
                         meshtastic_interface.sendText(
                             text=reaction_message, channelIndex=meshtastic_channel
                         )
+                    # We've relayed the remote reaction to our local mesh, so we're done.
                     return
+                else:
+                    logger.debug(f"Could not find original message for reaction from remote meshnet: {meshnet_name}")
+                    return
+
+        # Check if we need to relay a reaction to a message that originated from our meshnet.
+        if original_matrix_event_id:
+            orig = get_message_map_by_matrix_event_id(original_matrix_event_id)
+            if orig:
+                # orig = (meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
+                meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet = orig
+                display_name_response = await matrix_client.get_displayname(event.sender)
+                full_display_name = display_name_response.displayname or event.sender
 
                 # If not from a remote meshnet, proceed as normal to relay back to the originating meshnet
                 short_display_name = full_display_name[:5]
@@ -416,7 +426,6 @@ async def on_room_message(
             logger.debug(
                 f"Broadcast not supported: Message from {full_display_name} dropped."
             )
-
 
 async def upload_image(
     client: AsyncClient, image: Image.Image, filename: str
