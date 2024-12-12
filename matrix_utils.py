@@ -289,10 +289,10 @@ async def on_room_message(
             # We need the original message text, which we will get from the database using the meshtastic_replyId
             if meshtastic_replyId:
                 # Find original matrix message in the DB using the meshtastic_replyId
-                # This is because remote reactions arrive as m.emote, not m.reaction
                 orig_matrix = get_message_map_by_meshtastic_id(meshtastic_replyId)
+
                 if orig_matrix:
-                    meshtastic_id, matrix_room_id, meshtastic_text_db, meshtastic_meshnet = orig_matrix
+                    matrix_event_id, matrix_room_id, meshtastic_text_db, meshtastic_meshnet = orig_matrix
                     # Replace newlines and carriage returns in the original message
                     meshtastic_text_db = meshtastic_text_db.replace('\n', ' ').replace('\r', ' ')
                     reaction_message = f"{shortname}/{short_meshnet_name} reacted {reaction_emoji} to \"{meshtastic_text_db[:40]}{'...' if len(meshtastic_text_db) > 40 else ''}\""
