@@ -26,7 +26,7 @@ from log_utils import get_logger
 
 # Do not import plugin_loader here to avoid circular imports
 from meshtastic_utils import connect_meshtastic
-from db_utils import get_message_map_by_matrix_event_id, get_message_map_by_meshtastic_id
+from db_utils import get_message_map_by_matrix_event_id
 
 # Extract Matrix configuration
 matrix_homeserver = relay_config["matrix"]["homeserver"]
@@ -279,42 +279,33 @@ async def on_room_message(
         # Check if we need to relay a reaction from a remote meshnet to our local meshnet.
         # Correctly identify remote reactions by checking for presence of 'meshtastic_replyId'
         # and that it is an emote, and that the meshnet_name is not our own.
-        if meshnet_name and meshnet_name != local_meshnet_name and meshtastic_replyId:
+        if meshnet_name and meshnet_name != local_meshnet_name and meshtastic_replyId and isinstance(event, RoomMessageEmote):
             logger.info(f"Relaying reaction from remote meshnet: {meshnet_name}")
-            # Always use our local meshnet_name for outgoing events
 
-            short_meshnet_name = local_meshnet_name[:4]
+            # Format the reaction message for relaying to the local meshnet using shortname/meshnet
+            short_meshnet_name = meshnet_name[:4]
 
-            # Format the reaction message for relaying to the local meshnet.
-            # We need the original message text, which we will get from the database using the meshtastic_replyId
-            if meshtastic_replyId:
-                # Find original matrix message in the DB using the meshtastic_replyId
-                orig_matrix = get_message_map_by_meshtastic_id(meshtastic_replyId)
+            # Ensure a shortname exists
+            if not shortname:
+                shortname = longname[:3] if longname else "???"
 
-                if orig_matrix:
-                    matrix_event_id, matrix_room_id, meshtastic_text_db, meshtastic_meshnet = orig_matrix
-                    # Replace newlines and carriage returns in the original message
-                    meshtastic_text_db = meshtastic_text_db.replace('\n', ' ').replace('\r', ' ')
-                    reaction_message = f"{shortname}/{short_meshnet_name} reacted {reaction_emoji} to \"{meshtastic_text_db[:40]}{'...' if len(meshtastic_text_db) > 40 else ''}\""
+            reaction_message = f"{shortname}/{short_meshnet_name} reacted {reaction_emoji} to \"{text[:40]}{'...' if len(text) > 40 else ''}\""
 
-                    # Relay the remote reaction to the local meshnet.
-                    meshtastic_interface = connect_meshtastic()
-                    from meshtastic_utils import logger as meshtastic_logger
-                    meshtastic_channel = room_config["meshtastic_channel"]
+            # Relay the remote reaction to the local meshnet.
+            meshtastic_interface = connect_meshtastic()
+            from meshtastic_utils import logger as meshtastic_logger
+            meshtastic_channel = room_config["meshtastic_channel"]
 
-                    if relay_config["meshtastic"]["broadcast_enabled"]:
-                        meshtastic_logger.info(
-                            f"Relaying reaction from remote meshnet {meshnet_name} to radio broadcast"
-                        )
-                        logger.debug(f"Sending reaction to Meshtastic with meshnet={local_meshnet_name}: {reaction_message}")
-                        meshtastic_interface.sendText(
-                            text=reaction_message, channelIndex=meshtastic_channel
-                        )
-                    # We've relayed the remote reaction to our local mesh, so we're done.
-                    return
-                else:
-                    logger.debug(f"Could not find original message for reaction from remote meshnet: {meshnet_name}")
-                    return
+            if relay_config["meshtastic"]["broadcast_enabled"]:
+                meshtastic_logger.info(
+                    f"Relaying reaction from remote meshnet {meshnet_name} to radio broadcast"
+                )
+                logger.debug(f"Sending reaction to Meshtastic with meshnet={local_meshnet_name}: {reaction_message}")
+                meshtastic_interface.sendText(
+                    text=reaction_message, channelIndex=meshtastic_channel
+                )
+            # We've relayed the remote reaction to our local mesh, so we're done.
+            return
 
         # Check if we need to relay a reaction to a message that originated from our meshnet.
         if original_matrix_event_id:
