@@ -9,7 +9,7 @@ import signal
 import sys
 from typing import List
 
-from nio import RoomMessageNotice, RoomMessageText, ReactionEvent
+from nio import RoomMessageNotice, RoomMessageText, ReactionEvent, RoomMessageEmote
 
 # Import meshtastic_utils as a module to set event_loop
 import meshtastic_utils
@@ -62,7 +62,7 @@ async def main():
     # Register the message callback for Matrix
     matrix_logger.info("Listening for inbound Matrix messages...")
     matrix_client.add_event_callback(
-        on_room_message, (RoomMessageText, RoomMessageNotice)
+        on_room_message, (RoomMessageText, RoomMessageNotice, RoomMessageEmote)
     )
     # Add ReactionEvent callback so we can handle matrix reactions
     matrix_client.add_event_callback(on_room_message, ReactionEvent)
