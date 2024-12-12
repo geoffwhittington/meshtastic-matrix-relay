@@ -26,7 +26,7 @@ from log_utils import get_logger
 
 # Do not import plugin_loader here to avoid circular imports
 from meshtastic_utils import connect_meshtastic
-from db_utils import get_message_map_by_matrix_event_id
+from db_utils import get_message_map_by_matrix_event_id, get_message_map_by_meshtastic_id
 
 # Extract Matrix configuration
 matrix_homeserver = relay_config["matrix"]["homeserver"]
@@ -289,8 +289,8 @@ async def on_room_message(
             # We need the original message text, which we will get from the database using the meshtastic_replyId
             if meshtastic_replyId:
                 # Find original matrix message in the DB using the meshtastic_replyId
-                orig_matrix = get_message_map_by_matrix_event_id(meshtastic_replyId)
-
+                # This is because remote reactions arrive as m.emote, not m.reaction
+                orig_matrix = get_message_map_by_meshtastic_id(meshtastic_replyId)
                 if orig_matrix:
                     meshtastic_id, matrix_room_id, meshtastic_text_db, meshtastic_meshnet = orig_matrix
                     # Replace newlines and carriage returns in the original message
