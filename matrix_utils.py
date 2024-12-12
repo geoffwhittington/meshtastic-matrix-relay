@@ -278,7 +278,7 @@ async def on_room_message(
     if is_reaction and relay_reactions:
         # Check if we need to relay a reaction from a remote meshnet to our local meshnet.
         # Correctly identify remote reactions by checking for presence of 'meshtastic_replyId'
-        # and that it is an emote.
+        # and that it is an emote, and that the meshnet_name is not our own.
         if meshnet_name and meshnet_name != local_meshnet_name and meshtastic_replyId:
             logger.info(f"Relaying reaction from remote meshnet: {meshnet_name}")
             # Always use our local meshnet_name for outgoing events
@@ -286,10 +286,10 @@ async def on_room_message(
             short_meshnet_name = local_meshnet_name[:4]
 
             # Format the reaction message for relaying to the local meshnet.
-            # We need the original message text, which we will get from the database using the matrix_event_id
-            if original_matrix_event_id:
-                # Find original matrix message in the DB
-                orig_matrix = get_message_map_by_matrix_event_id(original_matrix_event_id)
+            # We need the original message text, which we will get from the database using the meshtastic_replyId
+            if meshtastic_replyId:
+                # Find original matrix message in the DB using the meshtastic_replyId
+                orig_matrix = get_message_map_by_matrix_event_id(meshtastic_replyId)
 
                 if orig_matrix:
                     meshtastic_id, matrix_room_id, meshtastic_text_db, meshtastic_meshnet = orig_matrix
