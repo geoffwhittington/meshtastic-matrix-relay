@@ -1,11 +1,15 @@
 import json
 import sqlite3
 
+from log_utils import get_logger
+
+logger = get_logger(name="db_utils")
 
 # Initialize SQLite database
 def initialize_database():
     with sqlite3.connect("meshtastic.sqlite") as conn:
         cursor = conn.cursor()
+        # Updated table schema: matrix_event_id is now PRIMARY KEY, meshtastic_id is not necessarily unique
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS longnames (meshtastic_id TEXT PRIMARY KEY, longname TEXT)"
         )
@@ -15,8 +19,23 @@ def initialize_database():
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS plugin_data (plugin_name TEXT, meshtastic_id TEXT, data TEXT, PRIMARY KEY (plugin_name, meshtastic_id))"
         )
-        conn.commit()
+        # Changed the schema for message_map: matrix_event_id is now primary key
+        # Added a new column 'meshtastic_meshnet' to store the meshnet origin of the message.
+        # If table already exists, we try adding the column if it doesn't exist.
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS message_map (meshtastic_id INTEGER, matrix_event_id TEXT PRIMARY KEY, matrix_room_id TEXT, meshtastic_text TEXT, meshtastic_meshnet TEXT)"
+        )
 
+        # Attempt to add meshtastic_meshnet column if it's missing (for upgrades)
+        # This is a no-op if the column already exists.
+        # If user runs fresh, it will already be there from CREATE TABLE IF NOT EXISTS.
+        try:
+            cursor.execute("ALTER TABLE message_map ADD COLUMN meshtastic_meshnet TEXT")
+        except sqlite3.OperationalError:
+            # Column already exists, or table just created with it
+            pass
+
+        conn.commit()
 
 def store_plugin_data(plugin_name, meshtastic_id, data):
     with sqlite3.connect("meshtastic.sqlite") as conn:
@@ -27,7 +46,6 @@ def store_plugin_data(plugin_name, meshtastic_id, data):
         )
         conn.commit()
 
-
 def delete_plugin_data(plugin_name, meshtastic_id):
     with sqlite3.connect("meshtastic.sqlite") as conn:
         cursor = conn.cursor()
@@ -36,7 +54,6 @@ def delete_plugin_data(plugin_name, meshtastic_id):
             (plugin_name, meshtastic_id),
         )
         conn.commit()
-
 
 # Get the data for a given plugin and Meshtastic ID
 def get_plugin_data_for_node(plugin_name, meshtastic_id):
@@ -52,7 +69,6 @@ def get_plugin_data_for_node(plugin_name, meshtastic_id):
         result = cursor.fetchone()
     return json.loads(result[0] if result else "[]")
 
-
 # Get the data for a given plugin
 def get_plugin_data(plugin_name):
     with sqlite3.connect("meshtastic.sqlite") as conn:
@@ -62,7 +78,6 @@ def get_plugin_data(plugin_name):
             (plugin_name,),
         )
         return cursor.fetchall()
-
 
 # Get the longname for a given Meshtastic ID
 def get_longname(meshtastic_id):
@@ -74,7 +89,6 @@ def get_longname(meshtastic_id):
         result = cursor.fetchone()
     return result[0] if result else None
 
-
 def save_longname(meshtastic_id, longname):
     with sqlite3.connect("meshtastic.sqlite") as conn:
         cursor = conn.cursor()
@@ -83,7 +97,6 @@ def save_longname(meshtastic_id, longname):
             (meshtastic_id, longname),
         )
         conn.commit()
-
 
 def update_longnames(nodes):
     if nodes:
@@ -94,7 +107,6 @@ def update_longnames(nodes):
                 longname = user.get("longName", "N/A")
                 save_longname(meshtastic_id, longname)
 
-
 def get_shortname(meshtastic_id):
     with sqlite3.connect("meshtastic.sqlite") as conn:
         cursor = conn.cursor()
@@ -103,7 +115,6 @@ def get_shortname(meshtastic_id):
         )
         result = cursor.fetchone()
     return result[0] if result else None
-
 
 def save_shortname(meshtastic_id, shortname):
     with sqlite3.connect("meshtastic.sqlite") as conn:
@@ -114,7 +125,6 @@ def save_shortname(meshtastic_id, shortname):
         )
         conn.commit()
 
-
 def update_shortnames(nodes):
     if nodes:
         for node in nodes.values():
@@ -123,3 +133,57 @@ def update_shortnames(nodes):
                 meshtastic_id = user["id"]
                 shortname = user.get("shortName", "N/A")
                 save_shortname(meshtastic_id, shortname)
+
+def store_message_map(meshtastic_id, matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet=None):
+    """
+    Stores a message map in the database.
+
+    :param meshtastic_id: The Meshtastic message ID (integer or None)
+    :param matrix_event_id: The Matrix event ID (string, primary key)
+    :param matrix_room_id: The Matrix room ID (string)
+    :param meshtastic_text: The text of the Meshtastic message
+    :param meshtastic_meshnet: The name of the meshnet this message originated from.
+                               This helps us identify remote vs local mesh origins.
+    """
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        logger.debug(
+            f"Storing message map: meshtastic_id={meshtastic_id}, matrix_event_id={matrix_event_id}, matrix_room_id={matrix_room_id}, meshtastic_text={meshtastic_text}, meshtastic_meshnet={meshtastic_meshnet}"
+        )
+        cursor.execute(
+            "INSERT OR REPLACE INTO message_map (meshtastic_id, matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet) VALUES (?, ?, ?, ?, ?)",
+            (meshtastic_id, matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet),
+        )
+        conn.commit()
+
+def get_message_map_by_meshtastic_id(meshtastic_id):
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet FROM message_map WHERE meshtastic_id=?",
+            (meshtastic_id,),
+        )
+        result = cursor.fetchone()
+        logger.debug(
+            f"Retrieved message map by meshtastic_id={meshtastic_id}: {result}"
+        )
+        if result:
+            # result = (matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
+            return result[0], result[1], result[2], result[3]
+        return None
+
+def get_message_map_by_matrix_event_id(matrix_event_id):
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet FROM message_map WHERE matrix_event_id=?",
+            (matrix_event_id,),
+        )
+        result = cursor.fetchone()
+        logger.debug(
+            f"Retrieved message map by matrix_event_id={matrix_event_id}: {result}"
+        )
+        if result:
+            # result = (meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
+            return result[0], result[1], result[2], result[3]
+        return None
