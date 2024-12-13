@@ -12,7 +12,13 @@ from bleak.exc import BleakDBusError, BleakError
 from pubsub import pub
 
 from config import relay_config
-from db_utils import get_longname, get_shortname, save_longname, save_shortname, get_message_map_by_meshtastic_id
+from db_utils import (
+    get_longname,
+    get_message_map_by_meshtastic_id,
+    get_shortname,
+    save_longname,
+    save_shortname,
+)
 from log_utils import get_logger
 
 # Do not import plugin_loader here to avoid circular imports
@@ -27,11 +33,14 @@ logger = get_logger(name="Meshtastic")
 meshtastic_client = None
 event_loop = None  # Will be set from main.py
 
-meshtastic_lock = threading.Lock()  # To prevent race conditions on meshtastic_client access
+meshtastic_lock = (
+    threading.Lock()
+)  # To prevent race conditions on meshtastic_client access
 
 reconnecting = False
 shutting_down = False
 reconnect_task = None  # To keep track of the reconnect task
+
 
 def serial_port_exists(port_name):
     """
@@ -40,6 +49,7 @@ def serial_port_exists(port_name):
     """
     ports = [port.device for port in serial.tools.list_ports.comports()]
     return port_name in ports
+
 
 def connect_meshtastic(force_connect=False):
     """
@@ -141,7 +151,9 @@ def connect_meshtastic(force_connect=False):
                     break
                 attempts += 1
                 if retry_limit == 0 or attempts <= retry_limit:
-                    wait_time = min(attempts * 2, 30)  # Exponential backoff capped at 30s
+                    wait_time = min(
+                        attempts * 2, 30
+                    )  # Exponential backoff capped at 30s
                     logger.warning(
                         f"Attempt #{attempts - 1} failed. Retrying in {wait_time} secs: {e}"
                     )
@@ -151,6 +163,7 @@ def connect_meshtastic(force_connect=False):
                     return None
 
     return meshtastic_client
+
 
 def on_lost_meshtastic_connection(interface=None):
     """
@@ -186,6 +199,7 @@ def on_lost_meshtastic_connection(interface=None):
         if event_loop:
             reconnect_task = asyncio.run_coroutine_threadsafe(reconnect(), event_loop)
 
+
 async def reconnect():
     """
     Asynchronously attempts to reconnect with exponential backoff.
@@ -219,20 +233,23 @@ async def reconnect():
     finally:
         reconnecting = False
 
+
 def on_meshtastic_message(packet, interface):
     """
-    Handle incoming Meshtastic messages. For reaction messages, we now ensure that when relaying to Matrix,
-    we use the original message's meshtastic_meshnet from the DB so that remote-originated messages can properly
-    have their reactions relayed across multiple meshnets.
+    Handle incoming Meshtastic messages. For reaction messages, if relay_reactions is False,
+    we do not store message maps and thus won't be able to relay reactions back to Matrix.
+    If relay_reactions is True, message maps are stored inside matrix_relay().
     """
     # Apply reaction filtering based on config
-    relay_reactions = relay_config["meshtastic"].get("relay_reactions", True)
+    relay_reactions = relay_config["meshtastic"].get("relay_reactions", False)
 
-    # If relay_reactions is False, filter out reaction/tapback packets
-    if packet.get('decoded', {}).get('portnum') == 'TEXT_MESSAGE_APP':
-        decoded = packet.get('decoded', {})
-        if not relay_reactions and ('emoji' in decoded or 'replyId' in decoded):
-            logger.debug('Filtered out reaction/tapback packet due to relay_reactions=false.')
+    # If relay_reactions is False, filter out reaction/tapback packets to avoid complexity
+    if packet.get("decoded", {}).get("portnum") == "TEXT_MESSAGE_APP":
+        decoded = packet.get("decoded", {})
+        if not relay_reactions and ("emoji" in decoded or "replyId" in decoded):
+            logger.debug(
+                "Filtered out reaction/tapback packet due to relay_reactions=false."
+            )
             return
 
     from matrix_utils import matrix_relay
@@ -255,10 +272,11 @@ def on_meshtastic_message(packet, interface):
     decoded = packet.get("decoded", {})
     text = decoded.get("text")
     replyId = decoded.get("replyId")
-    emoji_flag = 'emoji' in decoded and decoded['emoji'] == 1
+    emoji_flag = "emoji" in decoded and decoded["emoji"] == 1
 
     # Determine if this is a direct message to the relay node
     from meshtastic.mesh_interface import BROADCAST_NUM
+
     myId = interface.myInfo.my_node_num
 
     if toId == myId:
@@ -280,13 +298,17 @@ def on_meshtastic_message(packet, interface):
         if orig:
             # orig = (matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
             matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet = orig
-            abbreviated_text = meshtastic_text[:40] + "..." if len(meshtastic_text) > 40 else meshtastic_text
+            abbreviated_text = (
+                meshtastic_text[:40] + "..."
+                if len(meshtastic_text) > 40
+                else meshtastic_text
+            )
 
-            # Ensure that meshnet_name is always included, using the our own meshnet for accuracy.
+            # Ensure that meshnet_name is always included, using our own meshnet for accuracy.
             full_display_name = f"{longname}/{meshnet_name}"
 
-            reaction_symbol = text.strip() if (text and text.strip()) else '⚠️'
-            reaction_message = f"\n [{full_display_name}] reacted {reaction_symbol} to \"{abbreviated_text}\""
+            reaction_symbol = text.strip() if (text and text.strip()) else "⚠️"
+            reaction_message = f'\n [{full_display_name}] reacted {reaction_symbol} to "{abbreviated_text}"'
 
             # Relay the reaction as emote to Matrix, preserving the original meshnet name
             asyncio.run_coroutine_threadsafe(
@@ -301,7 +323,7 @@ def on_meshtastic_message(packet, interface):
                     meshtastic_replyId=replyId,
                     meshtastic_text=meshtastic_text,
                     emote=True,
-                    emoji=True
+                    emoji=True,
                 ),
                 loop=loop,
             )
@@ -340,7 +362,9 @@ def on_meshtastic_message(packet, interface):
             return
 
         # If detection_sensor is disabled and this is a detection sensor packet, skip it
-        if decoded.get("portnum") == "DETECTION_SENSOR_APP" and not relay_config["meshtastic"].get("detection_sensor", False):
+        if decoded.get("portnum") == "DETECTION_SENSOR_APP" and not relay_config[
+            "meshtastic"
+        ].get("detection_sensor", False):
             logger.debug(
                 "Detection sensor packet received, but detection sensor processing is disabled."
             )
@@ -376,6 +400,7 @@ def on_meshtastic_message(packet, interface):
 
         # Plugin functionality - Check if any plugin handles this message before relaying
         from plugin_loader import load_plugins
+
         plugins = load_plugins()
 
         found_matching_plugin = False
@@ -408,8 +433,8 @@ def on_meshtastic_message(packet, interface):
         logger.info(f"Relaying Meshtastic message from {longname} to Matrix")
         for room in matrix_rooms:
             if room["meshtastic_channel"] == channel:
-                # For inbound meshtastic->matrix messages, store meshnet_name in message_map
-                # so that future reactions can properly identify origin.
+                # Storing the message_map (if enabled) occurs inside matrix_relay() now,
+                # controlled by relay_reactions.
                 asyncio.run_coroutine_threadsafe(
                     matrix_relay(
                         room["id"],
@@ -419,7 +444,7 @@ def on_meshtastic_message(packet, interface):
                         meshnet_name,
                         decoded.get("portnum"),
                         meshtastic_id=packet.get("id"),
-                        meshtastic_text=text
+                        meshtastic_text=text,
                     ),
                     loop=loop,
                 )
@@ -427,6 +452,7 @@ def on_meshtastic_message(packet, interface):
         # Non-text messages via plugins
         portnum = decoded.get("portnum")
         from plugin_loader import load_plugins
+
         plugins = load_plugins()
         found_matching_plugin = False
         for plugin in plugins:
@@ -446,6 +472,7 @@ def on_meshtastic_message(packet, interface):
                         f"Processed {portnum} with plugin {plugin.plugin_name}"
                     )
 
+
 async def check_connection():
     """
     Periodically checks the Meshtastic connection by sending a ping.
@@ -461,6 +488,7 @@ async def check_connection():
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
                 on_lost_meshtastic_connection(meshtastic_client)
         await asyncio.sleep(5)  # Check connection every 5 seconds
+
 
 if __name__ == "__main__":
     # If running this standalone (normally the main.py does the loop), just try connecting and run forever.
