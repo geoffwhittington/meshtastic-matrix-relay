@@ -9,12 +9,17 @@ import signal
 import sys
 from typing import List
 
-from nio import RoomMessageNotice, RoomMessageText, ReactionEvent, RoomMessageEmote
+from nio import ReactionEvent, RoomMessageEmote, RoomMessageNotice, RoomMessageText
 
 # Import meshtastic_utils as a module to set event_loop
 import meshtastic_utils
 from config import relay_config
-from db_utils import initialize_database, update_longnames, update_shortnames, wipe_message_map
+from db_utils import (
+    initialize_database,
+    update_longnames,
+    update_shortnames,
+    wipe_message_map,
+)
 from log_utils import get_logger
 from matrix_utils import connect_matrix, join_matrix_room
 from matrix_utils import logger as matrix_logger

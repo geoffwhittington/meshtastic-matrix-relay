@@ -5,6 +5,7 @@ from log_utils import get_logger
 
 logger = get_logger(name="db_utils")
 
+
 # Initialize SQLite database
 def initialize_database():
     with sqlite3.connect("meshtastic.sqlite") as conn:
@@ -37,6 +38,7 @@ def initialize_database():
 
         conn.commit()
 
+
 def store_plugin_data(plugin_name, meshtastic_id, data):
     with sqlite3.connect("meshtastic.sqlite") as conn:
         cursor = conn.cursor()
@@ -46,6 +48,7 @@ def store_plugin_data(plugin_name, meshtastic_id, data):
         )
         conn.commit()
 
+
 def delete_plugin_data(plugin_name, meshtastic_id):
     with sqlite3.connect("meshtastic.sqlite") as conn:
         cursor = conn.cursor()
@@ -54,6 +57,7 @@ def delete_plugin_data(plugin_name, meshtastic_id):
             (plugin_name, meshtastic_id),
         )
         conn.commit()
+
 
 # Get the data for a given plugin and Meshtastic ID
 def get_plugin_data_for_node(plugin_name, meshtastic_id):
@@ -69,6 +73,7 @@ def get_plugin_data_for_node(plugin_name, meshtastic_id):
         result = cursor.fetchone()
     return json.loads(result[0] if result else "[]")
 
+
 # Get the data for a given plugin
 def get_plugin_data(plugin_name):
     with sqlite3.connect("meshtastic.sqlite") as conn:
@@ -78,6 +83,7 @@ def get_plugin_data(plugin_name):
             (plugin_name,),
         )
         return cursor.fetchall()
+
 
 # Get the longname for a given Meshtastic ID
 def get_longname(meshtastic_id):
@@ -89,6 +95,7 @@ def get_longname(meshtastic_id):
         result = cursor.fetchone()
     return result[0] if result else None
 
+
 def save_longname(meshtastic_id, longname):
     with sqlite3.connect("meshtastic.sqlite") as conn:
         cursor = conn.cursor()
@@ -97,6 +104,7 @@ def save_longname(meshtastic_id, longname):
             (meshtastic_id, longname),
         )
         conn.commit()
+
 
 def update_longnames(nodes):
     if nodes:
@@ -107,6 +115,7 @@ def update_longnames(nodes):
                 longname = user.get("longName", "N/A")
                 save_longname(meshtastic_id, longname)
 
+
 def get_shortname(meshtastic_id):
     with sqlite3.connect("meshtastic.sqlite") as conn:
         cursor = conn.cursor()
@@ -115,6 +124,7 @@ def get_shortname(meshtastic_id):
         )
         result = cursor.fetchone()
     return result[0] if result else None
+
 
 def save_shortname(meshtastic_id, shortname):
     with sqlite3.connect("meshtastic.sqlite") as conn:
@@ -125,6 +135,7 @@ def save_shortname(meshtastic_id, shortname):
         )
         conn.commit()
 
+
 def update_shortnames(nodes):
     if nodes:
         for node in nodes.values():
@@ -134,7 +145,14 @@ def update_shortnames(nodes):
                 shortname = user.get("shortName", "N/A")
                 save_shortname(meshtastic_id, shortname)
 
-def store_message_map(meshtastic_id, matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet=None):
+
+def store_message_map(
+    meshtastic_id,
+    matrix_event_id,
+    matrix_room_id,
+    meshtastic_text,
+    meshtastic_meshnet=None,
+):
     """
     Stores a message map in the database.
 
@@ -152,9 +170,16 @@ def store_message_map(meshtastic_id, matrix_event_id, matrix_room_id, meshtastic
         )
         cursor.execute(
             "INSERT OR REPLACE INTO message_map (meshtastic_id, matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet) VALUES (?, ?, ?, ?, ?)",
-            (meshtastic_id, matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet),
+            (
+                meshtastic_id,
+                matrix_event_id,
+                matrix_room_id,
+                meshtastic_text,
+                meshtastic_meshnet,
+            ),
         )
         conn.commit()
+
 
 def get_message_map_by_meshtastic_id(meshtastic_id):
     with sqlite3.connect("meshtastic.sqlite") as conn:
@@ -172,6 +197,7 @@ def get_message_map_by_meshtastic_id(meshtastic_id):
             return result[0], result[1], result[2], result[3]
         return None
 
+
 def get_message_map_by_matrix_event_id(matrix_event_id):
     with sqlite3.connect("meshtastic.sqlite") as conn:
         cursor = conn.cursor()
@@ -188,6 +214,7 @@ def get_message_map_by_matrix_event_id(matrix_event_id):
             return result[0], result[1], result[2], result[3]
         return None
 
+
 def wipe_message_map():
     """
     Wipes all entries from the message_map table.
@@ -198,6 +225,7 @@ def wipe_message_map():
         cursor.execute("DELETE FROM message_map")
         conn.commit()
     logger.info("message_map table wiped successfully.")
+
 
 def prune_message_map(msgs_to_keep):
     """
@@ -222,7 +250,9 @@ def prune_message_map(msgs_to_keep):
             to_delete = total - msgs_to_keep
             cursor.execute(
                 "DELETE FROM message_map WHERE rowid IN (SELECT rowid FROM message_map ORDER BY rowid ASC LIMIT ?)",
-                (to_delete,)
+                (to_delete,),
             )
             conn.commit()
-            logger.info(f"Pruned {to_delete} old message_map entries, keeping last {msgs_to_keep}.")
+            logger.info(
+                f"Pruned {to_delete} old message_map entries, keeping last {msgs_to_keep}."
+            )
