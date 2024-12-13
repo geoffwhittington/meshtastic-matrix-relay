@@ -187,3 +187,42 @@ def get_message_map_by_matrix_event_id(matrix_event_id):
             # result = (meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
             return result[0], result[1], result[2], result[3]
         return None
+
+def wipe_message_map():
+    """
+    Wipes all entries from the message_map table.
+    Useful when db.msg_map.wipe_on_restart is True, ensuring no stale data remains.
+    """
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM message_map")
+        conn.commit()
+    logger.info("message_map table wiped successfully.")
+
+def prune_message_map(msgs_to_keep):
+    """
+    Prune the message_map table to keep only the most recent msgs_to_keep entries
+    in order to prevent database bloat.
+    We use the matrix_event_id's insertion order as a heuristic.
+    Note: matrix_event_id is a string, so we rely on the rowid or similar approach.
+
+    Approach:
+    - Count total rows.
+    - If total > msgs_to_keep, delete oldest entries based on rowid.
+    """
+    with sqlite3.connect("meshtastic.sqlite") as conn:
+        cursor = conn.cursor()
+        # Count total entries
+        cursor.execute("SELECT COUNT(*) FROM message_map")
+        total = cursor.fetchone()[0]
+
+        if total > msgs_to_keep:
+            # Delete oldest entries by rowid since matrix_event_id is primary key but not necessarily numeric.
+            # rowid is auto-incremented and reflects insertion order.
+            to_delete = total - msgs_to_keep
+            cursor.execute(
+                "DELETE FROM message_map WHERE rowid IN (SELECT rowid FROM message_map ORDER BY rowid ASC LIMIT ?)",
+                (to_delete,)
+            )
+            conn.commit()
+            logger.info(f"Pruned {to_delete} old message_map entries, keeping last {msgs_to_keep}.")

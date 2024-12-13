@@ -27,6 +27,11 @@ logging:
   #max_log_size: 10485760       # 10 MB default if omitted
   #backup_count: 1              # Keeps 1 backup as the default if omitted
 
+#db:
+#  msg_map: # The message map is necessary for the relay_reactions functionality. If `relay_reactions` is set to false, nothing will be saved to the message map.
+#    msgs_to_keep: 500 # If set to 0, it will not delete any messages; Defaults to 500
+#    wipe_on_restart: true # Clears out the message map when the relay is restarted; Defaults to False
+
 # These are core Plugins - Note: Some plugins are experimental and some need maintenance.
 plugins:
   ping:

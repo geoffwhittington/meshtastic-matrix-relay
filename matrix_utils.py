@@ -26,7 +26,7 @@ from log_utils import get_logger
 
 # Do not import plugin_loader here to avoid circular imports
 from meshtastic_utils import connect_meshtastic
-from db_utils import get_message_map_by_matrix_event_id
+from db_utils import get_message_map_by_matrix_event_id, prune_message_map, store_message_map
 
 # Extract Matrix configuration
 matrix_homeserver = relay_config["matrix"]["homeserver"]
@@ -132,19 +132,23 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
     """
     Relay a message from Meshtastic to Matrix, optionally storing message maps.
 
-    :param room_id: The Matrix room ID to send to.
-    :param message: The text message to send.
-    :param longname: The sender's longname on the meshnet.
-    :param shortname: The sender's shortname on the meshnet.
-    :param meshnet_name: The meshnet name passed in, but we will always override with our own relay's meshnet_name.
-    :param portnum: The portnum or message type source from Meshtastic.
-    :param meshtastic_id: The Meshtastic ID of the message, if any.
-    :param meshtastic_replyId: The Meshtastic replyId if this is a reaction.
-    :param meshtastic_text: The original Meshtastic text message if available.
-    :param emote: If True, send as an emote instead of a normal message.
-    :param emoji: If True, indicates this was originally a reaction.
+    IMPORTANT CHANGE: Now, we only store message maps if `relay_reactions` is True.
+    If `relay_reactions` is False, we skip storing to the message map entirely.
+    This helps maintain privacy and prevents message_map usage unless needed.
+
+    Additionally, if `msgs_to_keep` > 0, we prune the oldest messages after storing
+    to prevent database bloat and maintain privacy.
     """
     matrix_client = await connect_matrix()
+
+    # Retrieve relay_reactions configuration; default to False now if not specified.
+    relay_reactions = relay_config["meshtastic"].get("relay_reactions", False)
+
+    # Retrieve db config for message_map pruning
+    db_config = relay_config.get("db", {})
+    msg_map_config = db_config.get("msg_map", {})
+    msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)  # Default is 500 if not specified
+
     try:
         # Always use our own local meshnet_name for outgoing events
         local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
@@ -175,11 +179,19 @@ async def matrix_relay(room_id, message, longname, shortname, meshnet_name, port
         )
         logger.info(f"Sent inbound radio message to matrix room: {room_id}")
 
-        # For inbound meshtastic->matrix messages, store mapping here if meshtastic_id is present and not a reaction
-        if meshtastic_id is not None and not emote:
-            from db_utils import store_message_map
-            # Always store our own local meshnet_name to identify origin
-            store_message_map(meshtastic_id, response.event_id, room_id, meshtastic_text if meshtastic_text else message, meshtastic_meshnet=local_meshnet_name)
+        # Only store message map if relay_reactions is True and meshtastic_id is present and not an emote.
+        # If relay_reactions is False, we skip storing entirely.
+        if relay_reactions and meshtastic_id is not None and not emote:
+            # Store the message map
+            store_message_map(
+                meshtastic_id, response.event_id, room_id,
+                meshtastic_text if meshtastic_text else message,
+                meshtastic_meshnet=local_meshnet_name
+            )
+
+            # If msgs_to_keep > 0, prune old messages after inserting a new one
+            if msgs_to_keep > 0:
+                prune_message_map(msgs_to_keep)
 
     except asyncio.TimeoutError:
         logger.error("Timed out while waiting for Matrix response")
@@ -211,8 +223,13 @@ async def on_room_message(
     especially remote reactions that got relayed into the room as m.emote events,
     as we do not store them in the database. If we can't find the original message in the DB,
     it likely means it's a reaction to a reaction, and we stop there.
+
+    Additionally, we only deal with message_map storage (and thus reaction linking)
+    if relay_reactions is True. If it's False, none of these mappings are stored or used.
     """
-    from db_utils import store_message_map
+    # Importing here to avoid circular imports and to keep logic consistent
+    # Note: We do not call store_message_map directly here for inbound matrix->mesh messages.
+    # That logic occurs inside matrix_relay if needed.
     full_display_name = "Unknown user"
     message_timestamp = event.server_timestamp
 
@@ -235,6 +252,9 @@ async def on_room_message(
     is_reaction = False
     reaction_emoji = None
     original_matrix_event_id = None
+
+    # Retrieve relay_reactions option from config, now defaulting to False
+    relay_reactions = relay_config["meshtastic"].get("relay_reactions", False)
 
     # Check if this is a Matrix ReactionEvent (usually m.reaction)
     if isinstance(event, ReactionEvent):
@@ -265,9 +285,6 @@ async def on_room_message(
     meshtastic_replyId = event.source["content"].get("meshtastic_replyId")
     suppress = event.source["content"].get("mmrelay_suppress")
 
-    # Retrieve the relay_reactions option from config
-    relay_reactions = relay_config["meshtastic"].get("relay_reactions", True)
-
     # If a message has suppress flag, do not process
     if suppress:
         return
@@ -294,7 +311,7 @@ async def on_room_message(
             if not shortname:
                 shortname = longname[:3] if longname else "???"
 
-            # Use meshtastic_text from content if available, this is the original message text from the remote mesh
+            # Use meshtastic_text from content if available
             meshtastic_text_db = event.source["content"].get("meshtastic_text", "")
             meshtastic_text_db = meshtastic_text_db.replace('\n', ' ').replace('\r', ' ')
             abbreviated_text = meshtastic_text_db[:40] + "..." if len(meshtastic_text_db) > 40 else meshtastic_text_db
@@ -321,8 +338,7 @@ async def on_room_message(
         if original_matrix_event_id:
             orig = get_message_map_by_matrix_event_id(original_matrix_event_id)
             if not orig:
-                # If we don't find the original message in the DB, we suspect it's a reaction to a reaction or
-                # something we never recorded. In either case, we do not forward.
+                # If we don't find the original message in the DB, we suspect it's a reaction-to-reaction scenario
                 logger.debug("Original message for reaction not found in DB. Possibly a reaction-to-reaction scenario. Not forwarding.")
                 return
 
@@ -418,6 +434,8 @@ async def on_room_message(
     meshtastic_channel = room_config["meshtastic_channel"]
 
     # If message is from Matrix and broadcast_enabled is True, relay to Meshtastic
+    # Note: If relay_reactions is False, we won't store message_map, but we can still relay.
+    # The lack of message_map storage just means no reaction bridging will occur.
     if not found_matching_plugin and event.sender != bot_user_id:
         if relay_config["meshtastic"]["broadcast_enabled"]:
             portnum = event.source["content"].get("meshtastic_portnum")
@@ -431,9 +449,15 @@ async def on_room_message(
                         channelIndex=meshtastic_channel,
                         portNum=meshtastic.protobuf.portnums_pb2.PortNum.DETECTION_SENSOR_APP,
                     )
-                    # If we got a packet with an id and it's not a reaction, store mapping
-                    if sent_packet and hasattr(sent_packet, 'id'):
+                    # If relay_reactions is True, we store the message map for these messages as well.
+                    # If False, skip storing.
+                    if relay_reactions and sent_packet and hasattr(sent_packet, 'id'):
                         store_message_map(sent_packet.id, event.event_id, room.room_id, text, meshtastic_meshnet=local_meshnet_name)
+                        db_config = relay_config.get("db", {})
+                        msg_map_config = db_config.get("msg_map", {})
+                        msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)
+                        if msgs_to_keep > 0:
+                            prune_message_map(msgs_to_keep)
                 else:
                     meshtastic_logger.debug(
                         f"Detection sensor packet received from {full_display_name}, but detection sensor processing is disabled."
@@ -445,8 +469,14 @@ async def on_room_message(
                 sent_packet = meshtastic_interface.sendText(
                     text=full_message, channelIndex=meshtastic_channel
                 )
-                if sent_packet and hasattr(sent_packet, 'id'):
+                # Store message_map only if relay_reactions is True
+                if relay_reactions and sent_packet and hasattr(sent_packet, 'id'):
                     store_message_map(sent_packet.id, event.event_id, room.room_id, text, meshtastic_meshnet=local_meshnet_name)
+                    db_config = relay_config.get("db", {})
+                    msg_map_config = db_config.get("msg_map", {})
+                    msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)
+                    if msgs_to_keep > 0:
+                        prune_message_map(msgs_to_keep)
         else:
             logger.debug(
                 f"Broadcast not supported: Message from {full_display_name} dropped."

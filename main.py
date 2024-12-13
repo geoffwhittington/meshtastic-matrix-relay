@@ -14,7 +14,7 @@ from nio import RoomMessageNotice, RoomMessageText, ReactionEvent, RoomMessageEm
 # Import meshtastic_utils as a module to set event_loop
 import meshtastic_utils
 from config import relay_config
-from db_utils import initialize_database, update_longnames, update_shortnames
+from db_utils import initialize_database, update_longnames, update_shortnames, wipe_message_map
 from log_utils import get_logger
 from matrix_utils import connect_matrix, join_matrix_room
 from matrix_utils import logger as matrix_logger
@@ -36,12 +36,23 @@ logging.getLogger("nio").setLevel(logging.ERROR)
 async def main():
     """
     Main asynchronous function to set up and run the relay.
+    Includes logic for wiping the message_map if configured in db.msg_map.wipe_on_restart.
+    Also updates longnames and shortnames periodically as before.
     """
     # Set the event loop in meshtastic_utils
     meshtastic_utils.event_loop = asyncio.get_event_loop()
 
     # Initialize the SQLite database
     initialize_database()
+
+    # Check db config for wipe_on_restart
+    db_config = relay_config.get("db", {})
+    msg_map_config = db_config.get("msg_map", {})
+    wipe_on_restart = msg_map_config.get("wipe_on_restart", False)
+
+    if wipe_on_restart:
+        logger.debug("wipe_on_restart enabled. Wiping message_map now (startup).")
+        wipe_message_map()
 
     # Load plugins early
     load_plugins()
@@ -130,6 +141,11 @@ async def main():
                 meshtastic_utils.meshtastic_client.close()
             except Exception as e:
                 meshtastic_logger.warning(f"Error closing Meshtastic client: {e}")
+
+        # Attempt to wipe message_map on shutdown if enabled
+        if wipe_on_restart:
+            logger.debug("wipe_on_restart enabled. Wiping message_map now (shutdown).")
+            wipe_message_map()
 
         # Cancel the reconnect task if it exists
         if meshtastic_utils.reconnect_task:
