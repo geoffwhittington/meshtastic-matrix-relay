@@ -1,0 +1,12 @@
+[Unit]
+Description=A Meshtastic <==> Matrix Relay
+After=default.target
+
+[Service]
+Type=idle
+WorkingDirectory=%h/meshtastic-matrix-relay
+ExecStart=%h/meshtastic-matrix-relay/.pyenv/bin/python %h/meshtastic-matrix-relay/main.py
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

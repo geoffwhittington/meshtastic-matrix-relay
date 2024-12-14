@@ -31,13 +31,7 @@ To configure the relay, create a `config.yaml` file in the project directory. Yo
 
 ## Usage
 
-Activate the virtual environment:
-
-```bash
-source .pyenv/bin/activate
-```
-
-Run the `main.py` script:
+Make sure the virtual environment is activated and run the `main.py` script:
 
 ```bash
 python main.py
@@ -61,33 +55,18 @@ INFO:meshtastic.matrix.relay:Sent inbound radio message to matrix room: #someroo
 
 ## Persistence
 
-To run the bridge automatically on startup in Linux, set up a systemd service:
-
-```systemd
-[Unit]
-Description=A Meshtastic to Matrix bridge
-After=default.target
-
-[Service]
-Type=idle
-WorkingDirectory=%h/meshtastic-matrix-relay
-ExecStart=%h/meshtastic-matrix-relay/.pyenv/bin/python %h/meshtastic-matrix-relay/main.py
-Restart=on-failure
-
-[Install]
-WantedBy=default.target
-```
-
-Enable and start the service:
+To run the relay automatically on startup in Linux you can set up a systemd user service.
 
 ```bash
+mkdir -p ~/.config/systemd/user
+cp tools/mmrelay.service ~/.config/systemd/user/
 systemctl --user enable mmrelay.service
 systemctl --user start mmrelay.service
 ```
 
 ### Contributing & Code Quality Checks
 
-We use **Trunk** for automated code quality checks and formatting. Contributors are expected to run these checks before submitting a pull request.
+We use **Trunk** for automated code quality checks and formatting. Contributors are kindly asked to install Trunk and run the checks before submitting a pull request.
 
 #### Installing Trunk
 
