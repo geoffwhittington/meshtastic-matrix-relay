@@ -169,12 +169,11 @@ class BasePlugin(ABC):
     def get_data(self):
         return get_plugin_data(self.plugin_name)
 
-    def matches(self, payload):
+    def matches(self, event):
         from matrix_utils import bot_command
 
-        if isinstance(payload, str):
-            return bot_command(self.plugin_name, payload)
-        return False
+        # Pass the entire event to bot_command
+        return bot_command(self.plugin_name, event)
 
     @abstractmethod
     async def handle_meshtastic_message(
