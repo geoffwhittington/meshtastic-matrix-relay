@@ -23,8 +23,8 @@ class Plugin(BasePlugin):
         return []
 
     async def handle_room_message(self, room, event, full_message):
-        full_message = full_message.strip()
-        if not self.matches(full_message):
+        # Pass the event to matches()
+        if not self.matches(event):
             return False
 
         command = None
