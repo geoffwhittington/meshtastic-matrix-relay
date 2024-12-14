@@ -81,16 +81,19 @@ class Plugin(BasePlugin):
 
         return False
 
-    def matches(self, payload):
-        if isinstance(payload, str):
-            match = re.match(r"^Processed (.+) radio packet$", payload)
-            return match
+    def matches(self, event):
+        # Check for the presence of necessary keys in the event
+        content = event.source.get("content", {})
+        body = content.get("body", "")
+
+        if isinstance(body, str):
+            match = re.match(r"^Processed (.+) radio packet$", body)
+            return bool(match)
         return False
 
     async def handle_room_message(self, room, event, full_message):
-        full_message = full_message.strip()
-
-        if not self.matches(full_message):
+        # Use the event for matching instead of full_message
+        if not self.matches(event):
             return False
 
         channel = None

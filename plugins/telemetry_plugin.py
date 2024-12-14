@@ -78,18 +78,18 @@ class Plugin(BasePlugin):
     def get_mesh_commands(self):
         return []
 
-    def matches(self, payload):
+    def matches(self, event):
         from matrix_utils import bot_command
 
-        if isinstance(payload, str):
-            for option in ["batteryLevel", "voltage", "airUtilTx"]:
-                if bot_command(option, payload):
-                    return True
+        # Use bot_command() to check if any of the commands match
+        for command in self.get_matrix_commands():
+            if bot_command(command, event):
+                return True
         return False
 
     async def handle_room_message(self, room, event, full_message):
-        full_message = full_message.strip()
-        if not self.matches(full_message):
+        # Pass the event to matches()
+        if not self.matches(event):
             return False
 
         match = re.search(
