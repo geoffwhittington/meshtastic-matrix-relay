@@ -46,11 +46,34 @@ logger = get_logger(name="Matrix")
 
 matrix_client = None
 
+def bot_command(command, event):
+    """
+    Checks if the given command is directed at the bot,
+    accounting for variations in different Matrix clients.
+    """
+    full_message = event.body.strip()
+    content = event.source.get("content", {})
+    formatted_body = content.get("formatted_body", "")
 
-def bot_command(command, payload):
-    # Checks if the given command is directed at the bot
-    return f"{bot_user_name}: !{command}" in payload
+    # Remove HTML tags and extract the text content
+    text_content = re.sub(r"<[^>]+>", "", formatted_body).strip()
 
+    # Check if the message starts with bot_user_id or bot_user_name
+    if full_message.startswith(bot_user_id) or text_content.startswith(bot_user_id):
+        # Construct a regex pattern to match variations of bot mention and command
+        pattern = rf"^(?:{re.escape(bot_user_id)}|{re.escape(bot_user_name)}|[#@].+?)[,:;]?\s*!{command}$"
+        return bool(re.match(pattern, full_message)) or bool(re.match(pattern, text_content))
+    elif full_message.startswith(bot_user_name) or text_content.startswith(bot_user_name):
+        # Construct a regex pattern to match variations of bot mention and command
+        pattern = rf"^(?:{re.escape(bot_user_id)}|{re.escape(bot_user_name)}|[#@].+?)[,:;]?\s*!{command}$"
+        return bool(re.match(pattern, full_message)) or bool(re.match(pattern, text_content))
+    else:
+        return False
+    # # Construct a regex pattern to match variations of bot mention and command
+    # pattern = rf"^(?:{re.escape(bot_user_id)}|{re.escape(bot_user_name)}|[#@].+?)[,:;]?\s*!{command}$"
+
+    # # Check if the message matches the pattern
+    # return bool(re.match(pattern, full_message)) or bool(re.match(pattern, text_content))
 
 async def connect_matrix():
     """
@@ -470,7 +493,7 @@ async def on_room_message(
     is_command = False
     for plugin in plugins:
         for command in plugin.get_matrix_commands():
-            if bot_command(command, text):
+            if bot_command(command, event):
                 is_command = True
                 break
         if is_command:

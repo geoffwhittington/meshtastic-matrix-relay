@@ -105,5 +105,6 @@ class Plugin(BasePlugin):
             return True
 
     async def handle_room_message(self, room, event, full_message):
-        if self.matches(full_message):
+        # Pass the event to matches() instead of full_message
+        if self.matches(event):
             return True
