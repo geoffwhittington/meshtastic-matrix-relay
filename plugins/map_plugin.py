@@ -235,8 +235,8 @@ class Plugin(BasePlugin):
         return []
 
     async def handle_room_message(self, room, event, full_message):
-        full_message = full_message.strip()
-        if not self.matches(full_message):
+        # Pass the whole event to matches() for compatibility w/ updated base_plugin.py 
+        if not self.matches(event):
             return False
 
         from matrix_utils import connect_matrix
