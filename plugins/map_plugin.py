@@ -218,7 +218,7 @@ async def send_room_image(
     await client.room_send(
         room_id=room_id,
         message_type="m.room.message",
-        content={"msgtype": "m.image", "url": upload_response.content_uri, "body": ""},
+        content={"msgtype": "m.image", "url": upload_response.content_uri, "body": "image.png"},
     )
 
 
