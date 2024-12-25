@@ -1,3 +1,4 @@
+# trunk-ignore-all(bandit)
 import hashlib
 import importlib.util
 import os

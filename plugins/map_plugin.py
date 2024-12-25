@@ -1,12 +1,24 @@
-import staticmaps
-import s2sphere
+import io
 import math
 import random
-import io
 import re
-from PIL import Image
+
+import PIL.ImageDraw
+import s2sphere
+import staticmaps
 from nio import AsyncClient, UploadResponse
+from PIL import Image
+
 from plugins.base_plugin import BasePlugin
+
+
+def textsize(self: PIL.ImageDraw.ImageDraw, *args, **kwargs):
+    x, y, w, h = self.textbbox((0, 0), *args, **kwargs)
+    return w, h
+
+
+# Monkeypatch fix for https://github.com/flopp/py-staticmaps/issues/39
+PIL.ImageDraw.ImageDraw.textsize = textsize
 
 
 class TextLabel(staticmaps.Object):
@@ -35,7 +47,9 @@ class TextLabel(staticmaps.Object):
         x, y = renderer.transformer().ll2pixel(self.latlng())
         x = x + renderer.offset_x()
 
-        tw, th = renderer.draw().textsize(self._text)
+        # Updated to use textbbox instead of textsize
+        bbox = renderer.draw().textbbox((0, 0), self._text)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
         w = max(self._arrow, tw + 2 * self._margin)
         h = th + 2 * self._margin
 
@@ -202,10 +216,14 @@ async def upload_image(client: AsyncClient, image: Image.Image) -> UploadRespons
 async def send_room_image(
     client: AsyncClient, room_id: str, upload_response: UploadResponse
 ):
-    response = await client.room_send(
+    await client.room_send(
         room_id=room_id,
         message_type="m.room.message",
-        content={"msgtype": "m.image", "url": upload_response.content_uri, "body": ""},
+        content={
+            "msgtype": "m.image",
+            "url": upload_response.content_uri,
+            "body": "image.png",
+        },
     )
 
 
@@ -220,7 +238,7 @@ class Plugin(BasePlugin):
     @property
     def description(self):
         return (
-            f"Map of mesh radio nodes. Supports `zoom` and `size` options to customize"
+            "Map of mesh radio nodes. Supports `zoom` and `size` options to customize"
         )
 
     async def handle_meshtastic_message(
@@ -235,7 +253,7 @@ class Plugin(BasePlugin):
         return []
 
     async def handle_room_message(self, room, event, full_message):
-        # Pass the whole event to matches() for compatibility w/ updated base_plugin.py 
+        # Pass the whole event to matches() for compatibility w/ updated base_plugin.py
         if not self.matches(event):
             return False
 
@@ -275,7 +293,7 @@ class Plugin(BasePlugin):
             image_size = (1000, 1000)
 
         locations = []
-        for node, info in meshtastic_client.nodes.items():
+        for _node, info in meshtastic_client.nodes.items():
             if "position" in info and "latitude" in info["position"]:
                 locations.append(
                     {
