@@ -46,6 +46,7 @@ logger = get_logger(name="Matrix")
 
 matrix_client = None
 
+
 def bot_command(command, event):
     """
     Checks if the given command is directed at the bot,
@@ -62,11 +63,17 @@ def bot_command(command, event):
     if full_message.startswith(bot_user_id) or text_content.startswith(bot_user_id):
         # Construct a regex pattern to match variations of bot mention and command
         pattern = rf"^(?:{re.escape(bot_user_id)}|{re.escape(bot_user_name)}|[#@].+?)[,:;]?\s*!{command}$"
-        return bool(re.match(pattern, full_message)) or bool(re.match(pattern, text_content))
-    elif full_message.startswith(bot_user_name) or text_content.startswith(bot_user_name):
+        return bool(re.match(pattern, full_message)) or bool(
+            re.match(pattern, text_content)
+        )
+    elif full_message.startswith(bot_user_name) or text_content.startswith(
+        bot_user_name
+    ):
         # Construct a regex pattern to match variations of bot mention and command
         pattern = rf"^(?:{re.escape(bot_user_id)}|{re.escape(bot_user_name)}|[#@].+?)[,:;]?\s*!{command}$"
-        return bool(re.match(pattern, full_message)) or bool(re.match(pattern, text_content))
+        return bool(re.match(pattern, full_message)) or bool(
+            re.match(pattern, text_content)
+        )
     else:
         return False
     # # Construct a regex pattern to match variations of bot mention and command
@@ -74,6 +81,7 @@ def bot_command(command, event):
 
     # # Check if the message matches the pattern
     # return bool(re.match(pattern, full_message)) or bool(re.match(pattern, text_content))
+
 
 async def connect_matrix():
     """
