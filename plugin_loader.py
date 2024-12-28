@@ -99,7 +99,7 @@ def load_plugins():
     if plugins_loaded:
         return sorted_active_plugins
 
-    logger.debug("Loading plugins...")
+    logger.info("Checking plugin config...")
 
     config = relay_config  # Use relay_config loaded in config.py
 
@@ -131,11 +131,27 @@ def load_plugins():
 
     plugins = core_plugins.copy()
 
-    # Load custom plugins (non-recursive)
+    # Process and load custom plugins
+    custom_plugins_config = config.get("custom-plugins", {})
     custom_plugins_dir = os.path.join(
         get_app_path(), "plugins", "custom"
     )  # Use get_app_path()
-    plugins.extend(load_plugins_from_directory(custom_plugins_dir, recursive=False))
+
+    active_custom_plugins = [
+        plugin_name for plugin_name, plugin_info in custom_plugins_config.items()
+        if plugin_info.get("active", False)
+    ]
+
+    if active_custom_plugins:
+        logger.debug(f"Loading active custom plugins: {', '.join(active_custom_plugins)}")
+
+    # Only load custom plugins that are explicitly enabled
+    for plugin_name in active_custom_plugins:
+        plugin_path = os.path.join(custom_plugins_dir, plugin_name)
+        if os.path.exists(plugin_path):
+            plugins.extend(load_plugins_from_directory(plugin_path, recursive=False))
+        else:
+            logger.warning(f"Custom plugin directory not found: {plugin_path}")
 
     # Process and download community plugins
     community_plugins_config = config.get("community-plugins", {})
@@ -144,14 +160,22 @@ def load_plugins():
     )  # Use get_app_path()
 
     # Create community plugins directory if needed
-    if any(
-        plugin_info.get("active", False)
-        for plugin_info in community_plugins_config.values()
-    ):
-        os.makedirs(community_plugins_dir, exist_ok=True)
+    active_community_plugins = [
+        plugin_name for plugin_name, plugin_info in community_plugins_config.items()
+        if plugin_info.get("active", False)
+    ]
 
-    for plugin_info in community_plugins_config.values():
-        if plugin_info.get("active", False):
+    if active_community_plugins:
+        os.makedirs(community_plugins_dir, exist_ok=True)
+        logger.debug(f"Loading active community plugins: {', '.join(active_community_plugins)}")
+
+    # Only process community plugins if config section exists and is a dictionary
+    if isinstance(community_plugins_config, dict):
+        for plugin_name, plugin_info in community_plugins_config.items():
+            if not plugin_info.get("active", False):
+                logger.debug(f"Skipping community plugin {plugin_name} - not active in config")
+                continue
+
             repo_url = plugin_info.get("repository")
             tag = plugin_info.get("tag", "master")
             if repo_url:
@@ -161,8 +185,20 @@ def load_plugins():
                 logger.error("Please specify the repository URL in config.yaml")
                 sys.exit(1)
 
-    # Load community plugins (recursive)
-    plugins.extend(load_plugins_from_directory(community_plugins_dir, recursive=True))
+    # Only load community plugins that are explicitly enabled
+    for plugin_name in active_community_plugins:
+        plugin_info = community_plugins_config[plugin_name]
+        repo_url = plugin_info.get("repository")
+        if repo_url:
+            # Extract repository name from URL
+            repo_name = os.path.splitext(os.path.basename(repo_url.rstrip("/")))[0]
+            plugin_path = os.path.join(community_plugins_dir, repo_name)
+            if os.path.exists(plugin_path):
+                plugins.extend(load_plugins_from_directory(plugin_path, recursive=True))
+            else:
+                logger.warning(f"Community plugin directory not found: {plugin_path}")
+        else:
+            logger.error(f"Repository URL not specified for community plugin: {plugin_name}")
 
     # Filter and sort active plugins by priority
     active_plugins = []
@@ -196,4 +232,13 @@ def load_plugins():
                 logger.error(f"Error starting plugin {plugin_name}: {e}")
 
     sorted_active_plugins = sorted(active_plugins, key=lambda plugin: plugin.priority)
+
+    # Log all loaded plugins
+    if sorted_active_plugins:
+        plugin_names = [getattr(plugin, "plugin_name", plugin.__class__.__name__)
+                       for plugin in sorted_active_plugins]
+        logger.info(f"Plugins loaded: {', '.join(plugin_names)}")
+    else:
+        logger.info("Plugins loaded: none")
+
     plugins_loaded = True  # Set the flag to indicate that plugins have been load
