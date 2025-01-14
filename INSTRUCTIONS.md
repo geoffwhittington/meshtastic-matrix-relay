@@ -49,7 +49,14 @@ Example output:
 ```bash
 INFO:meshtastic.matrix.relay:Starting Meshtastic <==> Matrix Relay...
 INFO:meshtastic.matrix.relay:Connecting to radio at meshtastic.local ...
-INFO:meshtastic.matrix.relay:Relaying messages between Matrix and Meshtastic...
+INFO:meshtastic.matrix.relay:Connected to radio at meshtastic.local.
+INFO:meshtastic.matrix.relay:Listening for inbound radio messages ...
+INFO:meshtastic.matrix.relay:Listening for inbound matrix messages ...
+INFO:meshtastic.matrix.relay:Processing matrix message from @bob:matrix.org: Hi Alice!
+INFO:meshtastic.matrix.relay:Sending radio message from Bob to radio broadcast
+INFO:meshtastic.matrix.relay:Processing inbound radio message from !613501e4 on channel 0
+INFO:meshtastic.matrix.relay:Relaying Meshtastic message from Alice to Matrix: [Alice/VeryCoolMeshnet]: Hey Bob!
+INFO:meshtastic.matrix.relay:Sent inbound radio message to matrix room: #someroomid:example.matrix.org
 ```
 
 ## Persistence (Linux)
@@ -66,6 +73,10 @@ To run the relay automatically on startup:
    systemctl --user enable mmrelay.service
    systemctl --user start mmrelay.service
    ```
+
+## Dockerized Versions (Unofficial)
+
+If you would prefer to use a Dockerized version of the relay, there are unofficial third-party projects available. Please note that these are not officially supported, and issues should be reported to their respective repositories. For more details, visit the [Third Party Projects](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Third-Party-Projects) page.
 
 ## Development
 
