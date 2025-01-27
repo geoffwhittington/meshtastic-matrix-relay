@@ -85,3 +85,4 @@ Join us!
 
 - Our project's room: [#mmrelay:meshnet.club](https://matrix.to/#/#mmrelay:meshnet.club)
 - Part of the Meshtastic Community Matrix space: [#meshtastic-community:meshnet.club](https://matrix.to/#/#meshtastic-community:meshnet.club)
+- Public Relay Room: [#relay-room:meshnet.club](https://matrix.to/#/#relay-room:meshnet.club) - Where we bridge multiple meshnets. Feel free to join us, with or without a relay!
