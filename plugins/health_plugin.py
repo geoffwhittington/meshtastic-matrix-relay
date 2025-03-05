@@ -26,6 +26,8 @@ class Plugin(BasePlugin):
                     air_util_tx.append(info["deviceMetrics"]["airUtilTx"])
             if "snr" in info:
                 snr.append(info["snr"])
+        #filter out none type values from snr
+        snr = [value for value in snr if value is not None]
 
         low_battery = len([n for n in battery_levels if n <= 10])
         radios = len(meshtastic_client.nodes)
