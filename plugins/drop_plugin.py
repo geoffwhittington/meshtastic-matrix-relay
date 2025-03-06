@@ -12,8 +12,10 @@ class Plugin(BasePlugin):
 
     def get_position(self, meshtastic_client, node_id):
         for _node, info in meshtastic_client.nodes.items():
-            if info["user"]["id"] == node_id:
+            if "position" in info:
                 return info["position"]
+            else:
+                continue
         return None
 
     async def handle_meshtastic_message(
@@ -85,7 +87,10 @@ class Plugin(BasePlugin):
             position = {}
             for _node, info in meshtastic_client.nodes.items():
                 if info["user"]["id"] == packet["fromId"]:
-                    position = info["position"]
+                    if "position" in info:
+                        position = info["position"]
+                    else:
+                        continue
 
             if "latitude" not in position or "longitude" not in position:
                 self.logger.debug(
