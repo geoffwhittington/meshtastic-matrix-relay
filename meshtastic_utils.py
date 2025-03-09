@@ -1,8 +1,6 @@
 import asyncio
 import threading
 import time
-import contextlib
-import io
 from typing import List
 
 import meshtastic.ble_interface
@@ -49,7 +47,7 @@ def serial_port_exists(port_name):
     Check if the specified serial port exists.
     This prevents attempting connections on non-existent ports.
     """
-    ports = [p.device for p in serial.tools.list_ports.comports()]
+    ports = [port.device for port in serial.tools.list_ports.comports()]
     return port_name in ports
 
 
@@ -382,15 +380,13 @@ def on_meshtastic_message(packet, interface):
                 user = node.get("user")
                 if user:
                     if not longname:
-                        longname_val = user.get("longName")
-                        if longname_val:
-                            save_longname(sender, longname_val)
-                            longname = longname_val
+                        longname = user.get("longName")
+                        if longname:
+                            save_longname(sender, longname)
                     if not shortname:
-                        shortname_val = user.get("shortName")
-                        if shortname_val:
-                            save_shortname(sender, shortname_val)
-                            shortname = shortname_val
+                        shortname = user.get("shortName")
+                        if shortname:
+                            save_shortname(sender, shortname)
             else:
                 logger.debug(f"Node info for sender {sender} not available yet.")
 
@@ -479,27 +475,19 @@ def on_meshtastic_message(packet, interface):
 
 async def check_connection():
     """
-    Periodically checks the Meshtastic connection by calling localNode.getMetadata().
-    If it fails or doesn't return the firmware version, we assume the connection is lost
-    and attempt to reconnect.
+    Periodically checks the Meshtastic connection by sending a ping.
+    If an error occurs, it attempts to reconnect.
     """
     global meshtastic_client, shutting_down
     connection_type = relay_config["meshtastic"]["connection_type"]
     while not shutting_down:
         if meshtastic_client:
             try:
-                output_capture = io.StringIO()
-                with contextlib.redirect_stdout(output_capture), contextlib.redirect_stderr(output_capture):
-                    meshtastic_client.localNode.getMetadata()
-
-                console_output = output_capture.getvalue()
-                if "firmware_version" not in console_output:
-                    raise Exception("No firmware_version in getMetadata output.")
-
+                meshtastic_client.sendPing()
             except Exception as e:
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
                 on_lost_meshtastic_connection(meshtastic_client)
-        await asyncio.sleep(2)  # Check connection every 2 seconds
+        await asyncio.sleep(5)  # Check connection every 5 seconds
 
 
 if __name__ == "__main__":
