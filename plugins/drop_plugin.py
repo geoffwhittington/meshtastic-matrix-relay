@@ -12,10 +12,11 @@ class Plugin(BasePlugin):
 
     def get_position(self, meshtastic_client, node_id):
         for _node, info in meshtastic_client.nodes.items():
-            if "position" in info:
-                return info["position"]
-            else:
-                continue
+            if info["user"]["id"] == node_id:
+                if "position" in info:
+                    return info["position"]
+                else:
+                    return None
         return None
 
     async def handle_meshtastic_message(
