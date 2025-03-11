@@ -178,7 +178,7 @@ def on_lost_meshtastic_connection(interface=None):
             logger.debug("Shutdown in progress. Not attempting to reconnect.")
             return
         if reconnecting:
-            logger.info(
+            logger.debug(
                 "Reconnection already in progress. Skipping additional reconnection attempt."
             )
             return
