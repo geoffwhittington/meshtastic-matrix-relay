@@ -76,11 +76,6 @@ def bot_command(command, event):
         )
     else:
         return False
-    # # Construct a regex pattern to match variations of bot mention and command
-    # pattern = rf"^(?:{re.escape(bot_user_id)}|{re.escape(bot_user_name)}|[#@].+?)[,:;]?\s*!{command}$"
-
-    # # Check if the message matches the pattern
-    # return bool(re.match(pattern, full_message)) or bool(re.match(pattern, text_content))
 
 
 async def connect_matrix():
@@ -265,6 +260,16 @@ def truncate_message(text, max_bytes=227):
     return truncated_text
 
 
+def strip_quoted_lines(text: str) -> str:
+    """
+    Remove lines that begin with '>' to avoid including
+    the original quoted part of a Matrix reply in reaction text.
+    """
+    lines = text.splitlines()
+    filtered = [l for l in lines if not l.strip().startswith(">")]
+    return " ".join(filtered).strip()
+
+
 # Callback for new messages in Matrix room
 async def on_room_message(
     room: MatrixRoom,
@@ -375,11 +380,11 @@ async def on_room_message(
             if not shortname:
                 shortname = longname[:3] if longname else "???"
 
-            # Use meshtastic_text from content if available
             meshtastic_text_db = event.source["content"].get("meshtastic_text", "")
-            meshtastic_text_db = meshtastic_text_db.replace("\n", " ").replace(
-                "\r", " "
-            )
+            # Strip out any quoted lines from the text
+            meshtastic_text_db = strip_quoted_lines(meshtastic_text_db)
+            meshtastic_text_db = meshtastic_text_db.replace("\n", " ").replace("\r", " ")
+
             abbreviated_text = (
                 meshtastic_text_db[:40] + "..."
                 if len(meshtastic_text_db) > 40
@@ -427,6 +432,11 @@ async def on_room_message(
             # If not from a remote meshnet, proceed as normal to relay back to the originating meshnet
             short_display_name = full_display_name[:5]
             prefix = f"{short_display_name}[M]: "
+
+            # Remove quoted lines so we don't bring in the original '>' lines from replies
+            meshtastic_text_db = strip_quoted_lines(meshtastic_text_db)
+            meshtastic_text_db = meshtastic_text_db.replace("\n", " ").replace("\r", " ")
+
             abbreviated_text = (
                 meshtastic_text_db[:40] + "..."
                 if len(meshtastic_text_db) > 40
