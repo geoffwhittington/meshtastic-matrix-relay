@@ -266,7 +266,7 @@ def strip_quoted_lines(text: str) -> str:
     the original quoted part of a Matrix reply in reaction text.
     """
     lines = text.splitlines()
-    filtered = [l for l in lines if not l.strip().startswith(">")]
+    filtered = [line for line in lines if not line.strip().startswith(">")]
     return " ".join(filtered).strip()
 
 
