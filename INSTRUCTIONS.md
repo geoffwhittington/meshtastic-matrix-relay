@@ -84,19 +84,8 @@ If you would prefer to use a Dockerized version of the relay, there are unoffici
 
 ### Contributing
 
-Contributions are welcome! We use **Trunk** for automated code quality checks and formatting. Please run Trunk checks before submitting pull requests.
-
-#### Setting Up Trunk
-
-1. Install Trunk:
+Contributions are welcome! We use **Trunk** for automated code quality checks and formatting. The `trunk` launcher is committed directly to the repo, please run checks before submitting pull requests.
 
    ```bash
-   curl -fsSL https://get.trunk.io | bash
-   ```
-
-2. Code as you normally would—Trunk runs many checks automatically.
-
-3. Before submitting a PR, run checks and fix issues:
-   ```bash
-   trunk check --all --fix
+   ./trunk check --all --fix
    ```
