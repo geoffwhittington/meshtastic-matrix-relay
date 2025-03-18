@@ -87,5 +87,5 @@ If you would prefer to use a Dockerized version of the relay, there are unoffici
 Contributions are welcome! We use **Trunk** for automated code quality checks and formatting. The `trunk` launcher is committed directly to the repo, please run checks before submitting pull requests.
 
    ```bash
-   ./trunk check --all --fix
+   .trunk/trunk check --all --fix
    ```
