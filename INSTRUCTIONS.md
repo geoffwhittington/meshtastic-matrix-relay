@@ -94,15 +94,9 @@ Contributions are welcome! We use **Trunk** for automated code quality checks an
    curl -fsSL https://get.trunk.io | bash
    ```
 
-2. Initialize Trunk:
+2. Code as you normally would—Trunk runs many checks automatically.
 
-   ```bash
-   trunk init
-   ```
-
-3. Run checks and fix issues:
+3. Before submitting a PR, run checks and fix issues:
    ```bash
    trunk check --all --fix
    ```
-
-For more details, see the [Trunk documentation](https://trunk.io/docs).
