@@ -62,7 +62,7 @@ def bot_command(command, event):
     # Check if the message starts with bot_user_id or bot_user_name
     if full_message.startswith(bot_user_id) or text_content.startswith(bot_user_id):
         # Construct a regex pattern to match variations of bot mention and command
-        pattern = rf"^(?:{re.escape(bot_user_id)}|{re.escape(bot_user_name)}|[#@].+?)[,:;]?\s*!{command}$"
+        pattern = rf"^(?:{re.escape(bot_user_id)}|{re.escape(bot_user_name)}|[#@].+?)[,:;]?\s*!{command}"
         return bool(re.match(pattern, full_message)) or bool(
             re.match(pattern, text_content)
         )
@@ -70,7 +70,7 @@ def bot_command(command, event):
         bot_user_name
     ):
         # Construct a regex pattern to match variations of bot mention and command
-        pattern = rf"^(?:{re.escape(bot_user_id)}|{re.escape(bot_user_name)}|[#@].+?)[,:;]?\s*!{command}$"
+        pattern = rf"^(?:{re.escape(bot_user_id)}|{re.escape(bot_user_name)}|[#@].+?)[,:;]?\s*!{command}"
         return bool(re.match(pattern, full_message)) or bool(
             re.match(pattern, text_content)
         )
