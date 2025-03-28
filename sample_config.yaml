@@ -2,6 +2,11 @@ matrix:
   homeserver: https://example.matrix.org
   access_token: reaalllllyloooooongsecretttttcodeeeeeeforrrrbot # See: https://t2bot.io/docs/access_tokens/
   bot_user_id: "@botuser:example.matrix.org"
+  encryption:
+    enabled: false # Set to true to enable End-to-End Encryption
+    store_path: "./data/nio-store" # Directory to store encryption keys. NEEDS to be persistent!
+    passphrase: "YOUR_SECRET_PASSPHRASE_HERE" # Optional: A secret passphrase to encrypt keys on disk. Highly recommended!
+    device_name: "Meshtastic Relay Bot" # Optional: Name for this device shown in Matrix clients
 
 matrix_rooms: # Needs at least 1 room & channel, but supports all Meshtastic channels
   - id: "#someroomalias:example.matrix.org" # Matrix room aliases & IDs supported

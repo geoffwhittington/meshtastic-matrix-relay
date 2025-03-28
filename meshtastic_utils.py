@@ -245,16 +245,38 @@ def on_meshtastic_message(packet, interface):
     # Apply reaction filtering based on config
     relay_reactions = relay_config["meshtastic"].get("relay_reactions", False)
 
+    decoded = packet.get("decoded", {}) # Decode early
+    portnum = decoded.get("portnum") # Get portnum
+
+    # Convert portnum enum name (string) to its standard string representation if needed
+    # Or just pass it as is, matrix_relay will handle it.
+    # Example: portnum might be 'TEXT_MESSAGE_APP' or 1
+    if isinstance(portnum, int):
+        try:
+            portnum_name = meshtastic.protobuf.portnums_pb2.PortNum.Name(portnum)
+        except ValueError:
+            portnum_name = str(portnum) # Fallback to number if unknown
+    else:
+        portnum_name = str(portnum) # Assume it's already a string or suitable representation
+
+
     # If relay_reactions is False, filter out reaction/tapback packets to avoid complexity
-    if packet.get("decoded", {}).get("portnum") == "TEXT_MESSAGE_APP":
-        decoded = packet.get("decoded", {})
+    if portnum_name == "TEXT_MESSAGE_APP": # Check using standard name
         if not relay_reactions and ("emoji" in decoded or "replyId" in decoded):
             logger.debug(
                 "Filtered out reaction/tapback packet due to relay_reactions=false."
             )
             return
 
-    from matrix_utils import matrix_relay
+    # Import matrix_relay locally inside the function to ensure it's the updated version
+    # and avoid top-level circular dependency issues.
+    try:
+        from matrix_utils import matrix_relay
+    except ImportError:
+        logger.error("Could not import matrix_relay. Cannot process message.")
+        # This might indicate a deeper setup issue
+        return
+
 
     global event_loop
 
@@ -271,10 +293,10 @@ def on_meshtastic_message(packet, interface):
     sender = packet.get("fromId") or packet.get("from")
     toId = packet.get("to")
 
-    decoded = packet.get("decoded", {})
+    # decoded = packet.get("decoded", {}) # Already done above
     text = decoded.get("text")
     replyId = decoded.get("replyId")
-    emoji_flag = "emoji" in decoded and decoded["emoji"] == 1
+    emoji_flag = "emoji" in decoded and decoded["emoji"] == 1 # Check for explicit emoji flag
 
     # Determine if this is a direct message to the relay node
     from meshtastic.mesh_interface import BROADCAST_NUM
@@ -289,7 +311,7 @@ def on_meshtastic_message(packet, interface):
         # Message to someone else; ignoring for broadcasting logic
         is_direct_message = False
 
-    meshnet_name = relay_config["meshtastic"]["meshnet_name"]
+    meshnet_name = relay_config["meshtastic"]["meshnet_name"] # Our local meshnet name
 
     # Reaction handling (Meshtastic -> Matrix)
     # If replyId and emoji_flag are present and relay_reactions is True, we relay as text reactions in Matrix
@@ -299,76 +321,83 @@ def on_meshtastic_message(packet, interface):
         orig = get_message_map_by_meshtastic_id(replyId)
         if orig:
             # orig = (matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
-            matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet = orig
+            matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet_origin = orig
             abbreviated_text = (
                 meshtastic_text[:40] + "..."
                 if len(meshtastic_text) > 40
                 else meshtastic_text
             )
+            abbreviated_text = abbreviated_text.replace("\n", " ").replace("\r", " ")
+
 
             # Ensure that meshnet_name is always included, using our own meshnet for accuracy.
             full_display_name = f"{longname}/{meshnet_name}"
 
-            reaction_symbol = text.strip() if (text and text.strip()) else "⚠️"
+            # Text should contain the emoji itself for reactions
+            reaction_symbol = text.strip() if (text and text.strip()) else "⚠️" # Default emoji if missing
+            # Format as an emote describing the action
             reaction_message = f'\n [{full_display_name}] reacted {reaction_symbol} to "{abbreviated_text}"'
+            # Note: Matrix clients usually render m.emote differently than plain text.
 
-            # Relay the reaction as emote to Matrix, preserving the original meshnet name
+            logger.info(f"Relaying Meshtastic reaction from {longname} to Matrix room {matrix_room_id}")
+
+            # Relay the reaction as emote to Matrix, preserving the original meshnet name context if needed
+            # The `matrix_relay` function now puts custom data inside content['dev.meshtastic.relay']
             asyncio.run_coroutine_threadsafe(
                 matrix_relay(
                     matrix_room_id,
-                    reaction_message,
+                    reaction_message, # This is the body of the m.emote
                     longname,
                     shortname,
-                    meshnet_name,
-                    decoded.get("portnum"),
-                    meshtastic_id=packet.get("id"),
-                    meshtastic_replyId=replyId,
-                    meshtastic_text=meshtastic_text,
-                    emote=True,
-                    emoji=True,
+                    meshnet_name, # Our local meshnet name as context for this relay event
+                    portnum_name, # Pass the portnum string/name
+                    meshtastic_id=packet.get("id"), # ID of the reaction packet itself
+                    meshtastic_replyId=replyId, # ID of the message being reacted to
+                    meshtastic_text=meshtastic_text, # Original text being reacted to (for context in Matrix event)
+                    emote=True, # Send as m.emote
+                    emoji=True, # Flag indicating this emote represents an emoji reaction
                 ),
                 loop=loop,
             )
         else:
-            logger.debug("Original message for reaction not found in DB.")
-        return
+            logger.debug(f"Original message {replyId} for reaction {packet.get('id')} not found in DB.")
+        return # Reaction handled (or skipped)
 
     # Normal text messages or detection sensor messages
     if text:
         # Determine the channel for this message
         channel = packet.get("channel")
         if channel is None:
-            # If channel not specified, deduce from portnum
-            if (
-                decoded.get("portnum") == "TEXT_MESSAGE_APP"
-                or decoded.get("portnum") == 1
-            ):
-                channel = 0
-            elif decoded.get("portnum") == "DETECTION_SENSOR_APP":
-                channel = 0
-            else:
-                logger.debug(
-                    f"Unknown portnum {decoded.get('portnum')}, cannot determine channel"
-                )
-                return
+             # Based on portnum - This is a guess!
+             if portnum_name == "TEXT_MESSAGE_APP":
+                 channel = 0 # Often default channel
+             elif portnum_name == "DETECTION_SENSOR_APP":
+                 channel = 0 # Often default channel
+             # Add other portnum -> channel mappings if known
+             else:
+                 logger.debug(
+                     f"Unknown portnum {portnum_name} for packet {packet.get('id')}, cannot determine channel. Assuming 0."
+                 )
+                 channel = 0 # Default fallback
+
 
         # Check if channel is mapped to a Matrix room
         channel_mapped = False
-        for room in matrix_rooms:
-            if room["meshtastic_channel"] == channel:
+        target_rooms = []
+        for room_config in matrix_rooms:
+            if room_config["meshtastic_channel"] == channel:
                 channel_mapped = True
-                break
+                target_rooms.append(room_config["id"])
+
 
         if not channel_mapped:
-            logger.debug(f"Skipping message from unmapped channel {channel}")
+            logger.debug(f"Skipping message from unmapped channel index {channel} (packet {packet.get('id')})")
             return
 
         # If detection_sensor is disabled and this is a detection sensor packet, skip it
-        if decoded.get("portnum") == "DETECTION_SENSOR_APP" and not relay_config[
-            "meshtastic"
-        ].get("detection_sensor", False):
+        if portnum_name == "DETECTION_SENSOR_APP" and not relay_config["meshtastic"].get("detection_sensor", False):
             logger.debug(
-                "Detection sensor packet received, but detection sensor processing is disabled."
+                f"Detection sensor packet {packet.get('id')} received, but detection sensor processing is disabled. Skipping."
             )
             return
 
@@ -376,8 +405,10 @@ def on_meshtastic_message(packet, interface):
         longname = get_longname(sender)
         shortname = get_shortname(sender)
 
+        # If name still missing, try fetching from node info (might be slow/blocking)
+        # Consider doing this less frequently or caching more aggressively
         if not longname or not shortname:
-            node = interface.nodes.get(sender)
+            node = interface.nodes.get(sender) # Check local node cache
             if node:
                 user = node.get("user")
                 if user:
@@ -392,89 +423,106 @@ def on_meshtastic_message(packet, interface):
                             save_shortname(sender, shortname_val)
                             shortname = shortname_val
             else:
-                logger.debug(f"Node info for sender {sender} not available yet.")
+                # Optionally trigger a node info request if missing? Be careful with radio traffic.
+                logger.debug(f"Node info for sender {sender} not available locally yet.")
 
-        # If still not available, fallback to sender ID
+        # Fallback to sender ID if names still unavailable
         if not longname:
-            longname = str(sender)
+            longname = f"!{sender[1:]}" # Use Meshtastic ID format
         if not shortname:
-            shortname = str(sender)
+            shortname = longname[:3] # Use first 3 chars of longname/ID
 
+        # Format message for Matrix relay, including meshnet name
         formatted_message = f"[{longname}/{meshnet_name}]: {text}"
 
         # Plugin functionality - Check if any plugin handles this message before relaying
         from plugin_loader import load_plugins
-
         plugins = load_plugins()
 
         found_matching_plugin = False
         for plugin in plugins:
             if not found_matching_plugin:
-                result = asyncio.run_coroutine_threadsafe(
-                    plugin.handle_meshtastic_message(
-                        packet, formatted_message, longname, meshnet_name
-                    ),
-                    loop=loop,
-                )
-                found_matching_plugin = result.result()
-                if found_matching_plugin:
-                    logger.debug(f"Processed by plugin {plugin.plugin_name}")
+                 try:
+                      # Run plugin handling in threadsafe manner
+                      future = asyncio.run_coroutine_threadsafe(
+                          plugin.handle_meshtastic_message(
+                              packet, formatted_message, longname, meshnet_name
+                          ),
+                          loop=loop,
+                      )
+                      # Wait for result with a timeout to avoid blocking indefinitely
+                      handled = future.result(timeout=5.0)
+                      if handled:
+                           found_matching_plugin = True
+                           logger.debug(f"Message {packet.get('id')} processed by plugin {plugin.plugin_name}")
+                 except asyncio.TimeoutError:
+                      logger.warning(f"Plugin {plugin.plugin_name} timed out handling message {packet.get('id')}")
+                 except Exception as e:
+                      logger.error(f"Error executing handle_meshtastic_message for plugin {plugin.plugin_name}: {e}")
 
-        # If message is a DM or handled by plugin, do not relay further
+        # If message is a DM to the bot OR handled by plugin, do not relay further to Matrix rooms
         if is_direct_message:
+            # Note: DM handling by plugins might still occur above. This prevents broadcasting DMs.
             logger.debug(
-                f"Received a direct message from {longname}: {text}. Not relaying to Matrix."
+                f"Received a direct message {packet.get('id')} from {longname}. Not broadcasting to Matrix rooms."
             )
+            # Plugins might still respond directly via matrix_relay if needed
             return
         if found_matching_plugin:
-            logger.debug("Message was handled by a plugin. Not relaying to Matrix.")
+            logger.debug(f"Message {packet.get('id')} was handled by a plugin. Not broadcasting to Matrix rooms.")
             return
 
         # Relay the message to all Matrix rooms mapped to this channel
         logger.info(
-            f"Processing inbound radio message from {sender} on channel {channel}"
+            f"Processing inbound radio message {packet.get('id')} from {sender} on channel {channel}"
         )
-        logger.info(f"Relaying Meshtastic message from {longname} to Matrix")
-        for room in matrix_rooms:
-            if room["meshtastic_channel"] == channel:
-                # Storing the message_map (if enabled) occurs inside matrix_relay() now,
-                # controlled by relay_reactions.
-                asyncio.run_coroutine_threadsafe(
-                    matrix_relay(
-                        room["id"],
-                        formatted_message,
-                        longname,
-                        shortname,
-                        meshnet_name,
-                        decoded.get("portnum"),
-                        meshtastic_id=packet.get("id"),
-                        meshtastic_text=text,
-                    ),
-                    loop=loop,
-                )
+        logger.info(f"Relaying Meshtastic message from {longname} to {len(target_rooms)} Matrix room(s)")
+        for room_id in target_rooms:
+            # Storing the message_map (if enabled) occurs inside matrix_relay() now,
+            # controlled by relay_reactions. matrix_relay handles E2EE.
+            asyncio.run_coroutine_threadsafe(
+                matrix_relay(
+                    room_id,
+                    formatted_message,
+                    longname,
+                    shortname,
+                    meshnet_name, # Our local meshnet name context
+                    portnum_name, # Pass portnum string/name
+                    meshtastic_id=packet.get("id"),
+                    meshtastic_text=text, # Original text for storage/context
+                    # emote and emoji are False for regular text
+                ),
+                loop=loop,
+            )
     else:
-        # Non-text messages via plugins
-        portnum = decoded.get("portnum")
+        # Non-text messages (e.g., position, nodeinfo updates) potentially handled by plugins
+        # portnum = decoded.get("portnum") # Already have portnum_name
         from plugin_loader import load_plugins
-
         plugins = load_plugins()
         found_matching_plugin = False
         for plugin in plugins:
             if not found_matching_plugin:
-                result = asyncio.run_coroutine_threadsafe(
-                    plugin.handle_meshtastic_message(
-                        packet,
-                        formatted_message=None,
-                        longname=None,
-                        meshnet_name=None,
-                    ),
-                    loop=loop,
-                )
-                found_matching_plugin = result.result()
-                if found_matching_plugin:
-                    logger.debug(
-                        f"Processed {portnum} with plugin {plugin.plugin_name}"
-                    )
+                 try:
+                      # Pass packet, no formatted message for non-text
+                      future = asyncio.run_coroutine_threadsafe(
+                          plugin.handle_meshtastic_message(
+                              packet,
+                              formatted_message=None,
+                              longname=get_longname(sender) or f"!{sender[1:]}", # Provide name context if possible
+                              meshnet_name=meshnet_name,
+                          ),
+                          loop=loop,
+                      )
+                      handled = future.result(timeout=5.0)
+                      if handled:
+                           found_matching_plugin = True
+                           logger.debug(
+                               f"Processed non-text packet {packet.get('id')} ({portnum_name}) with plugin {plugin.plugin_name}"
+                           )
+                 except asyncio.TimeoutError:
+                      logger.warning(f"Plugin {plugin.plugin_name} timed out handling non-text packet {packet.get('id')}")
+                 except Exception as e:
+                      logger.error(f"Error executing handle_meshtastic_message for plugin {plugin.plugin_name} on non-text packet: {e}")
 
 
 async def check_connection():
