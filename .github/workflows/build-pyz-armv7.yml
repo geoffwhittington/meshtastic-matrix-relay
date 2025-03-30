@@ -15,6 +15,7 @@ jobs:
 
     steps:
       - name: Checkout code
+        
         uses: actions/checkout@v4
 
       - name: Set up QEMU for multi-arch builds
@@ -28,32 +29,31 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: arm32v7/python:3.11
-          options: --platform linux/arm/v7
+          # Explicitly mount the workspace and set the working directory inside the container
+          options: --platform linux/arm/v7 -v ${{ github.workspace }}:/github/workspace -w /github/workspace
           run: |
             set -e # Exit immediately if a command exits with a non-zero status.
 
-            echo "--- Current directory contents ---"
-            ls -la # Add this to see the structure at the start
+            # Now we should be running inside /github/workspace within the container
+            # and the checked-out code should be present.
 
             echo "--- Installing build dependencies ---"
             apt-get update && apt-get install -y --no-install-recommends gcc libffi-dev libssl-dev
 
             echo "--- Installing Python dependencies ---"
-            # Specify the correct path to requirements.txt
+            # Path is relative to the working dir (/github/workspace)
             pip install --no-cache-dir -r meshtastic_matrix_relay/requirements.txt
 
             echo "--- Installing shiv ---"
             pip install --no-cache-dir shiv
 
             echo "--- Building PYZ ---"
-            # Define the output filename using the extracted version
             PYZ_FILENAME="mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz"
-            # Tell shiv to build the package *from* the subdirectory
-            # Use the console script name defined in pyproject.toml ('main_cli') as the entry point
+            # Build from the subdirectory, output to the current dir (/github/workspace)
             shiv ./meshtastic_matrix_relay -o "${PYZ_FILENAME}" -c main_cli --compressed
 
-            echo "--- Listing files ---"
-            ls -l *.pyz # Check if the PYZ file was created in the workspace root
+            echo "--- Listing created PYZ file ---"
+            ls -l "${PYZ_FILENAME}" # Verify the PYZ file exists
 
       - name: Upload PYZ to Release
         uses: svenstaro/upload-release-action@v2
