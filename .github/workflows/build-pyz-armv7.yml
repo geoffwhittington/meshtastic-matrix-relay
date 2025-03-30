@@ -28,32 +28,41 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: arm32v7/python:3.11
+          # Options:
+          # --platform: Ensures Docker pulls the ARM manifest
+          # -v: Mounts the checked-out code from the runner into the container
+          # -w: Sets the working directory inside the container to where the code is mounted
           options: --platform linux/arm/v7 -v ${{ github.workspace }}:/github/workspace -w /github/workspace
           run: |
-            set -e
-            echo "--- Installing build dependencies ---"
+            set -e # Exit script immediately if any command fails
+
+            echo "--- Installing build dependencies (apt) ---"
             apt-get update && apt-get install -y --no-install-recommends gcc libffi-dev libssl-dev
 
-            echo "--- Installing Python dependencies ---"
-            # Use the correct path to your requirements.txt in the repo root
+            echo "--- Installing Python dependencies (pip from root requirements.txt) ---"
+            # Installs dependencies listed in the requirements.txt located in the repository root
             pip install --no-cache-dir -r requirements.txt
 
             echo "--- Installing shiv ---"
             pip install --no-cache-dir shiv
 
-            echo "--- Building PYZ ---"
+            echo "--- Building PYZ (shiv targeting subdirectory) ---"
+            # Define the output filename using the extracted version
             PYZ_FILENAME="mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz"
-            # The code is at the repo root, so just run shiv on '.' instead of a subfolder
-            shiv . -o "${PYZ_FILENAME}" -c main_cli --compressed
+            # Tell shiv to build the package located in the ./meshtastic_matrix_relay subdirectory
+            # It will find the pyproject.toml within that directory to understand the package structure.
+            # -c main_cli specifies the console script entry point defined in your pyproject.toml
+            shiv ./meshtastic_matrix_relay -o "${PYZ_FILENAME}" -c main_cli --compressed
 
             echo "--- Listing created PYZ file ---"
+            # Verify the output file was created in the current directory (/github/workspace)
             ls -l "${PYZ_FILENAME}"
 
       - name: Upload PYZ to Release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz
+          file: ${{ github.workspace }}/mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz
           asset_name: mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz
           tag: ${{ github.ref_name }}
           overwrite: true
