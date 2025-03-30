@@ -31,19 +31,29 @@ jobs:
           options: --platform linux/arm/v7
           run: |
             set -e # Exit immediately if a command exits with a non-zero status.
+
+            echo "--- Current directory contents ---"
+            ls -la # Add this to see the structure at the start
+
             echo "--- Installing build dependencies ---"
             apt-get update && apt-get install -y --no-install-recommends gcc libffi-dev libssl-dev
+
             echo "--- Installing Python dependencies ---"
-            pip install --no-cache-dir -r requirements.txt
+            # Specify the correct path to requirements.txt
+            pip install --no-cache-dir -r meshtastic_matrix_relay/requirements.txt
+
             echo "--- Installing shiv ---"
             pip install --no-cache-dir shiv
+
             echo "--- Building PYZ ---"
-            # Ensure the output directory exists if needed (shiv usually handles this)
-            # mkdir -p build/
-            # Use the extracted version correctly
-            shiv . -o mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz -c main --compressed
+            # Define the output filename using the extracted version
+            PYZ_FILENAME="mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz"
+            # Tell shiv to build the package *from* the subdirectory
+            # Use the console script name defined in pyproject.toml ('main_cli') as the entry point
+            shiv ./meshtastic_matrix_relay -o "${PYZ_FILENAME}" -c main_cli --compressed
+
             echo "--- Listing files ---"
-            ls -l *.pyz
+            ls -l *.pyz # Check if the PYZ file was created in the workspace root
 
       - name: Upload PYZ to Release
         uses: svenstaro/upload-release-action@v2
