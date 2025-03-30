@@ -28,7 +28,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: arm32v7/python:3.11
-          # options: --platform linux/arm/v7 # Still good practice, though QEMU is the main enabler
+          options: --platform linux/arm/v7
           run: |
             set -e # Exit immediately if a command exits with a non-zero status.
             echo "--- Installing build dependencies ---"
