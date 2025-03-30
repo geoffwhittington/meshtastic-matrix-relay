@@ -2,11 +2,11 @@ name: Build PYZ for ARMv7
 
 permissions:
   contents: write
-  issues: read
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   build-armv7-pyz:
@@ -14,22 +14,36 @@ jobs:
     name: Build PYZ (armv7)
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Extract version
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
+      - name: Extract version from tag
         id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_OUTPUT
 
-      - name: Build inside ARMv7 Docker (shiv)
+      - name: Build inside ARMv7 Docker (using shiv)
         uses: addnab/docker-run-action@v3
         with:
           image: arm32v7/python:3.11
-          options: --platform linux/arm/v7
+          # options: --platform linux/arm/v7 # Still good practice, though QEMU is the main enabler
           run: |
-            apt-get update && apt-get install -y gcc libffi-dev libssl-dev
-            pip install -r requirements.txt
-            pip install shiv
+            set -e # Exit immediately if a command exits with a non-zero status.
+            echo "--- Installing build dependencies ---"
+            apt-get update && apt-get install -y --no-install-recommends gcc libffi-dev libssl-dev
+            echo "--- Installing Python dependencies ---"
+            pip install --no-cache-dir -r requirements.txt
+            echo "--- Installing shiv ---"
+            pip install --no-cache-dir shiv
+            echo "--- Building PYZ ---"
+            # Ensure the output directory exists if needed (shiv usually handles this)
+            # mkdir -p build/
+            # Use the extracted version correctly
             shiv . -o mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz -c main --compressed
+            echo "--- Listing files ---"
+            ls -l *.pyz
 
       - name: Upload PYZ to Release
         uses: svenstaro/upload-release-action@v2
@@ -37,5 +51,5 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz
           asset_name: mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz
-          tag: ${{ github.ref }}
+          tag: ${{ github.ref_name }}
           overwrite: true
