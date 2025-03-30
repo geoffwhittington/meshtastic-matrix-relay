@@ -383,7 +383,9 @@ async def on_room_message(
             meshtastic_text_db = event.source["content"].get("meshtastic_text", "")
             # Strip out any quoted lines from the text
             meshtastic_text_db = strip_quoted_lines(meshtastic_text_db)
-            meshtastic_text_db = meshtastic_text_db.replace("\n", " ").replace("\r", " ")
+            meshtastic_text_db = meshtastic_text_db.replace("\n", " ").replace(
+                "\r", " "
+            )
 
             abbreviated_text = (
                 meshtastic_text_db[:40] + "..."
@@ -435,7 +437,9 @@ async def on_room_message(
 
             # Remove quoted lines so we don't bring in the original '>' lines from replies
             meshtastic_text_db = strip_quoted_lines(meshtastic_text_db)
-            meshtastic_text_db = meshtastic_text_db.replace("\n", " ").replace("\r", " ")
+            meshtastic_text_db = meshtastic_text_db.replace("\n", " ").replace(
+                "\r", " "
+            )
 
             abbreviated_text = (
                 meshtastic_text_db[:40] + "..."
