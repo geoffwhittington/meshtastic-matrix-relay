@@ -15,7 +15,6 @@ jobs:
 
     steps:
       - name: Checkout code
-        
         uses: actions/checkout@v4
 
       - name: Set up QEMU for multi-arch builds
@@ -29,31 +28,26 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: arm32v7/python:3.11
-          # Explicitly mount the workspace and set the working directory inside the container
           options: --platform linux/arm/v7 -v ${{ github.workspace }}:/github/workspace -w /github/workspace
           run: |
-            set -e # Exit immediately if a command exits with a non-zero status.
-
-            # Now we should be running inside /github/workspace within the container
-            # and the checked-out code should be present.
-
+            set -e
             echo "--- Installing build dependencies ---"
             apt-get update && apt-get install -y --no-install-recommends gcc libffi-dev libssl-dev
 
             echo "--- Installing Python dependencies ---"
-            # Path is relative to the working dir (/github/workspace)
-            pip install --no-cache-dir -r meshtastic_matrix_relay/requirements.txt
+            # Use the correct path to your requirements.txt in the repo root
+            pip install --no-cache-dir -r requirements.txt
 
             echo "--- Installing shiv ---"
             pip install --no-cache-dir shiv
 
             echo "--- Building PYZ ---"
             PYZ_FILENAME="mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz"
-            # Build from the subdirectory, output to the current dir (/github/workspace)
-            shiv ./meshtastic_matrix_relay -o "${PYZ_FILENAME}" -c main_cli --compressed
+            # The code is at the repo root, so just run shiv on '.' instead of a subfolder
+            shiv . -o "${PYZ_FILENAME}" -c main_cli --compressed
 
             echo "--- Listing created PYZ file ---"
-            ls -l "${PYZ_FILENAME}" # Verify the PYZ file exists
+            ls -l "${PYZ_FILENAME}"
 
       - name: Upload PYZ to Release
         uses: svenstaro/upload-release-action@v2
