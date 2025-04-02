@@ -34,16 +34,13 @@ jobs:
             echo "--- Installing build dependencies (apt) ---"
             apt-get update && apt-get install -y --no-install-recommends gcc libffi-dev libssl-dev
 
-            echo "--- Installing Python dependencies (from root requirements.txt) ---"
-            pip install --no-cache-dir -r requirements.txt
 
             echo "--- Installing shiv ---"
             pip install --no-cache-dir shiv
 
             echo "--- Building PYZ ---"
             PYZ_FILENAME="mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz"
-            # Build from the repo root (.) – there is no subfolder named 'meshtastic_matrix_relay'
-            shiv . -o "${PYZ_FILENAME}" -c main_cli --compressed
+            shiv . -o "${PYZ_FILENAME}" -c main:main --compressed
 
             echo "--- Listing created PYZ file ---"
             ls -l "${PYZ_FILENAME}"
