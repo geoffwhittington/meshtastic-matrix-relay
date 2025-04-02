@@ -38,7 +38,7 @@ matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 logging.getLogger("nio").setLevel(logging.ERROR)
 
 
-async def main():
+async def main_loop():
     """
     Main asynchronous function to set up and run the relay.
     Includes logic for wiping the message_map if configured in db.msg_map.wipe_on_restart.
@@ -180,8 +180,13 @@ async def main():
         matrix_logger.info("Shutdown complete.")
 
 
-if __name__ == "__main__":
+def main():
+    """Synchronous entrypoint for shiv -c main:main."""
     try:
-        asyncio.run(main())
+        asyncio.run(main_loop())
     except KeyboardInterrupt:
         pass
+
+
+if __name__ == "__main__":
+    main()

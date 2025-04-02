@@ -34,13 +34,12 @@ jobs:
             echo "--- Installing build dependencies (apt) ---"
             apt-get update && apt-get install -y --no-install-recommends gcc libffi-dev libssl-dev
 
-
             echo "--- Installing shiv ---"
             pip install --no-cache-dir shiv
 
             echo "--- Building PYZ ---"
             PYZ_FILENAME="mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz"
-            shiv . -o "${PYZ_FILENAME}" -c main:main --compressed
+            shiv . -o "${PYZ_FILENAME}" -e main:main --compressed
 
             echo "--- Listing created PYZ file ---"
             ls -l "${PYZ_FILENAME}"
