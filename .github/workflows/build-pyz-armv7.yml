@@ -39,7 +39,8 @@ jobs:
 
             echo "--- Building PYZ ---"
             PYZ_FILENAME="mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz"
-            shiv . -o "${PYZ_FILENAME}" -e main:main --compressed
+            #  Use "-c mmrelay" referencing the console_scripts entry_point in setup.cfg:
+            shiv . -o "${PYZ_FILENAME}" -c mmrelay --compressed
 
             echo "--- Listing created PYZ file ---"
             ls -l "${PYZ_FILENAME}"
