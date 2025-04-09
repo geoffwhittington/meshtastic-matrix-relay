@@ -2,22 +2,42 @@ import json
 import os
 import sqlite3
 
-from config import get_data_dir
+from config import get_data_dir, relay_config
 from log_utils import get_logger
 
 logger = get_logger(name="db_utils")
+
 
 # Get the database path
 def get_db_path():
     """
     Returns the path to the SQLite database file.
-    Checks for an existing database in the current directory first,
-    then falls back to the standard data directory.
+    By default, uses the standard data directory (~/.mmrelay/data).
+    Can be overridden by setting 'path' under 'database' in config.yaml.
     """
-    # Check if database exists in current directory (for backward compatibility)
-    current_dir_db = "meshtastic.sqlite"
-    if os.path.exists(current_dir_db):
-        return current_dir_db
+    # Check if database path is specified in config (preferred format)
+    if "database" in relay_config and "path" in relay_config["database"]:
+        custom_path = relay_config["database"]["path"]
+        if custom_path:
+            # Ensure the directory exists
+            db_dir = os.path.dirname(custom_path)
+            if db_dir:
+                os.makedirs(db_dir, exist_ok=True)
+            logger.info(f"Using database path from config: {custom_path}")
+            return custom_path
+
+    # Check legacy format (db section)
+    if "db" in relay_config and "path" in relay_config["db"]:
+        custom_path = relay_config["db"]["path"]
+        if custom_path:
+            # Ensure the directory exists
+            db_dir = os.path.dirname(custom_path)
+            if db_dir:
+                os.makedirs(db_dir, exist_ok=True)
+            logger.warning(
+                "Using 'db.path' configuration (legacy). 'database.path' is now the preferred format and 'db.path' will be deprecated in a future version."
+            )
+            return custom_path
 
     # Use the standard data directory
     return os.path.join(get_data_dir(), "meshtastic.sqlite")
@@ -26,9 +46,11 @@ def get_db_path():
 # Initialize SQLite database
 def initialize_database():
     db_path = get_db_path()
-    # Log database location to both console and log file
-    print(f"Database location: {db_path}")
-    logger.info(f"Using database at: {db_path}")
+    # Check if database exists
+    if os.path.exists(db_path):
+        logger.info(f"Loading database from: {db_path}")
+    else:
+        logger.info(f"Creating new database at: {db_path}")
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
         # Updated table schema: matrix_event_id is now PRIMARY KEY, meshtastic_id is not necessarily unique
@@ -239,7 +261,8 @@ def get_message_map_by_matrix_event_id(matrix_event_id):
 def wipe_message_map():
     """
     Wipes all entries from the message_map table.
-    Useful when db.msg_map.wipe_on_restart is True, ensuring no stale data remains.
+    Useful when database.msg_map.wipe_on_restart or db.msg_map.wipe_on_restart is True,
+    ensuring no stale data remains.
     """
     with sqlite3.connect(get_db_path()) as conn:
         cursor = conn.cursor()

@@ -2,8 +2,8 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 
-from config import relay_config, get_log_dir
 from cli import parse_arguments
+from config import get_log_dir, relay_config
 
 
 def get_logger(name):
@@ -27,13 +27,18 @@ def get_logger(name):
 
     # Check if file logging is enabled
     if relay_config["logging"].get("log_to_file", False) or args.logfile:
-        # Priority: 1. Command line arg, 2. Config file, 3. Default location
+        # Priority: 1. Command line arg, 2. Config file, 3. Default location (~/.mmrelay/logs)
         if args.logfile:
             log_file = args.logfile
         else:
-            # Default to standard log directory if no filename is provided in config
-            default_log_file = os.path.join(get_log_dir(), "mmrelay.log")
-            log_file = relay_config["logging"].get("filename", default_log_file)
+            config_log_file = relay_config["logging"].get("filename")
+
+            if config_log_file:
+                # Use the log file specified in config
+                log_file = config_log_file
+            else:
+                # Default to standard log directory
+                log_file = os.path.join(get_log_dir(), "mmrelay.log")
 
         # Create log directory if it doesn't exist
         log_dir = os.path.dirname(log_file)
@@ -42,7 +47,19 @@ def get_logger(name):
 
         # Log which file we're using (only for the first logger)
         if name == "M<>M Relay":
-            print(f"Logging to file: {log_file}")
+            # Create a basic logger to log the log file path
+            # This is needed because we can't use the logger we're creating to log its own creation
+            basic_logger = logging.getLogger("LogSetup")
+            basic_logger.setLevel(logging.INFO)
+            basic_handler = logging.StreamHandler()
+            basic_handler.setFormatter(
+                logging.Formatter(
+                    fmt="%(asctime)s %(levelname)s:%(name)s:%(message)s",
+                    datefmt="%Y-%m-%d %H:%M:%S %z",
+                )
+            )
+            basic_logger.addHandler(basic_handler)
+            basic_logger.info(f"Writing logs to: {log_file}")
 
         # Create a file handler for logging
         try:

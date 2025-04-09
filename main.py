@@ -42,7 +42,8 @@ logging.getLogger("nio").setLevel(logging.ERROR)
 async def main():
     """
     Main asynchronous function to set up and run the relay.
-    Includes logic for wiping the message_map if configured in db.msg_map.wipe_on_restart.
+    Includes logic for wiping the message_map if configured in database.msg_map.wipe_on_restart
+    or db.msg_map.wipe_on_restart (legacy format).
     Also updates longnames and shortnames periodically as before.
     """
     # Set the event loop in meshtastic_utils
@@ -51,10 +52,22 @@ async def main():
     # Initialize the SQLite database
     initialize_database()
 
-    # Check db config for wipe_on_restart
-    db_config = relay_config.get("db", {})
-    msg_map_config = db_config.get("msg_map", {})
+    # Check database config for wipe_on_restart (preferred format)
+    database_config = relay_config.get("database", {})
+    msg_map_config = database_config.get("msg_map", {})
     wipe_on_restart = msg_map_config.get("wipe_on_restart", False)
+
+    # If not found in database config, check legacy db config
+    if not wipe_on_restart:
+        db_config = relay_config.get("db", {})
+        legacy_msg_map_config = db_config.get("msg_map", {})
+        legacy_wipe_on_restart = legacy_msg_map_config.get("wipe_on_restart", False)
+
+        if legacy_wipe_on_restart:
+            wipe_on_restart = legacy_wipe_on_restart
+            logger.warning(
+                "Using 'db.msg_map' configuration (legacy). 'database.msg_map' is now the preferred format and 'db.msg_map' will be deprecated in a future version."
+            )
 
     if wipe_on_restart:
         logger.debug("wipe_on_restart enabled. Wiping message_map now (startup).")

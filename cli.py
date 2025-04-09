@@ -18,19 +18,9 @@ def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Meshtastic Matrix Relay - Bridge between Meshtastic and Matrix"
     )
-    parser.add_argument(
-        "--config",
-        help="Path to config file",
-        default=None
-    )
-    parser.add_argument(
-        "--logfile",
-        help="Path to log file",
-        default=None
-    )
-    parser.add_argument(
-        "--version", action="version", version=f"mmrelay {__version__}"
-    )
+    parser.add_argument("--config", help="Path to config file", default=None)
+    parser.add_argument("--logfile", help="Path to log file", default=None)
+    parser.add_argument("--version", action="version", version=f"mmrelay {__version__}")
 
     return parser.parse_args()
 

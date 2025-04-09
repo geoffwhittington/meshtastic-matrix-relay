@@ -79,6 +79,13 @@ def connect_meshtastic(force_connect=False):
 
         # Determine connection type and attempt connection
         connection_type = relay_config["meshtastic"]["connection_type"]
+
+        # Support legacy "network" connection type (now "tcp")
+        if connection_type == "network":
+            connection_type = "tcp"
+            logger.warning(
+                "Using 'network' connection type (legacy). 'tcp' is now the preferred name and 'network' will be deprecated in a future version."
+            )
         retry_limit = 0  # 0 means infinite retries
         attempts = 1
         successful = False
@@ -122,13 +129,16 @@ def connect_meshtastic(force_connect=False):
                         logger.error("No BLE address provided.")
                         return None
 
-                else:
-                    # Network (TCP) connection
+                elif connection_type == "tcp":
+                    # TCP connection
                     target_host = relay_config["meshtastic"]["host"]
                     logger.info(f"Connecting to host {target_host} ...")
                     meshtastic_client = meshtastic.tcp_interface.TCPInterface(
                         hostname=target_host
                     )
+                else:
+                    logger.error(f"Unknown connection type: {connection_type}")
+                    return None
 
                 successful = True
                 nodeInfo = meshtastic_client.getMyNodeInfo()

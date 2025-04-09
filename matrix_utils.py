@@ -190,8 +190,20 @@ async def matrix_relay(
     relay_reactions = relay_config["meshtastic"].get("relay_reactions", False)
 
     # Retrieve db config for message_map pruning
-    db_config = relay_config.get("db", {})
-    msg_map_config = db_config.get("msg_map", {})
+    # Check database config for message map settings (preferred format)
+    database_config = relay_config.get("database", {})
+    msg_map_config = database_config.get("msg_map", {})
+
+    # If not found in database config, check legacy db config
+    if not msg_map_config:
+        db_config = relay_config.get("db", {})
+        legacy_msg_map_config = db_config.get("msg_map", {})
+
+        if legacy_msg_map_config:
+            msg_map_config = legacy_msg_map_config
+            logger.warning(
+                "Using 'db.msg_map' configuration (legacy). 'database.msg_map' is now the preferred format and 'db.msg_map' will be deprecated in a future version."
+            )
     msgs_to_keep = msg_map_config.get(
         "msgs_to_keep", 500
     )  # Default is 500 if not specified
@@ -383,7 +395,9 @@ async def on_room_message(
             meshtastic_text_db = event.source["content"].get("meshtastic_text", "")
             # Strip out any quoted lines from the text
             meshtastic_text_db = strip_quoted_lines(meshtastic_text_db)
-            meshtastic_text_db = meshtastic_text_db.replace("\n", " ").replace("\r", " ")
+            meshtastic_text_db = meshtastic_text_db.replace("\n", " ").replace(
+                "\r", " "
+            )
 
             abbreviated_text = (
                 meshtastic_text_db[:40] + "..."
@@ -435,7 +449,9 @@ async def on_room_message(
 
             # Remove quoted lines so we don't bring in the original '>' lines from replies
             meshtastic_text_db = strip_quoted_lines(meshtastic_text_db)
-            meshtastic_text_db = meshtastic_text_db.replace("\n", " ").replace("\r", " ")
+            meshtastic_text_db = meshtastic_text_db.replace("\n", " ").replace(
+                "\r", " "
+            )
 
             abbreviated_text = (
                 meshtastic_text_db[:40] + "..."
@@ -552,8 +568,20 @@ async def on_room_message(
                             text,
                             meshtastic_meshnet=local_meshnet_name,
                         )
-                        db_config = relay_config.get("db", {})
-                        msg_map_config = db_config.get("msg_map", {})
+                        # Check database config for message map settings (preferred format)
+                        database_config = relay_config.get("database", {})
+                        msg_map_config = database_config.get("msg_map", {})
+
+                        # If not found in database config, check legacy db config
+                        if not msg_map_config:
+                            db_config = relay_config.get("db", {})
+                            legacy_msg_map_config = db_config.get("msg_map", {})
+
+                            if legacy_msg_map_config:
+                                msg_map_config = legacy_msg_map_config
+                                logger.warning(
+                                    "Using 'db.msg_map' configuration (legacy). 'database.msg_map' is now the preferred format and 'db.msg_map' will be deprecated in a future version."
+                                )
                         msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)
                         if msgs_to_keep > 0:
                             prune_message_map(msgs_to_keep)
@@ -577,8 +605,20 @@ async def on_room_message(
                         text,
                         meshtastic_meshnet=local_meshnet_name,
                     )
-                    db_config = relay_config.get("db", {})
-                    msg_map_config = db_config.get("msg_map", {})
+                    # Check database config for message map settings (preferred format)
+                    database_config = relay_config.get("database", {})
+                    msg_map_config = database_config.get("msg_map", {})
+
+                    # If not found in database config, check legacy db config
+                    if not msg_map_config:
+                        db_config = relay_config.get("db", {})
+                        legacy_msg_map_config = db_config.get("msg_map", {})
+
+                        if legacy_msg_map_config:
+                            msg_map_config = legacy_msg_map_config
+                            logger.warning(
+                                "Using 'db.msg_map' configuration (legacy). 'database.msg_map' is now the preferred format and 'db.msg_map' will be deprecated in a future version."
+                            )
                     msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)
                     if msgs_to_keep > 0:
                         prune_message_map(msgs_to_keep)

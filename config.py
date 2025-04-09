@@ -1,15 +1,17 @@
+import logging
 import os
 import sys
 
+import platformdirs
 import yaml
 from yaml.loader import SafeLoader
-import platformdirs
 
 from cli import parse_arguments
 
 # Define custom base directory for Unix systems
 APP_NAME = "mmrelay"
 APP_AUTHOR = None  # No author directory
+
 
 # Custom base directory for Unix systems
 def get_base_dir():
@@ -38,9 +40,9 @@ def get_config_paths():
     """
     Returns a list of possible config file paths in order of priority:
     1. Command line argument (if provided)
-    2. Current directory
-    3. User config directory (~/.mmrelay/config/ on Linux)
-    4. Application directory
+    2. User config directory (~/.mmrelay/config/ on Linux)
+    3. Current directory (for backward compatibility)
+    4. Application directory (for backward compatibility)
     """
     paths = []
 
@@ -50,11 +52,7 @@ def get_config_paths():
     if args.config:
         paths.append(os.path.abspath(args.config))
 
-    # Check current directory
-    current_dir_config = os.path.join(os.getcwd(), "config.yaml")
-    paths.append(current_dir_config)
-
-    # Check user config directory
+    # Check user config directory (preferred location)
     if sys.platform in ["linux", "darwin"]:
         # Use ~/.mmrelay/config/ for Linux and Mac
         user_config_dir = os.path.join(get_base_dir(), "config")
@@ -66,7 +64,11 @@ def get_config_paths():
     user_config_path = os.path.join(user_config_dir, "config.yaml")
     paths.append(user_config_path)
 
-    # Check application directory
+    # Check current directory (for backward compatibility)
+    current_dir_config = os.path.join(os.getcwd(), "config.yaml")
+    paths.append(current_dir_config)
+
+    # Check application directory (for backward compatibility)
     app_dir_config = os.path.join(get_app_path(), "config.yaml")
     paths.append(app_dir_config)
 
@@ -109,17 +111,29 @@ relay_config = {}
 config_paths = get_config_paths()
 config_path = None
 
+# Set up a basic logger for config
+logger = logging.getLogger("Config")
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter(
+        fmt="%(asctime)s %(levelname)s:%(name)s:%(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S %z",
+    )
+)
+logger.addHandler(handler)
+
 # Try each config path in order until we find one that exists
 for path in config_paths:
     if os.path.isfile(path):
         config_path = path
-        print(f"Configuration file: {config_path}")
+        logger.info(f"Loading configuration from: {config_path}")
         with open(config_path, "r") as f:
             relay_config = yaml.load(f, Loader=SafeLoader)
         break
 
 if not config_path:
-    print("Configuration file not found in any of the following locations:")
+    logger.error("Configuration file not found in any of the following locations:")
     for path in config_paths:
-        print(f"  - {path}")
-    print("Using empty configuration. This will likely cause errors.")
+        logger.error(f"  - {path}")
+    logger.error("Using empty configuration. This will likely cause errors.")
