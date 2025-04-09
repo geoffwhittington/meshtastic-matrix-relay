@@ -7,6 +7,20 @@ import platformdirs
 
 from cli import parse_arguments
 
+# Define custom base directory for Unix systems
+APP_NAME = "mmrelay"
+APP_AUTHOR = None  # No author directory
+
+# Custom base directory for Unix systems
+def get_base_dir():
+    """Returns the base directory for all application files."""
+    if sys.platform in ["linux", "darwin"]:
+        # Use ~/.mmrelay for Linux and Mac
+        return os.path.expanduser(os.path.join("~", "." + APP_NAME))
+    else:
+        # Use platformdirs default for Windows
+        return platformdirs.user_data_dir(APP_NAME, APP_AUTHOR)
+
 
 def get_app_path():
     """
@@ -25,7 +39,7 @@ def get_config_paths():
     Returns a list of possible config file paths in order of priority:
     1. Command line argument (if provided)
     2. Current directory
-    3. User config directory (~/.config/mmrelay on Linux)
+    3. User config directory (~/.mmrelay/config/ on Linux)
     4. Application directory
     """
     paths = []
@@ -41,7 +55,14 @@ def get_config_paths():
     paths.append(current_dir_config)
 
     # Check user config directory
-    user_config_dir = platformdirs.user_config_dir("mmrelay")
+    if sys.platform in ["linux", "darwin"]:
+        # Use ~/.mmrelay/config/ for Linux and Mac
+        user_config_dir = os.path.join(get_base_dir(), "config")
+    else:
+        # Use platformdirs default for Windows
+        user_config_dir = platformdirs.user_config_dir(APP_NAME, APP_AUTHOR)
+
+    os.makedirs(user_config_dir, exist_ok=True)
     user_config_path = os.path.join(user_config_dir, "config.yaml")
     paths.append(user_config_path)
 
@@ -57,7 +78,13 @@ def get_data_dir():
     Returns the directory for storing application data files.
     Creates the directory if it doesn't exist.
     """
-    data_dir = platformdirs.user_data_dir("mmrelay")
+    if sys.platform in ["linux", "darwin"]:
+        # Use ~/.mmrelay/data/ for Linux and Mac
+        data_dir = os.path.join(get_base_dir(), "data")
+    else:
+        # Use platformdirs default for Windows
+        data_dir = platformdirs.user_data_dir(APP_NAME, APP_AUTHOR)
+
     os.makedirs(data_dir, exist_ok=True)
     return data_dir
 
@@ -67,7 +94,13 @@ def get_log_dir():
     Returns the directory for storing log files.
     Creates the directory if it doesn't exist.
     """
-    log_dir = os.path.join(platformdirs.user_log_dir("mmrelay"))
+    if sys.platform in ["linux", "darwin"]:
+        # Use ~/.mmrelay/logs/ for Linux and Mac
+        log_dir = os.path.join(get_base_dir(), "logs")
+    else:
+        # Use platformdirs default for Windows
+        log_dir = platformdirs.user_log_dir(APP_NAME, APP_AUTHOR)
+
     os.makedirs(log_dir, exist_ok=True)
     return log_dir
 
@@ -80,7 +113,7 @@ config_path = None
 for path in config_paths:
     if os.path.isfile(path):
         config_path = path
-        print(f"Loading configuration from: {config_path}")
+        print(f"Configuration file: {config_path}")
         with open(config_path, "r") as f:
             relay_config = yaml.load(f, Loader=SafeLoader)
         break

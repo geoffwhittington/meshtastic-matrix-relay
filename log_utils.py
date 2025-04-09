@@ -42,18 +42,23 @@ def get_logger(name):
 
         # Log which file we're using (only for the first logger)
         if name == "M<>M Relay":
-            print(f"Logging to: {log_file}")
+            print(f"Logging to file: {log_file}")
 
-        # Set up size-based log rotation
-        max_bytes = relay_config["logging"].get(
-            "max_log_size", 10 * 1024 * 1024
-        )  # Default 10 MB
-        backup_count = relay_config["logging"].get(
-            "backup_count", 1
-        )  # Default to 1 backup
-        file_handler = RotatingFileHandler(
-            log_file, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8"
-        )
+        # Create a file handler for logging
+        try:
+            # Set up size-based log rotation
+            max_bytes = relay_config["logging"].get(
+                "max_log_size", 10 * 1024 * 1024
+            )  # Default 10 MB
+            backup_count = relay_config["logging"].get(
+                "backup_count", 1
+            )  # Default to 1 backup
+            file_handler = RotatingFileHandler(
+                log_file, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8"
+            )
+        except Exception as e:
+            print(f"Error creating log file at {log_file}: {e}")
+            return logger  # Return logger without file handler
 
         file_handler.setFormatter(
             logging.Formatter(

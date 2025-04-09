@@ -26,6 +26,8 @@ def get_db_path():
 # Initialize SQLite database
 def initialize_database():
     db_path = get_db_path()
+    # Log database location to both console and log file
+    print(f"Database location: {db_path}")
     logger.info(f"Using database at: {db_path}")
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
