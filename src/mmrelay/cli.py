@@ -4,8 +4,8 @@ Command-line interface handling for the Meshtastic Matrix Relay.
 
 import argparse
 
-# Version information
-__version__ = "0.10.2-2b"
+# Import version from package
+from mmrelay import __version__
 
 
 def parse_arguments():
@@ -21,6 +21,11 @@ def parse_arguments():
     parser.add_argument("--config", help="Path to config file", default=None)
     parser.add_argument("--logfile", help="Path to log file", default=None)
     parser.add_argument("--version", action="version", version=f"mmrelay {__version__}")
+    parser.add_argument(
+        "--generate-config",
+        action="store_true",
+        help="Generate a sample config.yaml file",
+    )
 
     return parser.parse_args()
 

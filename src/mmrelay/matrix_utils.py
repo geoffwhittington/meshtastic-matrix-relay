@@ -20,16 +20,16 @@ from nio import (
 )
 from PIL import Image
 
-from config import relay_config
-from db_utils import (
+from mmrelay.config import relay_config
+from mmrelay.db_utils import (
     get_message_map_by_matrix_event_id,
     prune_message_map,
     store_message_map,
 )
-from log_utils import get_logger
+from mmrelay.log_utils import get_logger
 
 # Do not import plugin_loader here to avoid circular imports
-from meshtastic_utils import connect_meshtastic
+from mmrelay.meshtastic_utils import connect_meshtastic
 
 # Extract Matrix configuration
 matrix_homeserver = relay_config["matrix"]["homeserver"]
@@ -409,7 +409,7 @@ async def on_room_message(
 
             # Relay the remote reaction to the local meshnet.
             meshtastic_interface = connect_meshtastic()
-            from meshtastic_utils import logger as meshtastic_logger
+            from mmrelay.meshtastic_utils import logger as meshtastic_logger
 
             meshtastic_channel = room_config["meshtastic_channel"]
 
@@ -464,7 +464,7 @@ async def on_room_message(
                 f'{prefix}reacted {reaction_emoji} to "{abbreviated_text}"'
             )
             meshtastic_interface = connect_meshtastic()
-            from meshtastic_utils import logger as meshtastic_logger
+            from mmrelay.meshtastic_utils import logger as meshtastic_logger
 
             meshtastic_channel = room_config["meshtastic_channel"]
 
@@ -510,7 +510,7 @@ async def on_room_message(
         text = truncate_message(text)
 
     # Plugin functionality
-    from plugin_loader import load_plugins
+    from mmrelay.plugin_loader import load_plugins
 
     plugins = load_plugins()
 
@@ -540,7 +540,7 @@ async def on_room_message(
 
     # Connect to Meshtastic
     meshtastic_interface = connect_meshtastic()
-    from meshtastic_utils import logger as meshtastic_logger
+    from mmrelay.meshtastic_utils import logger as meshtastic_logger
 
     meshtastic_channel = room_config["meshtastic_channel"]
 

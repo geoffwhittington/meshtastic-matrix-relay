@@ -2,8 +2,8 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 
-from cli import parse_arguments
-from config import get_log_dir, relay_config
+from mmrelay.cli import parse_arguments
+from mmrelay.config import get_log_dir, relay_config
 
 
 def get_logger(name):

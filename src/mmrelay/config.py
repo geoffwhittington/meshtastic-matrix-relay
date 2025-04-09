@@ -6,7 +6,7 @@ import platformdirs
 import yaml
 from yaml.loader import SafeLoader
 
-from cli import parse_arguments
+from mmrelay.cli import parse_arguments
 
 # Define custom base directory for Unix systems
 APP_NAME = "mmrelay"
@@ -54,8 +54,8 @@ def get_config_paths():
 
     # Check user config directory (preferred location)
     if sys.platform in ["linux", "darwin"]:
-        # Use ~/.mmrelay/config/ for Linux and Mac
-        user_config_dir = os.path.join(get_base_dir(), "config")
+        # Use ~/.mmrelay/ for Linux and Mac
+        user_config_dir = get_base_dir()
     else:
         # Use platformdirs default for Windows
         user_config_dir = platformdirs.user_config_dir(APP_NAME, APP_AUTHOR)

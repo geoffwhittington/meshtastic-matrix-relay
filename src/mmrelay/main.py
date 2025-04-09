@@ -12,22 +12,22 @@ from typing import List
 from nio import ReactionEvent, RoomMessageEmote, RoomMessageNotice, RoomMessageText
 
 # Import meshtastic_utils as a module to set event_loop
-import meshtastic_utils
-from cli import parse_arguments
-from config import relay_config
-from db_utils import (
+from mmrelay import meshtastic_utils
+from mmrelay.cli import parse_arguments
+from mmrelay.config import relay_config
+from mmrelay.db_utils import (
     initialize_database,
     update_longnames,
     update_shortnames,
     wipe_message_map,
 )
-from log_utils import get_logger
-from matrix_utils import connect_matrix, join_matrix_room
-from matrix_utils import logger as matrix_logger
-from matrix_utils import on_room_message
-from meshtastic_utils import connect_meshtastic
-from meshtastic_utils import logger as meshtastic_logger
-from plugin_loader import load_plugins
+from mmrelay.log_utils import get_logger
+from mmrelay.matrix_utils import connect_matrix, join_matrix_room
+from mmrelay.matrix_utils import logger as matrix_logger
+from mmrelay.matrix_utils import on_room_message
+from mmrelay.meshtastic_utils import connect_meshtastic
+from mmrelay.meshtastic_utils import logger as meshtastic_logger
+from mmrelay.plugin_loader import load_plugins
 
 # Initialize logger
 logger = get_logger(name="M<>M Relay")
@@ -194,11 +194,72 @@ async def main():
         matrix_logger.info("Shutdown complete.")
 
 
-if __name__ == "__main__":
+def generate_sample_config():
+    """Generate a sample config.yaml file."""
+    import os
+    import shutil
+
+    import pkg_resources
+
+    from mmrelay.config import get_config_paths
+
+    # Get the first config path (highest priority)
+    config_paths = get_config_paths()
+
+    # Check if any config file exists
+    existing_config = None
+    for path in config_paths:
+        if os.path.isfile(path):
+            existing_config = path
+            break
+
+    if existing_config:
+        print(f"A config file already exists at: {existing_config}")
+        print(
+            "Use --config to specify a different location if you want to generate a new one."
+        )
+        return False
+
+    # No config file exists, generate one in the first location
+    target_path = config_paths[0]
+
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+
+    # Copy the sample config to the target location
+    sample_config_path = pkg_resources.resource_filename(
+        "mmrelay", "../sample_config.yaml"
+    )
+    if not os.path.exists(sample_config_path):
+        # Try alternative location
+        sample_config_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "sample_config.yaml"
+        )
+
+    if os.path.exists(sample_config_path):
+        shutil.copy(sample_config_path, target_path)
+        print(f"Generated sample config file at: {target_path}")
+        return True
+    else:
+        print("Error: Could not find sample_config.yaml")
+        return False
+
+
+def run():
+    """Entry point for the application."""
     # Parse command-line arguments
-    args = parse_arguments()
+    args = parse_arguments()  # This initializes the arguments for other modules to use
+
+    # Handle --generate-config
+    if args.generate_config:
+        generate_sample_config()
+        return
 
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         pass
+
+
+if __name__ == "__main__":
+    run()
