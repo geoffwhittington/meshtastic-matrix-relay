@@ -133,7 +133,11 @@ for path in config_paths:
         break
 
 if not config_path:
-    logger.error("Configuration file not found in any of the following locations:")
-    for path in config_paths:
-        logger.error(f"  - {path}")
-    logger.error("Using empty configuration. This will likely cause errors.")
+    # Check if we're running with --generate-config
+    args = parse_arguments()
+    if not args.generate_config:
+        logger.error("Configuration file not found in any of the following locations:")
+        for path in config_paths:
+            logger.error(f"  - {path}")
+        logger.error("Using empty configuration. This will likely cause errors.")
+        logger.error("Run 'mmrelay --generate-config' to generate a sample configuration file.")

@@ -8,7 +8,14 @@ from mmrelay.config import get_log_dir, relay_config
 
 def get_logger(name):
     logger = logging.getLogger(name=name)
-    log_level = getattr(logging, relay_config["logging"]["level"].upper())
+
+    # Default to INFO level if config is not available
+    log_level = logging.INFO
+
+    # Try to get log level from config
+    if relay_config and "logging" in relay_config and "level" in relay_config["logging"]:
+        log_level = getattr(logging, relay_config["logging"]["level"].upper())
+
     logger.setLevel(log_level)
     logger.propagate = False
 

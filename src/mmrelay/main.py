@@ -252,8 +252,20 @@ def run():
 
     # Handle --generate-config
     if args.generate_config:
-        generate_sample_config()
-        return
+        if generate_sample_config():
+            # Exit with success if config was generated
+            return
+        else:
+            # Exit with error if config generation failed
+            import sys
+            sys.exit(1)
+
+    # Check if config exists
+    from mmrelay.config import relay_config
+    if not relay_config:
+        # Exit with error if no config exists
+        import sys
+        sys.exit(1)
 
     try:
         asyncio.run(main())
