@@ -2,7 +2,8 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 
-from config import relay_config
+from config import relay_config, get_log_dir
+from cli import parse_arguments
 
 
 def get_logger(name):
@@ -21,16 +22,27 @@ def get_logger(name):
     )
     logger.addHandler(stream_handler)
 
-    # Check if file logging is enabled
-    if relay_config["logging"].get("log_to_file", False):
-        # Default to `logs/mmrelay.log` if no filename is provided
-        log_file = relay_config["logging"].get("filename", "logs/mmrelay.log")
+    # Check command line arguments for log file path
+    args = parse_arguments()
 
-        # Only create directories if the path is not the default
-        if log_file != "logs/mmrelay.log":
-            log_dir = os.path.dirname(log_file)
-            if log_dir:  # Ensure non-empty directory paths exist
-                os.makedirs(log_dir, exist_ok=True)
+    # Check if file logging is enabled
+    if relay_config["logging"].get("log_to_file", False) or args.logfile:
+        # Priority: 1. Command line arg, 2. Config file, 3. Default location
+        if args.logfile:
+            log_file = args.logfile
+        else:
+            # Default to standard log directory if no filename is provided in config
+            default_log_file = os.path.join(get_log_dir(), "mmrelay.log")
+            log_file = relay_config["logging"].get("filename", default_log_file)
+
+        # Create log directory if it doesn't exist
+        log_dir = os.path.dirname(log_file)
+        if log_dir:  # Ensure non-empty directory paths exist
+            os.makedirs(log_dir, exist_ok=True)
+
+        # Log which file we're using (only for the first logger)
+        if name == "M<>M Relay":
+            print(f"Logging to: {log_file}")
 
         # Set up size-based log rotation
         max_bytes = relay_config["logging"].get(

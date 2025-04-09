@@ -13,6 +13,7 @@ from nio import ReactionEvent, RoomMessageEmote, RoomMessageNotice, RoomMessageT
 
 # Import meshtastic_utils as a module to set event_loop
 import meshtastic_utils
+from cli import parse_arguments
 from config import relay_config
 from db_utils import (
     initialize_database,
@@ -181,6 +182,9 @@ async def main():
 
 
 if __name__ == "__main__":
+    # Parse command-line arguments
+    args = parse_arguments()
+
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
