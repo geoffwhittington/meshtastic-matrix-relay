@@ -14,8 +14,8 @@ args, _ = parser.parse_known_args()
 
 # If --check-config is specified, run the check_config function and exit
 if args.check_config:
-    from mmrelay.check_config_cmd import main as check_config_main
-    sys.exit(check_config_main())
+    from mmrelay.cli import check_config
+    sys.exit(0 if check_config() else 1)
 
 # Otherwise, continue with normal imports
 import asyncio
