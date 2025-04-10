@@ -213,8 +213,12 @@ def run_main(args):
     # Set the global config variables in each module
     from mmrelay import meshtastic_utils, matrix_utils, plugin_loader, log_utils, db_utils
     from mmrelay.plugins import base_plugin
-    meshtastic_utils.config = config
-    matrix_utils.config = config
+
+    # Use the set_config function in matrix_utils and meshtastic_utils to properly set up the configuration
+    matrix_utils.set_config(config)
+    meshtastic_utils.set_config(config)
+
+    # Set config for other modules
     plugin_loader.config = config
     log_utils.config = config
     db_utils.config = config

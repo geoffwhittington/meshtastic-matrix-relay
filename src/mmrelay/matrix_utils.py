@@ -33,6 +33,30 @@ from mmrelay.meshtastic_utils import connect_meshtastic
 # Global config variable that will be set from main.py
 config = None
 
+# Function to explicitly set the config
+def set_config(passed_config):
+    """Explicitly set the global config variable.
+
+    Args:
+        passed_config: The configuration dictionary to use
+
+    Returns:
+        The updated config
+    """
+    global config, matrix_homeserver, matrix_rooms, matrix_access_token, bot_user_id
+
+    config = passed_config
+
+    # If config is valid, extract Matrix configuration
+    if config and "matrix" in config and "matrix_rooms" in config:
+        matrix_homeserver = config["matrix"]["homeserver"]
+        matrix_rooms = config["matrix_rooms"]
+        matrix_access_token = config["matrix"]["access_token"]
+        bot_user_id = config["matrix"]["bot_user_id"]
+        logger.info(f"Matrix configuration set: homeserver={matrix_homeserver}, rooms={len(matrix_rooms)}, bot_user_id={bot_user_id}")
+
+    return config
+
 # These will be set in connect_matrix()
 matrix_homeserver = None
 matrix_rooms = None
@@ -92,17 +116,25 @@ async def connect_matrix(passed_config=None):
     # Update the global config if a config is passed
     if passed_config is not None:
         config = passed_config
+        # Log that we're updating the config
+        logger.info("Updating matrix_utils config from passed_config")
 
     # Check if config is available
     if config is None:
         logger.error("No configuration available. Cannot connect to Matrix.")
         return None
 
+    # Log the config keys to verify it's loaded correctly
+    logger.info(f"Matrix config keys: {list(config.keys())}")
+
     # Extract Matrix configuration
     matrix_homeserver = config["matrix"]["homeserver"]
     matrix_rooms = config["matrix_rooms"]
     matrix_access_token = config["matrix"]["access_token"]
     bot_user_id = config["matrix"]["bot_user_id"]
+
+    # Log that we've extracted the Matrix configuration
+    logger.info(f"Extracted Matrix configuration: homeserver={matrix_homeserver}, rooms={len(matrix_rooms)}, bot_user_id={bot_user_id}")
 
     # Check if client already exists
     if matrix_client:
@@ -112,11 +144,11 @@ async def connect_matrix(passed_config=None):
     ssl_context = ssl.create_default_context(cafile=certifi.where())
 
     # Initialize the Matrix client with custom SSL context
-    config = AsyncClientConfig(encryption_enabled=False)
+    client_config = AsyncClientConfig(encryption_enabled=False)
     matrix_client = AsyncClient(
         homeserver=matrix_homeserver,
         user=bot_user_id,
-        config=config,
+        config=client_config,
         ssl=ssl_context,
     )
 
@@ -205,6 +237,10 @@ async def matrix_relay(
     to prevent database bloat and maintain privacy.
     """
     global config
+
+    # Log the current state of the config
+    logger.debug(f"matrix_relay: config is {'available' if config else 'None'}")
+
     matrix_client = await connect_matrix()
 
     # Check if config is available
@@ -254,31 +290,58 @@ async def matrix_relay(
         if emoji:
             content["meshtastic_emoji"] = 1
 
-        response = await asyncio.wait_for(
-            matrix_client.room_send(
-                room_id=room_id,
-                message_type="m.room.message",
-                content=content,
-            ),
-            timeout=5.0,
-        )
-        logger.info(f"Sent inbound radio message to matrix room: {room_id}")
+        # Log that we're about to send a message to Matrix
+        logger.info(f"Attempting to send message to Matrix room: {room_id}")
+        logger.debug(f"Message content: {content}")
+
+        try:
+            # Ensure matrix_client is not None
+            if not matrix_client:
+                logger.error("Matrix client is None. Cannot send message.")
+                return
+
+            # Send the message with a timeout
+            response = await asyncio.wait_for(
+                matrix_client.room_send(
+                    room_id=room_id,
+                    message_type="m.room.message",
+                    content=content,
+                ),
+                timeout=10.0,  # Increased timeout
+            )
+
+            if hasattr(response, 'event_id'):
+                logger.info(f"Successfully sent message to Matrix room: {room_id} with event_id: {response.event_id}")
+            else:
+                logger.info(f"Message sent to Matrix room: {room_id}, but no event_id in response")
+                logger.debug(f"Matrix response: {response}")
+
+        except asyncio.TimeoutError:
+            logger.error(f"Timeout sending message to Matrix room {room_id}")
+            return
+        except Exception as e:
+            logger.error(f"Error sending message to Matrix room {room_id}: {e}")
+            return
 
         # Only store message map if relay_reactions is True and meshtastic_id is present and not an emote.
         # If relay_reactions is False, we skip storing entirely.
-        if relay_reactions and meshtastic_id is not None and not emote:
-            # Store the message map
-            store_message_map(
-                meshtastic_id,
-                response.event_id,
-                room_id,
-                meshtastic_text if meshtastic_text else message,
-                meshtastic_meshnet=local_meshnet_name,
-            )
+        if relay_reactions and meshtastic_id is not None and not emote and hasattr(response, 'event_id'):
+            try:
+                # Store the message map
+                store_message_map(
+                    meshtastic_id,
+                    response.event_id,
+                    room_id,
+                    meshtastic_text if meshtastic_text else message,
+                    meshtastic_meshnet=local_meshnet_name,
+                )
+                logger.info(f"Stored message map for meshtastic_id: {meshtastic_id}, event_id: {response.event_id}")
 
-            # If msgs_to_keep > 0, prune old messages after inserting a new one
-            if msgs_to_keep > 0:
-                prune_message_map(msgs_to_keep)
+                # If msgs_to_keep > 0, prune old messages after inserting a new one
+                if msgs_to_keep > 0:
+                    prune_message_map(msgs_to_keep)
+            except Exception as e:
+                logger.error(f"Error storing message map: {e}")
 
     except asyncio.TimeoutError:
         logger.error("Timed out while waiting for Matrix response")
@@ -348,6 +411,11 @@ async def on_room_message(
 
     relates_to = event.source["content"].get("m.relates_to")
     global config
+
+    # Log the current state of the config
+    logger.debug(f"on_room_message: config is {'available' if config else 'None'}")
+    if config:
+        logger.debug(f"on_room_message: config keys: {list(config.keys())}")
 
     is_reaction = False
     reaction_emoji = None
@@ -572,16 +640,24 @@ async def on_room_message(
         return
 
     # Connect to Meshtastic
+    logger.info(f"Connecting to Meshtastic to relay message from Matrix: {text}")
     meshtastic_interface = connect_meshtastic()
     from mmrelay.meshtastic_utils import logger as meshtastic_logger
 
+    if not meshtastic_interface:
+        logger.error("Failed to connect to Meshtastic. Cannot relay message.")
+        return
+
     meshtastic_channel = room_config["meshtastic_channel"]
+    logger.info(f"Using Meshtastic channel: {meshtastic_channel}")
 
     # If message is from Matrix and broadcast_enabled is True, relay to Meshtastic
     # Note: If relay_reactions is False, we won't store message_map, but we can still relay.
     # The lack of message_map storage just means no reaction bridging will occur.
     if not found_matching_plugin and event.sender != bot_user_id:
+        logger.info(f"Message is eligible for relay to Meshtastic: {full_message}")
         if config["meshtastic"]["broadcast_enabled"]:
+            logger.info("Broadcast is enabled, proceeding with relay")
             portnum = event.source["content"].get("meshtastic_portnum")
             if portnum == "DETECTION_SENSOR_APP":
                 # If detection_sensor is enabled, forward this data as detection sensor data
@@ -626,9 +702,17 @@ async def on_room_message(
                 meshtastic_logger.info(
                     f"Relaying message from {full_display_name} to radio broadcast"
                 )
-                sent_packet = meshtastic_interface.sendText(
-                    text=full_message, channelIndex=meshtastic_channel
-                )
+                meshtastic_logger.info(f"Message text: {full_message}")
+                meshtastic_logger.info(f"Channel index: {meshtastic_channel}")
+
+                try:
+                    sent_packet = meshtastic_interface.sendText(
+                        text=full_message, channelIndex=meshtastic_channel
+                    )
+                    meshtastic_logger.info(f"Successfully sent message to Meshtastic: {sent_packet}")
+                except Exception as e:
+                    meshtastic_logger.error(f"Error sending message to Meshtastic: {e}")
+                    return
                 # Store message_map only if relay_reactions is True
                 if relay_reactions and sent_packet and hasattr(sent_packet, "id"):
                     store_message_map(

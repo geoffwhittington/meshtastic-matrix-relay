@@ -30,6 +30,27 @@ config = None
 # Initialize matrix rooms configuration
 matrix_rooms: List[dict] = []
 
+# Function to explicitly set the config
+def set_config(passed_config):
+    """Explicitly set the global config variable.
+
+    Args:
+        passed_config: The configuration dictionary to use
+
+    Returns:
+        The updated config
+    """
+    global config, matrix_rooms
+
+    config = passed_config
+
+    # If config is valid, extract matrix_rooms
+    if config and "matrix_rooms" in config:
+        matrix_rooms = config["matrix_rooms"]
+        logger.info(f"Meshtastic matrix_rooms set: {len(matrix_rooms)} rooms")
+
+    return config
+
 # Initialize logger for Meshtastic
 logger = get_logger(name="Meshtastic")
 
@@ -66,7 +87,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
         passed_config: The configuration dictionary to use (will update global config)
         force_connect: Whether to force a new connection even if one exists
     """
-    global meshtastic_client, shutting_down, config
+    global meshtastic_client, shutting_down, config, matrix_rooms
     if shutting_down:
         logger.debug("Shutdown in progress. Not attempting to connect.")
         return None
@@ -74,6 +95,13 @@ def connect_meshtastic(passed_config=None, force_connect=False):
     # Update the global config if a config is passed
     if passed_config is not None:
         config = passed_config
+        # Log that we're updating the config
+        logger.info("Updating meshtastic_utils config from passed_config")
+
+        # If config is valid, extract matrix_rooms
+        if config and "matrix_rooms" in config:
+            matrix_rooms = config["matrix_rooms"]
+            logger.info(f"Meshtastic matrix_rooms set in connect_meshtastic: {len(matrix_rooms)} rooms")
 
     with meshtastic_lock:
         if meshtastic_client and not force_connect:
@@ -267,7 +295,17 @@ def on_meshtastic_message(packet, interface):
     we do not store message maps and thus won't be able to relay reactions back to Matrix.
     If relay_reactions is True, message maps are stored inside matrix_relay().
     """
-    global config
+    global config, matrix_rooms
+
+    # Log that we received a message (without the full packet details)
+    if packet.get("decoded", {}).get("text"):
+        logger.info(f"Received Meshtastic message: {packet.get('decoded', {}).get('text')}")
+    else:
+        logger.debug("Received non-text Meshtastic message")
+
+    # Log the current state of the config and matrix_rooms
+    logger.debug(f"on_meshtastic_message: config is {'available' if config else 'None'}")
+    logger.debug(f"on_meshtastic_message: matrix_rooms has {len(matrix_rooms)} rooms")
 
     # Check if config is available
     if config is None:
@@ -467,23 +505,37 @@ def on_meshtastic_message(packet, interface):
             f"Processing inbound radio message from {sender} on channel {channel}"
         )
         logger.info(f"Relaying Meshtastic message from {longname} to Matrix")
+
+        # Log the matrix_rooms to help diagnose issues
+        logger.debug(f"matrix_rooms when relaying: {matrix_rooms}")
+
+        # Check if matrix_rooms is empty
+        if not matrix_rooms:
+            logger.error("matrix_rooms is empty. Cannot relay message to Matrix.")
+            return
+
         for room in matrix_rooms:
+            logger.debug(f"Checking room {room} for channel {channel}")
             if room["meshtastic_channel"] == channel:
+                logger.info(f"Found matching room {room['id']} for channel {channel}")
                 # Storing the message_map (if enabled) occurs inside matrix_relay() now,
                 # controlled by relay_reactions.
-                asyncio.run_coroutine_threadsafe(
-                    matrix_relay(
-                        room["id"],
-                        formatted_message,
-                        longname,
-                        shortname,
-                        meshnet_name,
-                        decoded.get("portnum"),
-                        meshtastic_id=packet.get("id"),
-                        meshtastic_text=text,
-                    ),
-                    loop=loop,
-                )
+                try:
+                    asyncio.run_coroutine_threadsafe(
+                        matrix_relay(
+                            room["id"],
+                            formatted_message,
+                            longname,
+                            shortname,
+                            meshnet_name,
+                            decoded.get("portnum"),
+                            meshtastic_id=packet.get("id"),
+                            meshtastic_text=text,
+                        ),
+                        loop=loop,
+                    )
+                except Exception as e:
+                    logger.error(f"Error relaying message to Matrix: {e}")
     else:
         # Non-text messages via plugins
         portnum = decoded.get("portnum")
