@@ -20,6 +20,7 @@ We sincerely thank everyone who contributed code, provided feedback, or helped t
 ### Important Changes
 
 Some configuration options have been renamed for clarity:
+
 - `db:` → `database:` (old option still works but will show a deprecation notice)
 - `network` connection mode → `tcp` (both options supported for compatibility)
 
@@ -37,17 +38,20 @@ git checkout 0.10.1
 ## Resources
 
 ### For New Users
+
 - **Quick Start**: `pip install mmrelay` or `pipx install mmrelay`
 - **Installation Guide**: [INSTRUCTIONS.md](https://github.com/geoffwhittington/meshtastic-matrix-relay/blob/main/INSTRUCTIONS.md)
 - **Configuration Template**: [sample_config.yaml](https://github.com/geoffwhittington/meshtastic-matrix-relay/blob/main/sample_config.yaml)
 
 ### For Existing Users
+
 - **Upgrade Guide**: [UPGRADE_TO_V1.md](https://github.com/geoffwhittington/meshtastic-matrix-relay/blob/main/UPGRADE_TO_V1.md) - Step-by-step migration instructions
 - **Configuration Changes**: See the [sample_config.yaml](https://github.com/geoffwhittington/meshtastic-matrix-relay/blob/main/sample_config.yaml) for examples of the new format
 
 ## Join the Conversation
 
 Matrix chat rooms:
+
 - Project discussion: [#mmrelay:meshnet.club](https://matrix.to/#/#mmrelay:meshnet.club)
 - Relay support: [#relay-room:meshnet.club](https://matrix.to/#/#relay-room:meshnet.club)
 

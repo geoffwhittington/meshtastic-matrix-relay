@@ -36,7 +36,10 @@ lint:
     - linters: [ALL]
       paths:
         - sample_config.yaml
-        - plugins/map_plugin.py
+        - src/mmrelay/plugins/map_plugin.py
+    - linters: [bandit]
+      paths:
+        - src/mmrelay/setup_utils.py
 actions:
   disabled:
     - trunk-announce

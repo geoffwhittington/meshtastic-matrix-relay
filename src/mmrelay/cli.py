@@ -26,6 +26,11 @@ def parse_arguments():
         action="store_true",
         help="Generate a sample config.yaml file",
     )
+    parser.add_argument(
+        "--install-service",
+        action="store_true",
+        help="Install or update the systemd user service",
+    )
 
     return parser.parse_args()
 

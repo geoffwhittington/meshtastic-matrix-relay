@@ -140,4 +140,6 @@ if not config_path:
         for path in config_paths:
             logger.error(f"  - {path}")
         logger.error("Using empty configuration. This will likely cause errors.")
-        logger.error("Run 'mmrelay --generate-config' to generate a sample configuration file.")
+        logger.error(
+            "Run 'mmrelay --generate-config' to generate a sample configuration file."
+        )

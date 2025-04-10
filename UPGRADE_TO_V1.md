@@ -73,34 +73,49 @@ cp plugins/custom/* ~/.mmrelay/plugins/custom/ 2>/dev/null || echo "No custom pl
 
 > **Note**: MMRelay will check both the old and new plugin locations, but plugins in the new location will take precedence if duplicates exist.
 
-### 4. Update Your Service (If Using Systemd)
+### 4. Set Up the Service (Optional)
+
+MMRelay includes a built-in command to install a systemd user service:
 
 ```bash
-# Create the logs directory
-mkdir -p ~/.mmrelay/logs
-
-# Create a new service file with the correct paths
-mkdir -p ~/.config/systemd/user
-cat > ~/.config/systemd/user/mmrelay.service << EOL
-[Unit]
- Description=Meshtastic <==> Matrix Relay
- After=default.target
-
-[Service]
- Type=idle
- ExecStart=$(which mmrelay) --config %h/.mmrelay/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
- Restart=on-failure
-
-[Install]
- WantedBy=default.target
-EOL
-
-# Reload systemd and restart the service
-systemctl --user daemon-reload
-systemctl --user restart mmrelay.service
+# Install or update the service
+mmrelay --install-service
 ```
 
-> **Note**: This creates a user-level systemd service. If you previously used a system-level service, you'll need to disable it first with `sudo systemctl disable mmrelay.service`.
+This command will:
+
+- Create the necessary directories
+- Install or update the service file
+- Ask if you want to enable and start the service
+- Show you commands for controlling the service
+
+#### Service Control Commands
+
+Once installed, you can control the service with these commands:
+
+```bash
+# Start the service
+systemctl --user start mmrelay.service
+
+# Stop the service
+systemctl --user stop mmrelay.service
+
+# Check service status
+systemctl --user status mmrelay.service
+
+# Enable service to start at boot
+systemctl --user enable mmrelay.service
+```
+
+#### Run Without a Service
+
+You can also run MMRelay manually without a service:
+
+```bash
+mmrelay --config ~/.mmrelay/config.yaml
+```
+
+> **Note**: If you previously used a system-level service, you'll need to disable it first with `sudo systemctl disable mmrelay.service`.
 
 ## Configuration Changes
 
@@ -108,13 +123,13 @@ systemctl --user restart mmrelay.service
 
 MMRelay now uses standardized directories for all files:
 
-| File Type | New Location | Notes |
-|-----------|--------------|-------|
-| Configuration | `~/.mmrelay/config.yaml` | Primary config file |
-| Database | `~/.mmrelay/data/meshtastic.sqlite` | Automatically migrated |
-| Logs | `~/.mmrelay/logs/mmrelay.log` | Configurable with `--logfile` |
-| Custom Plugins | `~/.mmrelay/plugins/custom/` | Your own plugins |
-| Community Plugins | `~/.mmrelay/plugins/community/` | Third-party plugins |
+| File Type         | New Location                        | Notes                         |
+| ----------------- | ----------------------------------- | ----------------------------- |
+| Configuration     | `~/.mmrelay/config.yaml`            | Primary config file           |
+| Database          | `~/.mmrelay/data/meshtastic.sqlite` | Automatically migrated        |
+| Logs              | `~/.mmrelay/logs/mmrelay.log`       | Configurable with `--logfile` |
+| Custom Plugins    | `~/.mmrelay/plugins/custom/`        | Your own plugins              |
+| Community Plugins | `~/.mmrelay/plugins/community/`     | Third-party plugins           |
 
 ### Configuration Search Path
 
@@ -145,26 +160,28 @@ Your existing configuration will continue to work without changes. The applicati
 
 MMRelay v1.0 includes an improved command-line interface:
 
-```
+```bash
 mmrelay [OPTIONS]
 
 Options:
-  --config PATH    Path to the configuration file
-  --logfile PATH   Path to the log file
-  --version        Show the version number and exit
-  --help           Show help message and exit
+  --config PATH       Path to the configuration file
+  --logfile PATH      Path to the log file
+  --generate-config   Generate a sample config.yaml file
+  --install-service   Install or update the systemd user service
+  --version           Show the version number and exit
+  --help              Show help message and exit
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-| Issue | Solution |
-|-------|----------|
-| Configuration not found | Use `--config` to specify the path |
-| Missing dependencies | Run `pip install -r requirements.txt` |
-| Service won't start | Check paths in the service file |
-| Plugin errors | Ensure plugins are in the correct location |
+| Issue                   | Solution                                                      |
+| ----------------------- | ------------------------------------------------------------- |
+| Configuration not found | Use `--config` to specify the path                            |
+| Missing dependencies    | Run `pip install -r requirements.txt`                         |
+| Service won't start     | Run `systemctl --user status mmrelay.service` to check status |
+| Plugin errors           | Ensure plugins are in the correct location                    |
 
 ### Diagnostic Steps
 

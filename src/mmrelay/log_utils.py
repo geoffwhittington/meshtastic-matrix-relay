@@ -13,7 +13,11 @@ def get_logger(name):
     log_level = logging.INFO
 
     # Try to get log level from config
-    if relay_config and "logging" in relay_config and "level" in relay_config["logging"]:
+    if (
+        relay_config
+        and "logging" in relay_config
+        and "level" in relay_config["logging"]
+    ):
         log_level = getattr(logging, relay_config["logging"]["level"].upper())
 
     logger.setLevel(log_level)

@@ -80,7 +80,7 @@ Customize your setup with command-line options:
 mmrelay --config /path/to/config.yaml --logfile /path/to/logfile.log
 ```
 
-```
+```bash
 mmrelay [OPTIONS]
 
 Options:
@@ -94,7 +94,7 @@ Options:
 
 When running successfully, you'll see output similar to this:
 
-```
+```text
 INFO: Loading configuration from: /home/user/.mmrelay/config.yaml
 INFO: Starting Meshtastic <==> Matrix Relay...
 INFO: Connecting to radio at meshtastic.local ...
@@ -112,11 +112,13 @@ Messages will be relayed in both directions automatically:
 For automatic startup and management on Linux systems:
 
 1. Create the systemd user directory:
+
    ```bash
    mkdir -p ~/.config/systemd/user
    ```
 
 2. Create a service file with this one-liner (automatically uses your mmrelay path):
+
    ```bash
    cat > ~/.config/systemd/user/mmrelay.service << EOL
    [Unit]
@@ -134,6 +136,7 @@ For automatic startup and management on Linux systems:
    ```
 
 3. Enable and start the service:
+
    ```bash
    # Reload systemd to recognize the new service
    systemctl --user daemon-reload
@@ -146,11 +149,13 @@ For automatic startup and management on Linux systems:
    ```
 
 4. Verify it's running correctly:
+
    ```bash
    systemctl --user status mmrelay.service
    ```
 
 5. View logs if needed:
+
    ```bash
    # View service logs
    journalctl --user -u mmrelay.service

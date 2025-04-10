@@ -250,6 +250,15 @@ def run():
     # Parse command-line arguments
     args = parse_arguments()  # This initializes the arguments for other modules to use
 
+    # Handle --install-service
+    if args.install_service:
+        from mmrelay.setup_utils import install_service
+
+        success = install_service()
+        import sys
+
+        sys.exit(0 if success else 1)
+
     # Handle --generate-config
     if args.generate_config:
         if generate_sample_config():
@@ -258,13 +267,16 @@ def run():
         else:
             # Exit with error if config generation failed
             import sys
+
             sys.exit(1)
 
     # Check if config exists
     from mmrelay.config import relay_config
+
     if not relay_config:
         # Exit with error if no config exists
         import sys
+
         sys.exit(1)
 
     try:
