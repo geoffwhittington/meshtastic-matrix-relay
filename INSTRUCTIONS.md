@@ -1,10 +1,10 @@
-# Instructions
+# MMRelay Instructions
 
-The relay works on Linux, macOS, and Windows and requires Python 3.9+.
+MMRelay works on Linux, macOS, and Windows and requires Python 3.9+.
 
 ## Installation
 
-### Install from PyPI (Recommended)
+### Quick Install (Recommended)
 
 ```bash
 # Install using pip
@@ -14,60 +14,71 @@ pip install mmrelay
 pipx install mmrelay
 ```
 
-### Install from Source
+### Developer Install
+
+If you want to contribute or modify the code:
 
 ```bash
 # Clone the repository
 git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
 cd meshtastic-matrix-relay
 
-# Install using pip
+# Install in development mode
 pip install -e .
 
-# Or use pipx for isolated installation (recommended)
+# Or use pipx for isolated installation
 pipx install -e .
 ```
 
-> **Note:** If you're upgrading from a previous version, please refer to the [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) file for migration instructions.
+> **Upgrading from a previous version?** Please see [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) for migration guidance.
 
 ## Configuration
 
-The application looks for configuration files in the following locations (in order):
+### Configuration File Locations
+
+MMRelay looks for configuration files in the following locations (in order):
 
 1. Path specified with `--config` command-line option
-2. `~/.mmrelay/config.yaml`
+2. `~/.mmrelay/config.yaml` (recommended location)
 3. Current directory `config.yaml`
 4. Current directory `sample_config.yaml`
 
-Create your configuration file based on the `sample_config.yaml` template:
+### Setting Up Your Configuration
 
 ```bash
-# Create the mmrelay directory if it doesn't exist
+# Create the standard config directory
 mkdir -p ~/.mmrelay
 
 # Copy the sample configuration
 cp sample_config.yaml ~/.mmrelay/config.yaml
 
-# Edit the configuration file
-# Replace with your preferred editor
+# Edit the configuration file with your preferred editor
 nano ~/.mmrelay/config.yaml
 ```
 
-## Usage
+### Configuration Tips
 
-Run the relay with the following command:
+- Review the comments in `sample_config.yaml` for detailed explanations
+- At minimum, you'll need to configure your Matrix credentials and Meshtastic connection
+- For advanced setups, check the plugin configuration options
+
+## Running MMRelay
+
+### Basic Usage
+
+Start the relay with a single command:
 
 ```bash
 mmrelay
 ```
 
-With command-line options:
+### Command-Line Options
+
+Customize your setup with command-line options:
 
 ```bash
 mmrelay --config /path/to/config.yaml --logfile /path/to/logfile.log
 ```
-
-### Command-Line Options
 
 ```
 mmrelay [OPTIONS]
@@ -79,57 +90,73 @@ Options:
   --help           Show this help message and exit
 ```
 
-Example output:
+### What to Expect
 
-```bash
-INFO:meshtastic.matrix.relay:Starting Meshtastic <==> Matrix Relay...
-INFO:meshtastic.matrix.relay:Connecting to radio at meshtastic.local ...
-INFO:meshtastic.matrix.relay:Connected to radio at meshtastic.local.
-INFO:meshtastic.matrix.relay:Listening for inbound radio messages ...
-INFO:meshtastic.matrix.relay:Listening for inbound matrix messages ...
-INFO:meshtastic.matrix.relay:Processing matrix message from @bob:matrix.org: Hi Alice!
-INFO:meshtastic.matrix.relay:Sending radio message from Bob to radio broadcast
-INFO:meshtastic.matrix.relay:Processing inbound radio message from !613501e4 on channel 0
-INFO:meshtastic.matrix.relay:Relaying Meshtastic message from Alice to Matrix: [Alice/VeryCoolMeshnet]: Hey Bob!
-INFO:meshtastic.matrix.relay:Sent inbound radio message to matrix room: #someroomid:example.matrix.org
+When running successfully, you'll see output similar to this:
+
 ```
+INFO: Loading configuration from: /home/user/.mmrelay/config.yaml
+INFO: Starting Meshtastic <==> Matrix Relay...
+INFO: Connecting to radio at meshtastic.local ...
+INFO: Connected to radio at meshtastic.local
+INFO: Listening for inbound radio messages ...
+INFO: Listening for inbound matrix messages ...
+```
+
+Messages will be relayed in both directions automatically:
 
 ## Running as a Service
 
-### Systemd (Linux)
+### Systemd Service (Linux)
 
-1. Create a systemd service file:
+For automatic startup and management on Linux systems:
+
+1. Create the systemd user directory:
    ```bash
    mkdir -p ~/.config/systemd/user
    ```
 
-2. Create the service file at `~/.config/systemd/user/mmrelay.service`:
-   ```ini
+2. Create a service file with this one-liner (automatically uses your mmrelay path):
+   ```bash
+   cat > ~/.config/systemd/user/mmrelay.service << EOL
    [Unit]
-   Description=A Meshtastic <==> Matrix Relay
+   Description=Meshtastic <==> Matrix Relay
    After=default.target
 
    [Service]
    Type=idle
-   ExecStart=/path/to/mmrelay --config %h/.mmrelay/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
+   ExecStart=$(which mmrelay) --config %h/.mmrelay/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
    Restart=on-failure
 
    [Install]
    WantedBy=default.target
+   EOL
    ```
-
-   Replace `/path/to/mmrelay` with the actual path (find it with `which mmrelay`).
 
 3. Enable and start the service:
    ```bash
+   # Reload systemd to recognize the new service
    systemctl --user daemon-reload
+
+   # Enable the service to start at login
    systemctl --user enable mmrelay.service
+
+   # Start the service now
    systemctl --user start mmrelay.service
    ```
 
-4. Check the service status:
+4. Verify it's running correctly:
    ```bash
    systemctl --user status mmrelay.service
+   ```
+
+5. View logs if needed:
+   ```bash
+   # View service logs
+   journalctl --user -u mmrelay.service
+
+   # Or check the application log file
+   cat ~/.mmrelay/logs/mmrelay.log
    ```
 
 ## Dockerized Versions (Unofficial)

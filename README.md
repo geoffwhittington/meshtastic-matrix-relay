@@ -8,7 +8,7 @@ A powerful and easy-to-use relay between Meshtastic devices and Matrix chat room
 
 ## Getting Started
 
-M<>M Relay runs on Linux, macOS, and Windows. For setup, configuration, and usage instructions, see the [INSTRUCTIONS.md](INSTRUCTIONS.md) file.
+MMRelay runs on Linux, macOS, and Windows.
 
 ### Quick Installation
 
@@ -20,9 +20,11 @@ pip install mmrelay
 pipx install mmrelay
 ```
 
-### Upgrading to v1.0.0
+### Resources
 
-If you're upgrading from a previous version, see the [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) file for detailed instructions.
+- **New Users**: See [INSTRUCTIONS.md](INSTRUCTIONS.md) for setup and configuration
+- **Existing Users**: Check [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) for migration guidance
+- **Configuration**: Review [sample_config.yaml](sample_config.yaml) for examples
 
 ---
 
@@ -85,13 +87,15 @@ community-plugins:
     tag: main
 ```
 
-### Plugin Locations
+### Plugin System
 
-Plugins are stored in standardized locations:
+MMRelay features a powerful plugin system with standardized locations:
 
-- Core plugins: Included in the package
-- Custom plugins: `~/.mmrelay/plugins/custom/`
-- Community plugins: `~/.mmrelay/plugins/community/`
+- **Core Plugins**: Pre-installed with the package
+- **Custom Plugins**: Your own plugins in `~/.mmrelay/plugins/custom/`
+- **Community Plugins**: Third-party plugins in `~/.mmrelay/plugins/community/`
+
+Plugins make it easy to extend functionality without modifying the core code.
 
 ---
 

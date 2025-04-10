@@ -1,20 +1,24 @@
-# Upgrading to mmrelay v1.0.0
+# Upgrading to MMRelay v1.0.0
 
-This guide provides instructions for upgrading to mmrelay v1.0.0 from previous versions. Version 1.0.0 introduces several improvements including PyPI packaging, standardized configuration locations, and better CLI support.
+This guide helps you migrate from previous versions to MMRelay v1.0.0. The new version brings significant improvements while maintaining compatibility with your existing setup.
 
-For new installations, please refer to the [INSTRUCTIONS.md](INSTRUCTIONS.md) file.
+> **New to MMRelay?** If you're installing for the first time, please see [INSTRUCTIONS.md](INSTRUCTIONS.md) instead.
 
 ## What's New in v1.0.0
 
-- **PyPI Packaging**: mmrelay is now available on PyPI for easier installation
-- **Standardized Configuration**: Uses platformdirs for standard config locations
-- **Improved CLI**: Enhanced command-line interface with more options
-- **Absolute Imports**: Code structure improved with absolute imports
-- **Backward Compatibility**: Maintains compatibility with existing configurations
+### Major Improvements
 
-## Upgrade Instructions
+- **PyPI Packaging**: Simple installation via `pip install mmrelay`
+- **Standardized Directories**: Configuration, logs, and plugins in `~/.mmrelay/`
+- **Enhanced CLI**: New command-line options and improved interface
+- **Better Code Structure**: Modernized codebase with absolute imports
+- **Full Compatibility**: Works with your existing configuration
 
-### Method 1: Install from PyPI (Recommended)
+## Upgrade Options
+
+### Option 1: Quick Upgrade (Recommended)
+
+Install directly from PyPI:
 
 ```bash
 # Install using pip
@@ -24,149 +28,150 @@ pip install mmrelay
 pipx install mmrelay
 ```
 
-### Method 2: Install from Source
+### Option 2: Developer Upgrade
+
+If you want to contribute or modify the code:
 
 ```bash
-# Clone the repository
+# Clone the repository (or pull latest changes)
 git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
 cd meshtastic-matrix-relay
 
-# Install using pip
+# Install in development mode
 pip install -e .
-
-# Or use pipx for isolated installation (recommended)
-pipx install -e .
 ```
 
-### Migrating from Legacy Installation
+## Migration Steps
 
-If you were using the previous installation method with a virtual environment:
+Follow these steps to migrate your existing setup:
 
-1. Make sure you have a backup of your configuration:
-   ```bash
-   cp config.yaml config.yaml.backup
-   ```
-
-2. Install mmrelay using one of the methods above
-
-3. Move your configuration to the new standard location:
-   ```bash
-   mkdir -p ~/.mmrelay
-   cp config.yaml ~/.mmrelay/config.yaml
-   ```
-
-4. If you have custom plugins, move them to the new location:
-   ```bash
-   mkdir -p ~/.mmrelay/plugins/custom
-   cp plugins/custom/* ~/.mmrelay/plugins/custom/
-   ```
-
-5. Update your systemd service file if you were using one:
-   ```bash
-   # Create a new service file
-   cat > ~/.config/systemd/user/mmrelay.service << EOL
-   [Unit]
-   Description=A Meshtastic <==> Matrix Relay
-   After=default.target
-
-   [Service]
-   Type=idle
-   ExecStart=$(which mmrelay) --config %h/.mmrelay/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
-   Restart=on-failure
-
-   [Install]
-   WantedBy=default.target
-   EOL
-
-   # Reload systemd and restart the service
-   systemctl --user daemon-reload
-   systemctl --user restart mmrelay.service
-   ```
-
-## Configuration Changes
-
-The application now looks for configuration files in the following locations (in order):
-
-1. Path specified with `--config` command-line option
-2. `~/.mmrelay/config.yaml`
-3. Current directory `config.yaml`
-4. Current directory `sample_config.yaml`
-
-### Migrating Your Configuration
-
-If you're upgrading from a previous version, your configuration will continue to work as before. However, we recommend moving your configuration to the new standard location:
+### 1. Back Up Your Configuration
 
 ```bash
-# Create the mmrelay directory if it doesn't exist
+# Create a backup of your config file
+cp config.yaml config.yaml.backup
+```
+
+### 2. Install the New Version
+
+Use one of the upgrade options above to install MMRelay v1.0.0.
+
+### 3. Move Your Configuration
+
+```bash
+# Create the standard config directory
 mkdir -p ~/.mmrelay
 
 # Copy your existing configuration
 cp config.yaml ~/.mmrelay/config.yaml
 ```
 
-## Database Location
-
-The SQLite database is now stored in `~/.mmrelay/data/meshtastic.sqlite` by default. Existing databases will be automatically migrated if found in the previous location.
-
-## Log Files
-
-Log files are now stored in `~/.mmrelay/logs/` by default. You can specify a custom log file location using the `--logfile` option.
-
-## Plugins
-
-Core plugins remain in their original location within the package. Custom and community plugins should be placed in:
-
-- Custom plugins: `~/.mmrelay/plugins/custom/`
-- Community plugins: `~/.mmrelay/plugins/community/`
-
-The application will check these locations as well as the current directory for backward compatibility.
-
-## Running as a Service
-
-### Systemd (Linux)
-
-Create a systemd service file at `~/.config/systemd/user/mmrelay.service`:
-
-```ini
-[Unit]
-Description=A Meshtastic <==> Matrix Relay
-After=default.target
-
-[Service]
-Type=idle
-ExecStart=/path/to/mmrelay --config %h/.mmrelay/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
-Restart=on-failure
-
-[Install]
-WantedBy=default.target
-```
-
-Replace `/path/to/mmrelay` with the actual path (find it with `which mmrelay`).
-
-Then enable and start the service:
+### 4. Migrate Custom Plugins (If Any)
 
 ```bash
-systemctl --user daemon-reload
-systemctl --user enable mmrelay.service
-systemctl --user start mmrelay.service
+# Create the plugins directory
+mkdir -p ~/.mmrelay/plugins/custom
+
+# Copy your custom plugins
+cp plugins/custom/* ~/.mmrelay/plugins/custom/
 ```
 
-## Command-Line Options
+### 5. Update Your Service (If Using Systemd)
 
-The application now supports the following command-line options:
+```bash
+# Create a new service file with the correct paths
+cat > ~/.config/systemd/user/mmrelay.service << EOL
+[Unit]
+ Description=Meshtastic <==> Matrix Relay
+ After=default.target
 
-- `--config PATH`: Specify the configuration file path
-- `--logfile PATH`: Specify the log file path
-- `--version`: Show the version number and exit
-- `--help`: Show help message and exit
+[Service]
+ Type=idle
+ ExecStart=$(which mmrelay) --config %h/.mmrelay/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
+ Restart=on-failure
+
+[Install]
+ WantedBy=default.target
+EOL
+
+# Reload systemd and restart the service
+systemctl --user daemon-reload
+systemctl --user restart mmrelay.service
+```
+
+## Configuration Changes
+
+### New File Locations
+
+MMRelay now uses standardized directories for all files:
+
+| File Type | New Location | Notes |
+|-----------|--------------|-------|
+| Configuration | `~/.mmrelay/config.yaml` | Primary config file |
+| Database | `~/.mmrelay/data/meshtastic.sqlite` | Automatically migrated |
+| Logs | `~/.mmrelay/logs/mmrelay.log` | Configurable with `--logfile` |
+| Custom Plugins | `~/.mmrelay/plugins/custom/` | Your own plugins |
+| Community Plugins | `~/.mmrelay/plugins/community/` | Third-party plugins |
+
+### Configuration Search Path
+
+The application looks for configuration in this order:
+
+1. Path specified with `--config` command-line option
+2. `~/.mmrelay/config.yaml` (recommended location)
+3. Current directory `config.yaml` (for backward compatibility)
+4. Current directory `sample_config.yaml` (fallback)
+
+### Configuration Format Changes
+
+Some configuration options have been renamed for clarity:
+
+- `db:` → `database:` (old option still works but will show a deprecation notice)
+- `network` connection mode → `tcp` (both options supported for compatibility)
+
+### Backward Compatibility
+
+Your existing configuration will continue to work without changes. The application will automatically:
+
+- Find your existing config file
+- Migrate your database if needed
+- Support legacy configuration options
+- Load plugins from both old and new locations
+
+## Command-Line Interface
+
+MMRelay v1.0.0 includes an improved command-line interface:
+
+```
+mmrelay [OPTIONS]
+
+Options:
+  --config PATH    Path to the configuration file
+  --logfile PATH   Path to the log file
+  --version        Show the version number and exit
+  --help           Show help message and exit
+```
 
 ## Troubleshooting
 
-If you encounter any issues after upgrading:
+### Common Issues
 
-1. Check the log file for error messages
-2. Verify your configuration file is correctly formatted
-3. Ensure all dependencies are installed
-4. Try running with the `--config` option pointing to your configuration file
+| Issue | Solution |
+|-------|----------|
+| Configuration not found | Use `--config` to specify the path |
+| Missing dependencies | Run `pip install -r requirements.txt` |
+| Service won't start | Check paths in the service file |
+| Plugin errors | Ensure plugins are in the correct location |
 
-For more help, please open an issue on the GitHub repository.
+### Diagnostic Steps
+
+1. **Check the logs**: Look at `~/.mmrelay/logs/mmrelay.log` for error messages
+2. **Verify configuration**: Ensure your config file is valid YAML
+3. **Run with verbose output**: Use `mmrelay --config ~/.mmrelay/config.yaml` to see startup messages
+4. **Check permissions**: Ensure the application has access to all required directories
+
+### Getting Help
+
+- Join our Matrix room: [#mmrelay:meshnet.club](https://matrix.to/#/#mmrelay:meshnet.club)
+- Open an issue on GitHub: [meshtastic-matrix-relay](https://github.com/geoffwhittington/meshtastic-matrix-relay/issues)
+- Check the wiki for additional documentation
