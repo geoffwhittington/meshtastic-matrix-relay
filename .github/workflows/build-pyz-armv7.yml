@@ -20,11 +20,26 @@ jobs:
       - name: Set up QEMU for multi-arch builds
         uses: docker/setup-qemu-action@v3
 
-      - name: Extract version from setup.cfg
+      - name: Determine version and tag
         id: get_version
         run: |
-          VERSION=$(grep '^version =' setup.cfg | cut -d= -f2 | tr -d '[:space:]')
+          # Get base version from setup.cfg
+          BASE_VERSION=$(grep '^version =' setup.cfg | cut -d= -f2 | tr -d '[:space:]')
+
+          # Check if this is a manual run or a release
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # For manual runs, create a timestamp-based tag
+            TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+            VERSION="${BASE_VERSION}-dev.${TIMESTAMP}"
+            TAG="dev-build-${TIMESTAMP}"
+          else
+            # For releases, use the release tag
+            VERSION="${BASE_VERSION}"
+            TAG="${{ github.ref_name }}"
+          fi
+
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
       - name: Build inside ARMv7 Docker (using shiv)
         uses: addnab/docker-run-action@v3
         with:
@@ -51,11 +66,29 @@ jobs:
             shiv . -o "${PYZ_FILENAME}" -e mmrelay.main:run --compressed
             echo "--- Listing created PYZ file ---"
             ls -l "${PYZ_FILENAME}"
+      # Create a release for manual runs
+      - name: Create Release for Manual Run
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ steps.get_version.outputs.TAG }}
+          name: Development Build ${{ steps.get_version.outputs.VERSION }}
+          draft: false
+          prerelease: true
+          generate_release_notes: false
+          body: |
+            This is an automated development build created by a manual workflow run.
+            Version: ${{ steps.get_version.outputs.VERSION }}
+
+            **Note**: This is not an official release and may contain unstable code.
+
+      # Upload PYZ to the release
       - name: Upload PYZ to Release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ${{ github.workspace }}/mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz
           asset_name: mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz
-          tag: ${{ github.ref_name }}
+          tag: ${{ steps.get_version.outputs.TAG }}
           overwrite: true
