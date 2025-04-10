@@ -45,41 +45,42 @@ pip install -e .
 
 Follow these steps to migrate your existing setup:
 
-### 1. Back Up Your Configuration
-
-```bash
-# Create a backup of your config file
-cp config.yaml config.yaml.backup
-```
-
-### 2. Install the New Version
+### 1. Install the New Version
 
 Use one of the upgrade options above to install MMRelay v1.0.0.
 
-### 3. Move Your Configuration
+### 2. Move Your Configuration
 
 ```bash
 # Create the standard config directory
 mkdir -p ~/.mmrelay
 
-# Copy your existing configuration
+# Copy your existing configuration to the new location
 cp config.yaml ~/.mmrelay/config.yaml
 ```
 
-### 4. Migrate Custom Plugins (If Any)
+> **Note**: Your original config.yaml will remain in place for backward compatibility. MMRelay will check both locations, but the ~/.mmrelay version will take precedence if both exist. See the "Configuration Search Path" section below for details.
+
+### 3. Migrate Custom Plugins (If Any)
 
 ```bash
 # Create the plugins directory
 mkdir -p ~/.mmrelay/plugins/custom
 
-# Copy your custom plugins
-cp plugins/custom/* ~/.mmrelay/plugins/custom/
+# Copy your custom plugins (if you have any)
+cp plugins/custom/* ~/.mmrelay/plugins/custom/ 2>/dev/null || echo "No custom plugins found to migrate"
 ```
 
-### 5. Update Your Service (If Using Systemd)
+> **Note**: MMRelay will check both the old and new plugin locations, but plugins in the new location will take precedence if duplicates exist.
+
+### 4. Update Your Service (If Using Systemd)
 
 ```bash
+# Create the logs directory
+mkdir -p ~/.mmrelay/logs
+
 # Create a new service file with the correct paths
+mkdir -p ~/.config/systemd/user
 cat > ~/.config/systemd/user/mmrelay.service << EOL
 [Unit]
  Description=Meshtastic <==> Matrix Relay
@@ -98,6 +99,8 @@ EOL
 systemctl --user daemon-reload
 systemctl --user restart mmrelay.service
 ```
+
+> **Note**: This creates a user-level systemd service. If you previously used a system-level service, you'll need to disable it first with `sudo systemctl disable mmrelay.service`.
 
 ## Configuration Changes
 
