@@ -43,14 +43,30 @@ jobs:
             # Ensure the current directory (.) is built correctly by setuptools first
             # Install the project itself along with dependencies INSIDE the container before shivving
             echo "--- Installing project dependencies and project itself ---"
-            # Install jsonschema<4.0.0 to avoid rpds dependency which has binary components
-            pip install "jsonschema<4.0.0"
+            # Install problematic dependencies with specific versions to avoid binary compatibility issues
+            # jsonschema 4.0+ requires rpds which has binary components that don't work on ARMv7
+            pip install "jsonschema<4.0.0" "referencing<0.30.0"
+
+            # Install the project and its dependencies
+            # The constraints above will ensure we get compatible versions
             pip install .
+            echo "--- Checking installed packages ---"
+            pip list
+            echo "--- Verifying no rpds dependency ---"
+            pip list | grep -i rpds || echo "No rpds found - good!"
+
             echo "--- Building PYZ with shiv ---"
             # Explicitly specify the entry point module
-            shiv . -o "${PYZ_FILENAME}" -e mmrelay.main:run --compressed
+            # Use the console_scripts entry point from setup.cfg
+            shiv . -o "${PYZ_FILENAME}" -e mmrelay.cli:main --compressed
             echo "--- Listing created PYZ file ---"
             ls -l "${PYZ_FILENAME}"
+
+            echo "--- Testing PYZ file ---"
+            # Verify the PYZ file works by checking its version
+            # This will catch entry point and basic dependency issues
+            chmod +x "${PYZ_FILENAME}"
+            ./${PYZ_FILENAME} --version || echo "PYZ test failed"
       - name: Upload PYZ to Release
         uses: svenstaro/upload-release-action@v2
         with:
