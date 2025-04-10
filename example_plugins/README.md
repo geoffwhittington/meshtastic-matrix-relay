@@ -10,8 +10,13 @@ Custom plugins should be written as a subclass of `plugins.base_plugin.BasePlugi
 
 ## Installation
 
-Custom plugins should be copied to `custom_plugins` directory. They are detected upon startup of the relay.
+Custom plugins should be copied to one of these directories:
+
+- `~/.mmrelay/plugins/custom/` (recommended location)
+- `plugins/custom/` (legacy location for backward compatibility)
+
+They are detected upon startup of the relay.
 
 ## Troubleshooting
 
-Each plugin has access to a `self.logger` that can be useful in troubleshooting runtime issues.
+Each plugin has access to a `self.logger` that can be useful in troubleshooting runtime issues. The main application also logs when a plugin processes a command, including who sent the command, which can help with debugging.

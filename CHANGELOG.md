@@ -41,6 +41,7 @@
 - Refactored code to use absolute imports
 - Improved module organization
 - Enhanced error handling and logging
+- Centralized configuration handling with a set_config function
 
 ## Contributors
 
