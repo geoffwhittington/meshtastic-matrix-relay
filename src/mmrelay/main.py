@@ -3,10 +3,24 @@ This script connects a Meshtastic mesh network to Matrix chat rooms by relaying 
 It uses Meshtastic-python and Matrix nio client library to interface with the radio and the Matrix server respectively.
 """
 
+# Check for --check-config flag first, before importing any other modules
+import sys
+import argparse
+
+# Create a simple parser just to check for --check-config
+parser = argparse.ArgumentParser(add_help=False)
+parser.add_argument("--check-config", action="store_true")
+args, _ = parser.parse_known_args()
+
+# If --check-config is specified, run the check_config function and exit
+if args.check_config:
+    from mmrelay.check_config_cmd import main as check_config_main
+    sys.exit(check_config_main())
+
+# Otherwise, continue with normal imports
 import asyncio
 import logging
 import signal
-import sys
 from typing import List
 
 from nio import ReactionEvent, RoomMessageEmote, RoomMessageNotice, RoomMessageText
@@ -32,20 +46,13 @@ from mmrelay.plugin_loader import load_plugins
 # Initialize logger
 logger = get_logger(name="M<>M Relay")
 
-# Initialize Matrix configuration
-matrix_rooms: List[dict] = []
-
-
-def update_config():
-    """Update the module's configuration from the global relay_config."""
-    global matrix_rooms
-
-    # Extract matrix rooms configuration if available
-    if "matrix_rooms" in relay_config:
-        matrix_rooms = relay_config["matrix_rooms"]
+# Extract Matrix configuration
+matrix_rooms: List[dict] = relay_config["matrix_rooms"]
 
 # Set the logging level for 'nio' to ERROR to suppress warnings
 logging.getLogger("nio").setLevel(logging.ERROR)
+
+
 
 
 async def main():
@@ -90,9 +97,6 @@ async def main():
 
     # Connect to Matrix
     matrix_client = await connect_matrix()
-    if matrix_client is None:
-        logger.error("Failed to connect to Matrix. Exiting.")
-        return
 
     # Join the rooms specified in the config.yaml
     for room in matrix_rooms:
@@ -207,26 +211,32 @@ def run():
     # Parse command-line arguments
     args = parse_arguments()  # This initializes the arguments for other modules to use
 
-    # Handle CLI commands before loading config
-    from mmrelay.cli import handle_cli_commands
-    if handle_cli_commands(args):
-        return
+    # --check-config is handled at the top of the file
 
-    # Load configuration
-    from mmrelay.config import load_config
-    config = load_config(args.config)
+    # Handle --install-service
+    if args.install_service:
+        from mmrelay.setup_utils import install_service
+        success = install_service()
+        import sys
+        sys.exit(0 if success else 1)
 
-    if not config:
+    # Handle --generate-config
+    if args.generate_config:
+        from mmrelay.cli import generate_sample_config
+        if generate_sample_config():
+            # Exit with success if config was generated
+            return
+        else:
+            # Exit with error if config generation failed
+            import sys
+            sys.exit(1)
+
+    # Check if config exists
+    from mmrelay.config import relay_config
+    if not relay_config:
         # Exit with error if no config exists
         import sys
         sys.exit(1)
-
-    # Update module configurations
-    from mmrelay.meshtastic_utils import update_config as update_meshtastic_config
-    from mmrelay.matrix_utils import update_config as update_matrix_config
-    update_meshtastic_config()
-    update_matrix_config()
-    update_config()  # Update main.py configuration
 
     try:
         asyncio.run(main())

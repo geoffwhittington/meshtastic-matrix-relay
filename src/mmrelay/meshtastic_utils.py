@@ -25,7 +25,7 @@ from mmrelay.log_utils import get_logger
 
 # Do not import plugin_loader here to avoid circular imports
 
-# Initialize matrix rooms configuration as an empty list
+# Initialize matrix rooms configuration
 matrix_rooms: List[dict] = []
 
 # Initialize logger for Meshtastic
@@ -33,15 +33,6 @@ logger = get_logger(name="Meshtastic")
 
 # Global variables for the Meshtastic connection and event loop management
 meshtastic_client = None
-
-
-def update_config():
-    """Update the module's configuration from the global relay_config."""
-    global matrix_rooms
-
-    # Extract matrix rooms configuration if available
-    if "matrix_rooms" in relay_config:
-        matrix_rooms = relay_config["matrix_rooms"]
 event_loop = None  # Will be set from main.py
 
 meshtastic_lock = (
