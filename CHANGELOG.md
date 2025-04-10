@@ -1,6 +1,6 @@
-# Changelog for mmrelay v1.0.0
+# Changelog for mmrelay v1.0
 
-## What's New in v1.0.0
+## What's New in v1.0
 
 ### Major Features
 - **PyPI Packaging**: mmrelay is now available on PyPI for easier installation
@@ -41,4 +41,4 @@
 - @geoffwhittington
 
 ## Full Changelog
-For a detailed list of all changes, see the [commit history](https://github.com/geoffwhittington/meshtastic-matrix-relay/compare/0.10.1...v1.0.0).
+For a detailed list of all changes, see the [commit history](https://github.com/geoffwhittington/meshtastic-matrix-relay/compare/0.10.1...v1.0).

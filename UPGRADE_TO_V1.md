@@ -1,10 +1,10 @@
-# Upgrading to MMRelay v1.0.0
+# Upgrading to MMRelay v1.0
 
-This guide helps you migrate from previous versions to MMRelay v1.0.0. The new version brings significant improvements while maintaining compatibility with your existing setup.
+This guide helps you migrate from previous versions to MMRelay v1.0. The new version brings significant improvements while maintaining compatibility with your existing setup.
 
 > **New to MMRelay?** If you're installing for the first time, please see [INSTRUCTIONS.md](INSTRUCTIONS.md) instead.
 
-## What's New in v1.0.0
+## What's New in v1.0
 
 ### Major Improvements
 
@@ -47,7 +47,7 @@ Follow these steps to migrate your existing setup:
 
 ### 1. Install the New Version
 
-Use one of the upgrade options above to install MMRelay v1.0.0.
+Use one of the upgrade options above to install MMRelay v1.0.
 
 ### 2. Move Your Configuration
 
@@ -143,7 +143,7 @@ Your existing configuration will continue to work without changes. The applicati
 
 ## Command-Line Interface
 
-MMRelay v1.0.0 includes an improved command-line interface:
+MMRelay v1.0 includes an improved command-line interface:
 
 ```
 mmrelay [OPTIONS]

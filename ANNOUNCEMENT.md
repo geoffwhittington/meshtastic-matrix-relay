@@ -1,12 +1,12 @@
-# MMRelay v1.0.0 Released 🔖
+# MMRelay v1.0 Released 🔖
 
-We're pleased to announce MMRelay v1.0.0, our first stable major release since the project's inception in April 2023. This version marks a significant milestone, reflecting steady improvements driven by our contributors and users.
+We're pleased to announce MMRelay v1.0, our first stable major release since the project's inception in April 2023. This version marks a significant milestone, reflecting steady improvements driven by our contributors and users.
 
 ## Special Thanks
 
 We sincerely thank everyone who contributed code, provided feedback, or helped test MMRelay. Your efforts have directly shaped this release.
 
-## What's New in v1.0.0
+## What's New in v1.0
 
 - **PyPI Release**: Quickly install via `pip` or `pipx`
 - **Standardized Configuration**: Uses `platformdirs` for consistent configuration paths
