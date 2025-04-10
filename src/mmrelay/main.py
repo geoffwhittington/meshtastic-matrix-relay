@@ -211,23 +211,26 @@ def run_main(args):
     config = load_config(args=args)
 
     # Set the global config variables in each module
-    from mmrelay import meshtastic_utils, matrix_utils, plugin_loader, log_utils, db_utils
+    from mmrelay import (
+        db_utils,
+        log_utils,
+        matrix_utils,
+        meshtastic_utils,
+        plugin_loader,
+    )
+    from mmrelay.config import set_config
     from mmrelay.plugins import base_plugin
 
-    # Use the set_config function in matrix_utils and meshtastic_utils to properly set up the configuration
-    matrix_utils.set_config(config)
-    meshtastic_utils.set_config(config)
-
-    # Set config for other modules
-    plugin_loader.config = config
-    log_utils.config = config
-    db_utils.config = config
-    base_plugin.config = config
+    # Use the centralized set_config function to set up the configuration for all modules
+    set_config(matrix_utils, config)
+    set_config(meshtastic_utils, config)
+    set_config(plugin_loader, config)
+    set_config(log_utils, config)
+    set_config(db_utils, config)
+    set_config(base_plugin, config)
 
     # Check if config exists and has the required keys
     required_keys = ["matrix", "meshtastic", "matrix_rooms"]
-    logger.info(f"Checking for required keys in config: {required_keys}")
-    logger.info(f"Config keys: {list(config.keys()) if config else 'None'}")
 
     # Check each key individually for better debugging
     for key in required_keys:

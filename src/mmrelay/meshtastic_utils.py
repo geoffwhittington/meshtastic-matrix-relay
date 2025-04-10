@@ -22,34 +22,13 @@ from mmrelay.db_utils import (
 )
 from mmrelay.log_utils import get_logger
 
-# Global config variable that will be set from main.py
+# Global config variable that will be set from config.py
 config = None
 
 # Do not import plugin_loader here to avoid circular imports
 
 # Initialize matrix rooms configuration
 matrix_rooms: List[dict] = []
-
-# Function to explicitly set the config
-def set_config(passed_config):
-    """Explicitly set the global config variable.
-
-    Args:
-        passed_config: The configuration dictionary to use
-
-    Returns:
-        The updated config
-    """
-    global config, matrix_rooms
-
-    config = passed_config
-
-    # If config is valid, extract matrix_rooms
-    if config and "matrix_rooms" in config:
-        matrix_rooms = config["matrix_rooms"]
-        logger.info(f"Meshtastic matrix_rooms set: {len(matrix_rooms)} rooms")
-
-    return config
 
 # Initialize logger for Meshtastic
 logger = get_logger(name="Meshtastic")
@@ -95,13 +74,10 @@ def connect_meshtastic(passed_config=None, force_connect=False):
     # Update the global config if a config is passed
     if passed_config is not None:
         config = passed_config
-        # Log that we're updating the config
-        logger.info("Updating meshtastic_utils config from passed_config")
 
         # If config is valid, extract matrix_rooms
         if config and "matrix_rooms" in config:
             matrix_rooms = config["matrix_rooms"]
-            logger.info(f"Meshtastic matrix_rooms set in connect_meshtastic: {len(matrix_rooms)} rooms")
 
     with meshtastic_lock:
         if meshtastic_client and not force_connect:
@@ -299,13 +275,11 @@ def on_meshtastic_message(packet, interface):
 
     # Log that we received a message (without the full packet details)
     if packet.get("decoded", {}).get("text"):
-        logger.info(f"Received Meshtastic message: {packet.get('decoded', {}).get('text')}")
+        logger.info(
+            f"Received Meshtastic message: {packet.get('decoded', {}).get('text')}"
+        )
     else:
         logger.debug("Received non-text Meshtastic message")
-
-    # Log the current state of the config and matrix_rooms
-    logger.debug(f"on_meshtastic_message: config is {'available' if config else 'None'}")
-    logger.debug(f"on_meshtastic_message: matrix_rooms has {len(matrix_rooms)} rooms")
 
     # Check if config is available
     if config is None:
@@ -501,13 +475,7 @@ def on_meshtastic_message(packet, interface):
             return
 
         # Relay the message to all Matrix rooms mapped to this channel
-        logger.info(
-            f"Processing inbound radio message from {sender} on channel {channel}"
-        )
         logger.info(f"Relaying Meshtastic message from {longname} to Matrix")
-
-        # Log the matrix_rooms to help diagnose issues
-        logger.debug(f"matrix_rooms when relaying: {matrix_rooms}")
 
         # Check if matrix_rooms is empty
         if not matrix_rooms:
@@ -515,9 +483,7 @@ def on_meshtastic_message(packet, interface):
             return
 
         for room in matrix_rooms:
-            logger.debug(f"Checking room {room} for channel {channel}")
             if room["meshtastic_channel"] == channel:
-                logger.info(f"Found matching room {room['id']} for channel {channel}")
                 # Storing the message_map (if enabled) occurs inside matrix_relay() now,
                 # controlled by relay_reactions.
                 try:

@@ -123,6 +123,43 @@ relay_config = {}
 config_path = None
 
 
+def set_config(module, passed_config):
+    """
+    Set the configuration for a module.
+
+    Args:
+        module: The module to set the configuration for
+        passed_config: The configuration dictionary to use
+
+    Returns:
+        The updated config
+    """
+    # Set the module's config variable
+    module.config = passed_config
+
+    # Handle module-specific setup based on module name
+    module_name = module.__name__.split(".")[-1]
+
+    if module_name == "matrix_utils":
+        # Set Matrix-specific configuration
+        if hasattr(module, "matrix_homeserver") and "matrix" in passed_config:
+            module.matrix_homeserver = passed_config["matrix"]["homeserver"]
+            module.matrix_rooms = passed_config["matrix_rooms"]
+            module.matrix_access_token = passed_config["matrix"]["access_token"]
+            module.bot_user_id = passed_config["matrix"]["bot_user_id"]
+
+    elif module_name == "meshtastic_utils":
+        # Set Meshtastic-specific configuration
+        if hasattr(module, "matrix_rooms") and "matrix_rooms" in passed_config:
+            module.matrix_rooms = passed_config["matrix_rooms"]
+
+    # If the module still has a setup_config function, call it for backward compatibility
+    if hasattr(module, "setup_config") and callable(module.setup_config):
+        module.setup_config()
+
+    return passed_config
+
+
 def load_config(config_file=None, args=None):
     """Load the configuration from the specified file or search for it.
 

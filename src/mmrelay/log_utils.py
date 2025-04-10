@@ -17,11 +17,7 @@ def get_logger(name):
 
     # Try to get log level from config
     global config
-    if (
-        config is not None
-        and "logging" in config
-        and "level" in config["logging"]
-    ):
+    if config is not None and "logging" in config and "level" in config["logging"]:
         log_level = getattr(logging, config["logging"]["level"].upper())
 
     logger.setLevel(log_level)
@@ -41,12 +37,20 @@ def get_logger(name):
     args = parse_arguments()
 
     # Check if file logging is enabled
-    if config is not None and config.get("logging", {}).get("log_to_file", False) or args.logfile:
+    if (
+        config is not None
+        and config.get("logging", {}).get("log_to_file", False)
+        or args.logfile
+    ):
         # Priority: 1. Command line arg, 2. Config file, 3. Default location (~/.mmrelay/logs)
         if args.logfile:
             log_file = args.logfile
         else:
-            config_log_file = config.get("logging", {}).get("filename") if config is not None else None
+            config_log_file = (
+                config.get("logging", {}).get("filename")
+                if config is not None
+                else None
+            )
 
             if config_log_file:
                 # Use the log file specified in config
