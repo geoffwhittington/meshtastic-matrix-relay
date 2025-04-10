@@ -5,8 +5,11 @@ import os
 import subprocess
 import sys
 
-from mmrelay.config import get_app_path, get_base_dir, relay_config
+from mmrelay.config import get_app_path, get_base_dir
 from mmrelay.log_utils import get_logger
+
+# Global config variable that will be set from main.py
+config = None
 
 logger = get_logger(name="Plugins")
 sorted_active_plugins = []
@@ -132,16 +135,24 @@ def load_plugins_from_directory(directory, recursive=False):
     return plugins
 
 
-def load_plugins():
+def load_plugins(passed_config=None):
     global sorted_active_plugins
     global plugins_loaded
+    global config
 
     if plugins_loaded:
         return sorted_active_plugins
 
     logger.info("Checking plugin config...")
 
-    config = relay_config  # Use relay_config loaded in config.py
+    # Update the global config if a config is passed
+    if passed_config is not None:
+        config = passed_config
+
+    # Check if config is available
+    if config is None:
+        logger.error("No configuration available. Cannot load plugins.")
+        return []
 
     # Import core plugins
     from mmrelay.plugins.debug_plugin import Plugin as DebugPlugin

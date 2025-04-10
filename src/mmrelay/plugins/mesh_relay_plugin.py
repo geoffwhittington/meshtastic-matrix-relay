@@ -1,14 +1,10 @@
 import base64
 import json
 import re
-from typing import List
 
 from meshtastic import mesh_pb2
 
-from mmrelay.config import relay_config
-from mmrelay.plugins.base_plugin import BasePlugin
-
-matrix_rooms: List[dict] = relay_config["matrix_rooms"]
+from mmrelay.plugins.base_plugin import BasePlugin, config
 
 
 class Plugin(BasePlugin):
@@ -59,10 +55,12 @@ class Plugin(BasePlugin):
             channel = 0
 
         channel_mapped = False
-        for room in matrix_rooms:
-            if room["meshtastic_channel"] == channel:
-                channel_mapped = True
-                break
+        if config is not None:
+            matrix_rooms = config.get("matrix_rooms", [])
+            for room in matrix_rooms:
+                if room["meshtastic_channel"] == channel:
+                    channel_mapped = True
+                    break
 
         if not channel_mapped:
             self.logger.debug(f"Skipping message from unmapped channel {channel}")
@@ -97,9 +95,11 @@ class Plugin(BasePlugin):
             return False
 
         channel = None
-        for room in matrix_rooms:
-            if room["id"] == room["id"]:
-                channel = room["meshtastic_channel"]
+        if config is not None:
+            matrix_rooms = config.get("matrix_rooms", [])
+            for room_config in matrix_rooms:
+                if room_config["id"] == room.room_id:
+                    channel = room_config["meshtastic_channel"]
 
         if not channel:
             self.logger.debug(f"Skipping message from unmapped channel {channel}")

@@ -13,7 +13,6 @@ import serial.tools.list_ports  # Import serial tools for port listing
 from bleak.exc import BleakDBusError, BleakError
 from pubsub import pub
 
-from mmrelay.config import relay_config
 from mmrelay.db_utils import (
     get_longname,
     get_message_map_by_meshtastic_id,
@@ -23,10 +22,13 @@ from mmrelay.db_utils import (
 )
 from mmrelay.log_utils import get_logger
 
+# Global config variable that will be set from config.py
+config = None
+
 # Do not import plugin_loader here to avoid circular imports
 
-# Extract matrix rooms configuration
-matrix_rooms: List[dict] = relay_config["matrix_rooms"]
+# Initialize matrix rooms configuration
+matrix_rooms: List[dict] = []
 
 # Initialize logger for Meshtastic
 logger = get_logger(name="Meshtastic")
@@ -53,17 +55,29 @@ def serial_port_exists(port_name):
     return port_name in ports
 
 
-def connect_meshtastic(force_connect=False):
+def connect_meshtastic(passed_config=None, force_connect=False):
     """
     Establish a connection to the Meshtastic device.
     Attempts a connection based on connection_type (serial/ble/network).
     Retries until successful or shutting_down is set.
     If already connected and not force_connect, returns the existing client.
+
+    Args:
+        passed_config: The configuration dictionary to use (will update global config)
+        force_connect: Whether to force a new connection even if one exists
     """
-    global meshtastic_client, shutting_down
+    global meshtastic_client, shutting_down, config, matrix_rooms
     if shutting_down:
         logger.debug("Shutdown in progress. Not attempting to connect.")
         return None
+
+    # Update the global config if a config is passed
+    if passed_config is not None:
+        config = passed_config
+
+        # If config is valid, extract matrix_rooms
+        if config and "matrix_rooms" in config:
+            matrix_rooms = config["matrix_rooms"]
 
     with meshtastic_lock:
         if meshtastic_client and not force_connect:
@@ -77,8 +91,13 @@ def connect_meshtastic(force_connect=False):
                 logger.warning(f"Error closing previous connection: {e}")
             meshtastic_client = None
 
+        # Check if config is available
+        if config is None:
+            logger.error("No configuration available. Cannot connect to Meshtastic.")
+            return None
+
         # Determine connection type and attempt connection
-        connection_type = relay_config["meshtastic"]["connection_type"]
+        connection_type = config["meshtastic"]["connection_type"]
 
         # Support legacy "network" connection type (now "tcp")
         if connection_type == "network":
@@ -98,7 +117,7 @@ def connect_meshtastic(force_connect=False):
             try:
                 if connection_type == "serial":
                     # Serial connection
-                    serial_port = relay_config["meshtastic"]["serial_port"]
+                    serial_port = config["meshtastic"]["serial_port"]
                     logger.info(f"Connecting to serial port {serial_port} ...")
 
                     # Check if serial port exists before connecting
@@ -116,7 +135,7 @@ def connect_meshtastic(force_connect=False):
 
                 elif connection_type == "ble":
                     # BLE connection
-                    ble_address = relay_config["meshtastic"].get("ble_address")
+                    ble_address = config["meshtastic"].get("ble_address")
                     if ble_address:
                         logger.info(f"Connecting to BLE address {ble_address} ...")
                         meshtastic_client = meshtastic.ble_interface.BLEInterface(
@@ -131,7 +150,7 @@ def connect_meshtastic(force_connect=False):
 
                 elif connection_type == "tcp":
                     # TCP connection
-                    target_host = relay_config["meshtastic"]["host"]
+                    target_host = config["meshtastic"]["host"]
                     logger.info(f"Connecting to host {target_host} ...")
                     meshtastic_client = meshtastic.tcp_interface.TCPInterface(
                         hostname=target_host
@@ -252,8 +271,23 @@ def on_meshtastic_message(packet, interface):
     we do not store message maps and thus won't be able to relay reactions back to Matrix.
     If relay_reactions is True, message maps are stored inside matrix_relay().
     """
+    global config, matrix_rooms
+
+    # Log that we received a message (without the full packet details)
+    if packet.get("decoded", {}).get("text"):
+        logger.info(
+            f"Received Meshtastic message: {packet.get('decoded', {}).get('text')}"
+        )
+    else:
+        logger.debug("Received non-text Meshtastic message")
+
+    # Check if config is available
+    if config is None:
+        logger.error("No configuration available. Cannot process Meshtastic message.")
+        return
+
     # Apply reaction filtering based on config
-    relay_reactions = relay_config["meshtastic"].get("relay_reactions", False)
+    relay_reactions = config["meshtastic"].get("relay_reactions", False)
 
     # If relay_reactions is False, filter out reaction/tapback packets to avoid complexity
     if packet.get("decoded", {}).get("portnum") == "TEXT_MESSAGE_APP":
@@ -299,7 +333,7 @@ def on_meshtastic_message(packet, interface):
         # Message to someone else; ignoring for broadcasting logic
         is_direct_message = False
 
-    meshnet_name = relay_config["meshtastic"]["meshnet_name"]
+    meshnet_name = config["meshtastic"]["meshnet_name"]
 
     # Reaction handling (Meshtastic -> Matrix)
     # If replyId and emoji_flag are present and relay_reactions is True, we relay as text reactions in Matrix
@@ -374,7 +408,7 @@ def on_meshtastic_message(packet, interface):
             return
 
         # If detection_sensor is disabled and this is a detection sensor packet, skip it
-        if decoded.get("portnum") == "DETECTION_SENSOR_APP" and not relay_config[
+        if decoded.get("portnum") == "DETECTION_SENSOR_APP" and not config[
             "meshtastic"
         ].get("detection_sensor", False):
             logger.debug(
@@ -441,27 +475,33 @@ def on_meshtastic_message(packet, interface):
             return
 
         # Relay the message to all Matrix rooms mapped to this channel
-        logger.info(
-            f"Processing inbound radio message from {sender} on channel {channel}"
-        )
         logger.info(f"Relaying Meshtastic message from {longname} to Matrix")
+
+        # Check if matrix_rooms is empty
+        if not matrix_rooms:
+            logger.error("matrix_rooms is empty. Cannot relay message to Matrix.")
+            return
+
         for room in matrix_rooms:
             if room["meshtastic_channel"] == channel:
                 # Storing the message_map (if enabled) occurs inside matrix_relay() now,
                 # controlled by relay_reactions.
-                asyncio.run_coroutine_threadsafe(
-                    matrix_relay(
-                        room["id"],
-                        formatted_message,
-                        longname,
-                        shortname,
-                        meshnet_name,
-                        decoded.get("portnum"),
-                        meshtastic_id=packet.get("id"),
-                        meshtastic_text=text,
-                    ),
-                    loop=loop,
-                )
+                try:
+                    asyncio.run_coroutine_threadsafe(
+                        matrix_relay(
+                            room["id"],
+                            formatted_message,
+                            longname,
+                            shortname,
+                            meshnet_name,
+                            decoded.get("portnum"),
+                            meshtastic_id=packet.get("id"),
+                            meshtastic_text=text,
+                        ),
+                        loop=loop,
+                    )
+                except Exception as e:
+                    logger.error(f"Error relaying message to Matrix: {e}")
     else:
         # Non-text messages via plugins
         portnum = decoded.get("portnum")
@@ -493,8 +533,14 @@ async def check_connection():
     If it fails or doesn't return the firmware version, we assume the connection is lost
     and attempt to reconnect.
     """
-    global meshtastic_client, shutting_down
-    connection_type = relay_config["meshtastic"]["connection_type"]
+    global meshtastic_client, shutting_down, config
+
+    # Check if config is available
+    if config is None:
+        logger.error("No configuration available. Cannot check connection.")
+        return
+
+    connection_type = config["meshtastic"]["connection_type"]
     while not shutting_down:
         if meshtastic_client:
             try:

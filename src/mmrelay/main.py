@@ -7,14 +7,11 @@ import asyncio
 import logging
 import signal
 import sys
-from typing import List
 
 from nio import ReactionEvent, RoomMessageEmote, RoomMessageNotice, RoomMessageText
 
 # Import meshtastic_utils as a module to set event_loop
 from mmrelay import meshtastic_utils
-from mmrelay.cli import parse_arguments
-from mmrelay.config import relay_config
 from mmrelay.db_utils import (
     initialize_database,
     update_longnames,
@@ -32,20 +29,25 @@ from mmrelay.plugin_loader import load_plugins
 # Initialize logger
 logger = get_logger(name="M<>M Relay")
 
-# Extract Matrix configuration
-matrix_rooms: List[dict] = relay_config["matrix_rooms"]
-
 # Set the logging level for 'nio' to ERROR to suppress warnings
 logging.getLogger("nio").setLevel(logging.ERROR)
 
 
-async def main():
+async def main(config):
     """
     Main asynchronous function to set up and run the relay.
     Includes logic for wiping the message_map if configured in database.msg_map.wipe_on_restart
     or db.msg_map.wipe_on_restart (legacy format).
     Also updates longnames and shortnames periodically as before.
+
+    Args:
+        config: The loaded configuration
     """
+    # Extract Matrix configuration
+    from typing import List
+
+    matrix_rooms: List[dict] = config["matrix_rooms"]
+
     # Set the event loop in meshtastic_utils
     meshtastic_utils.event_loop = asyncio.get_event_loop()
 
@@ -53,13 +55,13 @@ async def main():
     initialize_database()
 
     # Check database config for wipe_on_restart (preferred format)
-    database_config = relay_config.get("database", {})
+    database_config = config.get("database", {})
     msg_map_config = database_config.get("msg_map", {})
     wipe_on_restart = msg_map_config.get("wipe_on_restart", False)
 
     # If not found in database config, check legacy db config
     if not wipe_on_restart:
-        db_config = relay_config.get("db", {})
+        db_config = config.get("db", {})
         legacy_msg_map_config = db_config.get("msg_map", {})
         legacy_wipe_on_restart = legacy_msg_map_config.get("wipe_on_restart", False)
 
@@ -74,16 +76,13 @@ async def main():
         wipe_message_map()
 
     # Load plugins early
-    load_plugins()
+    load_plugins(passed_config=config)
 
     # Connect to Meshtastic
-    meshtastic_utils.meshtastic_client = connect_meshtastic()
+    meshtastic_utils.meshtastic_client = connect_meshtastic(passed_config=config)
 
     # Connect to Matrix
-    matrix_client = await connect_matrix()
-    if matrix_client is None:
-        logger.error("Failed to connect to Matrix. Exiting.")
-        return
+    matrix_client = await connect_matrix(passed_config=config)
 
     # Join the rooms specified in the config.yaml
     for room in matrix_rooms:
@@ -194,96 +193,73 @@ async def main():
         matrix_logger.info("Shutdown complete.")
 
 
-def generate_sample_config():
-    """Generate a sample config.yaml file."""
-    import os
-    import shutil
+def run_main(args):
+    """Run the main functionality of the application.
 
-    import pkg_resources
+    Args:
+        args: The parsed command-line arguments
 
-    from mmrelay.config import get_config_paths
+    Returns:
+        int: Exit code (0 for success, non-zero for failure)
+    """
+    # Run the main functionality
 
-    # Get the first config path (highest priority)
-    config_paths = get_config_paths()
+    # Load configuration
+    from mmrelay.config import load_config
 
-    # Check if any config file exists
-    existing_config = None
-    for path in config_paths:
-        if os.path.isfile(path):
-            existing_config = path
-            break
+    # Load configuration with args
+    config = load_config(args=args)
 
-    if existing_config:
-        print(f"A config file already exists at: {existing_config}")
-        print(
-            "Use --config to specify a different location if you want to generate a new one."
-        )
-        return False
-
-    # No config file exists, generate one in the first location
-    target_path = config_paths[0]
-
-    # Ensure the directory exists
-    os.makedirs(os.path.dirname(target_path), exist_ok=True)
-
-    # Copy the sample config to the target location
-    sample_config_path = pkg_resources.resource_filename(
-        "mmrelay", "../sample_config.yaml"
+    # Set the global config variables in each module
+    from mmrelay import (
+        db_utils,
+        log_utils,
+        matrix_utils,
+        meshtastic_utils,
+        plugin_loader,
     )
-    if not os.path.exists(sample_config_path):
-        # Try alternative location
-        sample_config_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "sample_config.yaml"
-        )
+    from mmrelay.config import set_config
+    from mmrelay.plugins import base_plugin
 
-    if os.path.exists(sample_config_path):
-        shutil.copy(sample_config_path, target_path)
-        print(f"Generated sample config file at: {target_path}")
-        return True
-    else:
-        print("Error: Could not find sample_config.yaml")
-        return False
+    # Use the centralized set_config function to set up the configuration for all modules
+    set_config(matrix_utils, config)
+    set_config(meshtastic_utils, config)
+    set_config(plugin_loader, config)
+    set_config(log_utils, config)
+    set_config(db_utils, config)
+    set_config(base_plugin, config)
 
+    # Check if config exists and has the required keys
+    required_keys = ["matrix", "meshtastic", "matrix_rooms"]
 
-def run():
-    """Entry point for the application."""
-    # Parse command-line arguments
-    args = parse_arguments()  # This initializes the arguments for other modules to use
+    # Check each key individually for better debugging
+    for key in required_keys:
+        if key not in config:
+            logger.error(f"Required key '{key}' is missing from config")
 
-    # Handle --install-service
-    if args.install_service:
-        from mmrelay.setup_utils import install_service
-
-        success = install_service()
-        import sys
-
-        sys.exit(0 if success else 1)
-
-    # Handle --generate-config
-    if args.generate_config:
-        if generate_sample_config():
-            # Exit with success if config was generated
-            return
-        else:
-            # Exit with error if config generation failed
-            import sys
-
-            sys.exit(1)
-
-    # Check if config exists
-    from mmrelay.config import relay_config
-
-    if not relay_config:
+    if not config or not all(key in config for key in required_keys):
         # Exit with error if no config exists
-        import sys
-
-        sys.exit(1)
+        missing_keys = [key for key in required_keys if key not in config]
+        logger.error(
+            f"Configuration is missing required keys: {missing_keys}. "
+            "Please create a valid config.yaml file or use --generate-config to create one."
+        )
+        return 1
 
     try:
-        asyncio.run(main())
+        asyncio.run(main(config))
+        return 0
     except KeyboardInterrupt:
-        pass
+        logger.info("Interrupted by user. Exiting.")
+        return 0
+    except Exception as e:
+        logger.error(f"Error running main functionality: {e}")
+        return 1
 
 
 if __name__ == "__main__":
-    run()
+    import sys
+
+    from mmrelay.cli import main
+
+    sys.exit(main())
