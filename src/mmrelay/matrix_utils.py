@@ -31,13 +31,26 @@ from mmrelay.log_utils import get_logger
 # Do not import plugin_loader here to avoid circular imports
 from mmrelay.meshtastic_utils import connect_meshtastic
 
-# Extract Matrix configuration
-matrix_homeserver = relay_config["matrix"]["homeserver"]
-matrix_rooms: List[dict] = relay_config["matrix_rooms"]
-matrix_access_token = relay_config["matrix"]["access_token"]
-
-bot_user_id = relay_config["matrix"]["bot_user_id"]
+# Initialize Matrix configuration variables
+matrix_homeserver = ""
+matrix_rooms: List[dict] = []
+matrix_access_token = ""
+bot_user_id = ""
 bot_user_name = None  # Detected upon logon
+
+
+def update_config():
+    """Update the module's configuration from the global relay_config."""
+    global matrix_homeserver, matrix_rooms, matrix_access_token, bot_user_id
+
+    # Extract Matrix configuration if available
+    if "matrix" in relay_config:
+        matrix_homeserver = relay_config["matrix"].get("homeserver", "")
+        matrix_access_token = relay_config["matrix"].get("access_token", "")
+        bot_user_id = relay_config["matrix"].get("bot_user_id", "")
+
+    if "matrix_rooms" in relay_config:
+        matrix_rooms = relay_config["matrix_rooms"]
 bot_start_time = int(
     time.time() * 1000
 )  # Timestamp when the bot starts, used to filter out old messages

@@ -1,7 +1,8 @@
 """
 Setup utilities for MMRelay.
 
-This module provides simple functions for managing the systemd user service.
+This module provides simple functions for managing the systemd user service
+and generating configuration files.
 """
 
 import shutil
@@ -10,20 +11,7 @@ import sys
 from pathlib import Path
 
 # Import version from package
-
-# Service file template
-USER_SERVICE_TEMPLATE = """[Unit]
-Description=Meshtastic <==> Matrix Relay
-After=default.target
-
-[Service]
-Type=idle
-ExecStart={executable_path} --config %h/.mmrelay/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
-Restart=on-failure
-
-[Install]
-WantedBy=default.target
-"""
+import os
 
 
 def get_executable_path():
@@ -40,6 +28,36 @@ def get_user_service_path():
 def service_exists():
     """Check if the service file exists."""
     return get_user_service_path().exists()
+
+
+def print_service_commands():
+    """Print the commands for controlling the systemd user service."""
+    print("\nUse these commands to control the mmrelay service:")
+    print("  systemctl --user start mmrelay.service    # Start the service")
+    print("  systemctl --user stop mmrelay.service     # Stop the service")
+    print("  systemctl --user restart mmrelay.service  # Restart the service")
+    print("  systemctl --user status mmrelay.service   # Check service status")
+
+
+def wait_for_service_start():
+    """Wait for the service to start with a loading animation."""
+    import time
+    import sys
+
+    print("\nStarting mmrelay service", end="")
+    sys.stdout.flush()
+
+    # Animation characters
+    chars = ["-", "\\", "|", "/"]
+
+    # Wait for 10 seconds with animation
+    for i in range(40):  # 40 * 0.25s = 10s
+        time.sleep(0.25)
+        print(f"\rStarting mmrelay service {chars[i % len(chars)]}", end="")
+        sys.stdout.flush()
+
+    print("\rStarting mmrelay service... done!")
+    sys.stdout.flush()
 
 
 def read_service_file():
@@ -65,8 +83,39 @@ def create_service_file():
     logs_dir = Path.home() / ".mmrelay" / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
 
-    # Generate service file content
-    service_content = USER_SERVICE_TEMPLATE.format(executable_path=executable_path)
+    # Try to find the service template file
+    # First, check in the package directory
+    package_dir = os.path.dirname(__file__)
+    template_path = os.path.join(os.path.dirname(os.path.dirname(package_dir)), "tools", "mmrelay.service")
+
+    # If not found, try the repository root
+    if not os.path.exists(template_path):
+        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        template_path = os.path.join(repo_root, "tools", "mmrelay.service")
+
+    # If still not found, try the current directory
+    if not os.path.exists(template_path):
+        template_path = os.path.join(os.getcwd(), "tools", "mmrelay.service")
+
+    if not os.path.exists(template_path):
+        print(f"Error: Could not find service template at {template_path}")
+        return False
+
+    # Read the template
+    with open(template_path, 'r') as f:
+        service_template = f.read()
+
+    # Replace placeholders with actual values
+    service_content = service_template.replace(
+        "WorkingDirectory=%h/meshtastic-matrix-relay",
+        "# WorkingDirectory is not needed for installed package"
+    ).replace(
+        "%h/meshtastic-matrix-relay/.pyenv/bin/python %h/meshtastic-matrix-relay/main.py",
+        executable_path
+    ).replace(
+        "--config %h/.mmrelay/config/config.yaml",
+        "--config %h/.mmrelay/config.yaml"
+    )
 
     # Write service file
     try:
@@ -98,6 +147,13 @@ def install_service():
     # Check if service already exists
     existing_service = read_service_file()
 
+    if existing_service:
+        print(f"A service file already exists at {get_user_service_path()}")
+        if not input("Do you want to reinstall/update the service? (y/n): ").lower().startswith("y"):
+            print("Service installation cancelled.")
+            print_service_commands()
+            return True
+
     # Create or update service file
     if not create_service_file():
         return False
@@ -111,6 +167,14 @@ def install_service():
     else:
         print("Service installed successfully")
 
+    # Check if config is valid before starting the service
+    from mmrelay.cli import check_config
+    if not check_config():
+        print("\nWarning: Configuration is not valid. Service is installed but not started.")
+        print("Please fix your configuration and then start the service manually.")
+        print_service_commands()
+        return True
+
     # Ask if user wants to enable and start the service
     if (
         input("Do you want to enable the service to start at boot? (y/n): ")
@@ -123,35 +187,65 @@ def install_service():
                 check=True,
             )
             print("Service enabled successfully")
-        except subprocess.SubprocessError as e:
+        except subprocess.CalledProcessError as e:
             print(f"Error enabling service: {e}")
+        except OSError as e:
+            print(f"Error: {e}")
 
     if input("Do you want to start the service now? (y/n): ").lower().startswith("y"):
-        try:
-            subprocess.run(
-                ["/usr/bin/systemctl", "--user", "start", "mmrelay.service"], check=True
-            )
+        if start_service():
+            # Wait for the service to start
+            wait_for_service_start()
+
+            # Show service status
+            show_service_status()
             print("Service started successfully")
+        else:
+            print("\nWarning: Failed to start the service. Please check the logs.")
 
-            # Show status
-            try:
-                result = subprocess.run(
-                    ["/usr/bin/systemctl", "--user", "status", "mmrelay.service"],
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                )
-                print("\nService Status:")
-                print(result.stdout)
-            except subprocess.SubprocessError:
-                print("Could not get service status")
-        except subprocess.SubprocessError as e:
-            print(f"Error starting service: {e}")
-
-    print("\nYou can control the service with these commands:")
-    print("  systemctl --user start mmrelay.service")
-    print("  systemctl --user stop mmrelay.service")
-    print("  systemctl --user restart mmrelay.service")
-    print("  systemctl --user status mmrelay.service")
+    print_service_commands()
 
     return True
+
+
+def start_service():
+    """Start the systemd user service.
+
+    Returns:
+        bool: True if successful, False otherwise.
+    """
+    try:
+        subprocess.run(
+            ["/usr/bin/systemctl", "--user", "start", "mmrelay.service"], check=True
+        )
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error starting service: {e}")
+        return False
+    except OSError as e:
+        print(f"Error: {e}")
+        return False
+
+
+def show_service_status():
+    """Show the status of the systemd user service.
+
+    Returns:
+        bool: True if successful, False otherwise.
+    """
+    try:
+        result = subprocess.run(
+            ["/usr/bin/systemctl", "--user", "status", "mmrelay.service"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        print("\nService Status:")
+        print(result.stdout)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Could not get service status: {e}")
+        return False
+    except OSError as e:
+        print(f"Error: {e}")
+        return False

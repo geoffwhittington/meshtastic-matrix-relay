@@ -32,8 +32,17 @@ from mmrelay.plugin_loader import load_plugins
 # Initialize logger
 logger = get_logger(name="M<>M Relay")
 
-# Extract Matrix configuration
-matrix_rooms: List[dict] = relay_config["matrix_rooms"]
+# Initialize Matrix configuration
+matrix_rooms: List[dict] = []
+
+
+def update_config():
+    """Update the module's configuration from the global relay_config."""
+    global matrix_rooms
+
+    # Extract matrix rooms configuration if available
+    if "matrix_rooms" in relay_config:
+        matrix_rooms = relay_config["matrix_rooms"]
 
 # Set the logging level for 'nio' to ERROR to suppress warnings
 logging.getLogger("nio").setLevel(logging.ERROR)
@@ -193,91 +202,31 @@ async def main():
 
         matrix_logger.info("Shutdown complete.")
 
-
-def generate_sample_config():
-    """Generate a sample config.yaml file."""
-    import os
-    import shutil
-
-    import pkg_resources
-
-    from mmrelay.config import get_config_paths
-
-    # Get the first config path (highest priority)
-    config_paths = get_config_paths()
-
-    # Check if any config file exists
-    existing_config = None
-    for path in config_paths:
-        if os.path.isfile(path):
-            existing_config = path
-            break
-
-    if existing_config:
-        print(f"A config file already exists at: {existing_config}")
-        print(
-            "Use --config to specify a different location if you want to generate a new one."
-        )
-        return False
-
-    # No config file exists, generate one in the first location
-    target_path = config_paths[0]
-
-    # Ensure the directory exists
-    os.makedirs(os.path.dirname(target_path), exist_ok=True)
-
-    # Copy the sample config to the target location
-    sample_config_path = pkg_resources.resource_filename(
-        "mmrelay", "../sample_config.yaml"
-    )
-    if not os.path.exists(sample_config_path):
-        # Try alternative location
-        sample_config_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "sample_config.yaml"
-        )
-
-    if os.path.exists(sample_config_path):
-        shutil.copy(sample_config_path, target_path)
-        print(f"Generated sample config file at: {target_path}")
-        return True
-    else:
-        print("Error: Could not find sample_config.yaml")
-        return False
-
-
 def run():
     """Entry point for the application."""
     # Parse command-line arguments
     args = parse_arguments()  # This initializes the arguments for other modules to use
 
-    # Handle --install-service
-    if args.install_service:
-        from mmrelay.setup_utils import install_service
+    # Handle CLI commands before loading config
+    from mmrelay.cli import handle_cli_commands
+    if handle_cli_commands(args):
+        return
 
-        success = install_service()
-        import sys
+    # Load configuration
+    from mmrelay.config import load_config
+    config = load_config(args.config)
 
-        sys.exit(0 if success else 1)
-
-    # Handle --generate-config
-    if args.generate_config:
-        if generate_sample_config():
-            # Exit with success if config was generated
-            return
-        else:
-            # Exit with error if config generation failed
-            import sys
-
-            sys.exit(1)
-
-    # Check if config exists
-    from mmrelay.config import relay_config
-
-    if not relay_config:
+    if not config:
         # Exit with error if no config exists
         import sys
-
         sys.exit(1)
+
+    # Update module configurations
+    from mmrelay.meshtastic_utils import update_config as update_meshtastic_config
+    from mmrelay.matrix_utils import update_config as update_matrix_config
+    update_meshtastic_config()
+    update_matrix_config()
+    update_config()  # Update main.py configuration
 
     try:
         asyncio.run(main())

@@ -107,10 +107,6 @@ def get_log_dir():
     return log_dir
 
 
-relay_config = {}
-config_paths = get_config_paths()
-config_path = None
-
 # Set up a basic logger for config
 logger = logging.getLogger("Config")
 logger.setLevel(logging.INFO)
@@ -123,23 +119,49 @@ handler.setFormatter(
 )
 logger.addHandler(handler)
 
-# Try each config path in order until we find one that exists
-for path in config_paths:
-    if os.path.isfile(path):
-        config_path = path
-        logger.info(f"Loading configuration from: {config_path}")
-        with open(config_path, "r") as f:
-            relay_config = yaml.load(f, Loader=SafeLoader)
-        break
+# Initialize empty config
+relay_config = {}
+config_path = None
 
-if not config_path:
-    # Check if we're running with --generate-config
-    args = parse_arguments()
-    if not args.generate_config:
-        logger.error("Configuration file not found in any of the following locations:")
-        for path in config_paths:
-            logger.error(f"  - {path}")
-        logger.error("Using empty configuration. This will likely cause errors.")
-        logger.error(
-            "Run 'mmrelay --generate-config' to generate a sample configuration file."
-        )
+
+def load_config(config_file=None):
+    """Load the configuration from the specified file or search for it.
+
+    Args:
+        config_file (str, optional): Path to the config file. If None, search for it.
+
+    Returns:
+        dict: The loaded configuration
+    """
+    global relay_config, config_path
+
+    # If a specific config file was provided, use it
+    if config_file and os.path.isfile(config_file):
+        logger.info(f"Loading configuration from: {config_file}")
+        with open(config_file, "r") as f:
+            relay_config = yaml.load(f, Loader=SafeLoader)
+        config_path = config_file
+        return relay_config
+
+    # Otherwise, search for a config file
+    config_paths = get_config_paths()
+
+    # Try each config path in order until we find one that exists
+    for path in config_paths:
+        if os.path.isfile(path):
+            config_path = path
+            logger.info(f"Loading configuration from: {config_path}")
+            with open(config_path, "r") as f:
+                relay_config = yaml.load(f, Loader=SafeLoader)
+            return relay_config
+
+    # No config file found
+    logger.error("Configuration file not found in any of the following locations:")
+    for path in config_paths:
+        logger.error(f"  - {path}")
+    logger.error("Using empty configuration. This will likely cause errors.")
+    logger.error(
+        "Run 'mmrelay --generate-config' to generate a sample configuration file."
+    )
+
+    return relay_config

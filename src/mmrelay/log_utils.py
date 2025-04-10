@@ -37,12 +37,12 @@ def get_logger(name):
     args = parse_arguments()
 
     # Check if file logging is enabled
-    if relay_config["logging"].get("log_to_file", False) or args.logfile:
+    if relay_config.get("logging", {}).get("log_to_file", False) or args.logfile:
         # Priority: 1. Command line arg, 2. Config file, 3. Default location (~/.mmrelay/logs)
         if args.logfile:
             log_file = args.logfile
         else:
-            config_log_file = relay_config["logging"].get("filename")
+            config_log_file = relay_config.get("logging", {}).get("filename")
 
             if config_log_file:
                 # Use the log file specified in config
