@@ -4,46 +4,79 @@ The relay works on Linux, macOS, and Windows and requires Python 3.9+.
 
 ## Installation
 
-Clone the repository:
+### Install from PyPI (Recommended)
 
 ```bash
-git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
+# Install using pip
+pip install mmrelay
+
+# Or use pipx for isolated installation (recommended)
+pipx install mmrelay
 ```
 
-### Setup
+### Install from Source
 
-1. Create a Python virtual environment in the project directory:
+```bash
+# Clone the repository
+git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
+cd meshtastic-matrix-relay
 
-   ```bash
-   python3 -m venv .pyenv
-   ```
+# Install using pip
+pip install -e .
 
-2. Activate the virtual environment:
+# Or use pipx for isolated installation (recommended)
+pipx install -e .
+```
 
-   - Linux/macOS:
-     ```bash
-     source .pyenv/bin/activate
-     ```
-   - Windows:
-     ```cmd
-     .pyenv\Scripts\activate
-     ```
+> **Note:** If you're upgrading from a previous version, please refer to the [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) file for migration instructions.
 
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Configuration
 
-### Configuration
+The application looks for configuration files in the following locations (in order):
 
-Create a `config.yaml` in the project directory based on the `sample_config.yaml`.
+1. Path specified with `--config` command-line option
+2. `~/.mmrelay/config.yaml`
+3. Current directory `config.yaml`
+4. Current directory `sample_config.yaml`
+
+Create your configuration file based on the `sample_config.yaml` template:
+
+```bash
+# Create the mmrelay directory if it doesn't exist
+mkdir -p ~/.mmrelay
+
+# Copy the sample configuration
+cp sample_config.yaml ~/.mmrelay/config.yaml
+
+# Edit the configuration file
+# Replace with your preferred editor
+nano ~/.mmrelay/config.yaml
+```
 
 ## Usage
 
-Run the relay with the virtual environment activated:
+Run the relay with the following command:
 
 ```bash
-python main.py
+mmrelay
+```
+
+With command-line options:
+
+```bash
+mmrelay --config /path/to/config.yaml --logfile /path/to/logfile.log
+```
+
+### Command-Line Options
+
+```
+mmrelay [OPTIONS]
+
+Options:
+  --config PATH    Path to the configuration file
+  --logfile PATH   Path to the log file
+  --version        Show the version number and exit
+  --help           Show this help message and exit
 ```
 
 Example output:
@@ -61,19 +94,42 @@ INFO:meshtastic.matrix.relay:Relaying Meshtastic message from Alice to Matrix: [
 INFO:meshtastic.matrix.relay:Sent inbound radio message to matrix room: #someroomid:example.matrix.org
 ```
 
-## Persistence (Linux)
+## Running as a Service
 
-To run the relay automatically on startup:
+### Systemd (Linux)
 
-1. Copy the systemd service file:
+1. Create a systemd service file:
    ```bash
    mkdir -p ~/.config/systemd/user
-   cp tools/mmrelay.service ~/.config/systemd/user/
    ```
-2. Enable and start the service:
+
+2. Create the service file at `~/.config/systemd/user/mmrelay.service`:
+   ```ini
+   [Unit]
+   Description=A Meshtastic <==> Matrix Relay
+   After=default.target
+
+   [Service]
+   Type=idle
+   ExecStart=/path/to/mmrelay --config %h/.mmrelay/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
+   Restart=on-failure
+
+   [Install]
+   WantedBy=default.target
+   ```
+
+   Replace `/path/to/mmrelay` with the actual path (find it with `which mmrelay`).
+
+3. Enable and start the service:
    ```bash
+   systemctl --user daemon-reload
    systemctl --user enable mmrelay.service
    systemctl --user start mmrelay.service
+   ```
+
+4. Check the service status:
+   ```bash
+   systemctl --user status mmrelay.service
    ```
 
 ## Dockerized Versions (Unofficial)

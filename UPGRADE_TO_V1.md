@@ -2,6 +2,8 @@
 
 This guide provides instructions for upgrading to mmrelay v1.0.0 from previous versions. Version 1.0.0 introduces several improvements including PyPI packaging, standardized configuration locations, and better CLI support.
 
+For new installations, please refer to the [INSTRUCTIONS.md](INSTRUCTIONS.md) file.
+
 ## What's New in v1.0.0
 
 - **PyPI Packaging**: mmrelay is now available on PyPI for easier installation
@@ -35,6 +37,51 @@ pip install -e .
 # Or use pipx for isolated installation (recommended)
 pipx install -e .
 ```
+
+### Migrating from Legacy Installation
+
+If you were using the previous installation method with a virtual environment:
+
+1. Make sure you have a backup of your configuration:
+   ```bash
+   cp config.yaml config.yaml.backup
+   ```
+
+2. Install mmrelay using one of the methods above
+
+3. Move your configuration to the new standard location:
+   ```bash
+   mkdir -p ~/.mmrelay
+   cp config.yaml ~/.mmrelay/config.yaml
+   ```
+
+4. If you have custom plugins, move them to the new location:
+   ```bash
+   mkdir -p ~/.mmrelay/plugins/custom
+   cp plugins/custom/* ~/.mmrelay/plugins/custom/
+   ```
+
+5. Update your systemd service file if you were using one:
+   ```bash
+   # Create a new service file
+   cat > ~/.config/systemd/user/mmrelay.service << EOL
+   [Unit]
+   Description=A Meshtastic <==> Matrix Relay
+   After=default.target
+
+   [Service]
+   Type=idle
+   ExecStart=$(which mmrelay) --config %h/.mmrelay/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
+   Restart=on-failure
+
+   [Install]
+   WantedBy=default.target
+   EOL
+
+   # Reload systemd and restart the service
+   systemctl --user daemon-reload
+   systemctl --user restart mmrelay.service
+   ```
 
 ## Configuration Changes
 
