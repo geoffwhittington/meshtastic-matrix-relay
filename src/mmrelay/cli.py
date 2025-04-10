@@ -4,6 +4,7 @@ Command-line interface handling for the Meshtastic Matrix Relay.
 
 import argparse
 import os
+import sys
 
 import yaml
 from yaml.loader import SafeLoader
@@ -41,7 +42,24 @@ def parse_arguments():
         help="Check if the configuration file is valid",
     )
 
-    return parser.parse_args()
+    # Windows-specific handling for backward compatibility
+    # On Windows, add a positional argument for the config file path
+    if sys.platform == "win32":
+        parser.add_argument("config_path", nargs="?", help=argparse.SUPPRESS, default=None)
+
+    args = parser.parse_args()
+
+    # If on Windows and a positional config path is provided but --config is not, use the positional one
+    if sys.platform == "win32" and hasattr(args, "config_path") and args.config_path and not args.config:
+        args.config = args.config_path
+        # Print a deprecation warning
+        print("Warning: Using positional argument for config file is deprecated.")
+        print(f"Please use --config {args.config_path} instead.")
+        # Remove the positional argument from sys.argv to avoid issues with other argument parsers
+        if args.config_path in sys.argv:
+            sys.argv.remove(args.config_path)
+
+    return args
 
 
 def get_version():
