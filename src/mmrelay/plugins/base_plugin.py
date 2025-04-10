@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 import markdown
 import schedule
 
-from mmrelay.config import relay_config
 from mmrelay.db_utils import (
     delete_plugin_data,
     get_plugin_data,
@@ -13,6 +12,9 @@ from mmrelay.db_utils import (
     store_plugin_data,
 )
 from mmrelay.log_utils import get_logger
+
+# Global config variable that will be set from main.py
+config = None
 
 
 class BasePlugin(ABC):
@@ -28,18 +30,21 @@ class BasePlugin(ABC):
         super().__init__()
         self.logger = get_logger(f"Plugin:{self.plugin_name}")
         self.config = {"active": False}
+        global config
         plugin_levels = ["plugins", "community-plugins", "custom-plugins"]
 
-        for level in plugin_levels:
-            if level in relay_config and self.plugin_name in relay_config[level]:
-                self.config = relay_config[level][self.plugin_name]
-                break
+        # Check if config is available
+        if config is not None:
+            for level in plugin_levels:
+                if level in config and self.plugin_name in config[level]:
+                    self.config = config[level][self.plugin_name]
+                    break
 
-        # Get the list of mapped channels
-        self.mapped_channels = [
-            room.get("meshtastic_channel")
-            for room in relay_config.get("matrix_rooms", [])
-        ]
+            # Get the list of mapped channels
+            self.mapped_channels = [
+                room.get("meshtastic_channel")
+                for room in config.get("matrix_rooms", [])
+            ]
 
         # Get the channels specified for this plugin, or default to all mapped channels
         self.channels = self.config.get("channels", self.mapped_channels)
@@ -58,9 +63,11 @@ class BasePlugin(ABC):
             )
 
         # Get the response delay from the meshtastic config only
-        self.response_delay = relay_config.get("meshtastic", {}).get(
-            "plugin_response_delay", 3
-        )
+        self.response_delay = 3  # Default value
+        if config is not None:
+            self.response_delay = config.get("meshtastic", {}).get(
+                "plugin_response_delay", self.response_delay
+            )
 
     def start(self):
         if "schedule" not in self.config or (

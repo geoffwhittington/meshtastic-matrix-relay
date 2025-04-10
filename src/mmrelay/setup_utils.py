@@ -5,13 +5,12 @@ This module provides simple functions for managing the systemd user service
 and generating configuration files.
 """
 
+# Import version from package
+import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
-
-# Import version from package
-import os
 
 
 def get_executable_path():
@@ -41,8 +40,8 @@ def print_service_commands():
 
 def wait_for_service_start():
     """Wait for the service to start with a loading animation."""
-    import time
     import sys
+    import time
 
     print("\nStarting mmrelay service", end="")
     sys.stdout.flush()
@@ -86,7 +85,9 @@ def create_service_file():
     # Try to find the service template file
     # First, check in the package directory
     package_dir = os.path.dirname(__file__)
-    template_path = os.path.join(os.path.dirname(os.path.dirname(package_dir)), "tools", "mmrelay.service")
+    template_path = os.path.join(
+        os.path.dirname(os.path.dirname(package_dir)), "tools", "mmrelay.service"
+    )
 
     # If not found, try the repository root
     if not os.path.exists(template_path):
@@ -102,19 +103,23 @@ def create_service_file():
         return False
 
     # Read the template
-    with open(template_path, 'r') as f:
+    with open(template_path, "r") as f:
         service_template = f.read()
 
     # Replace placeholders with actual values
-    service_content = service_template.replace(
-        "WorkingDirectory=%h/meshtastic-matrix-relay",
-        "# WorkingDirectory is not needed for installed package"
-    ).replace(
-        "%h/meshtastic-matrix-relay/.pyenv/bin/python %h/meshtastic-matrix-relay/main.py",
-        executable_path
-    ).replace(
-        "--config %h/.mmrelay/config/config.yaml",
-        "--config %h/.mmrelay/config.yaml"
+    service_content = (
+        service_template.replace(
+            "WorkingDirectory=%h/meshtastic-matrix-relay",
+            "# WorkingDirectory is not needed for installed package",
+        )
+        .replace(
+            "%h/meshtastic-matrix-relay/.pyenv/bin/python %h/meshtastic-matrix-relay/main.py",
+            executable_path,
+        )
+        .replace(
+            "--config %h/.mmrelay/config/config.yaml",
+            "--config %h/.mmrelay/config.yaml",
+        )
     )
 
     # Write service file
@@ -149,7 +154,11 @@ def install_service():
 
     if existing_service:
         print(f"A service file already exists at {get_user_service_path()}")
-        if not input("Do you want to reinstall/update the service? (y/n): ").lower().startswith("y"):
+        if (
+            not input("Do you want to reinstall/update the service? (y/n): ")
+            .lower()
+            .startswith("y")
+        ):
             print("Service installation cancelled.")
             print_service_commands()
             return True
@@ -169,8 +178,11 @@ def install_service():
 
     # Check if config is valid before starting the service
     from mmrelay.cli import check_config
+
     if not check_config():
-        print("\nWarning: Configuration is not valid. Service is installed but not started.")
+        print(
+            "\nWarning: Configuration is not valid. Service is installed but not started."
+        )
         print("Please fix your configuration and then start the service manually.")
         print_service_commands()
         return True

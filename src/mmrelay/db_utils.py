@@ -2,8 +2,11 @@ import json
 import os
 import sqlite3
 
-from mmrelay.config import get_data_dir, relay_config
+from mmrelay.config import get_data_dir
 from mmrelay.log_utils import get_logger
+
+# Global config variable that will be set from main.py
+config = None
 
 logger = get_logger(name="db_utils")
 
@@ -15,29 +18,33 @@ def get_db_path():
     By default, uses the standard data directory (~/.mmrelay/data).
     Can be overridden by setting 'path' under 'database' in config.yaml.
     """
-    # Check if database path is specified in config (preferred format)
-    if "database" in relay_config and "path" in relay_config["database"]:
-        custom_path = relay_config["database"]["path"]
-        if custom_path:
-            # Ensure the directory exists
-            db_dir = os.path.dirname(custom_path)
-            if db_dir:
-                os.makedirs(db_dir, exist_ok=True)
-            logger.info(f"Using database path from config: {custom_path}")
-            return custom_path
+    global config
 
-    # Check legacy format (db section)
-    if "db" in relay_config and "path" in relay_config["db"]:
-        custom_path = relay_config["db"]["path"]
-        if custom_path:
-            # Ensure the directory exists
-            db_dir = os.path.dirname(custom_path)
-            if db_dir:
-                os.makedirs(db_dir, exist_ok=True)
-            logger.warning(
-                "Using 'db.path' configuration (legacy). 'database.path' is now the preferred format and 'db.path' will be deprecated in a future version."
-            )
-            return custom_path
+    # Check if config is available
+    if config is not None:
+        # Check if database path is specified in config (preferred format)
+        if "database" in config and "path" in config["database"]:
+            custom_path = config["database"]["path"]
+            if custom_path:
+                # Ensure the directory exists
+                db_dir = os.path.dirname(custom_path)
+                if db_dir:
+                    os.makedirs(db_dir, exist_ok=True)
+                logger.info(f"Using database path from config: {custom_path}")
+                return custom_path
+
+        # Check legacy format (db section)
+        if "db" in config and "path" in config["db"]:
+            custom_path = config["db"]["path"]
+            if custom_path:
+                # Ensure the directory exists
+                db_dir = os.path.dirname(custom_path)
+                if db_dir:
+                    os.makedirs(db_dir, exist_ok=True)
+                logger.warning(
+                    "Using 'db.path' configuration (legacy). 'database.path' is now the preferred format and 'db.path' will be deprecated in a future version."
+                )
+                return custom_path
 
     # Use the standard data directory
     return os.path.join(get_data_dir(), "meshtastic.sqlite")

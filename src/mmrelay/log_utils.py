@@ -3,7 +3,10 @@ import os
 from logging.handlers import RotatingFileHandler
 
 from mmrelay.cli import parse_arguments
-from mmrelay.config import get_log_dir, relay_config
+from mmrelay.config import get_log_dir
+
+# Global config variable that will be set from main.py
+config = None
 
 
 def get_logger(name):
@@ -13,12 +16,13 @@ def get_logger(name):
     log_level = logging.INFO
 
     # Try to get log level from config
+    global config
     if (
-        relay_config
-        and "logging" in relay_config
-        and "level" in relay_config["logging"]
+        config is not None
+        and "logging" in config
+        and "level" in config["logging"]
     ):
-        log_level = getattr(logging, relay_config["logging"]["level"].upper())
+        log_level = getattr(logging, config["logging"]["level"].upper())
 
     logger.setLevel(log_level)
     logger.propagate = False
@@ -37,12 +41,12 @@ def get_logger(name):
     args = parse_arguments()
 
     # Check if file logging is enabled
-    if relay_config.get("logging", {}).get("log_to_file", False) or args.logfile:
+    if config is not None and config.get("logging", {}).get("log_to_file", False) or args.logfile:
         # Priority: 1. Command line arg, 2. Config file, 3. Default location (~/.mmrelay/logs)
         if args.logfile:
             log_file = args.logfile
         else:
-            config_log_file = relay_config.get("logging", {}).get("filename")
+            config_log_file = config.get("logging", {}).get("filename") if config is not None else None
 
             if config_log_file:
                 # Use the log file specified in config
@@ -75,12 +79,12 @@ def get_logger(name):
         # Create a file handler for logging
         try:
             # Set up size-based log rotation
-            max_bytes = relay_config["logging"].get(
-                "max_log_size", 10 * 1024 * 1024
-            )  # Default 10 MB
-            backup_count = relay_config["logging"].get(
-                "backup_count", 1
-            )  # Default to 1 backup
+            max_bytes = 10 * 1024 * 1024  # Default 10 MB
+            backup_count = 1  # Default to 1 backup
+
+            if config is not None and "logging" in config:
+                max_bytes = config["logging"].get("max_log_size", max_bytes)
+                backup_count = config["logging"].get("backup_count", backup_count)
             file_handler = RotatingFileHandler(
                 log_file, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8"
             )

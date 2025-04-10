@@ -6,8 +6,6 @@ import platformdirs
 import yaml
 from yaml.loader import SafeLoader
 
-from mmrelay.cli import parse_arguments
-
 # Define custom base directory for Unix systems
 APP_NAME = "mmrelay"
 APP_AUTHOR = None  # No author directory
@@ -36,20 +34,21 @@ def get_app_path():
         return os.path.dirname(os.path.abspath(__file__))
 
 
-def get_config_paths():
+def get_config_paths(args=None):
     """
     Returns a list of possible config file paths in order of priority:
     1. Command line argument (if provided)
     2. User config directory (~/.mmrelay/config/ on Linux)
     3. Current directory (for backward compatibility)
     4. Application directory (for backward compatibility)
+
+    Args:
+        args: The parsed command-line arguments
     """
     paths = []
 
     # Check command line arguments for config path
-    args = parse_arguments()
-
-    if args.config:
+    if args and args.config:
         paths.append(os.path.abspath(args.config))
 
     # Check user config directory (preferred location)
@@ -124,11 +123,12 @@ relay_config = {}
 config_path = None
 
 
-def load_config(config_file=None):
+def load_config(config_file=None, args=None):
     """Load the configuration from the specified file or search for it.
 
     Args:
         config_file (str, optional): Path to the config file. If None, search for it.
+        args: The parsed command-line arguments
 
     Returns:
         dict: The loaded configuration
@@ -144,7 +144,7 @@ def load_config(config_file=None):
         return relay_config
 
     # Otherwise, search for a config file
-    config_paths = get_config_paths()
+    config_paths = get_config_paths(args)
 
     # Try each config path in order until we find one that exists
     for path in config_paths:
@@ -153,6 +153,7 @@ def load_config(config_file=None):
             logger.info(f"Loading configuration from: {config_path}")
             with open(config_path, "r") as f:
                 relay_config = yaml.load(f, Loader=SafeLoader)
+            logger.info(f"Loaded configuration with keys: {list(relay_config.keys())}")
             return relay_config
 
     # No config file found

@@ -3,7 +3,7 @@ import io
 import re
 import ssl
 import time
-from typing import List, Union
+from typing import Union
 
 import certifi
 import meshtastic.protobuf.portnums_pb2
@@ -20,7 +20,6 @@ from nio import (
 )
 from PIL import Image
 
-from mmrelay.config import relay_config
 from mmrelay.db_utils import (
     get_message_map_by_matrix_event_id,
     prune_message_map,
@@ -31,12 +30,14 @@ from mmrelay.log_utils import get_logger
 # Do not import plugin_loader here to avoid circular imports
 from mmrelay.meshtastic_utils import connect_meshtastic
 
-# Extract Matrix configuration
-matrix_homeserver = relay_config["matrix"]["homeserver"]
-matrix_rooms: List[dict] = relay_config["matrix_rooms"]
-matrix_access_token = relay_config["matrix"]["access_token"]
+# Global config variable that will be set from main.py
+config = None
 
-bot_user_id = relay_config["matrix"]["bot_user_id"]
+# These will be set in connect_matrix()
+matrix_homeserver = None
+matrix_rooms = None
+matrix_access_token = None
+bot_user_id = None
 bot_user_name = None  # Detected upon logon
 bot_start_time = int(
     time.time() * 1000
@@ -78,13 +79,30 @@ def bot_command(command, event):
         return False
 
 
-async def connect_matrix():
+async def connect_matrix(passed_config=None):
     """
     Establish a connection to the Matrix homeserver.
     Sets global matrix_client and detects the bot's display name.
+
+    Args:
+        passed_config: The configuration dictionary to use (will update global config)
     """
-    global matrix_client
-    global bot_user_name
+    global matrix_client, bot_user_name, matrix_homeserver, matrix_rooms, matrix_access_token, bot_user_id, config
+
+    # Update the global config if a config is passed
+    if passed_config is not None:
+        config = passed_config
+
+    # Check if config is available
+    if config is None:
+        logger.error("No configuration available. Cannot connect to Matrix.")
+        return None
+
+    # Extract Matrix configuration
+    matrix_homeserver = config["matrix"]["homeserver"]
+    matrix_rooms = config["matrix_rooms"]
+    matrix_access_token = config["matrix"]["access_token"]
+    bot_user_id = config["matrix"]["bot_user_id"]
 
     # Check if client already exists
     if matrix_client:
@@ -186,19 +204,25 @@ async def matrix_relay(
     Additionally, if `msgs_to_keep` > 0, we prune the oldest messages after storing
     to prevent database bloat and maintain privacy.
     """
+    global config
     matrix_client = await connect_matrix()
 
+    # Check if config is available
+    if config is None:
+        logger.error("No configuration available. Cannot relay message to Matrix.")
+        return
+
     # Retrieve relay_reactions configuration; default to False now if not specified.
-    relay_reactions = relay_config["meshtastic"].get("relay_reactions", False)
+    relay_reactions = config["meshtastic"].get("relay_reactions", False)
 
     # Retrieve db config for message_map pruning
     # Check database config for message map settings (preferred format)
-    database_config = relay_config.get("database", {})
+    database_config = config.get("database", {})
     msg_map_config = database_config.get("msg_map", {})
 
     # If not found in database config, check legacy db config
     if not msg_map_config:
-        db_config = relay_config.get("db", {})
+        db_config = config.get("db", {})
         legacy_msg_map_config = db_config.get("msg_map", {})
 
         if legacy_msg_map_config:
@@ -212,7 +236,7 @@ async def matrix_relay(
 
     try:
         # Always use our own local meshnet_name for outgoing events
-        local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
+        local_meshnet_name = config["meshtastic"]["meshnet_name"]
         content = {
             "msgtype": "m.text" if not emote else "m.emote",
             "body": message,
@@ -313,9 +337,9 @@ async def on_room_message(
 
     # Find the room_config that matches this room, if any
     room_config = None
-    for config in matrix_rooms:
-        if config["id"] == room.room_id:
-            room_config = config
+    for room_conf in matrix_rooms:
+        if room_conf["id"] == room.room_id:
+            room_config = room_conf
             break
 
     # Only proceed if the room is supported
@@ -323,12 +347,19 @@ async def on_room_message(
         return
 
     relates_to = event.source["content"].get("m.relates_to")
+    global config
+
     is_reaction = False
     reaction_emoji = None
     original_matrix_event_id = None
 
+    # Check if config is available
+    if config is None:
+        logger.error("No configuration available. Cannot process Matrix message.")
+        return
+
     # Retrieve relay_reactions option from config, now defaulting to False
-    relay_reactions = relay_config["meshtastic"].get("relay_reactions", False)
+    relay_reactions = config["meshtastic"].get("relay_reactions", False)
 
     # Check if this is a Matrix ReactionEvent (usually m.reaction)
     if isinstance(event, ReactionEvent):
@@ -372,7 +403,7 @@ async def on_room_message(
         )
         return
 
-    local_meshnet_name = relay_config["meshtastic"]["meshnet_name"]
+    local_meshnet_name = config["meshtastic"]["meshnet_name"]
 
     # If this is a reaction and relay_reactions is True, attempt to relay it
     if is_reaction and relay_reactions:
@@ -415,7 +446,7 @@ async def on_room_message(
 
             meshtastic_channel = room_config["meshtastic_channel"]
 
-            if relay_config["meshtastic"]["broadcast_enabled"]:
+            if config["meshtastic"]["broadcast_enabled"]:
                 meshtastic_logger.info(
                     f"Relaying reaction from remote meshnet {meshnet_name} to radio broadcast"
                 )
@@ -470,7 +501,7 @@ async def on_room_message(
 
             meshtastic_channel = room_config["meshtastic_channel"]
 
-            if relay_config["meshtastic"]["broadcast_enabled"]:
+            if config["meshtastic"]["broadcast_enabled"]:
                 meshtastic_logger.info(
                     f"Relaying reaction from {full_display_name} to radio broadcast"
                 )
@@ -550,11 +581,11 @@ async def on_room_message(
     # Note: If relay_reactions is False, we won't store message_map, but we can still relay.
     # The lack of message_map storage just means no reaction bridging will occur.
     if not found_matching_plugin and event.sender != bot_user_id:
-        if relay_config["meshtastic"]["broadcast_enabled"]:
+        if config["meshtastic"]["broadcast_enabled"]:
             portnum = event.source["content"].get("meshtastic_portnum")
             if portnum == "DETECTION_SENSOR_APP":
                 # If detection_sensor is enabled, forward this data as detection sensor data
-                if relay_config["meshtastic"].get("detection_sensor", False):
+                if config["meshtastic"].get("detection_sensor", False):
                     sent_packet = meshtastic_interface.sendData(
                         data=full_message.encode("utf-8"),
                         channelIndex=meshtastic_channel,
@@ -571,12 +602,12 @@ async def on_room_message(
                             meshtastic_meshnet=local_meshnet_name,
                         )
                         # Check database config for message map settings (preferred format)
-                        database_config = relay_config.get("database", {})
+                        database_config = config.get("database", {})
                         msg_map_config = database_config.get("msg_map", {})
 
                         # If not found in database config, check legacy db config
                         if not msg_map_config:
-                            db_config = relay_config.get("db", {})
+                            db_config = config.get("db", {})
                             legacy_msg_map_config = db_config.get("msg_map", {})
 
                             if legacy_msg_map_config:
@@ -608,12 +639,12 @@ async def on_room_message(
                         meshtastic_meshnet=local_meshnet_name,
                     )
                     # Check database config for message map settings (preferred format)
-                    database_config = relay_config.get("database", {})
+                    database_config = config.get("database", {})
                     msg_map_config = database_config.get("msg_map", {})
 
                     # If not found in database config, check legacy db config
                     if not msg_map_config:
-                        db_config = relay_config.get("db", {})
+                        db_config = config.get("db", {})
                         legacy_msg_map_config = db_config.get("msg_map", {})
 
                         if legacy_msg_map_config:

@@ -3,32 +3,15 @@ This script connects a Meshtastic mesh network to Matrix chat rooms by relaying 
 It uses Meshtastic-python and Matrix nio client library to interface with the radio and the Matrix server respectively.
 """
 
-# Check for --check-config flag first, before importing any other modules
-import sys
-import argparse
-
-# Create a simple parser just to check for --check-config
-parser = argparse.ArgumentParser(add_help=False)
-parser.add_argument("--check-config", action="store_true")
-args, _ = parser.parse_known_args()
-
-# If --check-config is specified, run the check_config function and exit
-if args.check_config:
-    from mmrelay.cli import check_config
-    sys.exit(0 if check_config() else 1)
-
-# Otherwise, continue with normal imports
 import asyncio
 import logging
 import signal
-from typing import List
+import sys
 
 from nio import ReactionEvent, RoomMessageEmote, RoomMessageNotice, RoomMessageText
 
 # Import meshtastic_utils as a module to set event_loop
 from mmrelay import meshtastic_utils
-from mmrelay.cli import parse_arguments
-from mmrelay.config import relay_config
 from mmrelay.db_utils import (
     initialize_database,
     update_longnames,
@@ -46,22 +29,25 @@ from mmrelay.plugin_loader import load_plugins
 # Initialize logger
 logger = get_logger(name="M<>M Relay")
 
-# Extract Matrix configuration
-matrix_rooms: List[dict] = relay_config["matrix_rooms"]
-
 # Set the logging level for 'nio' to ERROR to suppress warnings
 logging.getLogger("nio").setLevel(logging.ERROR)
 
 
-
-
-async def main():
+async def main(config):
     """
     Main asynchronous function to set up and run the relay.
     Includes logic for wiping the message_map if configured in database.msg_map.wipe_on_restart
     or db.msg_map.wipe_on_restart (legacy format).
     Also updates longnames and shortnames periodically as before.
+
+    Args:
+        config: The loaded configuration
     """
+    # Extract Matrix configuration
+    from typing import List
+
+    matrix_rooms: List[dict] = config["matrix_rooms"]
+
     # Set the event loop in meshtastic_utils
     meshtastic_utils.event_loop = asyncio.get_event_loop()
 
@@ -69,13 +55,13 @@ async def main():
     initialize_database()
 
     # Check database config for wipe_on_restart (preferred format)
-    database_config = relay_config.get("database", {})
+    database_config = config.get("database", {})
     msg_map_config = database_config.get("msg_map", {})
     wipe_on_restart = msg_map_config.get("wipe_on_restart", False)
 
     # If not found in database config, check legacy db config
     if not wipe_on_restart:
-        db_config = relay_config.get("db", {})
+        db_config = config.get("db", {})
         legacy_msg_map_config = db_config.get("msg_map", {})
         legacy_wipe_on_restart = legacy_msg_map_config.get("wipe_on_restart", False)
 
@@ -90,13 +76,13 @@ async def main():
         wipe_message_map()
 
     # Load plugins early
-    load_plugins()
+    load_plugins(passed_config=config)
 
     # Connect to Meshtastic
-    meshtastic_utils.meshtastic_client = connect_meshtastic()
+    meshtastic_utils.meshtastic_client = connect_meshtastic(passed_config=config)
 
     # Connect to Matrix
-    matrix_client = await connect_matrix()
+    matrix_client = await connect_matrix(passed_config=config)
 
     # Join the rooms specified in the config.yaml
     for room in matrix_rooms:
@@ -206,43 +192,67 @@ async def main():
 
         matrix_logger.info("Shutdown complete.")
 
-def run():
-    """Entry point for the application."""
-    # Parse command-line arguments
-    args = parse_arguments()  # This initializes the arguments for other modules to use
 
-    # --check-config is handled at the top of the file
+def run_main(args):
+    """Run the main functionality of the application.
 
-    # Handle --install-service
-    if args.install_service:
-        from mmrelay.setup_utils import install_service
-        success = install_service()
-        import sys
-        sys.exit(0 if success else 1)
+    Args:
+        args: The parsed command-line arguments
 
-    # Handle --generate-config
-    if args.generate_config:
-        from mmrelay.cli import generate_sample_config
-        if generate_sample_config():
-            # Exit with success if config was generated
-            return
-        else:
-            # Exit with error if config generation failed
-            import sys
-            sys.exit(1)
+    Returns:
+        int: Exit code (0 for success, non-zero for failure)
+    """
+    # Run the main functionality
 
-    # Check if config exists
-    from mmrelay.config import relay_config
-    if not relay_config:
+    # Load configuration
+    from mmrelay.config import load_config
+
+    # Load configuration with args
+    config = load_config(args=args)
+
+    # Set the global config variables in each module
+    from mmrelay import meshtastic_utils, matrix_utils, plugin_loader, log_utils, db_utils
+    from mmrelay.plugins import base_plugin
+    meshtastic_utils.config = config
+    matrix_utils.config = config
+    plugin_loader.config = config
+    log_utils.config = config
+    db_utils.config = config
+    base_plugin.config = config
+
+    # Check if config exists and has the required keys
+    required_keys = ["matrix", "meshtastic", "matrix_rooms"]
+    logger.info(f"Checking for required keys in config: {required_keys}")
+    logger.info(f"Config keys: {list(config.keys()) if config else 'None'}")
+
+    # Check each key individually for better debugging
+    for key in required_keys:
+        if key not in config:
+            logger.error(f"Required key '{key}' is missing from config")
+
+    if not config or not all(key in config for key in required_keys):
         # Exit with error if no config exists
-        import sys
-        sys.exit(1)
+        missing_keys = [key for key in required_keys if key not in config]
+        logger.error(
+            f"Configuration is missing required keys: {missing_keys}. "
+            "Please create a valid config.yaml file or use --generate-config to create one."
+        )
+        return 1
 
     try:
-        asyncio.run(main())
+        asyncio.run(main(config))
+        return 0
     except KeyboardInterrupt:
-        pass
+        logger.info("Interrupted by user. Exiting.")
+        return 0
+    except Exception as e:
+        logger.error(f"Error running main functionality: {e}")
+        return 1
 
 
 if __name__ == "__main__":
-    run()
+    import sys
+
+    from mmrelay.cli import main
+
+    sys.exit(main())
