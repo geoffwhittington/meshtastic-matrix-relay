@@ -43,10 +43,12 @@ jobs:
             # Ensure the current directory (.) is built correctly by setuptools first
             # Install the project itself along with dependencies INSIDE the container before shivving
             echo "--- Installing project dependencies and project itself ---"
+            # Install jsonschema<4.0.0 to avoid rpds dependency which has binary components
+            pip install "jsonschema<4.0.0"
             pip install .
             echo "--- Building PYZ with shiv ---"
-            # Now shiv can find the entry point because the package is installed
-            shiv . -o "${PYZ_FILENAME}" -c mmrelay --compressed
+            # Explicitly specify the entry point module
+            shiv . -o "${PYZ_FILENAME}" -e mmrelay.main:run --compressed
             echo "--- Listing created PYZ file ---"
             ls -l "${PYZ_FILENAME}"
       - name: Upload PYZ to Release
