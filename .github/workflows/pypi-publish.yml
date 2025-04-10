@@ -1,8 +1,9 @@
 name: Upload Python Package to PyPI
 
 on:
+  workflow_dispatch:
   release:
-    types: [created]
+    types: [published]
 
 permissions:
   id-token: write

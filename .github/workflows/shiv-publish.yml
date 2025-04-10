@@ -5,6 +5,7 @@ permissions:
   issues: read
 
 on:
+  workflow_dispatch:
   release:
     types: [published]
 
