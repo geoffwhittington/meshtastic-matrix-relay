@@ -45,16 +45,21 @@ MMRelay looks for configuration files in the following locations (in order):
 
 ### Setting Up Your Configuration
 
+MMRelay includes a built-in command to generate a sample configuration file in the recommended location:
+
 ```bash
-# Create the standard config directory
-mkdir -p ~/.mmrelay
+# Generate a sample configuration file
+mmrelay --generate-config
 
-# Copy the sample configuration
-cp sample_config.yaml ~/.mmrelay/config.yaml
-
-# Edit the configuration file with your preferred editor
+# Edit the generated configuration file with your preferred editor
 nano ~/.mmrelay/config.yaml
 ```
+
+This command will:
+
+1. Check if a configuration file already exists (to avoid overwriting it)
+2. Create the necessary directory structure if it doesn't exist
+3. Generate a sample configuration file at `~/.mmrelay/config.yaml`
 
 ### Configuration Tips
 
@@ -84,10 +89,32 @@ mmrelay --config /path/to/config.yaml --logfile /path/to/logfile.log
 mmrelay [OPTIONS]
 
 Options:
-  --config PATH    Path to the configuration file
-  --logfile PATH   Path to the log file
-  --version        Show the version number and exit
-  --help           Show this help message and exit
+  -h, --help            Show this help message and exit
+  --config PATH         Path to the configuration file
+  --data-dir PATH       Base directory for all data (logs, database, plugins)
+  --log-level {error,warning,info,debug}
+                        Set logging level
+  --logfile PATH        Path to log file (can be overridden by --data-dir)
+  --version             Show version and exit
+  --generate-config     Generate a sample config.yaml file
+  --check-config        Check if the configuration file is valid
+  --install-service     Install or update the systemd user service
+```
+
+#### Useful Commands
+
+```bash
+# Generate a sample configuration file
+mmrelay --generate-config
+
+# Validate your configuration
+mmrelay --check-config
+
+# Install as a systemd user service (Linux only)
+mmrelay --install-service
+
+# Run with debug logging
+mmrelay --log-level debug
 ```
 
 ### What to Expect

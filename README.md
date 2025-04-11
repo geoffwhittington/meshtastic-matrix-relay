@@ -5,6 +5,7 @@
 **We're excited to announce MMRelay v1.0 with improved packaging, standardized directories, and enhanced CLI!**
 
 **Existing users:** Version 1.0 requires a few quick migration steps:
+
 1. Follow the [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) guide for a smooth transition
 2. Move your configuration to the new standard location (`~/.mmrelay/config.yaml`)
 3. See [ANNOUNCEMENT.md](ANNOUNCEMENT.md) for all the exciting new features
