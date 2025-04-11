@@ -5,12 +5,55 @@ import os
 import subprocess
 import sys
 
-from config import get_app_path, relay_config
-from log_utils import get_logger
+from mmrelay.config import get_app_path, get_base_dir
+from mmrelay.log_utils import get_logger
+
+# Global config variable that will be set from main.py
+config = None
 
 logger = get_logger(name="Plugins")
 sorted_active_plugins = []
 plugins_loaded = False
+
+
+def get_custom_plugin_dirs():
+    """
+    Returns a list of directories to check for custom plugins in order of priority:
+    1. User directory (~/.mmrelay/plugins/custom)
+    2. Local directory (plugins/custom) for backward compatibility
+    """
+    dirs = []
+
+    # Check user directory first (preferred location)
+    user_dir = os.path.join(get_base_dir(), "plugins", "custom")
+    os.makedirs(user_dir, exist_ok=True)
+    dirs.append(user_dir)
+
+    # Check local directory (backward compatibility)
+    local_dir = os.path.join(get_app_path(), "plugins", "custom")
+    dirs.append(local_dir)
+
+    return dirs
+
+
+def get_community_plugin_dirs():
+    """
+    Returns a list of directories to check for community plugins in order of priority:
+    1. User directory (~/.mmrelay/plugins/community)
+    2. Local directory (plugins/community) for backward compatibility
+    """
+    dirs = []
+
+    # Check user directory first (preferred location)
+    user_dir = os.path.join(get_base_dir(), "plugins", "community")
+    os.makedirs(user_dir, exist_ok=True)
+    dirs.append(user_dir)
+
+    # Check local directory (backward compatibility)
+    local_dir = os.path.join(get_app_path(), "plugins", "community")
+    dirs.append(local_dir)
+
+    return dirs
 
 
 def clone_or_update_repo(repo_url, tag, plugins_dir):
@@ -92,28 +135,36 @@ def load_plugins_from_directory(directory, recursive=False):
     return plugins
 
 
-def load_plugins():
+def load_plugins(passed_config=None):
     global sorted_active_plugins
     global plugins_loaded
+    global config
 
     if plugins_loaded:
         return sorted_active_plugins
 
     logger.info("Checking plugin config...")
 
-    config = relay_config  # Use relay_config loaded in config.py
+    # Update the global config if a config is passed
+    if passed_config is not None:
+        config = passed_config
+
+    # Check if config is available
+    if config is None:
+        logger.error("No configuration available. Cannot load plugins.")
+        return []
 
     # Import core plugins
-    from plugins.debug_plugin import Plugin as DebugPlugin
-    from plugins.drop_plugin import Plugin as DropPlugin
-    from plugins.health_plugin import Plugin as HealthPlugin
-    from plugins.help_plugin import Plugin as HelpPlugin
-    from plugins.map_plugin import Plugin as MapPlugin
-    from plugins.mesh_relay_plugin import Plugin as MeshRelayPlugin
-    from plugins.nodes_plugin import Plugin as NodesPlugin
-    from plugins.ping_plugin import Plugin as PingPlugin
-    from plugins.telemetry_plugin import Plugin as TelemetryPlugin
-    from plugins.weather_plugin import Plugin as WeatherPlugin
+    from mmrelay.plugins.debug_plugin import Plugin as DebugPlugin
+    from mmrelay.plugins.drop_plugin import Plugin as DropPlugin
+    from mmrelay.plugins.health_plugin import Plugin as HealthPlugin
+    from mmrelay.plugins.help_plugin import Plugin as HelpPlugin
+    from mmrelay.plugins.map_plugin import Plugin as MapPlugin
+    from mmrelay.plugins.mesh_relay_plugin import Plugin as MeshRelayPlugin
+    from mmrelay.plugins.nodes_plugin import Plugin as NodesPlugin
+    from mmrelay.plugins.ping_plugin import Plugin as PingPlugin
+    from mmrelay.plugins.telemetry_plugin import Plugin as TelemetryPlugin
+    from mmrelay.plugins.weather_plugin import Plugin as WeatherPlugin
 
     # Initial list of core plugins
     core_plugins = [
@@ -133,9 +184,7 @@ def load_plugins():
 
     # Process and load custom plugins
     custom_plugins_config = config.get("custom-plugins", {})
-    custom_plugins_dir = os.path.join(
-        get_app_path(), "plugins", "custom"
-    )  # Use get_app_path()
+    custom_plugin_dirs = get_custom_plugin_dirs()
 
     active_custom_plugins = [
         plugin_name
@@ -150,17 +199,32 @@ def load_plugins():
 
     # Only load custom plugins that are explicitly enabled
     for plugin_name in active_custom_plugins:
-        plugin_path = os.path.join(custom_plugins_dir, plugin_name)
-        if os.path.exists(plugin_path):
-            plugins.extend(load_plugins_from_directory(plugin_path, recursive=False))
-        else:
-            logger.warning(f"Custom plugin directory not found: {plugin_path}")
+        plugin_found = False
+
+        # Try each directory in order
+        for custom_dir in custom_plugin_dirs:
+            plugin_path = os.path.join(custom_dir, plugin_name)
+            if os.path.exists(plugin_path):
+                logger.debug(f"Loading custom plugin from: {plugin_path}")
+                plugins.extend(
+                    load_plugins_from_directory(plugin_path, recursive=False)
+                )
+                plugin_found = True
+                break
+
+        if not plugin_found:
+            logger.warning(
+                f"Custom plugin '{plugin_name}' not found in any of the plugin directories"
+            )
 
     # Process and download community plugins
     community_plugins_config = config.get("community-plugins", {})
-    community_plugins_dir = os.path.join(
-        get_app_path(), "plugins", "community"
-    )  # Use get_app_path()
+    community_plugin_dirs = get_community_plugin_dirs()
+
+    # Get the first directory for cloning (prefer user directory)
+    community_plugins_dir = community_plugin_dirs[
+        -1
+    ]  # Use the user directory for new clones
 
     # Create community plugins directory if needed
     active_community_plugins = [
@@ -170,7 +234,10 @@ def load_plugins():
     ]
 
     if active_community_plugins:
-        os.makedirs(community_plugins_dir, exist_ok=True)
+        # Ensure all community plugin directories exist
+        for dir_path in community_plugin_dirs:
+            os.makedirs(dir_path, exist_ok=True)
+
         logger.debug(
             f"Loading active community plugins: {', '.join(active_community_plugins)}"
         )
@@ -187,6 +254,7 @@ def load_plugins():
             repo_url = plugin_info.get("repository")
             tag = plugin_info.get("tag", "master")
             if repo_url:
+                # Clone to the user directory by default
                 clone_or_update_repo(repo_url, tag, community_plugins_dir)
             else:
                 logger.error("Repository URL not specified for a community plugin")
@@ -200,11 +268,23 @@ def load_plugins():
         if repo_url:
             # Extract repository name from URL
             repo_name = os.path.splitext(os.path.basename(repo_url.rstrip("/")))[0]
-            plugin_path = os.path.join(community_plugins_dir, repo_name)
-            if os.path.exists(plugin_path):
-                plugins.extend(load_plugins_from_directory(plugin_path, recursive=True))
-            else:
-                logger.warning(f"Community plugin directory not found: {plugin_path}")
+
+            # Try each directory in order
+            plugin_found = False
+            for dir_path in community_plugin_dirs:
+                plugin_path = os.path.join(dir_path, repo_name)
+                if os.path.exists(plugin_path):
+                    logger.debug(f"Loading community plugin from: {plugin_path}")
+                    plugins.extend(
+                        load_plugins_from_directory(plugin_path, recursive=True)
+                    )
+                    plugin_found = True
+                    break
+
+            if not plugin_found:
+                logger.warning(
+                    f"Community plugin '{repo_name}' not found in any of the plugin directories"
+                )
         else:
             logger.error(
                 f"Repository URL not specified for community plugin: {plugin_name}"

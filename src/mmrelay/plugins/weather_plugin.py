@@ -3,11 +3,15 @@ import asyncio
 import requests
 from meshtastic.mesh_interface import BROADCAST_NUM
 
-from plugins.base_plugin import BasePlugin
+from mmrelay.plugins.base_plugin import BasePlugin
 
 
 class Plugin(BasePlugin):
     plugin_name = "weather"
+
+    def __init__(self):
+        self.plugin_name = "weather"
+        super().__init__()
 
     @property
     def description(self):
@@ -128,7 +132,7 @@ class Plugin(BasePlugin):
             message = packet["decoded"]["text"].strip()
             channel = packet.get("channel", 0)  # Default to channel 0 if not provided
 
-            from meshtastic_utils import connect_meshtastic
+            from mmrelay.meshtastic_utils import connect_meshtastic
 
             meshtastic_client = connect_meshtastic()
 
@@ -155,10 +159,10 @@ class Plugin(BasePlugin):
             if f"!{self.plugin_name}" not in message.lower():
                 return False
 
-                # Log that the plugin is processing the message
-                self.logger.info(
-                    f"Processing message from {longname} on channel {channel} with plugin '{self.plugin_name}'"
-                )
+            # Log that the plugin is processing the message
+            self.logger.info(
+                f"Processing message from {longname} on channel {channel} with plugin '{self.plugin_name}'"
+            )
 
             fromId = packet.get("fromId")
             if fromId in meshtastic_client.nodes:

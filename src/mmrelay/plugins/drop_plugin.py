@@ -2,13 +2,17 @@ import re
 
 from haversine import haversine
 
-from meshtastic_utils import connect_meshtastic
-from plugins.base_plugin import BasePlugin
+from mmrelay.meshtastic_utils import connect_meshtastic
+from mmrelay.plugins.base_plugin import BasePlugin
 
 
 class Plugin(BasePlugin):
     plugin_name = "drop"
     special_node = "!NODE_MSGS!"
+
+    def __init__(self):
+        self.plugin_name = "drop"
+        super().__init__()
 
     def get_position(self, meshtastic_client, node_id):
         for _node, info in meshtastic_client.nodes.items():

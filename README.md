@@ -8,7 +8,41 @@ A powerful and easy-to-use relay between Meshtastic devices and Matrix chat room
 
 ## Getting Started
 
-M<>M Relay runs on Linux, macOS, and Windows. For setup, configuration, and usage instructions, see the [INSTRUCTIONS.md](INSTRUCTIONS.md) file.
+MMRelay runs on Linux, macOS, and Windows.
+
+### Quick Installation
+
+```bash
+# Install using pip
+pip install mmrelay
+
+# Or use pipx for isolated installation (recommended)
+pipx install mmrelay
+```
+
+### Resources
+
+- **New Users**: See [INSTRUCTIONS.md](INSTRUCTIONS.md) for setup and configuration
+- **Existing Users**: Check [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) for migration guidance
+- **Configuration**: Review [sample_config.yaml](sample_config.yaml) for examples
+
+### Command-Line Options
+
+```bash
+usage: mmrelay [-h] [--config CONFIG] [--data-dir DATA_DIR] [--log-level {error,warning,info,debug}] [--logfile LOGFILE] [--version] [--generate-config] [--install-service] [--check-config]
+
+Options:
+  -h, --help            Show this help message and exit
+  --config CONFIG       Path to config file
+  --data-dir DATA_DIR   Base directory for all data (logs, database, plugins)
+  --log-level {error,warning,info,debug}
+                        Set logging level
+  --logfile LOGFILE     Path to log file (can be overridden by --data-dir)
+  --version             Show version and exit
+  --generate-config     Generate a sample config.yaml file
+  --install-service     Install or update the systemd user service
+  --check-config        Check if the configuration file is valid
+```
 
 ---
 
@@ -70,6 +104,16 @@ community-plugins:
     repository: https://github.com/jeremiah-k/mmr-plugin-template.git
     tag: main
 ```
+
+### Plugin System
+
+MMRelay features a powerful plugin system with standardized locations:
+
+- **Core Plugins**: Pre-installed with the package
+- **Custom Plugins**: Your own plugins in `~/.mmrelay/plugins/custom/`
+- **Community Plugins**: Third-party plugins in `~/.mmrelay/plugins/community/`
+
+Plugins make it easy to extend functionality without modifying the core code.
 
 ---
 

@@ -5,18 +5,21 @@ from abc import ABC, abstractmethod
 import markdown
 import schedule
 
-from config import relay_config
-from db_utils import (
+from mmrelay.db_utils import (
     delete_plugin_data,
     get_plugin_data,
     get_plugin_data_for_node,
     store_plugin_data,
 )
-from log_utils import get_logger
+from mmrelay.log_utils import get_logger
+
+# Global config variable that will be set from main.py
+config = None
 
 
 class BasePlugin(ABC):
-    plugin_name = None
+    # Class-level default attributes
+    plugin_name = None  # Must be overridden in subclasses
     max_data_rows_per_node = 100
     priority = 10
 
@@ -25,21 +28,42 @@ class BasePlugin(ABC):
         return ""
 
     def __init__(self) -> None:
+        # IMPORTANT NOTE FOR PLUGIN DEVELOPERS:
+        # When creating a plugin that inherits from BasePlugin, you MUST set
+        # self.plugin_name in your __init__ method BEFORE calling super().__init__()
+        # Example:
+        #   def __init__(self):
+        #       self.plugin_name = "your_plugin_name"  # Set this FIRST
+        #       super().__init__()                     # Then call parent
+        #
+        # Failure to do this will cause command recognition issues and other problems.
+
         super().__init__()
+
+        # Verify plugin_name is properly defined
+        if not hasattr(self, "plugin_name") or self.plugin_name is None:
+            raise ValueError(
+                f"{self.__class__.__name__} is missing plugin_name definition. "
+                f"Make sure to set self.plugin_name BEFORE calling super().__init__()"
+            )
+
         self.logger = get_logger(f"Plugin:{self.plugin_name}")
         self.config = {"active": False}
+        global config
         plugin_levels = ["plugins", "community-plugins", "custom-plugins"]
 
-        for level in plugin_levels:
-            if level in relay_config and self.plugin_name in relay_config[level]:
-                self.config = relay_config[level][self.plugin_name]
-                break
+        # Check if config is available
+        if config is not None:
+            for level in plugin_levels:
+                if level in config and self.plugin_name in config[level]:
+                    self.config = config[level][self.plugin_name]
+                    break
 
-        # Get the list of mapped channels
-        self.mapped_channels = [
-            room.get("meshtastic_channel")
-            for room in relay_config.get("matrix_rooms", [])
-        ]
+            # Get the list of mapped channels
+            self.mapped_channels = [
+                room.get("meshtastic_channel")
+                for room in config.get("matrix_rooms", [])
+            ]
 
         # Get the channels specified for this plugin, or default to all mapped channels
         self.channels = self.config.get("channels", self.mapped_channels)
@@ -58,9 +82,11 @@ class BasePlugin(ABC):
             )
 
         # Get the response delay from the meshtastic config only
-        self.response_delay = relay_config.get("meshtastic", {}).get(
-            "plugin_response_delay", 3
-        )
+        self.response_delay = 3  # Default value
+        if config is not None:
+            self.response_delay = config.get("meshtastic", {}).get(
+                "plugin_response_delay", self.response_delay
+            )
 
     def start(self):
         if "schedule" not in self.config or (
@@ -129,7 +155,7 @@ class BasePlugin(ABC):
         return [self.plugin_name]
 
     async def send_matrix_message(self, room_id, message, formatted=True):
-        from matrix_utils import connect_matrix
+        from mmrelay.matrix_utils import connect_matrix
 
         matrix_client = await connect_matrix()
 
@@ -170,7 +196,7 @@ class BasePlugin(ABC):
         return get_plugin_data(self.plugin_name)
 
     def matches(self, event):
-        from matrix_utils import bot_command
+        from mmrelay.matrix_utils import bot_command
 
         # Pass the entire event to bot_command
         return bot_command(self.plugin_name, event)

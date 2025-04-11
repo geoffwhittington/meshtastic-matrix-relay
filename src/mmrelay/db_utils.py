@@ -1,14 +1,64 @@
 import json
+import os
 import sqlite3
 
-from log_utils import get_logger
+from mmrelay.config import get_data_dir
+from mmrelay.log_utils import get_logger
+
+# Global config variable that will be set from main.py
+config = None
 
 logger = get_logger(name="db_utils")
 
 
+# Get the database path
+def get_db_path():
+    """
+    Returns the path to the SQLite database file.
+    By default, uses the standard data directory (~/.mmrelay/data).
+    Can be overridden by setting 'path' under 'database' in config.yaml.
+    """
+    global config
+
+    # Check if config is available
+    if config is not None:
+        # Check if database path is specified in config (preferred format)
+        if "database" in config and "path" in config["database"]:
+            custom_path = config["database"]["path"]
+            if custom_path:
+                # Ensure the directory exists
+                db_dir = os.path.dirname(custom_path)
+                if db_dir:
+                    os.makedirs(db_dir, exist_ok=True)
+                logger.info(f"Using database path from config: {custom_path}")
+                return custom_path
+
+        # Check legacy format (db section)
+        if "db" in config and "path" in config["db"]:
+            custom_path = config["db"]["path"]
+            if custom_path:
+                # Ensure the directory exists
+                db_dir = os.path.dirname(custom_path)
+                if db_dir:
+                    os.makedirs(db_dir, exist_ok=True)
+                logger.warning(
+                    "Using 'db.path' configuration (legacy). 'database.path' is now the preferred format and 'db.path' will be deprecated in a future version."
+                )
+                return custom_path
+
+    # Use the standard data directory
+    return os.path.join(get_data_dir(), "meshtastic.sqlite")
+
+
 # Initialize SQLite database
 def initialize_database():
-    with sqlite3.connect("meshtastic.sqlite") as conn:
+    db_path = get_db_path()
+    # Check if database exists
+    if os.path.exists(db_path):
+        logger.info(f"Loading database from: {db_path}")
+    else:
+        logger.info(f"Creating new database at: {db_path}")
+    with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
         # Updated table schema: matrix_event_id is now PRIMARY KEY, meshtastic_id is not necessarily unique
         cursor.execute(
@@ -40,7 +90,7 @@ def initialize_database():
 
 
 def store_plugin_data(plugin_name, meshtastic_id, data):
-    with sqlite3.connect("meshtastic.sqlite") as conn:
+    with sqlite3.connect(get_db_path()) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "INSERT OR REPLACE INTO plugin_data (plugin_name, meshtastic_id, data) VALUES (?, ?, ?) ON CONFLICT (plugin_name, meshtastic_id) DO UPDATE SET data = ?",
@@ -50,7 +100,7 @@ def store_plugin_data(plugin_name, meshtastic_id, data):
 
 
 def delete_plugin_data(plugin_name, meshtastic_id):
-    with sqlite3.connect("meshtastic.sqlite") as conn:
+    with sqlite3.connect(get_db_path()) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "DELETE FROM plugin_data WHERE plugin_name=? AND meshtastic_id=?",
@@ -61,7 +111,7 @@ def delete_plugin_data(plugin_name, meshtastic_id):
 
 # Get the data for a given plugin and Meshtastic ID
 def get_plugin_data_for_node(plugin_name, meshtastic_id):
-    with sqlite3.connect("meshtastic.sqlite") as conn:
+    with sqlite3.connect(get_db_path()) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "SELECT data FROM plugin_data WHERE plugin_name=? AND meshtastic_id=?",
@@ -76,7 +126,7 @@ def get_plugin_data_for_node(plugin_name, meshtastic_id):
 
 # Get the data for a given plugin
 def get_plugin_data(plugin_name):
-    with sqlite3.connect("meshtastic.sqlite") as conn:
+    with sqlite3.connect(get_db_path()) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "SELECT data FROM plugin_data WHERE plugin_name=? ",
@@ -87,7 +137,7 @@ def get_plugin_data(plugin_name):
 
 # Get the longname for a given Meshtastic ID
 def get_longname(meshtastic_id):
-    with sqlite3.connect("meshtastic.sqlite") as conn:
+    with sqlite3.connect(get_db_path()) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "SELECT longname FROM longnames WHERE meshtastic_id=?", (meshtastic_id,)
@@ -97,7 +147,7 @@ def get_longname(meshtastic_id):
 
 
 def save_longname(meshtastic_id, longname):
-    with sqlite3.connect("meshtastic.sqlite") as conn:
+    with sqlite3.connect(get_db_path()) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "INSERT OR REPLACE INTO longnames (meshtastic_id, longname) VALUES (?, ?)",
@@ -117,7 +167,7 @@ def update_longnames(nodes):
 
 
 def get_shortname(meshtastic_id):
-    with sqlite3.connect("meshtastic.sqlite") as conn:
+    with sqlite3.connect(get_db_path()) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "SELECT shortname FROM shortnames WHERE meshtastic_id=?", (meshtastic_id,)
@@ -127,7 +177,7 @@ def get_shortname(meshtastic_id):
 
 
 def save_shortname(meshtastic_id, shortname):
-    with sqlite3.connect("meshtastic.sqlite") as conn:
+    with sqlite3.connect(get_db_path()) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "INSERT OR REPLACE INTO shortnames (meshtastic_id, shortname) VALUES (?, ?)",
@@ -163,7 +213,7 @@ def store_message_map(
     :param meshtastic_meshnet: The name of the meshnet this message originated from.
                                This helps us identify remote vs local mesh origins.
     """
-    with sqlite3.connect("meshtastic.sqlite") as conn:
+    with sqlite3.connect(get_db_path()) as conn:
         cursor = conn.cursor()
         logger.debug(
             f"Storing message map: meshtastic_id={meshtastic_id}, matrix_event_id={matrix_event_id}, matrix_room_id={matrix_room_id}, meshtastic_text={meshtastic_text}, meshtastic_meshnet={meshtastic_meshnet}"
@@ -182,7 +232,7 @@ def store_message_map(
 
 
 def get_message_map_by_meshtastic_id(meshtastic_id):
-    with sqlite3.connect("meshtastic.sqlite") as conn:
+    with sqlite3.connect(get_db_path()) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "SELECT matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet FROM message_map WHERE meshtastic_id=?",
@@ -199,7 +249,7 @@ def get_message_map_by_meshtastic_id(meshtastic_id):
 
 
 def get_message_map_by_matrix_event_id(matrix_event_id):
-    with sqlite3.connect("meshtastic.sqlite") as conn:
+    with sqlite3.connect(get_db_path()) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "SELECT meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet FROM message_map WHERE matrix_event_id=?",
@@ -218,9 +268,10 @@ def get_message_map_by_matrix_event_id(matrix_event_id):
 def wipe_message_map():
     """
     Wipes all entries from the message_map table.
-    Useful when db.msg_map.wipe_on_restart is True, ensuring no stale data remains.
+    Useful when database.msg_map.wipe_on_restart or db.msg_map.wipe_on_restart is True,
+    ensuring no stale data remains.
     """
-    with sqlite3.connect("meshtastic.sqlite") as conn:
+    with sqlite3.connect(get_db_path()) as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM message_map")
         conn.commit()
@@ -238,7 +289,7 @@ def prune_message_map(msgs_to_keep):
     - Count total rows.
     - If total > msgs_to_keep, delete oldest entries based on rowid.
     """
-    with sqlite3.connect("meshtastic.sqlite") as conn:
+    with sqlite3.connect(get_db_path()) as conn:
         cursor = conn.cursor()
         # Count total entries
         cursor.execute("SELECT COUNT(*) FROM message_map")

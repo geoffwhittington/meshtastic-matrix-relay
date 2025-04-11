@@ -9,7 +9,7 @@ import staticmaps
 from nio import AsyncClient, UploadResponse
 from PIL import Image
 
-from plugins.base_plugin import BasePlugin
+from mmrelay.plugins.base_plugin import BasePlugin
 
 
 def textsize(self: PIL.ImageDraw.ImageDraw, *args, **kwargs):
@@ -235,6 +235,10 @@ async def send_image(client: AsyncClient, room_id: str, image: Image.Image):
 class Plugin(BasePlugin):
     plugin_name = "map"
 
+    def __init__(self):
+        self.plugin_name = "map"
+        super().__init__()
+
     @property
     def description(self):
         return (
@@ -257,8 +261,8 @@ class Plugin(BasePlugin):
         if not self.matches(event):
             return False
 
-        from matrix_utils import connect_matrix
-        from meshtastic_utils import connect_meshtastic
+        from mmrelay.matrix_utils import connect_matrix
+        from mmrelay.meshtastic_utils import connect_meshtastic
 
         matrix_client = await connect_matrix()
         meshtastic_client = connect_meshtastic()

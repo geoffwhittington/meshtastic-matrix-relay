@@ -1,84 +1,162 @@
-# Instructions
+# MMRelay Instructions
 
-The relay works on Linux, macOS, and Windows and requires Python 3.9+.
+MMRelay works on Linux, macOS, and Windows and requires Python 3.9+.
 
 ## Installation
 
-Clone the repository:
+### Quick Install (Recommended)
 
 ```bash
+# Install using pip
+pip install mmrelay
+
+# Or use pipx for isolated installation (recommended)
+pipx install mmrelay
+```
+
+### Developer Install
+
+If you want to contribute or modify the code:
+
+```bash
+# Clone the repository
 git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
+cd meshtastic-matrix-relay
+
+# Install in development mode
+pip install -e .
+
+# Or use pipx for isolated installation
+pipx install -e .
 ```
 
-### Setup
+> **Upgrading from a previous version?** Please see [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) for migration guidance.
 
-1. Create a Python virtual environment in the project directory:
+## Configuration
 
-   ```bash
-   python3 -m venv .pyenv
-   ```
+### Configuration File Locations
 
-2. Activate the virtual environment:
+MMRelay looks for configuration files in the following locations (in order):
 
-   - Linux/macOS:
-     ```bash
-     source .pyenv/bin/activate
-     ```
-   - Windows:
-     ```cmd
-     .pyenv\Scripts\activate
-     ```
+1. Path specified with `--config` command-line option
+2. `~/.mmrelay/config.yaml` (recommended location)
+3. Current directory `config.yaml`
+4. Current directory `sample_config.yaml`
 
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-### Configuration
-
-Create a `config.yaml` in the project directory based on the `sample_config.yaml`.
-
-## Usage
-
-Run the relay with the virtual environment activated:
+### Setting Up Your Configuration
 
 ```bash
-python main.py
+# Create the standard config directory
+mkdir -p ~/.mmrelay
+
+# Copy the sample configuration
+cp sample_config.yaml ~/.mmrelay/config.yaml
+
+# Edit the configuration file with your preferred editor
+nano ~/.mmrelay/config.yaml
 ```
 
-Example output:
+### Configuration Tips
+
+- Review the comments in `sample_config.yaml` for detailed explanations
+- At minimum, you'll need to configure your Matrix credentials and Meshtastic connection
+- For advanced setups, check the plugin configuration options
+
+## Running MMRelay
+
+### Basic Usage
+
+Start the relay with a single command:
 
 ```bash
-INFO:meshtastic.matrix.relay:Starting Meshtastic <==> Matrix Relay...
-INFO:meshtastic.matrix.relay:Connecting to radio at meshtastic.local ...
-INFO:meshtastic.matrix.relay:Connected to radio at meshtastic.local.
-INFO:meshtastic.matrix.relay:Listening for inbound radio messages ...
-INFO:meshtastic.matrix.relay:Listening for inbound matrix messages ...
-INFO:meshtastic.matrix.relay:Processing matrix message from @bob:matrix.org: Hi Alice!
-INFO:meshtastic.matrix.relay:Sending radio message from Bob to radio broadcast
-INFO:meshtastic.matrix.relay:Processing inbound radio message from !613501e4 on channel 0
-INFO:meshtastic.matrix.relay:Relaying Meshtastic message from Alice to Matrix: [Alice/VeryCoolMeshnet]: Hey Bob!
-INFO:meshtastic.matrix.relay:Sent inbound radio message to matrix room: #someroomid:example.matrix.org
+mmrelay
 ```
 
-## Persistence (Linux)
+### Command-Line Options
 
-To run the relay automatically on startup:
+Customize your setup with command-line options:
 
-1. Copy the systemd service file:
-   ```bash
-   mkdir -p ~/.config/systemd/user
-   cp tools/mmrelay.service ~/.config/systemd/user/
-   ```
-2. Enable and start the service:
-   ```bash
-   systemctl --user enable mmrelay.service
-   systemctl --user start mmrelay.service
-   ```
+```bash
+mmrelay --config /path/to/config.yaml --logfile /path/to/logfile.log
+```
+
+```bash
+mmrelay [OPTIONS]
+
+Options:
+  --config PATH    Path to the configuration file
+  --logfile PATH   Path to the log file
+  --version        Show the version number and exit
+  --help           Show this help message and exit
+```
+
+### What to Expect
+
+When running successfully, you'll see output similar to this:
+
+```text
+INFO: Loading configuration from: /home/user/.mmrelay/config.yaml
+INFO: Starting Meshtastic <==> Matrix Relay...
+INFO: Connecting to radio at meshtastic.local ...
+INFO: Connected to radio at meshtastic.local
+INFO: Listening for inbound radio messages ...
+INFO: Listening for inbound matrix messages ...
+```
+
+Messages will be relayed in both directions automatically:
+
+## Running as a Service
+
+### Systemd Service (Linux)
+
+For automatic startup and management on Linux systems, MMRelay includes a built-in command to set up a systemd user service:
+
+```bash
+mmrelay --install-service
+```
+
+This command will:
+
+1. Create the necessary directories (service file location and log directory)
+2. Install or update the systemd user service file
+3. Reload the systemd daemon
+4. Check if your configuration is valid
+5. Ask if you want to enable the service to start at boot
+6. Ask if you want to start the service immediately
+7. Show the service status if started
+8. Display commands for controlling the service
+
+### Managing the Service
+
+After installation, you can control the service with these commands:
+
+```bash
+# Start the service
+systemctl --user start mmrelay.service
+
+# Stop the service
+systemctl --user stop mmrelay.service
+
+# Restart the service
+systemctl --user restart mmrelay.service
+
+# Check service status
+systemctl --user status mmrelay.service
+
+# View service logs
+journalctl --user -u mmrelay.service
+
+# Or watch the application log file in real-time
+tail -f ~/.mmrelay/logs/mmrelay.log
+```
 
 ## Dockerized Versions (Unofficial)
 
-If you would prefer to use a Dockerized version of the relay, there are unofficial third-party projects available. Please note that these are not officially supported, and issues should be reported to their respective repositories. For more details, visit the [Third Party Projects](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Third-Party-Projects) page.
+If you would prefer to use a Dockerized version of the relay, there are unofficial third-party projects available. Please note that these are not officially supported, and issues should be reported to their respective repositories.
+
+> **Note**: Dockerized versions may need updates to be compatible with MMRelay v1.0. Check with the maintainers of these projects for their status.
+
+For more details, visit the [Third Party Projects](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Third-Party-Projects) page.
 
 ## Development
 
@@ -86,6 +164,6 @@ If you would prefer to use a Dockerized version of the relay, there are unoffici
 
 Contributions are welcome! We use **Trunk** for automated code quality checks and formatting. The `trunk` launcher is committed directly to the repo, please run checks before submitting pull requests.
 
-   ```bash
-   .trunk/trunk check --all --fix
-   ```
+```bash
+.trunk/trunk check --all --fix
+```

@@ -10,9 +10,9 @@ matrix_rooms: # Needs at least 1 room & channel, but supports all Meshtastic cha
     meshtastic_channel: 2
 
 meshtastic:
-  connection_type: serial # Choose either "network", "serial", or "ble"
+  connection_type: serial # Choose either "tcp", "serial", or "ble"
   serial_port: /dev/ttyUSB0 # Only used when connection is "serial"
-  host: meshtastic.local # Only used when connection is "network"
+  host: meshtastic.local # Only used when connection is "tcp"
   ble_address: AA:BB:CC:DD:EE:FF # Only used when connection is "ble" - Uses either an address or name from a `meshtastic --ble-scan`
   meshnet_name: Your Meshnet Name # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
   broadcast_enabled: true # Must be set to true to enable Matrix to Meshtastic messages
@@ -22,12 +22,13 @@ meshtastic:
 
 logging:
   level: info
-  #log_to_file: true            # Default is false
-  #filename: logs/mmrelay.log   # Default location
-  #max_log_size: 10485760       # 10 MB default if omitted
-  #backup_count: 1              # Keeps 1 backup as the default if omitted
+  #log_to_file: true                          # Default is false
+  #filename: ~/.mmrelay/logs/mmrelay.log      # Default location
+  #max_log_size: 10485760                     # 10 MB default if omitted
+  #backup_count: 1                            # Keeps 1 backup as the default if omitted
 
-#db:
+#database:
+#  path: ~/.mmrelay/data/meshtastic.sqlite   # Default location
 #  msg_map: # The message map is necessary for the relay_reactions functionality. If `relay_reactions` is set to false, nothing will be saved to the message map.
 #    msgs_to_keep: 500 # If set to 0, it will not delete any messages; Defaults to 500
 #    wipe_on_restart: true # Clears out the message map when the relay is restarted; Defaults to False
