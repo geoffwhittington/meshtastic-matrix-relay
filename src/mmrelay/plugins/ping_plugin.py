@@ -17,6 +17,10 @@ class Plugin(BasePlugin):
     plugin_name = "ping"
     punctuation = string.punctuation
 
+    def __init__(self):
+        self.plugin_name = "ping"
+        super().__init__()
+
     @property
     def description(self):
         return "Check connectivity with the relay or respond to pings over the mesh"

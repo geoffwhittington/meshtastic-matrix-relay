@@ -9,6 +9,10 @@ from mmrelay.plugins.base_plugin import BasePlugin
 class Plugin(BasePlugin):
     plugin_name = "weather"
 
+    def __init__(self):
+        self.plugin_name = "weather"
+        super().__init__()
+
     @property
     def description(self):
         return "Show weather forecast for a radio node using GPS location"
