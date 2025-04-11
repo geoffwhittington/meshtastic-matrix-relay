@@ -4,6 +4,18 @@
 
 A powerful and easy-to-use relay between Meshtastic devices and Matrix chat rooms, allowing seamless communication across platforms. This opens the door for bridging Meshtastic devices to [many other platforms](https://matrix.org/bridges/).
 
+> ## ⚠️ IMPORTANT NOTICE FOR EXISTING USERS ⚠️
+>
+> **Version 1.0 introduces significant changes to configuration paths and structure.**
+>
+> If you've updated from a previous version, your relay **will not restart as-is**. You need to:
+>
+> 1. Read the [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) guide for migration steps
+> 2. Move your configuration to the new standard location (`~/.mmrelay/config.yaml`)
+> 3. Review [ANNOUNCEMENT.md](ANNOUNCEMENT.md) for all breaking changes
+>
+> Not ready to upgrade? Run `git checkout 0.10.1` to revert to the previous version.
+
 ---
 
 ## Getting Started
@@ -22,8 +34,8 @@ pipx install mmrelay
 
 ### Resources
 
+- **⚠️ EXISTING USERS**: [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) contains **critical migration steps**
 - **New Users**: See [INSTRUCTIONS.md](INSTRUCTIONS.md) for setup and configuration
-- **Existing Users**: Check [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) for migration guidance
 - **Configuration**: Review [sample_config.yaml](sample_config.yaml) for examples
 - **Important Changes**: Read [ANNOUNCEMENT.md](ANNOUNCEMENT.md) for information about deprecated options and breaking changes
 
