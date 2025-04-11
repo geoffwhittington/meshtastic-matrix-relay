@@ -1,20 +1,19 @@
 # M<>M Relay
 
+## ✨ Version 1.0 Released! ✨
+
+**We're excited to announce MMRelay v1.0 with improved packaging, standardized directories, and enhanced CLI!**
+
+**Existing users:** Version 1.0 requires a few quick migration steps:
+1. Follow the [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) guide for a smooth transition
+2. Move your configuration to the new standard location (`~/.mmrelay/config.yaml`)
+3. See [ANNOUNCEMENT.md](ANNOUNCEMENT.md) for all the exciting new features
+
+Not ready to upgrade yet? No problem! Run `git checkout 0.10.1` to continue using the previous version.
+
 ## (Meshtastic <=> Matrix Relay)
 
 A powerful and easy-to-use relay between Meshtastic devices and Matrix chat rooms, allowing seamless communication across platforms. This opens the door for bridging Meshtastic devices to [many other platforms](https://matrix.org/bridges/).
-
-> ## ⚠️ IMPORTANT NOTICE FOR EXISTING USERS ⚠️
->
-> **Version 1.0 introduces significant changes to configuration paths and structure.**
->
-> If you've updated from a previous version, your relay **will not restart as-is**. You need to:
->
-> 1. Read the [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) guide for migration steps
-> 2. Move your configuration to the new standard location (`~/.mmrelay/config.yaml`)
-> 3. Review [ANNOUNCEMENT.md](ANNOUNCEMENT.md) for all breaking changes
->
-> Not ready to upgrade? Run `git checkout 0.10.1` to revert to the previous version.
 
 ---
 
@@ -34,10 +33,9 @@ pipx install mmrelay
 
 ### Resources
 
-- **⚠️ EXISTING USERS**: [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) contains **critical migration steps**
 - **New Users**: See [INSTRUCTIONS.md](INSTRUCTIONS.md) for setup and configuration
+- **Existing Users**: See [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) for migration guidance
 - **Configuration**: Review [sample_config.yaml](sample_config.yaml) for examples
-- **Important Changes**: Read [ANNOUNCEMENT.md](ANNOUNCEMENT.md) for information about deprecated options and breaking changes
 
 ### Command-Line Options
 
