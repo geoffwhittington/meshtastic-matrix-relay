@@ -10,9 +10,8 @@ class Plugin(BasePlugin):
     plugin_name = "weather"
 
     def __init__(self):
-        super().__init__()
-        # Redundant but kept for clarity
         self.plugin_name = "weather"
+        super().__init__()
 
     @property
     def description(self):

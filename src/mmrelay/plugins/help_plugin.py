@@ -8,9 +8,8 @@ class Plugin(BasePlugin):
     plugin_name = "help"
 
     def __init__(self):
-        super().__init__()
-        # Redundant but kept for clarity
         self.plugin_name = "help"
+        super().__init__()
 
     @property
     def description(self):

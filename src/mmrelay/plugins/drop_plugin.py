@@ -11,9 +11,8 @@ class Plugin(BasePlugin):
     special_node = "!NODE_MSGS!"
 
     def __init__(self):
-        super().__init__()
-        # Redundant but kept for clarity
         self.plugin_name = "drop"
+        super().__init__()
 
     def get_position(self, meshtastic_client, node_id):
         for _node, info in meshtastic_client.nodes.items():
