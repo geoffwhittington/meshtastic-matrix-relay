@@ -371,6 +371,10 @@ async def on_room_message(
     if message_timestamp < bot_start_time:
         return
 
+    # Do not process messages from the bot itself
+    if event.sender == bot_user_id:
+        return
+
     # Find the room_config that matches this room, if any
     room_config = None
     for room_conf in matrix_rooms:
@@ -631,7 +635,7 @@ async def on_room_message(
     # If message is from Matrix and broadcast_enabled is True, relay to Meshtastic
     # Note: If relay_reactions is False, we won't store message_map, but we can still relay.
     # The lack of message_map storage just means no reaction bridging will occur.
-    if not found_matching_plugin and event.sender != bot_user_id:
+    if not found_matching_plugin:
         if config["meshtastic"]["broadcast_enabled"]:
             portnum = event.source["content"].get("meshtastic_portnum")
             if portnum == "DETECTION_SENSOR_APP":

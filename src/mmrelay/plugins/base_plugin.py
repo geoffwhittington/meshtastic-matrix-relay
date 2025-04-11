@@ -29,8 +29,10 @@ class BasePlugin(ABC):
     def __init__(self) -> None:
         super().__init__()
         # Ensure plugin_name is defined
-        if not hasattr(self, 'plugin_name') or self.plugin_name is None:
-            raise ValueError(f"{self.__class__.__name__} is missing plugin_name definition.")
+        if not hasattr(self, "plugin_name") or self.plugin_name is None:
+            raise ValueError(
+                f"{self.__class__.__name__} is missing plugin_name definition."
+            )
 
         self.logger = get_logger(f"Plugin:{self.plugin_name}")
         self.config = {"active": False}

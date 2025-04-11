@@ -45,12 +45,19 @@ def parse_arguments():
     # Windows-specific handling for backward compatibility
     # On Windows, add a positional argument for the config file path
     if sys.platform == "win32":
-        parser.add_argument("config_path", nargs="?", help=argparse.SUPPRESS, default=None)
+        parser.add_argument(
+            "config_path", nargs="?", help=argparse.SUPPRESS, default=None
+        )
 
     args = parser.parse_args()
 
     # If on Windows and a positional config path is provided but --config is not, use the positional one
-    if sys.platform == "win32" and hasattr(args, "config_path") and args.config_path and not args.config:
+    if (
+        sys.platform == "win32"
+        and hasattr(args, "config_path")
+        and args.config_path
+        and not args.config
+    ):
         args.config = args.config_path
         # Print a deprecation warning
         print("Warning: Using positional argument for config file is deprecated.")
