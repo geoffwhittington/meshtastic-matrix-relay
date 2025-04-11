@@ -25,6 +25,7 @@ pipx install mmrelay
 - **New Users**: See [INSTRUCTIONS.md](INSTRUCTIONS.md) for setup and configuration
 - **Existing Users**: Check [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) for migration guidance
 - **Configuration**: Review [sample_config.yaml](sample_config.yaml) for examples
+- **Important Changes**: Read [ANNOUNCEMENT.md](ANNOUNCEMENT.md) for information about deprecated options and breaking changes
 
 ### Command-Line Options
 

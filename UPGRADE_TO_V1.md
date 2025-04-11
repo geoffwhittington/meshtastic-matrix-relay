@@ -176,6 +176,8 @@ Some configuration options have been renamed for clarity:
 - `db:` → `database:` (old option still works but will show a deprecation notice)
 - `network` connection mode → `tcp` (both options supported for compatibility)
 
+For a complete list of deprecated options and breaking changes, please see [ANNOUNCEMENT.md](ANNOUNCEMENT.md).
+
 ### Backward Compatibility
 
 Your existing configuration will continue to work without changes. The application will automatically:
