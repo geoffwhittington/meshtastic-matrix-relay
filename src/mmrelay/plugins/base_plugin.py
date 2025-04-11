@@ -18,7 +18,8 @@ config = None
 
 
 class BasePlugin(ABC):
-    plugin_name = None
+    # Class-level default attributes
+    plugin_name = None  # Must be overridden in subclasses
     max_data_rows_per_node = 100
     priority = 10
 
@@ -27,11 +28,23 @@ class BasePlugin(ABC):
         return ""
 
     def __init__(self) -> None:
+        # IMPORTANT NOTE FOR PLUGIN DEVELOPERS:
+        # When creating a plugin that inherits from BasePlugin, you MUST set
+        # self.plugin_name in your __init__ method BEFORE calling super().__init__()
+        # Example:
+        #   def __init__(self):
+        #       self.plugin_name = "your_plugin_name"  # Set this FIRST
+        #       super().__init__()                     # Then call parent
+        #
+        # Failure to do this will cause command recognition issues and other problems.
+
         super().__init__()
-        # Ensure plugin_name is defined
+
+        # Verify plugin_name is properly defined
         if not hasattr(self, "plugin_name") or self.plugin_name is None:
             raise ValueError(
-                f"{self.__class__.__name__} is missing plugin_name definition."
+                f"{self.__class__.__name__} is missing plugin_name definition. "
+                f"Make sure to set self.plugin_name BEFORE calling super().__init__()"
             )
 
         self.logger = get_logger(f"Plugin:{self.plugin_name}")
