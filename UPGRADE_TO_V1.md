@@ -57,8 +57,8 @@ If you want to contribute or modify the code:
 git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
 cd meshtastic-matrix-relay
 
-# Install in development mode
-pip install -e .
+# Install in editable mode for development
+pipx install -e .
 ```
 
 ## Migration Steps
