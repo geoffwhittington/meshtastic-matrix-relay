@@ -109,64 +109,54 @@ Messages will be relayed in both directions automatically:
 
 ### Systemd Service (Linux)
 
-For automatic startup and management on Linux systems:
+For automatic startup and management on Linux systems, MMRelay includes a built-in command to set up a systemd user service:
 
-1. Create the systemd user directory:
+```bash
+mmrelay --install-service
+```
 
-   ```bash
-   mkdir -p ~/.config/systemd/user
-   ```
+This command will:
 
-2. Create a service file with this one-liner (automatically uses your mmrelay path):
+1. Create the necessary directories (service file location and log directory)
+2. Install or update the systemd user service file
+3. Reload the systemd daemon
+4. Check if your configuration is valid
+5. Ask if you want to enable the service to start at boot
+6. Ask if you want to start the service immediately
+7. Show the service status if started
+8. Display commands for controlling the service
 
-   ```bash
-   cat > ~/.config/systemd/user/mmrelay.service << EOL
-   [Unit]
-   Description=Meshtastic <==> Matrix Relay
-   After=default.target
+### Managing the Service
 
-   [Service]
-   Type=idle
-   ExecStart=$(which mmrelay) --config %h/.mmrelay/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
-   Restart=on-failure
+After installation, you can control the service with these commands:
 
-   [Install]
-   WantedBy=default.target
-   EOL
-   ```
+```bash
+# Start the service
+systemctl --user start mmrelay.service
 
-3. Enable and start the service:
+# Stop the service
+systemctl --user stop mmrelay.service
 
-   ```bash
-   # Reload systemd to recognize the new service
-   systemctl --user daemon-reload
+# Restart the service
+systemctl --user restart mmrelay.service
 
-   # Enable the service to start at login
-   systemctl --user enable mmrelay.service
+# Check service status
+systemctl --user status mmrelay.service
 
-   # Start the service now
-   systemctl --user start mmrelay.service
-   ```
+# View service logs
+journalctl --user -u mmrelay.service
 
-4. Verify it's running correctly:
-
-   ```bash
-   systemctl --user status mmrelay.service
-   ```
-
-5. View logs if needed:
-
-   ```bash
-   # View service logs
-   journalctl --user -u mmrelay.service
-
-   # Or check the application log file
-   cat ~/.mmrelay/logs/mmrelay.log
-   ```
+# Or watch the application log file in real-time
+tail -f ~/.mmrelay/logs/mmrelay.log
+```
 
 ## Dockerized Versions (Unofficial)
 
-If you would prefer to use a Dockerized version of the relay, there are unofficial third-party projects available. Please note that these are not officially supported, and issues should be reported to their respective repositories. For more details, visit the [Third Party Projects](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Third-Party-Projects) page.
+If you would prefer to use a Dockerized version of the relay, there are unofficial third-party projects available. Please note that these are not officially supported, and issues should be reported to their respective repositories.
+
+> **Note**: Dockerized versions may need updates to be compatible with MMRelay v1.0. Check with the maintainers of these projects for their status.
+
+For more details, visit the [Third Party Projects](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Third-Party-Projects) page.
 
 ## Development
 

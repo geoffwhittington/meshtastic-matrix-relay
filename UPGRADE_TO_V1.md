@@ -120,11 +120,20 @@ systemctl --user start mmrelay.service
 # Stop the service
 systemctl --user stop mmrelay.service
 
+# Restart the service
+systemctl --user restart mmrelay.service
+
 # Check service status
 systemctl --user status mmrelay.service
 
 # Enable service to start at boot
 systemctl --user enable mmrelay.service
+
+# View service logs
+journalctl --user -u mmrelay.service
+
+# Or watch the application log file in real-time
+tail -f ~/.mmrelay/logs/mmrelay.log
 ```
 
 #### Run Without a Service
