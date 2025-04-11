@@ -202,13 +202,29 @@ def run_main(args):
     Returns:
         int: Exit code (0 for success, non-zero for failure)
     """
-    # Run the main functionality
+    # Handle the --data-dir option
+    if args and args.data_dir:
+        import os
+
+        import mmrelay.config
+
+        # Set the global custom_data_dir variable
+        mmrelay.config.custom_data_dir = os.path.abspath(args.data_dir)
+        # Create the directory if it doesn't exist
+        os.makedirs(mmrelay.config.custom_data_dir, exist_ok=True)
 
     # Load configuration
     from mmrelay.config import load_config
 
     # Load configuration with args
     config = load_config(args=args)
+
+    # Handle the --log-level option
+    if args and args.log_level:
+        # Override the log level from config
+        if "logging" not in config:
+            config["logging"] = {}
+        config["logging"]["level"] = args.log_level
 
     # Set the global config variables in each module
     from mmrelay import (

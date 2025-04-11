@@ -14,6 +14,26 @@ This guide helps you migrate from previous versions to MMRelay v1.0. The new ver
 - **Better Code Structure**: Modernized codebase with absolute imports
 - **Full Compatibility**: Works with your existing configuration
 
+### Enhanced Command-Line Options
+
+MMRelay v1.0 includes new command-line options for better flexibility:
+
+```bash
+# Specify a custom data directory
+mmrelay --data-dir /path/to/data/directory
+
+# Set a specific log level for debugging
+mmrelay --log-level debug
+
+# Generate a sample configuration file
+mmrelay --generate-config
+
+# Check if your configuration is valid
+mmrelay --check-config
+```
+
+See `mmrelay --help` for all available options.
+
 ## Upgrade Options
 
 ### Option 1: Quick Upgrade (Recommended)
@@ -155,22 +175,6 @@ Your existing configuration will continue to work without changes. The applicati
 - Migrate your database if needed
 - Support legacy configuration options
 - Load plugins from both old and new locations
-
-## Command-Line Interface
-
-MMRelay v1.0 includes an improved command-line interface:
-
-```bash
-mmrelay [OPTIONS]
-
-Options:
-  --config PATH       Path to the configuration file
-  --logfile PATH      Path to the log file
-  --generate-config   Generate a sample config.yaml file
-  --install-service   Install or update the systemd user service
-  --version           Show the version number and exit
-  --help              Show help message and exit
-```
 
 ## Troubleshooting
 

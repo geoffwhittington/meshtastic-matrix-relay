@@ -11,9 +11,22 @@ APP_NAME = "mmrelay"
 APP_AUTHOR = None  # No author directory
 
 
+# Global variable to store the custom data directory
+custom_data_dir = None
+
+
 # Custom base directory for Unix systems
 def get_base_dir():
-    """Returns the base directory for all application files."""
+    """Returns the base directory for all application files.
+
+    If a custom data directory has been set via --data-dir, that will be used.
+    Otherwise, defaults to ~/.mmrelay on Unix systems or the appropriate
+    platformdirs location on Windows.
+    """
+    # If a custom data directory has been set, use that
+    if custom_data_dir:
+        return custom_data_dir
+
     if sys.platform in ["linux", "darwin"]:
         # Use ~/.mmrelay for Linux and Mac
         return os.path.expanduser(os.path.join("~", "." + APP_NAME))
@@ -68,11 +81,7 @@ def get_config_paths(args=None):
     paths.append(current_dir_config)
 
     # Check application directory (for backward compatibility)
-    # This is the directory where the application is installed, e.g., ~/meshtastic-matrix-relay
-    # We need to go up two levels from get_app_path() which returns src/mmrelay
-    app_dir_config = os.path.join(
-        os.path.dirname(os.path.dirname(get_app_path())), "config.yaml"
-    )
+    app_dir_config = os.path.join(get_app_path(), "config.yaml")
     paths.append(app_dir_config)
 
     return paths

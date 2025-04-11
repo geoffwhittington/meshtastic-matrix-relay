@@ -24,7 +24,22 @@ def parse_arguments():
         description="Meshtastic Matrix Relay - Bridge between Meshtastic and Matrix"
     )
     parser.add_argument("--config", help="Path to config file", default=None)
-    parser.add_argument("--logfile", help="Path to log file", default=None)
+    parser.add_argument(
+        "--data-dir",
+        help="Base directory for all data (logs, database, plugins)",
+        default=None,
+    )
+    parser.add_argument(
+        "--log-level",
+        choices=["error", "warning", "info", "debug"],
+        help="Set logging level",
+        default=None,
+    )
+    parser.add_argument(
+        "--logfile",
+        help="Path to log file (can be overridden by --data-dir)",
+        default=None,
+    )
     parser.add_argument("--version", action="store_true", help="Show version and exit")
     parser.add_argument(
         "--generate-config",

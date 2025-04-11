@@ -26,6 +26,24 @@ pipx install mmrelay
 - **Existing Users**: Check [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) for migration guidance
 - **Configuration**: Review [sample_config.yaml](sample_config.yaml) for examples
 
+### Command-Line Options
+
+```bash
+usage: mmrelay [-h] [--config CONFIG] [--data-dir DATA_DIR] [--log-level {error,warning,info,debug}] [--logfile LOGFILE] [--version] [--generate-config] [--install-service] [--check-config]
+
+Options:
+  -h, --help            Show this help message and exit
+  --config CONFIG       Path to config file
+  --data-dir DATA_DIR   Base directory for all data (logs, database, plugins)
+  --log-level {error,warning,info,debug}
+                        Set logging level
+  --logfile LOGFILE     Path to log file (can be overridden by --data-dir)
+  --version             Show version and exit
+  --generate-config     Generate a sample config.yaml file
+  --install-service     Install or update the systemd user service
+  --check-config        Check if the configuration file is valid
+```
+
 ---
 
 ## Features
