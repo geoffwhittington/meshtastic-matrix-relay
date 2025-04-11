@@ -7,6 +7,10 @@ from mmrelay.plugins.base_plugin import BasePlugin
 class Plugin(BasePlugin):
     plugin_name = "help"
 
+    def __init__(self):
+        self.plugin_name = "help"
+        super().__init__()
+
     @property
     def description(self):
         return "List supported relay commands"

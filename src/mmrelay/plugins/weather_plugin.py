@@ -9,6 +9,10 @@ from mmrelay.plugins.base_plugin import BasePlugin
 class Plugin(BasePlugin):
     plugin_name = "weather"
 
+    def __init__(self):
+        self.plugin_name = "weather"
+        super().__init__()
+
     @property
     def description(self):
         return "Show weather forecast for a radio node using GPS location"
@@ -155,10 +159,10 @@ class Plugin(BasePlugin):
             if f"!{self.plugin_name}" not in message.lower():
                 return False
 
-                # Log that the plugin is processing the message
-                self.logger.info(
-                    f"Processing message from {longname} on channel {channel} with plugin '{self.plugin_name}'"
-                )
+            # Log that the plugin is processing the message
+            self.logger.info(
+                f"Processing message from {longname} on channel {channel} with plugin '{self.plugin_name}'"
+            )
 
             fromId = packet.get("fromId")
             if fromId in meshtastic_client.nodes:
