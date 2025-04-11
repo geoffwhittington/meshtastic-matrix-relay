@@ -40,8 +40,7 @@ MMRelay looks for configuration files in the following locations (in order):
 
 1. Path specified with `--config` command-line option
 2. `~/.mmrelay/config.yaml` (recommended location)
-3. Current directory `config.yaml`
-4. Current directory `sample_config.yaml`
+3. Current directory `config.yaml` (for backward compatibility)
 
 ### Setting Up Your Configuration
 
