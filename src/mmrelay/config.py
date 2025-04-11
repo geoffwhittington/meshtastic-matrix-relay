@@ -68,7 +68,11 @@ def get_config_paths(args=None):
     paths.append(current_dir_config)
 
     # Check application directory (for backward compatibility)
-    app_dir_config = os.path.join(get_app_path(), "config.yaml")
+    # This is the directory where the application is installed, e.g., ~/meshtastic-matrix-relay
+    # We need to go up two levels from get_app_path() which returns src/mmrelay
+    app_dir_config = os.path.join(
+        os.path.dirname(os.path.dirname(get_app_path())), "config.yaml"
+    )
     paths.append(app_dir_config)
 
     return paths

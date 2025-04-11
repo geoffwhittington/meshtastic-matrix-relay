@@ -170,6 +170,15 @@ def check_config(args=None):
                     )
                     return False
 
+                # Check for deprecated connection_type
+                if connection_type == "network":
+                    print(
+                        "\nWarning: 'network' connection_type is deprecated. Please use 'tcp' instead."
+                    )
+                    print(
+                        "See ANNOUNCEMENT.md for more information about deprecated options.\n"
+                    )
+
                 # Check connection-specific fields
                 if (
                     connection_type == "serial"
@@ -188,6 +197,15 @@ def check_config(args=None):
                 if connection_type == "ble" and "ble_address" not in meshtastic_section:
                     print("Error: Missing 'ble_address' for 'ble' connection type")
                     return False
+
+                # Check for deprecated db section
+                if "db" in config:
+                    print(
+                        "\nWarning: 'db' section is deprecated. Please use 'database' instead."
+                    )
+                    print(
+                        "See ANNOUNCEMENT.md for more information about deprecated options.\n"
+                    )
 
                 print("Configuration file is valid!")
                 return True
