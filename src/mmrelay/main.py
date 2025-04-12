@@ -99,6 +99,43 @@ async def main(config):
     await matrix_client.sync(timeout=10000)  # 10 second timeout
     matrix_logger.info(f"Initial sync completed with {len(matrix_client.rooms)} rooms")
 
+    # If E2EE is enabled, verify devices and upload keys again after joining rooms
+    if config["matrix"].get("e2ee", {}).get("enabled", False) and matrix_client.olm:
+        # Verify all devices in the store again after sync
+        if matrix_client.device_store:
+            matrix_logger.debug("Re-verifying devices after initial sync")
+            # Verify our own device first
+            if matrix_client.user_id in matrix_client.device_store.users:
+                for device in matrix_client.device_store.active_user_devices(matrix_client.user_id):
+                    matrix_client.verify_device(device)
+                    matrix_logger.debug(f"Re-verified our device: {device.device_id}")
+
+            # Verify all other devices
+            for user_id in matrix_client.device_store.users:
+                if user_id == matrix_client.user_id:
+                    continue
+                for device in matrix_client.device_store.active_user_devices(user_id):
+                    matrix_client.verify_device(device)
+                    matrix_logger.debug(f"Re-verified device {device.device_id} for user {user_id}")
+
+        # Upload keys again after joining rooms
+        matrix_logger.debug("Uploading keys again after joining rooms")
+        try:
+            await matrix_client.keys_upload()
+            matrix_logger.debug("Keys uploaded successfully after joining rooms")
+        except Exception as ke:
+            matrix_logger.warning(f"Error uploading keys after joining rooms: {ke}")
+
+        # Ensure we have group sessions for all encrypted rooms
+        for room_id, room in matrix_client.rooms.items():
+            if room.encrypted:
+                matrix_logger.debug(f"Ensuring group session for encrypted room {room_id}")
+                try:
+                    await matrix_client.share_group_session(room_id)
+                    matrix_logger.debug(f"Shared group session for room {room_id}")
+                except Exception as e:
+                    matrix_logger.warning(f"Error sharing group session for room {room_id}: {e}")
+
     # Now connect to Meshtastic after Matrix is ready
     meshtastic_utils.meshtastic_client = connect_meshtastic(passed_config=config)
 
