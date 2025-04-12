@@ -362,7 +362,9 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
                             f"Got room state for {room_id}, events: {len(state.events)}"
                         )
                         # Force another sync
-                        await matrix_client.sync(timeout=3000)
+                        await matrix_client.sync(
+                            timeout=5000
+                        )  # Increased timeout for better reliability
                     except Exception as state_error:
                         logger.warning(f"Error getting room state: {state_error}")
 
@@ -374,7 +376,9 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
                     # Create a minimal room object
                     from nio import MatrixRoom
 
-                    matrix_client.rooms[room_id] = MatrixRoom(room_id=room_id)
+                    matrix_client.rooms[room_id] = MatrixRoom(
+                        room_id, matrix_client.user_id
+                    )
                     logger.debug(f"Manually created room object for {room_id}")
             else:
                 logger.error(
