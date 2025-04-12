@@ -149,10 +149,9 @@ async def connect_matrix(passed_config=None):
                 os.makedirs(e2ee_store_path, exist_ok=True)
                 logger.debug(f"Using E2EE store path: {e2ee_store_path}")
 
-                # Get device ID from config if provided
-                if "device_id" in config["matrix"]["e2ee"]:
-                    e2ee_device_id = config["matrix"]["e2ee"]["device_id"]
-                    logger.debug(f"Using configured device_id: {e2ee_device_id}")
+                # We'll get the device ID from whoami() later
+                e2ee_device_id = None
+                logger.debug("Will retrieve device_id from whoami() response")
             except ImportError:
                 logger.warning(
                     "E2EE is enabled in config but python-olm is not installed."
@@ -180,18 +179,24 @@ async def connect_matrix(passed_config=None):
     matrix_client.access_token = matrix_access_token
     matrix_client.user_id = bot_user_id
 
-    # Attempt to retrieve the device_id using whoami()
+    # Retrieve the device_id using whoami() - this is critical for E2EE
     whoami_response = await matrix_client.whoami()
     if isinstance(whoami_response, WhoamiError):
         logger.error(f"Failed to retrieve device_id: {whoami_response.message}")
-        if not e2ee_enabled:
-            matrix_client.device_id = None
+        if e2ee_enabled:
+            logger.error(
+                "E2EE requires a valid device_id. E2EE may not work correctly."
+            )
+        matrix_client.device_id = None
     else:
+        # Always use the device_id from whoami for consistency
         matrix_client.device_id = whoami_response.device_id
         if matrix_client.device_id:
-            logger.debug(f"Retrieved device_id: {matrix_client.device_id}")
+            logger.info(f"Using device_id from server: {matrix_client.device_id}")
         else:
-            logger.warning("device_id not returned by whoami()")
+            logger.error(
+                "No device_id returned by whoami(). E2EE will not work correctly."
+            )
 
     # Fetch the bot's display name
     response = await matrix_client.get_displayname(bot_user_id)
@@ -243,7 +248,43 @@ async def connect_matrix(passed_config=None):
                 and matrix_client.olm.store
             ):
                 verified_count = 0
+
+                # First, make sure our own device is verified and trusted
+                if matrix_client.device_id and matrix_client.user_id:
+                    logger.debug(
+                        f"Ensuring our own device {matrix_client.device_id} is verified and trusted"
+                    )
+                    try:
+                        # Get our own devices
+                        own_devices = matrix_client.device_store.active_user_devices(
+                            matrix_client.user_id
+                        )
+                        for device in own_devices:
+                            # Verify and trust all our devices, especially our current one
+                            matrix_client.olm.store.verify_device(device)
+                            if hasattr(
+                                matrix_client.olm.store, "mark_device_as_trusted"
+                            ):
+                                matrix_client.olm.store.mark_device_as_trusted(device)
+                            logger.debug(
+                                f"Verified and trusted our device: {device.device_id}"
+                            )
+                            verified_count += 1
+
+                            # If this is our current device, log it
+                            if device.device_id == matrix_client.device_id:
+                                logger.info(
+                                    f"Verified and trusted our current device: {device.device_id}"
+                                )
+                    except Exception as e:
+                        logger.warning(f"Error verifying our own devices: {e}")
+
+                # Then verify and trust all other devices
                 for user_id in matrix_client.device_store.users:
+                    # Skip our own user as we already processed it
+                    if user_id == matrix_client.user_id:
+                        continue
+
                     for device in matrix_client.device_store.active_user_devices(
                         user_id
                     ):
@@ -253,9 +294,10 @@ async def connect_matrix(passed_config=None):
                         if hasattr(matrix_client.olm.store, "mark_device_as_trusted"):
                             matrix_client.olm.store.mark_device_as_trusted(device)
                         verified_count += 1
+
                 if verified_count > 0:
                     logger.debug(
-                        f"Verified and trusted {verified_count} devices in the store"
+                        f"Verified and trusted {verified_count} total devices in the store"
                     )
 
             # Upload keys if needed
