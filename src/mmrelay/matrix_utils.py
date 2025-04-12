@@ -1302,11 +1302,9 @@ async def login_matrix_bot(
         homeserver = input("Enter Matrix homeserver URL (e.g., https://matrix.org): ")
 
     # Ensure homeserver URL has the correct format
-    if homeserver.startswith("https://"):
-        # AsyncClient expects the URL without the protocol
-        homeserver = homeserver[8:]
-    elif homeserver.startswith("http://"):
-        homeserver = homeserver[7:]
+    if not (homeserver.startswith("https://") or homeserver.startswith("http://")):
+        # AsyncClient expects the URL with the protocol
+        homeserver = "https://" + homeserver
 
     # Get username
     if not username:
@@ -1344,8 +1342,6 @@ async def login_matrix_bot(
 
         # Save the original homeserver URL with protocol for config
         original_homeserver = homeserver
-        if not original_homeserver.startswith("http"):
-            original_homeserver = "https://" + original_homeserver
 
         # Log out other sessions if requested
         if logout_others:
