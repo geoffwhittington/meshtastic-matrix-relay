@@ -128,6 +128,9 @@ async def connect_matrix(passed_config=None):
         bot_user_id = credentials["user_id"]
         e2ee_device_id = credentials["device_id"]
         logger.info(f"Using credentials from {credentials_path}")
+        # If config also has Matrix login info, let the user know we're ignoring it
+        if config and "matrix" in config and "access_token" in config["matrix"]:
+            logger.info("NOTE: Ignoring Matrix login details in config.yaml in favor of credentials.json")
     else:
         # Check if config is available
         if config is None:
@@ -1415,32 +1418,25 @@ async def login_matrix_bot(
         # config_dir is already set from above
         os.makedirs(config_dir, exist_ok=True)
 
-        # Config file path
-        config_file = os.path.join(config_dir, "config.yaml")
-        # Load existing config if it exists
-        config = {}
-        if os.path.exists(config_file):
-            with open(config_file, "r") as f:
-                config = yaml.load(f, Loader=yaml.SafeLoader) or {}
+        # Save credentials to credentials.json
+        credentials = {
+            "user_id": user_id,
+            "device_id": device_id,
+            "access_token": access_token,
+            "homeserver": homeserver
+        }
 
-        # Update config with new login info
-        if "matrix" not in config:
-            config["matrix"] = {}
-
-        config["matrix"]["homeserver"] = original_homeserver
-        config["matrix"]["access_token"] = access_token
-        config["matrix"]["bot_user_id"] = user_id
-
-        # Add E2EE config if not present
-        if "e2ee" not in config["matrix"]:
-            config["matrix"]["e2ee"] = {"enabled": True}
-
-        # Save config
-        os.makedirs(os.path.dirname(config_file), exist_ok=True)
-        with open(config_file, "w") as f:
-            yaml.dump(config, f, default_flow_style=False)
-
-        logger.info(f"Login information saved to {config_file}")
+        # Save credentials to file
+        credentials_path = os.path.join(config_dir, "credentials.json")
+        try:
+            with open(credentials_path, "w") as f:
+                import json
+                json.dump(credentials, f)
+            logger.info(f"Credentials saved to {credentials_path}")
+            logger.info("NOTE: Using credentials.json for login instead of config.yaml")
+            logger.info("You can safely remove Matrix login details from config.yaml if desired")
+        except Exception as e:
+            logger.warning(f"Failed to save credentials: {e}")
 
         # Close the client
         await client.close()
