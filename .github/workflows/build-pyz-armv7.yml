@@ -10,7 +10,7 @@ permissions:
   actions: read
 
 jobs:
-  build:
+  build-armv7-pyz:
     runs-on: ubuntu-latest
 
     steps:

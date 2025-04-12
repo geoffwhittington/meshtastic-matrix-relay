@@ -11,7 +11,7 @@ permissions:
   actions: read
 
 jobs:
-  build:
+  build-windows-installer:
     runs-on: windows-latest
 
     steps:
