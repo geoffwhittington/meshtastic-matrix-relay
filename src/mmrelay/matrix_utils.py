@@ -344,6 +344,38 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
             response = await matrix_client.join(room_id)
             if response and hasattr(response, "room_id"):
                 logger.info(f"Joined room '{room_id_or_alias}' successfully")
+
+                # Force a sync to update the client's rooms list
+                logger.debug(f"Forcing sync after joining room {room_id}")
+                await matrix_client.sync(
+                    timeout=5000
+                )  # Increased timeout for better reliability
+
+                # If the room is still not in the client's rooms after sync, try to get room state
+                if room_id not in matrix_client.rooms:
+                    logger.warning(
+                        f"Room {room_id} not in client's rooms after sync. Trying to get room state..."
+                    )
+                    try:
+                        state = await matrix_client.room_get_state(room_id)
+                        logger.debug(
+                            f"Got room state for {room_id}, events: {len(state.events)}"
+                        )
+                        # Force another sync
+                        await matrix_client.sync(timeout=3000)
+                    except Exception as state_error:
+                        logger.warning(f"Error getting room state: {state_error}")
+
+                # If the room is still not in the client's rooms, create it manually
+                if room_id not in matrix_client.rooms:
+                    logger.warning(
+                        f"Room {room_id} still not in client's rooms. Creating room object manually..."
+                    )
+                    # Create a minimal room object
+                    from nio import MatrixRoom
+
+                    matrix_client.rooms[room_id] = MatrixRoom(room_id=room_id)
+                    logger.debug(f"Manually created room object for {room_id}")
             else:
                 logger.error(
                     f"Failed to join room '{room_id_or_alias}': {response.message}"
@@ -456,7 +488,9 @@ async def matrix_relay(
                     logger.debug(
                         f"Waiting for sync to complete after joining room {room_id}"
                     )
-                    await matrix_client.sync(timeout=10000)
+                    await matrix_client.sync(
+                        timeout=15000
+                    )  # Increased timeout for better reliability
 
                     # Force the room to be added to the client's rooms if it's not there yet
                     # This is a workaround for the sync not always adding the room
