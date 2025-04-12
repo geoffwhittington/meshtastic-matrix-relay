@@ -20,6 +20,7 @@ from nio import (
     RoomMessageText,
     UploadResponse,
     WhoamiError,
+    exceptions,
 )
 from PIL import Image
 
@@ -165,8 +166,7 @@ async def connect_matrix(passed_config=None):
     # Initialize the Matrix client with custom SSL context
     client_config = AsyncClientConfig(
         encryption_enabled=e2ee_enabled,
-        store_sync_tokens=True,
-        encryption_default_key_verification=False  # Don't require device verification
+        store_sync_tokens=True
     )
     matrix_client = AsyncClient(
         homeserver=matrix_homeserver,
@@ -212,10 +212,21 @@ async def connect_matrix(passed_config=None):
                 logger.debug("Uploading encryption keys to server")
                 await matrix_client.keys_upload()
 
-            # Set verification level for all rooms
-            # This tells matrix-nio to encrypt for all devices, even unverified ones
-            matrix_client.verify_devices = False
-            logger.debug("Device verification disabled - will encrypt for all devices")
+            # Override the OlmDevice.verified property to always return true
+            # This makes matrix-nio encrypt for all devices without verification
+            from nio.crypto.device import OlmDevice
+
+            # Store original property for reference (not used but kept for documentation)
+            # original_verified = OlmDevice.verified
+
+            # Make all devices appear verified
+            @property
+            def always_verified(self):
+                return True
+
+            # Apply the monkey patch
+            OlmDevice.verified = always_verified
+            logger.debug("Device verification bypassed - will encrypt for all devices")
 
         except Exception as e:
             logger.error(f"Error setting up E2EE: {e}")
@@ -361,6 +372,28 @@ async def matrix_relay(
         except asyncio.TimeoutError:
             logger.error(f"Timeout sending message to Matrix room {room_id}")
             return
+        except exceptions.OlmUnverifiedDeviceError as e:
+            # This should not happen with our monkey patch, but just in case
+            logger.warning(f"Encryption error with unverified device in room {room_id}: {e}")
+            logger.warning("Retrying with verification bypass...")
+            try:
+                # Force the device to be treated as verified
+                for device in e.devices:
+                    device.verified = True
+
+                # Retry sending the message
+                response = await asyncio.wait_for(
+                    matrix_client.room_send(
+                        room_id=room_id,
+                        message_type="m.room.message",
+                        content=content,
+                    ),
+                    timeout=10.0,
+                )
+                logger.info(f"Successfully sent message after verification bypass to room: {room_id}")
+            except Exception as retry_error:
+                logger.error(f"Failed to send message even after verification bypass: {retry_error}")
+                return
         except Exception as e:
             logger.error(f"Error sending message to Matrix room {room_id}: {e}")
             return
