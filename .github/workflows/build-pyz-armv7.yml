@@ -1,6 +1,7 @@
 name: Build PYZ (armv7)
 
 on:
+  pull_request:
   workflow_dispatch:
   release:
     types: [published]
@@ -10,7 +11,7 @@ permissions:
   actions: read
 
 jobs:
-  build:
+  build-armv7-pyz:
     runs-on: ubuntu-latest
 
     steps:
