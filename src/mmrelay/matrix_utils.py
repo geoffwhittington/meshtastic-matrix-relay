@@ -1330,11 +1330,7 @@ async def login_matrix_bot(
 
     # Login
     logger.info(f"Logging in as {username} to {homeserver}...")
-    # Create user identifier dictionary
-    user_id_dict = {"type": "m.id.user", "user": username}
-    response = await client.login(
-        password=password, device_name="mmrelay", identifier=user_id_dict
-    )
+    response = await client.login(password=password, device_name="mmrelay")
 
     if hasattr(response, "access_token") and response.access_token:
         logger.info("Login successful!")
