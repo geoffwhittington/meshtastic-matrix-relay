@@ -47,6 +47,11 @@ def parse_arguments():
         help="Generate a sample config.yaml file",
     )
     parser.add_argument(
+        "--bot-login",
+        action="store_true",
+        help="Login to Matrix as a bot and save the access token",
+    )
+    parser.add_argument(
         "--install-service",
         action="store_true",
         help="Install or update the systemd user service",
@@ -317,6 +322,18 @@ def handle_cli_commands(args):
         import sys
 
         sys.exit(0 if check_config() else 1)
+
+    # Handle --bot-login
+    if args.bot_login:
+        import asyncio
+
+        from mmrelay.matrix_utils import login_matrix_bot
+
+        # Run the login function
+        result = asyncio.run(login_matrix_bot())
+        import sys
+
+        sys.exit(0 if result else 1)
 
     # No commands were handled
     return False

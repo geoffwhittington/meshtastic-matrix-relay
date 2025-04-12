@@ -353,7 +353,7 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
 
                 # If the room is still not in the client's rooms after sync, try to get room state
                 if room_id not in matrix_client.rooms:
-                    logger.warning(
+                    logger.debug(
                         f"Room {room_id} not in client's rooms after sync. Trying to get room state..."
                     )
                     try:
@@ -370,7 +370,7 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
 
                 # If the room is still not in the client's rooms, create it manually
                 if room_id not in matrix_client.rooms:
-                    logger.warning(
+                    logger.debug(
                         f"Room {room_id} still not in client's rooms. Creating room object manually..."
                     )
                     # Create a minimal room object
@@ -499,7 +499,7 @@ async def matrix_relay(
                     # Force the room to be added to the client's rooms if it's not there yet
                     # This is a workaround for the sync not always adding the room
                     if room_id not in matrix_client.rooms:
-                        logger.warning(
+                        logger.debug(
                             f"Room {room_id} not in client's rooms after sync. Trying to get room state..."
                         )
                         try:
@@ -516,7 +516,7 @@ async def matrix_relay(
 
                     # If the room is still not in the client's rooms, create it manually
                     if room_id not in matrix_client.rooms:
-                        logger.warning(
+                        logger.debug(
                             f"Room {room_id} still not in client's rooms. Creating room object manually..."
                         )
                         # Create a minimal room object
@@ -1274,3 +1274,130 @@ async def send_room_image(
         message_type="m.room.message",
         content={"msgtype": "m.image", "url": upload_response.content_uri, "body": ""},
     )
+
+
+async def login_matrix_bot(
+    homeserver=None, username=None, password=None, logout_others=False
+):
+    """
+    Login to Matrix as a bot and save the access token.
+
+    Args:
+        homeserver: The Matrix homeserver URL
+        username: The Matrix username
+        password: The Matrix password
+        logout_others: Whether to log out other sessions
+
+    Returns:
+        dict: A dictionary with the login information including access_token and device_id
+    """
+    import getpass
+
+    import yaml
+
+    from mmrelay.config import get_config_paths
+
+    # Get homeserver URL
+    if not homeserver:
+        homeserver = input("Enter Matrix homeserver URL (e.g., https://matrix.org): ")
+
+    # Get username
+    if not username:
+        username = input("Enter Matrix username (without @): ")
+        if username.startswith("@"):
+            username = username[1:]
+        if ":" in username:
+            username = username.split(":")[0]
+
+    # Get password
+    if not password:
+        password = getpass.getpass("Enter Matrix password: ")
+
+    # Ask about logging out other sessions
+    if logout_others is None:
+        logout_others_input = input("Log out other sessions? (y/n): ").lower()
+        logout_others = logout_others_input.startswith("y")
+
+    # Create a Matrix client for login
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    client_config = AsyncClientConfig(store_sync_tokens=True)
+    client = AsyncClient(homeserver=homeserver, config=client_config, ssl=ssl_context)
+
+    # Login
+    logger.info(f"Logging in as {username} to {homeserver}...")
+    response = await client.login(username, password, device_name="mmrelay")
+
+    if hasattr(response, "access_token") and response.access_token:
+        logger.info("Login successful!")
+
+        # Get user ID
+        user_id = response.user_id
+        device_id = response.device_id
+        access_token = response.access_token
+
+        # Log out other sessions if requested
+        if logout_others:
+            logger.info("Logging out other sessions...")
+            # Set the access token for the client
+            client.access_token = access_token
+            client.user_id = user_id
+
+            # Get list of devices
+            devices_response = await client.devices()
+            if hasattr(devices_response, "devices"):
+                for device in devices_response.devices:
+                    # Skip the current device
+                    if device.device_id == device_id:
+                        continue
+
+                    # Log out the device
+                    logger.debug(f"Logging out device {device.device_id}")
+                    await client.logout_device(device.device_id)
+                logger.info("Other sessions logged out successfully")
+            else:
+                logger.warning(
+                    f"Failed to get devices: {devices_response.message if hasattr(devices_response, 'message') else 'Unknown error'}"
+                )
+
+        # Get config file path
+        config_paths = get_config_paths()
+        config_file = config_paths[0]  # Use the first config path
+
+        # Load existing config if it exists
+        config = {}
+        if os.path.exists(config_file):
+            with open(config_file, "r") as f:
+                config = yaml.load(f, Loader=yaml.SafeLoader) or {}
+
+        # Update config with new login info
+        if "matrix" not in config:
+            config["matrix"] = {}
+
+        config["matrix"]["homeserver"] = homeserver
+        config["matrix"]["access_token"] = access_token
+        config["matrix"]["bot_user_id"] = user_id
+
+        # Add E2EE config if not present
+        if "e2ee" not in config["matrix"]:
+            config["matrix"]["e2ee"] = {"enabled": True}
+
+        # Save config
+        os.makedirs(os.path.dirname(config_file), exist_ok=True)
+        with open(config_file, "w") as f:
+            yaml.dump(config, f, default_flow_style=False)
+
+        logger.info(f"Login information saved to {config_file}")
+
+        # Close the client
+        await client.close()
+
+        return {
+            "homeserver": homeserver,
+            "user_id": user_id,
+            "device_id": device_id,
+            "access_token": access_token,
+        }
+    else:
+        error_msg = getattr(response, "message", "Unknown error")
+        logger.error(f"Login failed: {error_msg}")
+        return None
