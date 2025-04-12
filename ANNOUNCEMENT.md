@@ -8,7 +8,7 @@ We sincerely thank everyone who contributed code, provided feedback, or helped t
 
 ## What's New in v1.0
 
-- **PyPI Release**: Quickly install via `pip` or `pipx`
+- **PyPI Release**: Quickly install via `pipx install mmrelay`
 - **Standardized Configuration**: Uses `platformdirs` for consistent configuration paths
 - **Enhanced CLI**: Improved command-line experience and new options
 - **Absolute Imports**: Clearer, more maintainable codebase
@@ -39,7 +39,7 @@ git checkout 0.10.1
 
 ### For New Users
 
-- **Quick Start**: `pip install mmrelay` or `pipx install mmrelay`
+- **Quick Start**: `pipx install mmrelay` ([learn about pipx](https://pipx.pypa.io/stable/installation/#installing-pipx))
 - **Installation Guide**: [INSTRUCTIONS.md](https://github.com/geoffwhittington/meshtastic-matrix-relay/blob/main/INSTRUCTIONS.md)
 - **Configuration Template**: [sample_config.yaml](https://github.com/geoffwhittington/meshtastic-matrix-relay/blob/main/sample_config.yaml)
 

@@ -7,12 +7,15 @@ MMRelay works on Linux, macOS, and Windows and requires Python 3.9+.
 ### Quick Install (Recommended)
 
 ```bash
-# Install using pip
-pip install mmrelay
-
-# Or use pipx for isolated installation (recommended)
+# Recommended: Install with pipx for isolated environments
 pipx install mmrelay
+
+# For End-to-End Encryption support (Linux/macOS only)
+pipx install 'mmrelay[e2e]'
 ```
+
+> **Note**: You can also use `pip install mmrelay` if you prefer, but pipx provides better isolation.
+> New to pipx? [Learn how to install it here](https://pipx.pypa.io/stable/installation/#installing-pipx).
 
 ### Developer Install
 
@@ -23,11 +26,11 @@ If you want to contribute or modify the code:
 git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
 cd meshtastic-matrix-relay
 
-# Install in development mode
-pip install -e .
-
-# Or use pipx for isolated installation
+# Recommended: Install in development mode with pipx
 pipx install -e .
+
+# Or use pip if you prefer
+pip install -e .
 ```
 
 > **Upgrading from a previous version?** Please see [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) for migration guidance.

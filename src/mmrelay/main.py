@@ -8,7 +8,14 @@ import logging
 import signal
 import sys
 
-from nio import ReactionEvent, RoomMessageEmote, RoomMessageNotice, RoomMessageText
+from nio import (
+    MegolmEvent,
+    ReactionEvent,
+    RoomEncryptionEvent,
+    RoomMessageEmote,
+    RoomMessageNotice,
+    RoomMessageText,
+)
 
 # Import meshtastic_utils as a module to set event_loop
 from mmrelay import meshtastic_utils
@@ -95,6 +102,10 @@ async def main(config):
     )
     # Add ReactionEvent callback so we can handle matrix reactions
     matrix_client.add_event_callback(on_room_message, ReactionEvent)
+    # Add MegolmEvent callback for encrypted messages
+    matrix_client.add_event_callback(on_room_message, MegolmEvent)
+    # Add RoomEncryptionEvent callback to detect when a room becomes encrypted
+    matrix_client.add_event_callback(on_room_message, RoomEncryptionEvent)
 
     # Set up shutdown event
     shutdown_event = asyncio.Event()
