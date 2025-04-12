@@ -247,24 +247,25 @@ async def connect_matrix(passed_config=None):
                     for device in matrix_client.device_store.active_user_devices(
                         user_id
                     ):
-                        if not device.verified:
-                            matrix_client.olm.store.verify_device(device)
-                            verified_count += 1
+                        # Always verify and trust all devices
+                        matrix_client.olm.store.verify_device(device)
+                        # Also mark the device as trusted in the store
+                        if hasattr(matrix_client.olm.store, "mark_device_as_trusted"):
+                            matrix_client.olm.store.mark_device_as_trusted(device)
+                        verified_count += 1
                 if verified_count > 0:
-                    logger.debug(f"Verified {verified_count} devices in the store")
+                    logger.debug(
+                        f"Verified and trusted {verified_count} devices in the store"
+                    )
 
-            # Query keys for all users we know about
-            if matrix_client.device_store:
-                users = list(matrix_client.device_store.users)
-                if users:
-                    logger.debug(f"Querying keys for {len(users)} users during startup")
-                    try:
-                        # The keys_query method doesn't take a list of users as a parameter
-                        # It queries keys for all users in the device store
-                        await matrix_client.keys_query()
-                        logger.debug("Initial keys query completed successfully")
-                    except Exception as ke:
-                        logger.warning(f"Error during initial keys query: {ke}")
+            # Upload keys if needed
+            if matrix_client.should_upload_keys:
+                logger.debug("Uploading encryption keys to server")
+                try:
+                    await matrix_client.keys_upload()
+                    logger.debug("Keys uploaded successfully")
+                except Exception as ke:
+                    logger.warning(f"Error uploading keys: {ke}")
 
             logger.debug("E2EE setup complete - will encrypt for all devices")
 
@@ -476,17 +477,16 @@ async def matrix_relay(
                                         device.device_id for device in devices
                                     ]
 
-                        # Query keys for all devices
-                        if users_devices:
+                        # Make sure we have keys uploaded
+                        if matrix_client.should_upload_keys:
                             logger.debug(
-                                f"Querying keys for users in room {room_id}: {list(users_devices.keys())}"
+                                "Uploading encryption keys before sending message"
                             )
                             try:
-                                # The keys_query method doesn't take a list of users as a parameter
-                                await matrix_client.keys_query()
-                                logger.debug("Keys query completed successfully")
+                                await matrix_client.keys_upload()
+                                logger.debug("Keys uploaded successfully")
                             except Exception as ke:
-                                logger.warning(f"Error querying keys: {ke}")
+                                logger.warning(f"Error uploading keys: {ke}")
 
                         # Claim keys for all devices
                         if users_devices:
@@ -777,10 +777,17 @@ async def on_room_message(
                             logger.debug(
                                 f"Verified device {device.device_id} for user {sender}"
                             )
+                        # Also mark the device as trusted
+                        if hasattr(matrix_client.olm.store, "mark_device_as_trusted"):
+                            matrix_client.olm.store.mark_device_as_trusted(device)
+                            logger.debug(
+                                f"Trusted device {device.device_id} for user {sender}"
+                            )
 
-                    # Request keys from this sender
-                    await matrix_client.keys_query()
-                    logger.debug(f"Requested keys from {sender}")
+                    # Upload our keys
+                    if matrix_client.should_upload_keys:
+                        await matrix_client.keys_upload()
+                        logger.debug(f"Uploaded keys for {sender}")
             except Exception as e:
                 logger.warning(f"Error trying to handle undecryptable event: {e}")
 

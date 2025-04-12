@@ -221,7 +221,7 @@ def load_config(config_file=None, args=None):
             logger.info(f"Loading configuration from: {config_path}")
             with open(config_path, "r") as f:
                 relay_config = yaml.load(f, Loader=SafeLoader)
-            logger.info(f"Loaded configuration with keys: {list(relay_config.keys())}")
+            # Configuration loaded successfully
             return relay_config
 
     # No config file found
