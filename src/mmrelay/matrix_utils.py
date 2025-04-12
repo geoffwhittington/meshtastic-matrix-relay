@@ -1330,7 +1330,11 @@ async def login_matrix_bot(
 
     # Login
     logger.info(f"Logging in as {username} to {homeserver}...")
-    response = await client.login(password=password, device_name="mmrelay")
+    # Create user identifier dictionary
+    user_id_dict = {"type": "m.id.user", "user": username}
+    response = await client.login(
+        password=password, device_name="mmrelay", identifier=user_id_dict
+    )
 
     if hasattr(response, "access_token") and response.access_token:
         logger.info("Login successful!")
@@ -1339,6 +1343,12 @@ async def login_matrix_bot(
         user_id = response.user_id
         device_id = response.device_id
         access_token = response.access_token
+    else:
+        error_msg = getattr(response, "message", "Unknown error")
+        logger.error(f"Login failed: {error_msg}")
+        # Make sure to close the client session
+        await client.close()
+        return None
 
         # Save the original homeserver URL with protocol for config
         original_homeserver = homeserver
@@ -1405,7 +1415,3 @@ async def login_matrix_bot(
             "device_id": device_id,
             "access_token": access_token,
         }
-    else:
-        error_msg = getattr(response, "message", "Unknown error")
-        logger.error(f"Login failed: {error_msg}")
-        return None
