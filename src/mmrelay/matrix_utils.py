@@ -24,6 +24,7 @@ from nio import (
 )
 from PIL import Image
 
+from mmrelay.config import get_e2ee_store_dir
 from mmrelay.db_utils import (
     get_message_map_by_matrix_event_id,
     prune_message_map,
@@ -802,15 +803,15 @@ async def on_room_message(
                 f"Received encrypted event that could not be decrypted in room {room.room_id}"
             )
 
-            # Try to verify the sender's devices and request keys
+            # Try to handle the undecryptable event
             try:
                 if matrix_client.olm and matrix_client.device_store:
                     sender = event.sender
-                    logger.debug(
-                        f"Attempting to verify devices and request keys from {sender}"
+                    logger.info(
+                        f"Attempting to handle undecryptable event from {sender}"
                     )
 
-                    # Verify all devices for this sender
+                    # 1. Verify and trust all devices for this sender
                     for device in matrix_client.device_store.active_user_devices(
                         sender
                     ):
@@ -819,19 +820,68 @@ async def on_room_message(
                             logger.debug(
                                 f"Verified device {device.device_id} for user {sender}"
                             )
-                        # Also mark the device as trusted
                         if hasattr(matrix_client.olm.store, "mark_device_as_trusted"):
                             matrix_client.olm.store.mark_device_as_trusted(device)
                             logger.debug(
                                 f"Trusted device {device.device_id} for user {sender}"
                             )
 
-                    # Upload our keys
+                    # 2. Upload our keys
                     if matrix_client.should_upload_keys:
                         await matrix_client.keys_upload()
                         logger.debug(f"Uploaded keys for {sender}")
+
+                    # 3. Request keys from the sender
+                    try:
+                        # Request keys from the sender's devices
+                        user_devices = {}
+                        user_devices[sender] = [
+                            device.device_id
+                            for device in matrix_client.device_store.active_user_devices(
+                                sender
+                            )
+                        ]
+                        if user_devices[sender]:
+                            logger.debug(
+                                f"Requesting keys from {sender}'s devices: {user_devices[sender]}"
+                            )
+                            await matrix_client.keys_claim(user_devices)
+                            logger.debug(f"Claimed keys from {sender}")
+                    except Exception as key_error:
+                        logger.warning(f"Error claiming keys: {key_error}")
+
+                    # 4. Force a sync to get updated keys
+                    logger.debug("Forcing sync to get updated keys")
+                    await matrix_client.sync(timeout=5000)
+
+                    # 5. Try to decrypt the event again
+                    if hasattr(matrix_client, "decrypt_event") and callable(
+                        matrix_client.decrypt_event
+                    ):
+                        try:
+                            logger.debug("Attempting to decrypt the event again")
+                            decrypted = await matrix_client.decrypt_event(event)
+                            if decrypted:
+                                logger.info(
+                                    "Successfully decrypted event after key claim!"
+                                )
+                                # Continue processing with the decrypted event
+                                return
+                        except Exception as decrypt_error:
+                            logger.warning(
+                                f"Failed to decrypt event after key claim: {decrypt_error}"
+                            )
             except Exception as e:
                 logger.warning(f"Error trying to handle undecryptable event: {e}")
+
+            # Log a more helpful message
+            logger.info(
+                "To fix encryption issues, try restarting the relay or clearing the store directory."
+            )
+            logger.info(f"Current store directory: {get_e2ee_store_dir()}")
+            logger.info(
+                "You can also try logging out and back in to your Matrix client."
+            )
 
             return
 

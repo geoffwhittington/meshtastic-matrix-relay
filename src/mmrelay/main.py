@@ -85,15 +85,22 @@ async def main(config):
     # Load plugins early
     load_plugins(passed_config=config)
 
-    # Connect to Meshtastic
-    meshtastic_utils.meshtastic_client = connect_meshtastic(passed_config=config)
-
-    # Connect to Matrix
+    # Connect to Matrix first
     matrix_client = await connect_matrix(passed_config=config)
 
-    # Join the rooms specified in the config.yaml
+    # Join the rooms specified in the config.yaml before connecting to Meshtastic
+    # This gives Matrix time to sync and establish encryption sessions
+    matrix_logger.info("Joining Matrix rooms...")
     for room in matrix_rooms:
         await join_matrix_room(matrix_client, room["id"])
+
+    # Perform an initial sync to get room state and encryption info
+    matrix_logger.info("Performing initial Matrix sync...")
+    await matrix_client.sync(timeout=10000)  # 10 second timeout
+    matrix_logger.info(f"Initial sync completed with {len(matrix_client.rooms)} rooms")
+
+    # Now connect to Meshtastic after Matrix is ready
+    meshtastic_utils.meshtastic_client = connect_meshtastic(passed_config=config)
 
     # Register the message callback for Matrix
     matrix_logger.info("Listening for inbound Matrix messages...")
