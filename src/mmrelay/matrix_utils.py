@@ -1301,6 +1301,13 @@ async def login_matrix_bot(
     if not homeserver:
         homeserver = input("Enter Matrix homeserver URL (e.g., https://matrix.org): ")
 
+    # Ensure homeserver URL has the correct format
+    if homeserver.startswith("https://"):
+        # AsyncClient expects the URL without the protocol
+        homeserver = homeserver[8:]
+    elif homeserver.startswith("http://"):
+        homeserver = homeserver[7:]
+
     # Get username
     if not username:
         username = input("Enter Matrix username (without @): ")
@@ -1325,7 +1332,7 @@ async def login_matrix_bot(
 
     # Login
     logger.info(f"Logging in as {username} to {homeserver}...")
-    response = await client.login(username, password, device_name="mmrelay")
+    response = await client.login(password, user=username, device_name="mmrelay")
 
     if hasattr(response, "access_token") and response.access_token:
         logger.info("Login successful!")
@@ -1334,6 +1341,11 @@ async def login_matrix_bot(
         user_id = response.user_id
         device_id = response.device_id
         access_token = response.access_token
+
+        # Save the original homeserver URL with protocol for config
+        original_homeserver = homeserver
+        if not original_homeserver.startswith("http"):
+            original_homeserver = "https://" + original_homeserver
 
         # Log out other sessions if requested
         if logout_others:
@@ -1373,7 +1385,7 @@ async def login_matrix_bot(
         if "matrix" not in config:
             config["matrix"] = {}
 
-        config["matrix"]["homeserver"] = homeserver
+        config["matrix"]["homeserver"] = original_homeserver
         config["matrix"]["access_token"] = access_token
         config["matrix"]["bot_user_id"] = user_id
 
