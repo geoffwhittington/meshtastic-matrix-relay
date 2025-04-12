@@ -329,11 +329,25 @@ def handle_cli_commands(args):
 
         from mmrelay.matrix_utils import login_matrix_bot
 
-        # Run the login function
-        result = asyncio.run(login_matrix_bot())
-        import sys
+        # Only run the login function, not the main application
+        print("Matrix Bot Login")
+        print("================")
+        try:
+            # Run the login function
+            result = asyncio.run(login_matrix_bot())
+            import sys
 
-        sys.exit(0 if result else 1)
+            sys.exit(0 if result else 1)
+        except KeyboardInterrupt:
+            print("\nLogin cancelled by user.")
+            import sys
+
+            sys.exit(1)
+        except Exception as e:
+            print(f"\nError during login: {e}")
+            import sys
+
+            sys.exit(1)
 
     # No commands were handled
     return False
