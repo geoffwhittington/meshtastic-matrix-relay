@@ -270,6 +270,26 @@ def main():
         print(f"mmrelay {get_version()}")
         return 0
 
+    # Handle --bot-login
+    if args.bot_login:
+        import asyncio
+
+        from mmrelay.matrix_utils import login_matrix_bot
+
+        # Only run the login function, not the main application
+        print("Matrix Bot Login")
+        print("================")
+        try:
+            # Run the login function
+            result = asyncio.run(login_matrix_bot())
+            return 0 if result else 1
+        except KeyboardInterrupt:
+            print("\nLogin cancelled by user.")
+            return 1
+        except Exception as e:
+            print(f"\nError during login: {e}")
+            return 1
+
     # If no command was specified, run the main functionality
     from mmrelay.main import run_main
 
