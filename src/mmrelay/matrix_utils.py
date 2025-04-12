@@ -1,5 +1,6 @@
 import asyncio
 import io
+import json
 import os
 import re
 import ssl
@@ -103,16 +104,44 @@ async def connect_matrix(passed_config=None):
     if passed_config is not None:
         config = passed_config
 
-    # Check if config is available
-    if config is None:
-        logger.error("No configuration available. Cannot connect to Matrix.")
-        return None
+    # Check for credentials.json first
+    credentials = None
+    credentials_path = None
 
-    # Extract Matrix configuration
-    matrix_homeserver = config["matrix"]["homeserver"]
+    # Try to find credentials.json in the config directory
+    try:
+        from mmrelay.config import get_config_paths
+        config_paths = get_config_paths()
+        config_dir = config_paths["config_dir"]
+        credentials_path = os.path.join(config_dir, "credentials.json")
+
+        if os.path.exists(credentials_path):
+            logger.info(f"Found credentials at {credentials_path}")
+            with open(credentials_path, "r") as f:
+                credentials = json.load(f)
+    except Exception as e:
+        logger.warning(f"Error loading credentials: {e}")
+
+    # If credentials.json exists, use it
+    if credentials:
+        matrix_homeserver = credentials["homeserver"]
+        matrix_access_token = credentials["access_token"]
+        bot_user_id = credentials["user_id"]
+        e2ee_device_id = credentials["device_id"]
+        logger.info(f"Using credentials from {credentials_path}")
+    else:
+        # Check if config is available
+        if config is None:
+            logger.error("No configuration available. Cannot connect to Matrix.")
+            return None
+
+        # Extract Matrix configuration from config
+        matrix_homeserver = config["matrix"]["homeserver"]
+        matrix_access_token = config["matrix"]["access_token"]
+        bot_user_id = config["matrix"]["bot_user_id"]
+
+    # Get matrix rooms from config
     matrix_rooms = config["matrix_rooms"]
-    matrix_access_token = config["matrix"]["access_token"]
-    bot_user_id = config["matrix"]["bot_user_id"]
 
     # Check if client already exists
     if matrix_client:
@@ -168,10 +197,15 @@ async def connect_matrix(passed_config=None):
     client_config = AsyncClientConfig(
         encryption_enabled=e2ee_enabled, store_sync_tokens=True
     )
+
+    # Log the device ID being used
+    if e2ee_device_id:
+        logger.info(f"Using device ID: {e2ee_device_id}")
+
     matrix_client = AsyncClient(
         homeserver=matrix_homeserver,
         user=bot_user_id,
-        device_id=e2ee_device_id,  # Will be None if not specified in config
+        device_id=e2ee_device_id,  # Will be None if not specified in config or credentials
         store_path=e2ee_store_path if e2ee_enabled else None,
         config=client_config,
         ssl=ssl_context,
@@ -1346,15 +1380,33 @@ async def login_matrix_bot(
         user_id = response.user_id
         device_id = response.device_id
         access_token = response.access_token
-    else:
-        error_msg = getattr(response, "message", "Unknown error")
-        logger.error(f"Login failed: {error_msg}")
-        # Make sure to close the client session
-        await client.close()
-        return None
+
+        # Save credentials to credentials.json
+        credentials = {
+            "user_id": user_id,
+            "device_id": device_id,
+            "access_token": access_token,
+            "homeserver": homeserver
+        }
+
+        # Get the config directory
+        config_paths = get_config_paths()
+        config_dir = config_paths["config_dir"]
+        os.makedirs(config_dir, exist_ok=True)
+
+        # Save credentials to file
+        credentials_path = os.path.join(config_dir, "credentials.json")
+        with open(credentials_path, "w") as f:
+            json.dump(credentials, f)
+        logger.info(f"Credentials saved to {credentials_path}")
 
         # Save the original homeserver URL with protocol for config
         original_homeserver = homeserver
+    else:
+        error_msg = getattr(response, "message", "Unknown error")
+        logger.error(f"Login failed: {error_msg}")
+        await client.close()
+        return None
 
         # Log out other sessions if requested
         if logout_others:
