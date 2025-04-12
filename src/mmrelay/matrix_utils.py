@@ -1310,17 +1310,12 @@ async def login_matrix_bot(
     # Get username
     if not username:
         username = input("Enter Matrix username (without @): ")
-        if username.startswith("@"):
-            username = username[1:]
-        if ":" in username:
-            username = username.split(":")[0]
 
-    # Ensure username is fully qualified with the server name
+    # Format username exactly like m2m-lite does
+    username = f"@{username}" if not username.startswith("@") else username
     server_name = urlparse(homeserver).netloc
-    if ":" not in username and server_name:
-        fully_qualified_username = f"{username}:{server_name}"
-        logger.debug(f"Using fully qualified username: {fully_qualified_username}")
-        username = fully_qualified_username
+    username = f"{username}:{server_name}" if ":" not in username else username
+    logger.debug(f"Using username: {username}")
 
     # Get password
     if not password:
@@ -1336,11 +1331,13 @@ async def login_matrix_bot(
     # Create a Matrix client for login
     ssl_context = ssl.create_default_context(cafile=certifi.where())
     client_config = AsyncClientConfig(store_sync_tokens=True)
-    client = AsyncClient(homeserver=homeserver, user=username, config=client_config, ssl=ssl_context)
+    # Initialize client exactly like m2m-lite does
+    client = AsyncClient(homeserver, username, device_id="mmrelay", config=client_config, ssl=ssl_context)
 
     # Login
     logger.info(f"Logging in as {username} to {homeserver}...")
-    response = await client.login(password, device_name="mmrelay")
+    # Login exactly like m2m-lite does
+    response = await client.login(password)
 
     if hasattr(response, "access_token") and response.access_token:
         logger.info("Login successful!")
