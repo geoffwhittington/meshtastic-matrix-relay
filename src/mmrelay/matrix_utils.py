@@ -164,7 +164,9 @@ async def connect_matrix(passed_config=None):
 
     # Initialize the Matrix client with custom SSL context
     client_config = AsyncClientConfig(
-        encryption_enabled=e2ee_enabled, store_sync_tokens=True
+        encryption_enabled=e2ee_enabled,
+        store_sync_tokens=True,
+        encryption_default_key_verification=False  # Don't require device verification
     )
     matrix_client = AsyncClient(
         homeserver=matrix_homeserver,
@@ -209,6 +211,12 @@ async def connect_matrix(passed_config=None):
             if matrix_client.should_upload_keys:
                 logger.debug("Uploading encryption keys to server")
                 await matrix_client.keys_upload()
+
+            # Set verification level for all rooms
+            # This tells matrix-nio to encrypt for all devices, even unverified ones
+            matrix_client.verify_devices = False
+            logger.debug("Device verification disabled - will encrypt for all devices")
+
         except Exception as e:
             logger.error(f"Error setting up E2EE: {e}")
             # Continue without E2EE if there's an error

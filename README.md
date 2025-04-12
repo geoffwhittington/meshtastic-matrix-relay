@@ -92,7 +92,7 @@ matrix:
     # device_id: ABCDEFGHIJ
 ```
 
-E2EE support allows MMRelay to participate in encrypted Matrix rooms while maintaining all custom message fields required for proper relay functionality.
+E2EE support allows MMRelay to participate in encrypted Matrix rooms while maintaining all custom message fields required for proper relay functionality. MMRelay is configured to communicate with all devices in encrypted rooms without requiring device verification, making it work seamlessly in multi-device environments.
 
 ---
 
