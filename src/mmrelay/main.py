@@ -97,7 +97,10 @@ async def main(config):
     # Perform an initial sync to get room state and encryption info
     matrix_logger.info("Performing initial Matrix sync...")
     await matrix_client.sync(timeout=10000)  # 10 second timeout
-    matrix_logger.info(f"Initial sync completed with {len(matrix_client.rooms)} rooms")
+    # Count configured rooms vs. total rooms
+    configured_room_ids = [room["id"] for room in matrix_rooms]
+    configured_rooms_found = sum(1 for room_id in matrix_client.rooms if room_id in configured_room_ids)
+    matrix_logger.info(f"Initial sync completed with {len(matrix_client.rooms)} total rooms ({configured_rooms_found} configured rooms)")
 
     # If E2EE is enabled, verify devices and upload keys again after joining rooms
     if config["matrix"].get("e2ee", {}).get("enabled", False) and matrix_client.olm:
