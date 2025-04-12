@@ -1,17 +1,17 @@
-name: Build PYZ for ARMv7
-
-permissions:
-  contents: write
+name: Build PYZ (armv7)
 
 on:
+  workflow_dispatch:
   release:
     types: [published]
-  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
 
 jobs:
-  build-armv7-pyz:
+  build:
     runs-on: ubuntu-latest
-    name: Build PYZ (armv7)
 
     steps:
       - name: Checkout code
@@ -19,59 +19,50 @@ jobs:
 
       - name: Set up QEMU for multi-arch builds
         uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
 
-      - name: Extract version from setup.cfg
+      - name: Extract version and git SHA
         id: get_version
         run: |
-          VERSION=$(grep '^version =' setup.cfg | cut -d= -f2 | tr -d '[:space:]')
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-      - name: Build inside ARMv7 Docker (using shiv)
+          VERSION=$(grep "version =" setup.cfg | sed 's/.*= //')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Extracted version: $VERSION"
+          GIT_SHA=$(git rev-parse --short HEAD)
+          echo "GIT_SHA=$GIT_SHA" >> $GITHUB_ENV
+
+      - name: Build inside ARMv7 Docker (shiv, rustup, fixed cargo config)
         uses: addnab/docker-run-action@v3
         with:
           image: arm32v7/python:3.11
           options: --platform linux/arm/v7 -v ${{ github.workspace }}:/github/workspace -w /github/workspace
           run: |
-            set -e
-            echo "--- Installing build dependencies (apt) ---"
-            # Added libbluetooth-dev for bleak if needed, libatlas-base-dev for numpy/scipy potentially
-            apt-get update && apt-get install -y --no-install-recommends gcc libffi-dev libssl-dev git libbluetooth-dev libatlas-base-dev
-            echo "--- Installing shiv ---"
-            pip install --no-cache-dir shiv
-            echo "--- Building PYZ ---"
-            PYZ_FILENAME="mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz"
-            # --- Use the console script name 'mmrelay' defined in setup.cfg ---
-            # Ensure the current directory (.) is built correctly by setuptools first
-            # Install the project itself along with dependencies INSIDE the container before shivving
-            echo "--- Installing project dependencies and project itself ---"
-            # Install problematic dependencies with specific versions to avoid binary compatibility issues
-            # jsonschema 4.0+ requires rpds which has binary components that don't work on ARMv7
-            pip install "jsonschema<4.0.0" "referencing<0.30.0"
+            apt-get update
+            apt-get install -y --no-install-recommends \
+              gcc libffi-dev libssl-dev git libbluetooth-dev curl pkg-config \
+              build-essential libatlas-base-dev libolm-dev python3-dev python3.11-dev
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+            . "$HOME/.cargo/env"
+            pip install --upgrade pip setuptools wheel maturin
+            pip install --no-binary=:all: rpds-py
+            pip install -r requirements.txt
+            pip install shiv
+            mkdir -p dist
+            python -m shiv --compressed \
+              --compile-pyc \
+              --reproducible \
+              --entry-point mmrelay \
+              --output-file dist/mmrelay-${{ env.VERSION }}-dev-${{ env.GIT_SHA }}-armv7.pyz \
+              .
 
-            # Install the project and its dependencies
-            # The constraints above will ensure we get compatible versions
-            pip install .
-            echo "--- Checking installed packages ---"
-            pip list
-            echo "--- Verifying no rpds dependency ---"
-            pip list | grep -i rpds || echo "No rpds found - good!"
-
-            echo "--- Building PYZ with shiv ---"
-            # Explicitly specify the entry point module
-            # Use the console_scripts entry point from setup.cfg
-            shiv . -o "${PYZ_FILENAME}" -e mmrelay.cli:main --compressed
-            echo "--- Listing created PYZ file ---"
-            ls -l "${PYZ_FILENAME}"
-
-            echo "--- Testing PYZ file ---"
-            # Verify the PYZ file works by checking its version
-            # This will catch entry point and basic dependency issues
-            chmod +x "${PYZ_FILENAME}"
-            ./${PYZ_FILENAME} --version || echo "PYZ test failed"
-      - name: Upload PYZ to Release
-        uses: svenstaro/upload-release-action@v2
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ github.workspace }}/mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz
-          asset_name: mmrelay_armv7_${{ steps.get_version.outputs.VERSION }}.pyz
-          tag: ${{ github.ref_name }}
-          overwrite: true
+          name: mmrelay-${{ env.VERSION }}-dev-${{ env.GIT_SHA }}-armv7
+          path: dist/*.pyz
+
+      - name: Upload PYZ to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.pyz
