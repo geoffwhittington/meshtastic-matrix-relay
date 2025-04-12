@@ -1328,7 +1328,7 @@ async def login_matrix_bot(
     # Create a Matrix client for login
     ssl_context = ssl.create_default_context(cafile=certifi.where())
     client_config = AsyncClientConfig(store_sync_tokens=True)
-    client = AsyncClient(homeserver=homeserver, config=client_config, ssl=ssl_context)
+    client = AsyncClient(homeserver=homeserver, user=username, config=client_config, ssl=ssl_context)
 
     # Login
     logger.info(f"Logging in as {username} to {homeserver}...")
