@@ -124,17 +124,42 @@ async def main(config):
             await matrix_client.keys_upload()
             matrix_logger.debug("Keys uploaded successfully after joining rooms")
         except Exception as ke:
-            matrix_logger.warning(f"Error uploading keys after joining rooms: {ke}")
+            matrix_logger.debug(f"Info: {ke}")
 
         # Ensure we have group sessions for all encrypted rooms
         for room_id, room in matrix_client.rooms.items():
             if room.encrypted:
                 matrix_logger.debug(f"Ensuring group session for encrypted room {room_id}")
                 try:
+                    # First, share a group session
                     await matrix_client.share_group_session(room_id)
                     matrix_logger.debug(f"Shared group session for room {room_id}")
+
+                    # Then, send a dummy event to establish the encryption session
+                    # This event will be immediately redacted
+                    dummy_event_response = await matrix_client.room_send(
+                        room_id=room_id,
+                        message_type="m.room.message",
+                        content={
+                            "msgtype": "m.notice",
+                            "body": "Initializing encryption session..."
+                        },
+                    )
+
+                    # If the event was sent successfully, redact it immediately
+                    if hasattr(dummy_event_response, "event_id"):
+                        matrix_logger.debug(f"Sent dummy event to initialize encryption: {dummy_event_response.event_id}")
+                        try:
+                            await matrix_client.room_redact(
+                                room_id=room_id,
+                                event_id=dummy_event_response.event_id,
+                                reason="Initializing encryption session"
+                            )
+                            matrix_logger.debug(f"Redacted dummy event: {dummy_event_response.event_id}")
+                        except Exception as redact_error:
+                            matrix_logger.debug(f"Could not redact dummy event: {redact_error}")
                 except Exception as e:
-                    matrix_logger.warning(f"Error sharing group session for room {room_id}: {e}")
+                    matrix_logger.debug(f"Info: Could not initialize encryption for room {room_id}: {e}")
 
     # Now connect to Meshtastic after Matrix is ready
     meshtastic_utils.meshtastic_client = connect_meshtastic(passed_config=config)
