@@ -110,9 +110,8 @@ async def connect_matrix(passed_config=None):
 
     # Try to find credentials.json in the config directory
     try:
-        from mmrelay.config import get_config_paths
-        config_paths = get_config_paths()
-        config_dir = config_paths["config_dir"]
+        from mmrelay.config import get_base_dir
+        config_dir = get_base_dir()
         credentials_path = os.path.join(config_dir, "credentials.json")
 
         if os.path.exists(credentials_path):
@@ -1371,7 +1370,12 @@ async def login_matrix_bot(
     # Login
     logger.info(f"Logging in as {username} to {homeserver}...")
     # Login exactly like m2m-lite does
-    response = await client.login(password)
+    try:
+        response = await client.login(password)
+    except Exception as e:
+        logger.error(f"Error during login: {e}")
+        await client.close()
+        return None
 
     if hasattr(response, "access_token") and response.access_token:
         logger.info("Login successful!")
@@ -1390,18 +1394,56 @@ async def login_matrix_bot(
         }
 
         # Get the config directory
-        config_paths = get_config_paths()
-        config_dir = config_paths["config_dir"]
+        from mmrelay.config import get_base_dir
+        config_dir = get_base_dir()
         os.makedirs(config_dir, exist_ok=True)
 
         # Save credentials to file
         credentials_path = os.path.join(config_dir, "credentials.json")
-        with open(credentials_path, "w") as f:
-            json.dump(credentials, f)
-        logger.info(f"Credentials saved to {credentials_path}")
+        try:
+            with open(credentials_path, "w") as f:
+                import json
+                json.dump(credentials, f)
+            logger.info(f"Credentials saved to {credentials_path}")
+        except Exception as e:
+            logger.warning(f"Failed to save credentials: {e}")
 
-        # Save the original homeserver URL with protocol for config
+        # Original homeserver URL with protocol for config
         original_homeserver = homeserver
+
+        # Use the same config directory for config.yaml
+        # config_dir is already set from above
+        os.makedirs(config_dir, exist_ok=True)
+
+        # Config file path
+        config_file = os.path.join(config_dir, "config.yaml")
+        # Load existing config if it exists
+        config = {}
+        if os.path.exists(config_file):
+            with open(config_file, "r") as f:
+                config = yaml.load(f, Loader=yaml.SafeLoader) or {}
+
+        # Update config with new login info
+        if "matrix" not in config:
+            config["matrix"] = {}
+
+        config["matrix"]["homeserver"] = original_homeserver
+        config["matrix"]["access_token"] = access_token
+        config["matrix"]["bot_user_id"] = user_id
+
+        # Add E2EE config if not present
+        if "e2ee" not in config["matrix"]:
+            config["matrix"]["e2ee"] = {"enabled": True}
+
+        # Save config
+        os.makedirs(os.path.dirname(config_file), exist_ok=True)
+        with open(config_file, "w") as f:
+            yaml.dump(config, f, default_flow_style=False)
+
+        logger.info(f"Login information saved to {config_file}")
+
+        # Close the client
+        await client.close()
     else:
         error_msg = getattr(response, "message", "Unknown error")
         logger.error(f"Login failed: {error_msg}")
