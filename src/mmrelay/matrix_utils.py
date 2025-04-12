@@ -455,7 +455,8 @@ async def matrix_relay(
     # Log the current state of the config
     logger.debug(f"matrix_relay: config is {'available' if config else 'None'}")
 
-    matrix_client = await connect_matrix()
+    # Use the global matrix_client instead of creating a new one
+    global matrix_client
 
     # Check if config is available
     if config is None:
