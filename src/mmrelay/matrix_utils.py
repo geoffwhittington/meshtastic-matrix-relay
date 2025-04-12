@@ -5,6 +5,7 @@ import re
 import ssl
 import time
 from typing import Union
+from urllib.parse import urlparse
 
 import certifi
 import meshtastic.protobuf.portnums_pb2
@@ -1313,6 +1314,13 @@ async def login_matrix_bot(
             username = username[1:]
         if ":" in username:
             username = username.split(":")[0]
+
+    # Ensure username is fully qualified with the server name
+    server_name = urlparse(homeserver).netloc
+    if ":" not in username and server_name:
+        fully_qualified_username = f"{username}:{server_name}"
+        logger.debug(f"Using fully qualified username: {fully_qualified_username}")
+        username = fully_qualified_username
 
     # Get password
     if not password:
