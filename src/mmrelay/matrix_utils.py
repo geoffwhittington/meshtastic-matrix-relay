@@ -1316,6 +1316,8 @@ async def login_matrix_bot(
 
     # Get password
     if not password:
+        import getpass
+
         password = getpass.getpass("Enter Matrix password: ")
 
     # Ask about logging out other sessions
@@ -1330,7 +1332,11 @@ async def login_matrix_bot(
 
     # Login
     logger.info(f"Logging in as {username} to {homeserver}...")
-    response = await client.login(password=password, device_name="mmrelay")
+    # Create user_id in the format required by Matrix
+    user_id = f"@{username}:{homeserver.split('//')[1]}"
+    response = await client.login(
+        user=user_id, password=password, device_name="mmrelay"
+    )
 
     if hasattr(response, "access_token") and response.access_token:
         logger.info("Login successful!")
