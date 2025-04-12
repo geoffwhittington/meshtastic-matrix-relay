@@ -201,31 +201,10 @@ async def connect_matrix(passed_config=None):
     else:
         bot_user_name = bot_user_id  # Fallback if display name is not set
 
-    # If E2EE is enabled, apply monkey patches and load the store
+    # If E2EE is enabled, load the store and set up encryption
     if e2ee_enabled:
         try:
-            # Override the OlmDevice.verified property to always return true
-            # This makes matrix-nio encrypt for all devices without verification
-            # Do this BEFORE loading the store to ensure all devices are treated as verified
-            from nio.crypto.device import OlmDevice
-            from nio.crypto import TrustState
-
-            # Make all devices appear verified
-            @property
-            def always_verified(self):
-                return True
-
-            # Override the trust_state property to always return verified
-            @property
-            def always_trusted(self):
-                return TrustState.verified
-
-            # Apply the monkey patches
-            OlmDevice.verified = always_verified
-            OlmDevice.trust_state = always_trusted
-            logger.debug("Device verification bypassed - will encrypt for all devices")
-
-            # Load the store
+            # Load the store first
             matrix_client.load_store()
 
             # Upload encryption keys if needed
@@ -233,15 +212,34 @@ async def connect_matrix(passed_config=None):
                 logger.debug("Uploading encryption keys to server")
                 await matrix_client.keys_upload()
 
-            # Also patch the client's should_encrypt_room method to always return True for encrypted rooms
-            original_should_encrypt = matrix_client.should_encrypt_room
+            # Patch the client to handle unverified devices
+            # This is a safer approach than monkey patching the OlmDevice class
+            original_encrypt_for_devices = None
+            if hasattr(matrix_client, 'olm') and matrix_client.olm:
+                if hasattr(matrix_client.olm, 'encrypt_for_devices'):
+                    original_encrypt_for_devices = matrix_client.olm.encrypt_for_devices
 
-            def always_encrypt_room(room_id):
-                if room_id in matrix_client.rooms and matrix_client.rooms[room_id].encrypted:
-                    return True
-                return original_should_encrypt(room_id)
+                    # Create a wrapper that ignores verification status
+                    async def encrypt_for_all_devices(room_id, users_devices, plaintext):
+                        # Force ignore_unverified_devices=True
+                        return await original_encrypt_for_devices(room_id, users_devices, plaintext, ignore_unverified_devices=True)
 
-            matrix_client.should_encrypt_room = always_encrypt_room
+                    # Apply the patch
+                    matrix_client.olm.encrypt_for_devices = encrypt_for_all_devices
+                    logger.debug("Patched encrypt_for_devices to ignore verification status")
+
+            # Verify all devices in the store
+            if matrix_client.device_store and matrix_client.olm and matrix_client.olm.store:
+                verified_count = 0
+                for user_id in matrix_client.device_store.users:
+                    for device in matrix_client.device_store.active_user_devices(user_id):
+                        if not device.verified:
+                            matrix_client.olm.store.verify_device(device)
+                            verified_count += 1
+                if verified_count > 0:
+                    logger.debug(f"Verified {verified_count} devices in the store")
+
+            logger.debug("E2EE setup complete - will encrypt for all devices")
 
         except Exception as e:
             logger.error(f"Error setting up E2EE: {e}")
@@ -382,12 +380,32 @@ async def matrix_relay(
                     logger.error(f"Error joining room {room_id}: {e}")
                     return
 
+            # Check if the room is encrypted
+            room = matrix_client.rooms.get(room_id)
+            is_encrypted = room and room.encrypted
+
+            if is_encrypted:
+                logger.debug(f"Room {room_id} is encrypted, sending with encryption")
+
+                # Make sure we have a group session for this room
+                try:
+                    # Ensure we have shared a group session
+                    if matrix_client.olm:
+                        # Force sharing a new group session to ensure all devices get keys
+                        await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
+                        logger.debug(f"Shared new group session for room {room_id}")
+                except Exception as e:
+                    logger.warning(f"Error sharing group session: {e}")
+            else:
+                logger.debug(f"Room {room_id} is not encrypted")
+
             # Send the message with a timeout
             response = await asyncio.wait_for(
                 matrix_client.room_send(
                     room_id=room_id,
                     message_type="m.room.message",
                     content=content,
+                    ignore_unverified_devices=True,  # Important: ignore unverified devices
                 ),
                 timeout=10.0,  # Increased timeout
             )
@@ -402,16 +420,16 @@ async def matrix_relay(
             logger.error(f"Timeout sending message to Matrix room {room_id}")
             return
         except exceptions.OlmUnverifiedDeviceError as e:
-            # This should not happen with our monkey patch, but just in case
+            # This should not happen with our patches, but just in case
             logger.warning(f"Encryption error with unverified device in room {room_id}: {e}")
-            logger.warning("Attempting to verify all devices in the room...")
+            logger.warning("Attempting to verify all devices and share a new group session...")
             try:
                 # Get all devices in the room and mark them as verified
-                # This is a more robust approach than trying to extract devices from the error
                 if matrix_client.olm and matrix_client.device_store:
                     # Get all users in the room
                     room = matrix_client.rooms.get(room_id)
                     if room:
+                        # Verify all devices for all users in the room
                         for user_id in room.users:
                             # Skip our own user
                             if user_id == matrix_client.user_id:
@@ -424,12 +442,18 @@ async def matrix_relay(
                                     matrix_client.olm.store.verify_device(device)
                                     logger.debug(f"Verified device {device.device_id} for user {user_id}")
 
-                # Retry sending the message
+                # Force a new group session
+                if matrix_client.olm:
+                    await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
+                    logger.debug(f"Shared new group session for room {room_id} after verification")
+
+                # Retry sending the message with explicit ignore_unverified_devices=True
                 response = await asyncio.wait_for(
                     matrix_client.room_send(
                         room_id=room_id,
                         message_type="m.room.message",
                         content=content,
+                        ignore_unverified_devices=True,
                     ),
                     timeout=10.0,
                 )
