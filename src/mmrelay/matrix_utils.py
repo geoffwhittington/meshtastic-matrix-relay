@@ -239,6 +239,17 @@ async def connect_matrix(passed_config=None):
                 if verified_count > 0:
                     logger.debug(f"Verified {verified_count} devices in the store")
 
+            # Query keys for all users we know about
+            if matrix_client.device_store:
+                users = list(matrix_client.device_store.users)
+                if users:
+                    logger.debug(f"Querying keys for {len(users)} users during startup")
+                    try:
+                        await matrix_client.keys_query(users)
+                        logger.debug("Initial keys query completed successfully")
+                    except Exception as ke:
+                        logger.warning(f"Error during initial keys query: {ke}")
+
             logger.debug("E2EE setup complete - will encrypt for all devices")
 
         except Exception as e:
@@ -376,6 +387,17 @@ async def matrix_relay(
                         logger.error(f"Failed to join room {room_id}: {getattr(response, 'message', 'Unknown error')}")
                         return
                     logger.info(f"Successfully joined room {room_id}")
+
+                    # Important: Wait for a sync to complete so the room is fully loaded
+                    logger.debug(f"Waiting for sync to complete after joining room {room_id}")
+                    await matrix_client.sync(timeout=10000)
+
+                    # Double-check that the room is now in the client's rooms
+                    if room_id not in matrix_client.rooms:
+                        logger.error(f"Room {room_id} still not in client's rooms after sync. Cannot send message.")
+                        return
+
+                    logger.debug(f"Room {room_id} successfully synced")
                 except Exception as e:
                     logger.error(f"Error joining room {room_id}: {e}")
                     return
@@ -391,7 +413,35 @@ async def matrix_relay(
                 try:
                     # Ensure we have shared a group session
                     if matrix_client.olm:
+                        # First, make sure we have keys for all devices in the room
+                        users_devices = {}
+                        for user_id in room.users:
+                            if user_id != matrix_client.user_id:  # Skip our own user
+                                # Get all devices for this user
+                                devices = matrix_client.device_store.active_user_devices(user_id)
+                                if devices:
+                                    users_devices[user_id] = [device.device_id for device in devices]
+
+                        # Query keys for all devices
+                        if users_devices:
+                            logger.debug(f"Querying keys for users in room {room_id}: {list(users_devices.keys())}")
+                            try:
+                                await matrix_client.keys_query(list(users_devices.keys()))
+                                logger.debug("Keys query completed successfully")
+                            except Exception as ke:
+                                logger.warning(f"Error querying keys: {ke}")
+
+                        # Claim keys for all devices
+                        if users_devices:
+                            logger.debug(f"Claiming keys for devices in room {room_id}")
+                            try:
+                                await matrix_client.keys_claim(users_devices)
+                                logger.debug("Keys claim completed successfully")
+                            except Exception as ke:
+                                logger.warning(f"Error claiming keys: {ke}")
+
                         # Force sharing a new group session to ensure all devices get keys
+                        logger.debug(f"Sharing new group session for room {room_id}")
                         await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
                         logger.debug(f"Shared new group session for room {room_id}")
                 except Exception as e:
@@ -441,6 +491,32 @@ async def matrix_relay(
                                 if hasattr(matrix_client.olm.store, 'verify_device'):
                                     matrix_client.olm.store.verify_device(device)
                                     logger.debug(f"Verified device {device.device_id} for user {user_id}")
+
+                # Query and claim keys for all devices in the room
+                users_devices = {}
+                for user_id in room.users:
+                    if user_id != matrix_client.user_id:  # Skip our own user
+                        devices = matrix_client.device_store.active_user_devices(user_id)
+                        if devices:
+                            users_devices[user_id] = [device.device_id for device in devices]
+
+                # Query keys for all devices
+                if users_devices:
+                    logger.debug(f"Querying keys for users in room {room_id} after error: {list(users_devices.keys())}")
+                    try:
+                        await matrix_client.keys_query(list(users_devices.keys()))
+                        logger.debug("Keys query completed successfully after error")
+                    except Exception as ke:
+                        logger.warning(f"Error querying keys after error: {ke}")
+
+                # Claim keys for all devices
+                if users_devices:
+                    logger.debug(f"Claiming keys for devices in room {room_id} after error")
+                    try:
+                        await matrix_client.keys_claim(users_devices)
+                        logger.debug("Keys claim completed successfully after error")
+                    except Exception as ke:
+                        logger.warning(f"Error claiming keys after error: {ke}")
 
                 # Force a new group session
                 if matrix_client.olm:
@@ -598,7 +674,27 @@ async def on_room_message(
             logger.warning(
                 f"Received encrypted event that could not be decrypted in room {room.room_id}"
             )
+
+            # Try to verify the sender's devices and request keys
+            try:
+                if matrix_client.olm and matrix_client.device_store:
+                    sender = event.sender
+                    logger.debug(f"Attempting to verify devices and request keys from {sender}")
+
+                    # Verify all devices for this sender
+                    for device in matrix_client.device_store.active_user_devices(sender):
+                        if hasattr(matrix_client.olm.store, 'verify_device'):
+                            matrix_client.olm.store.verify_device(device)
+                            logger.debug(f"Verified device {device.device_id} for user {sender}")
+
+                    # Request keys from this sender
+                    await matrix_client.keys_query([sender])
+                    logger.debug(f"Requested keys from {sender}")
+            except Exception as e:
+                logger.warning(f"Error trying to handle undecryptable event: {e}")
+
             return
+
         # For decrypted events, the decrypted content is in event.source["content"]
         # Continue processing as normal
         logger.debug(f"Successfully decrypted message in room {room.room_id}")
