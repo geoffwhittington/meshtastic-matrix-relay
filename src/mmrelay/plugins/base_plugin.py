@@ -155,9 +155,11 @@ class BasePlugin(ABC):
         return [self.plugin_name]
 
     async def send_matrix_message(self, room_id, message, formatted=True):
-        from mmrelay.matrix_utils import connect_matrix
+        from mmrelay.matrix_utils import matrix_client
 
-        matrix_client = await connect_matrix()
+        if matrix_client is None:
+            self.logger.error("Matrix client is not initialized. Cannot send message.")
+            return None
 
         return await matrix_client.room_send(
             room_id=room_id,
