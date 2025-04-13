@@ -64,8 +64,18 @@ async def initialize_e2ee(matrix_client: AsyncClient, config: Dict) -> None:
         matrix_client: The Matrix client instance
         config: The application configuration
     """
+    # Check for both encryption and e2ee for backward compatibility
     if (
-        not config["matrix"].get("e2ee", {}).get("enabled", False)
+        not (
+            (
+                "encryption" in config["matrix"]
+                and config["matrix"]["encryption"].get("enabled", False)
+            )
+            or (
+                "e2ee" in config["matrix"]
+                and config["matrix"]["e2ee"].get("enabled", False)
+            )
+        )
         or not matrix_client.olm
     ):
         return
@@ -205,15 +215,24 @@ async def connect_matrix(passed_config=None):
     # Create SSL context using certifi's certificates
     ssl_context = ssl.create_default_context(cafile=certifi.where())
 
-    # Check if E2EE is enabled
+    # Check if encryption is enabled
     e2ee_enabled = False
     e2ee_store_path = None
     e2ee_device_id = None
 
     try:
-        if "e2ee" in config["matrix"] and config["matrix"]["e2ee"].get(
-            "enabled", False
+        # Check for both encryption and e2ee for backward compatibility
+        if (
+            "encryption" in config["matrix"]
+            and config["matrix"]["encryption"].get("enabled", False)
+        ) or (
+            "e2ee" in config["matrix"]
+            and config["matrix"]["e2ee"].get("enabled", False)
         ):
+            # Prioritize encryption over e2ee if both are present
+            encryption_config = config["matrix"].get(
+                "encryption", config["matrix"].get("e2ee", {})
+            )
             # Check if python-olm is installed
             try:
                 import olm  # noqa: F401
@@ -222,9 +241,9 @@ async def connect_matrix(passed_config=None):
                 logger.info("End-to-End Encryption (E2EE) is enabled")
 
                 # Get store path from config or use default
-                if "store_path" in config["matrix"]["e2ee"]:
+                if "store_path" in encryption_config:
                     e2ee_store_path = os.path.expanduser(
-                        config["matrix"]["e2ee"]["store_path"]
+                        encryption_config["store_path"]
                     )
                 else:
                     from mmrelay.config import get_e2ee_store_dir
@@ -240,9 +259,9 @@ async def connect_matrix(passed_config=None):
                 logger.debug("Will retrieve device_id from whoami() response")
             except ImportError:
                 logger.warning(
-                    "E2EE is enabled in config but python-olm is not installed."
+                    "Encryption is enabled in config but python-olm is not installed."
                 )
-                logger.warning("Install mmrelay[e2e] to use E2EE features.")
+                logger.warning("Install mmrelay[e2e] to use encryption features.")
                 e2ee_enabled = False
     except (KeyError, TypeError):
         # E2EE not configured
