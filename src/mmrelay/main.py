@@ -97,69 +97,42 @@ async def main(config):
     # Perform an initial sync to get room state and encryption info
     matrix_logger.info("Performing initial Matrix sync...")
     await matrix_client.sync(timeout=10000)  # 10 second timeout
-    matrix_logger.info(f"Initial sync completed with {len(matrix_client.rooms)} rooms")
+    # Count configured rooms vs. total rooms
+    configured_room_ids = [room["id"] for room in matrix_rooms]
+    configured_rooms_found = sum(1 for room_id in matrix_client.rooms if room_id in configured_room_ids)
+    matrix_logger.info(f"Initial sync completed with {len(matrix_client.rooms)} total rooms ({configured_rooms_found} configured rooms)")
 
-    # If E2EE is enabled, verify devices and upload keys again after joining rooms
+    # If E2EE is enabled, properly initialize encryption
     if config["matrix"].get("e2ee", {}).get("enabled", False) and matrix_client.olm:
-        # Verify all devices in the store again after sync
-        if matrix_client.device_store:
-            matrix_logger.debug("Re-verifying devices after initial sync")
-            # Verify our own device first
-            if matrix_client.user_id in matrix_client.device_store.users:
-                for device in matrix_client.device_store.active_user_devices(matrix_client.user_id):
-                    matrix_client.verify_device(device)
-                    matrix_logger.debug(f"Re-verified our device: {device.device_id}")
+        matrix_logger.info("Initializing end-to-end encryption...")
 
-            # Verify all other devices
-            for user_id in matrix_client.device_store.users:
-                if user_id == matrix_client.user_id:
-                    continue
-                for device in matrix_client.device_store.active_user_devices(user_id):
-                    matrix_client.verify_device(device)
-                    matrix_logger.debug(f"Re-verified device {device.device_id} for user {user_id}")
-
-        # Upload keys again after joining rooms
-        matrix_logger.debug("Uploading keys again after joining rooms")
+        # 1. Explicitly upload encryption keys and wait for completion
+        matrix_logger.debug("Explicitly uploading encryption keys...")
         try:
-            await matrix_client.keys_upload()
-            matrix_logger.debug("Keys uploaded successfully after joining rooms")
+            # Use the direct olm method to ensure we wait for completion
+            await matrix_client.olm.upload_keys()
+            matrix_logger.debug("Encryption keys uploaded successfully")
         except Exception as ke:
-            matrix_logger.debug(f"Info: {ke}")
+            matrix_logger.debug(f"Key upload info: {ke}")
 
-        # Ensure we have group sessions for all encrypted rooms
-        for room_id, room in matrix_client.rooms.items():
-            if room.encrypted:
-                matrix_logger.debug(f"Ensuring group session for encrypted room {room_id}")
+        # 2. Perform another short sync to confirm key upload and room encryption state
+        matrix_logger.debug("Performing short sync to confirm encryption setup...")
+        await matrix_client.sync(timeout=3000)  # 3 second timeout
+
+        # 3. Share group sessions for all encrypted rooms
+        encrypted_rooms = [room_id for room_id, room in matrix_client.rooms.items() if room.encrypted]
+        if encrypted_rooms:
+            matrix_logger.debug(f"Sharing group sessions for {len(encrypted_rooms)} encrypted rooms")
+            for room_id in encrypted_rooms:
                 try:
-                    # First, share a group session
                     await matrix_client.share_group_session(room_id)
                     matrix_logger.debug(f"Shared group session for room {room_id}")
-
-                    # Then, send a dummy event to establish the encryption session
-                    # This event will be immediately redacted
-                    dummy_event_response = await matrix_client.room_send(
-                        room_id=room_id,
-                        message_type="m.room.message",
-                        content={
-                            "msgtype": "m.notice",
-                            "body": "Initializing encryption session..."
-                        },
-                    )
-
-                    # If the event was sent successfully, redact it immediately
-                    if hasattr(dummy_event_response, "event_id"):
-                        matrix_logger.debug(f"Sent dummy event to initialize encryption: {dummy_event_response.event_id}")
-                        try:
-                            await matrix_client.room_redact(
-                                room_id=room_id,
-                                event_id=dummy_event_response.event_id,
-                                reason="Initializing encryption session"
-                            )
-                            matrix_logger.debug(f"Redacted dummy event: {dummy_event_response.event_id}")
-                        except Exception as redact_error:
-                            matrix_logger.debug(f"Could not redact dummy event: {redact_error}")
                 except Exception as e:
-                    matrix_logger.debug(f"Info: Could not initialize encryption for room {room_id}: {e}")
+                    matrix_logger.debug(f"Could not share group session for room {room_id}: {e}")
+        else:
+            matrix_logger.debug("No encrypted rooms found")
+
+        matrix_logger.info("End-to-end encryption initialization complete")
 
     # Now connect to Meshtastic after Matrix is ready
     meshtastic_utils.meshtastic_client = connect_meshtastic(passed_config=config)
