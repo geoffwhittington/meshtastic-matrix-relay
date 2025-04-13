@@ -46,7 +46,7 @@ jobs:
             . "$HOME/.cargo/env"
             pip install --upgrade pip setuptools wheel maturin
             pip install --no-binary=:all: rpds-py
-            pip install -r requirements-e2ee.txt
+            pip install -r requirements-e2e.txt
             pip install shiv
             mkdir -p dist
             python -m shiv --compressed \
