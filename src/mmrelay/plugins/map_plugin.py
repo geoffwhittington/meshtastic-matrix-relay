@@ -261,10 +261,13 @@ class Plugin(BasePlugin):
         if not self.matches(event):
             return False
 
-        from mmrelay.matrix_utils import connect_matrix
+        from mmrelay.matrix_utils import matrix_client
         from mmrelay.meshtastic_utils import connect_meshtastic
 
-        matrix_client = await connect_matrix()
+        if matrix_client is None:
+            self.logger.error("Matrix client is not initialized. Cannot generate map.")
+            return False
+
         meshtastic_client = connect_meshtastic()
 
         pattern = r"^.*:(?: !map(?: zoom=(\d+))?(?: size=(\d+),(\d+))?)?$"

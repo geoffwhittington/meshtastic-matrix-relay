@@ -102,9 +102,13 @@ class Plugin(BasePlugin):
         node = match.group(2)
 
         hourly_intervals = self._generate_timeperiods()
-        from mmrelay.matrix_utils import connect_matrix
+        from mmrelay.matrix_utils import matrix_client
 
-        matrix_client = await connect_matrix()
+        if matrix_client is None:
+            self.logger.error(
+                "Matrix client is not initialized. Cannot generate telemetry graph."
+            )
+            return False
 
         # Compute the hourly averages for each node
         hourly_averages = {}
