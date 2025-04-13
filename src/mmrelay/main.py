@@ -26,7 +26,7 @@ from mmrelay.db_utils import (
     wipe_message_map,
 )
 from mmrelay.log_utils import get_logger
-from mmrelay.matrix_utils import connect_matrix, join_matrix_room
+from mmrelay.matrix_utils import connect_matrix, initialize_e2ee, join_matrix_room
 from mmrelay.matrix_utils import logger as matrix_logger
 from mmrelay.matrix_utils import on_room_message
 from mmrelay.meshtastic_utils import connect_meshtastic
@@ -99,40 +99,15 @@ async def main(config):
     await matrix_client.sync(timeout=10000)  # 10 second timeout
     # Count configured rooms vs. total rooms
     configured_room_ids = [room["id"] for room in matrix_rooms]
-    configured_rooms_found = sum(1 for room_id in matrix_client.rooms if room_id in configured_room_ids)
-    matrix_logger.info(f"Initial sync completed with {len(matrix_client.rooms)} total rooms ({configured_rooms_found} configured rooms)")
+    configured_rooms_found = sum(
+        1 for room_id in matrix_client.rooms if room_id in configured_room_ids
+    )
+    matrix_logger.info(
+        f"Initial sync completed with {len(matrix_client.rooms)} total rooms ({configured_rooms_found} configured rooms)"
+    )
 
-    # If E2EE is enabled, properly initialize encryption
-    if config["matrix"].get("e2ee", {}).get("enabled", False) and matrix_client.olm:
-        matrix_logger.info("Initializing end-to-end encryption...")
-
-        # 1. Explicitly upload encryption keys and wait for completion
-        matrix_logger.debug("Explicitly uploading encryption keys...")
-        try:
-            # Use the direct olm method to ensure we wait for completion
-            await matrix_client.olm.upload_keys()
-            matrix_logger.debug("Encryption keys uploaded successfully")
-        except Exception as ke:
-            matrix_logger.debug(f"Key upload info: {ke}")
-
-        # 2. Perform another short sync to confirm key upload and room encryption state
-        matrix_logger.debug("Performing short sync to confirm encryption setup...")
-        await matrix_client.sync(timeout=3000)  # 3 second timeout
-
-        # 3. Share group sessions for all encrypted rooms
-        encrypted_rooms = [room_id for room_id, room in matrix_client.rooms.items() if room.encrypted]
-        if encrypted_rooms:
-            matrix_logger.debug(f"Sharing group sessions for {len(encrypted_rooms)} encrypted rooms")
-            for room_id in encrypted_rooms:
-                try:
-                    await matrix_client.share_group_session(room_id)
-                    matrix_logger.debug(f"Shared group session for room {room_id}")
-                except Exception as e:
-                    matrix_logger.debug(f"Could not share group session for room {room_id}: {e}")
-        else:
-            matrix_logger.debug("No encrypted rooms found")
-
-        matrix_logger.info("End-to-end encryption initialization complete")
+    # Initialize end-to-end encryption if enabled
+    await initialize_e2ee(matrix_client, config)
 
     # Now connect to Meshtastic after Matrix is ready
     meshtastic_utils.meshtastic_client = connect_meshtastic(passed_config=config)
