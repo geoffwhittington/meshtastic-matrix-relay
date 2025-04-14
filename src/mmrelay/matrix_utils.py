@@ -1451,13 +1451,29 @@ async def login_matrix_bot(
             devices_response = await client.devices()
             if hasattr(devices_response, "devices"):
                 for device in devices_response.devices:
+                    # Debug the device structure
+                    logger.debug(f"Device info: {device}")
+
+                    # Get the device ID - could be device_id or id depending on API version
+                    device_id_attr = getattr(device, "device_id", None) or getattr(device, "id", None)
+
+                    if not device_id_attr:
+                        logger.warning(f"Could not determine device ID for device: {device}")
+                        continue
+
                     # Skip the current device
-                    if device.device_id == device_id:
+                    if device_id_attr == device_id:
+                        logger.debug(f"Skipping current device: {device_id_attr}")
                         continue
 
                     # Log out the device
-                    logger.debug(f"Logging out device {device.device_id}")
-                    await client.logout_device(device.device_id)
+                    logger.debug(f"Logging out device {device_id_attr}")
+                    try:
+                        await client.logout_device(device_id_attr)
+                        logger.debug(f"Successfully logged out device {device_id_attr}")
+                    except Exception as e:
+                        logger.warning(f"Failed to log out device {device_id_attr}: {e}")
+
                 logger.info("Other sessions logged out successfully")
             else:
                 logger.warning(
