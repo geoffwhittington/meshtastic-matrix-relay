@@ -1362,8 +1362,9 @@ async def login_matrix_bot(
 
     # Ask about logging out other sessions
     if logout_others is None:
-        logout_others_input = input("Log out other sessions? (y/n): ").lower()
-        logout_others = logout_others_input.startswith("y")
+        logout_others_input = input("Log out other sessions? (Y/n) [Default: Yes]: ").lower()
+        # Default to True if empty or starts with 'y'
+        logout_others = not logout_others_input.startswith("n") if logout_others_input else True
 
     # Create a Matrix client for login
     ssl_context = ssl.create_default_context(cafile=certifi.where())
@@ -1439,14 +1440,6 @@ async def login_matrix_bot(
         except Exception as e:
             logger.warning(f"Failed to save credentials: {e}")
 
-        # Close the client
-        await client.close()
-    else:
-        error_msg = getattr(response, "message", "Unknown error")
-        logger.error(f"Login failed: {error_msg}")
-        await client.close()
-        return None
-
         # Log out other sessions if requested
         if logout_others:
             logger.info("Logging out other sessions...")
@@ -1470,6 +1463,14 @@ async def login_matrix_bot(
                 logger.warning(
                     f"Failed to get devices: {devices_response.message if hasattr(devices_response, 'message') else 'Unknown error'}"
                 )
+
+        # Close the client
+        await client.close()
+    else:
+        error_msg = getattr(response, "message", "Unknown error")
+        logger.error(f"Login failed: {error_msg}")
+        await client.close()
+        return None
 
         # Get config file path
         config_paths = get_config_paths()
