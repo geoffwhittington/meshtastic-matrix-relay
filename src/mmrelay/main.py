@@ -97,10 +97,18 @@ async def main(config):
     # Perform an initial sync to get room state and encryption info
     matrix_logger.info("Performing initial Matrix sync...")
     await matrix_client.sync(timeout=10000)  # 10 second timeout
-    matrix_logger.info(f"Initial sync completed with {len(matrix_client.rooms)} rooms")
+    # Count configured rooms vs. total rooms
+    configured_room_ids = [room["id"] for room in matrix_rooms]
+    configured_rooms_found = sum(
+        1 for room_id in matrix_client.rooms if room_id in configured_room_ids
+    )
+    matrix_logger.info(
+        f"Initial sync completed with {len(matrix_client.rooms)} total rooms ({configured_rooms_found} configured rooms)"
+    )
 
     # If E2EE is enabled, verify devices and upload keys again after joining rooms
-    if config["matrix"].get("e2ee", {}).get("enabled", False) and matrix_client.olm:
+    if (("encryption" in config["matrix"] and config["matrix"]["encryption"].get("enabled", False)) or
+        ("e2ee" in config["matrix"] and config["matrix"]["e2ee"].get("enabled", False))) and matrix_client.olm:
         # Verify all devices in the store again after sync
         if matrix_client.device_store:
             matrix_logger.debug("Re-verifying devices after initial sync")
@@ -132,32 +140,11 @@ async def main(config):
                 matrix_logger.debug(f"Ensuring group session for encrypted room {room_id}")
                 try:
                     # First, share a group session
-                    await matrix_client.share_group_session(room_id)
+                    await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
                     matrix_logger.debug(f"Shared group session for room {room_id}")
 
-                    # Then, send a dummy event to establish the encryption session
-                    # This event will be immediately redacted
-                    dummy_event_response = await matrix_client.room_send(
-                        room_id=room_id,
-                        message_type="m.room.message",
-                        content={
-                            "msgtype": "m.notice",
-                            "body": "Initializing encryption session..."
-                        },
-                    )
-
-                    # If the event was sent successfully, redact it immediately
-                    if hasattr(dummy_event_response, "event_id"):
-                        matrix_logger.debug(f"Sent dummy event to initialize encryption: {dummy_event_response.event_id}")
-                        try:
-                            await matrix_client.room_redact(
-                                room_id=room_id,
-                                event_id=dummy_event_response.event_id,
-                                reason="Initializing encryption session"
-                            )
-                            matrix_logger.debug(f"Redacted dummy event: {dummy_event_response.event_id}")
-                        except Exception as redact_error:
-                            matrix_logger.debug(f"Could not redact dummy event: {redact_error}")
+                    # We don't need to send a dummy message
+                    # Just make sure the group session is shared
                 except Exception as e:
                     matrix_logger.debug(f"Info: Could not initialize encryption for room {room_id}: {e}")
 
