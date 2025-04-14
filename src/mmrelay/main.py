@@ -109,6 +109,10 @@ async def main(config):
     # Initialize end-to-end encryption if enabled
     await initialize_e2ee(matrix_client, config)
 
+    # Perform another short sync after E2EE initialization to ensure everything is ready
+    matrix_logger.debug("Performing final sync after E2EE initialization...")
+    await matrix_client.sync(timeout=3000)  # 3 second timeout
+
     # Now connect to Meshtastic after Matrix is ready
     meshtastic_utils.meshtastic_client = connect_meshtastic(passed_config=config)
 

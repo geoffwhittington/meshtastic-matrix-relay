@@ -324,7 +324,8 @@ async def connect_matrix(passed_config=None):
             # Upload encryption keys if needed
             if matrix_client.should_upload_keys:
                 logger.debug("Uploading encryption keys to server")
-                await matrix_client.keys_upload()
+                # Use the direct olm method to ensure we wait for completion
+                await matrix_client.olm.upload_keys()
 
             # Patch the client to handle unverified devices
             # This is a safer approach than monkey patching the OlmDevice class
@@ -414,7 +415,8 @@ async def connect_matrix(passed_config=None):
             if matrix_client.should_upload_keys:
                 logger.debug("Uploading encryption keys to server")
                 try:
-                    await matrix_client.keys_upload()
+                    # Use the direct olm method to ensure we wait for completion
+                    await matrix_client.olm.upload_keys()
                     logger.debug("Keys uploaded successfully")
                 except Exception as ke:
                     logger.warning(f"Error uploading keys: {ke}")
@@ -674,7 +676,8 @@ async def matrix_relay(
                                 "Uploading encryption keys before sending message"
                             )
                             try:
-                                await matrix_client.keys_upload()
+                                # Use the direct olm method to ensure we wait for completion
+                                await matrix_client.olm.upload_keys()
                                 logger.debug("Keys uploaded successfully")
                             except Exception as ke:
                                 logger.warning(f"Error uploading keys: {ke}")
@@ -976,7 +979,8 @@ async def on_room_message(
 
                     # 2. Upload our keys
                     if matrix_client.should_upload_keys:
-                        await matrix_client.keys_upload()
+                        # Use the direct olm method to ensure we wait for completion
+                        await matrix_client.olm.upload_keys()
                         logger.debug(f"Uploaded keys for {sender}")
 
                     # 3. Request keys from the sender
