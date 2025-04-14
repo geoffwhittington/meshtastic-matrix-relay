@@ -26,7 +26,7 @@ from mmrelay.db_utils import (
     wipe_message_map,
 )
 from mmrelay.log_utils import get_logger
-from mmrelay.matrix_utils import connect_matrix, initialize_e2ee, join_matrix_room
+from mmrelay.matrix_utils import connect_matrix, join_matrix_room
 from mmrelay.matrix_utils import logger as matrix_logger
 from mmrelay.matrix_utils import on_room_message
 from mmrelay.meshtastic_utils import connect_meshtastic
@@ -106,8 +106,83 @@ async def main(config):
         f"Initial sync completed with {len(matrix_client.rooms)} total rooms ({configured_rooms_found} configured rooms)"
     )
 
-    # Initialize end-to-end encryption if enabled
-    await initialize_e2ee(matrix_client, config)
+    # If E2EE is enabled, properly initialize encryption
+    if (("encryption" in config["matrix"] and config["matrix"]["encryption"].get("enabled", False)) or
+        ("e2ee" in config["matrix"] and config["matrix"]["e2ee"].get("enabled", False))) and matrix_client.olm:
+        matrix_logger.info("Initializing end-to-end encryption...")
+
+        # 1. Make sure the store is loaded
+        matrix_logger.debug("Loading encryption store...")
+        try:
+            # Explicitly load the store
+            matrix_client.load_store()
+            matrix_logger.debug("Encryption store loaded successfully")
+        except Exception as le:
+            matrix_logger.warning(f"Error loading encryption store: {le}")
+
+        # 2. Verify all devices to ensure encryption works
+        matrix_logger.debug("Verifying devices for encryption...")
+        try:
+            # Verify our own device first
+            if matrix_client.device_store and matrix_client.user_id in matrix_client.device_store.users:
+                for device in matrix_client.device_store.active_user_devices(matrix_client.user_id):
+                    # Check if this is our current device
+                    if device.device_id == matrix_client.device_id:
+                        matrix_logger.info(f"Verifying our current device: {device.device_id}")
+                    matrix_client.verify_device(device)
+                    matrix_logger.debug(f"Verified our device: {device.device_id}")
+            else:
+                matrix_logger.warning("Our user not found in device store. Encryption may not work correctly.")
+
+            # Verify all other devices
+            if matrix_client.device_store:
+                for user_id in matrix_client.device_store.users:
+                    if user_id == matrix_client.user_id:
+                        continue
+                    for device in matrix_client.device_store.active_user_devices(user_id):
+                        matrix_client.verify_device(device)
+                        matrix_logger.debug(f"Verified device {device.device_id} for user {user_id}")
+        except Exception as ve:
+            matrix_logger.debug(f"Device verification info: {ve}")
+
+        # 2. Check if keys need to be uploaded and upload them if needed
+        matrix_logger.debug("Checking if encryption keys need to be uploaded...")
+        matrix_logger.debug(f"should_upload_keys = {matrix_client.should_upload_keys}")
+
+        # Always try to upload keys to ensure they're properly registered
+        matrix_logger.debug("Uploading encryption keys...")
+        try:
+            await matrix_client.keys_upload()
+            matrix_logger.debug("Encryption keys uploaded successfully")
+        except Exception as ke:
+            if "No key upload needed" in str(ke):
+                matrix_logger.debug("No key upload needed")
+            else:
+                matrix_logger.warning(f"Error uploading keys: {ke}")
+
+        # 3. Perform another sync to ensure everything is up-to-date
+        matrix_logger.debug("Performing sync to update encryption state...")
+        await matrix_client.sync(timeout=10000)  # 10 second timeout
+
+        # 4. Share group sessions for all encrypted rooms
+        encrypted_rooms = [room_id for room_id, room in matrix_client.rooms.items() if room.encrypted]
+        if encrypted_rooms:
+            matrix_logger.debug(f"Sharing group sessions for {len(encrypted_rooms)} encrypted rooms")
+            for room_id in encrypted_rooms:
+                try:
+                    # Use ignore_unverified_devices=True to ensure messages can be sent
+                    await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
+                    matrix_logger.debug(f"Shared group session for room {room_id}")
+                except Exception as e:
+                    matrix_logger.warning(f"Could not share group session for room {room_id}: {e}")
+        else:
+            matrix_logger.debug("No encrypted rooms found")
+
+        # 5. Perform a final sync to ensure all group sessions are properly registered
+        matrix_logger.debug("Performing final sync to update encryption state...")
+        await matrix_client.sync(timeout=5000)  # 5 second timeout
+
+        matrix_logger.info("End-to-end encryption initialization complete")
 
     # Now connect to Meshtastic after Matrix is ready
     meshtastic_utils.meshtastic_client = connect_meshtastic(passed_config=config)

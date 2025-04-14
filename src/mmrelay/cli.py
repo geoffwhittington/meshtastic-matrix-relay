@@ -280,8 +280,8 @@ def main():
         print("Matrix Bot Login")
         print("================")
         try:
-            # Run the login function
-            result = asyncio.run(login_matrix_bot())
+            # Run the login function with logout_others defaulting to True
+            result = asyncio.run(login_matrix_bot(logout_others=True))
             return 0 if result else 1
         except KeyboardInterrupt:
             print("\nLogin cancelled by user.")
@@ -353,8 +353,8 @@ def handle_cli_commands(args):
         print("Matrix Bot Login")
         print("================")
         try:
-            # Run the login function
-            result = asyncio.run(login_matrix_bot())
+            # Run the login function with logout_others defaulting to True
+            result = asyncio.run(login_matrix_bot(logout_others=True))
             import sys
 
             sys.exit(0 if result else 1)
