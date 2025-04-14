@@ -106,12 +106,52 @@ async def main(config):
         f"Initial sync completed with {len(matrix_client.rooms)} total rooms ({configured_rooms_found} configured rooms)"
     )
 
-    # Initialize end-to-end encryption if enabled
-    await initialize_e2ee(matrix_client, config)
+    # If E2EE is enabled, verify devices and upload keys again after joining rooms
+    if ("encryption" in config["matrix"] and config["matrix"]["encryption"].get("enabled", False)) or \
+       ("e2ee" in config["matrix"] and config["matrix"]["e2ee"].get("enabled", False)):
+        if matrix_client.olm:
+            matrix_logger.info("Initializing end-to-end encryption...")
 
-    # Perform another short sync after E2EE initialization to ensure everything is ready
-    matrix_logger.debug("Performing final sync after E2EE initialization...")
-    await matrix_client.sync(timeout=3000)  # 3 second timeout
+            # Verify all devices in the store again after sync
+            if matrix_client.device_store:
+                matrix_logger.debug("Re-verifying devices after initial sync")
+                # Verify our own device first
+                if matrix_client.user_id in matrix_client.device_store.users:
+                    for device in matrix_client.device_store.active_user_devices(matrix_client.user_id):
+                        matrix_client.verify_device(device)
+                        matrix_logger.debug(f"Re-verified our device: {device.device_id}")
+
+                # Verify all other devices
+                for user_id in matrix_client.device_store.users:
+                    if user_id == matrix_client.user_id:
+                        continue
+                    for device in matrix_client.device_store.active_user_devices(user_id):
+                        matrix_client.verify_device(device)
+                        matrix_logger.debug(f"Re-verified device {device.device_id} for user {user_id}")
+
+            # Upload keys again after joining rooms
+            matrix_logger.debug("Uploading keys again after joining rooms")
+            try:
+                await matrix_client.keys_upload()
+                matrix_logger.debug("Keys uploaded successfully after joining rooms")
+            except Exception as ke:
+                matrix_logger.debug(f"Info: {ke}")
+
+            # Ensure we have group sessions for all encrypted rooms
+            for room_id, room in matrix_client.rooms.items():
+                if room.encrypted:
+                    matrix_logger.debug(f"Ensuring group session for encrypted room {room_id}")
+                    try:
+                        await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
+                        matrix_logger.debug(f"Shared group session for room {room_id}")
+                    except Exception as e:
+                        matrix_logger.debug(f"Info: Could not share group session for room {room_id}: {e}")
+
+            # Perform another short sync after E2EE initialization to ensure everything is ready
+            matrix_logger.debug("Performing final sync after E2EE initialization...")
+            await matrix_client.sync(timeout=3000)  # 3 second timeout
+
+            matrix_logger.info("End-to-end encryption initialization complete")
 
     # Now connect to Meshtastic after Matrix is ready
     meshtastic_utils.meshtastic_client = connect_meshtastic(passed_config=config)
