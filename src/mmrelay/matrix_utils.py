@@ -636,10 +636,17 @@ async def matrix_relay(
                         # Make sure we have keys uploaded
                         logger.debug("Uploading encryption keys before sending message")
                         try:
-                            await matrix_client.keys_upload()
-                            logger.debug("Keys uploaded successfully")
+                            # Use the direct olm method to ensure we wait for completion
+                            await matrix_client.olm.upload_keys()
+                            logger.debug("Keys uploaded successfully using direct olm method")
                         except Exception as ke:
-                            logger.warning(f"Error uploading keys: {ke}")
+                            logger.warning(f"Error uploading keys with direct method: {ke}")
+                            # Fall back to standard method
+                            try:
+                                await matrix_client.keys_upload()
+                                logger.debug("Keys uploaded successfully with standard method")
+                            except Exception as ke2:
+                                logger.warning(f"Error uploading keys with standard method: {ke2}")
 
                         # Build a list of all devices in the room
                         users_devices = {}
