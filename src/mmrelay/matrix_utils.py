@@ -620,63 +620,63 @@ async def matrix_relay(
                 try:
                     # Ensure we have shared a group session
                     if matrix_client.olm:
-                        # First, make sure we have keys for all devices in the room
+                        # First, verify ALL devices in the room to ensure encryption works
+                        logger.debug(f"Verifying all devices in room {room_id}")
+                        if matrix_client.device_store:
+                            for user_id in room.users:
+                                if user_id == matrix_client.user_id:  # Skip our own user
+                                    continue
+
+                                # Get all devices for this user and verify them
+                                for device in matrix_client.device_store.active_user_devices(user_id):
+                                    # Verify the device using the client's method
+                                    matrix_client.verify_device(device)
+                                    logger.debug(f"Verified device {device.device_id} for user {user_id}")
+
+                        # Make sure we have keys uploaded
+                        logger.debug("Uploading encryption keys before sending message")
+                        try:
+                            await matrix_client.keys_upload()
+                            logger.debug("Keys uploaded successfully")
+                        except Exception as ke:
+                            logger.warning(f"Error uploading keys: {ke}")
+
+                        # Build a list of all devices in the room
                         users_devices = {}
                         for user_id in room.users:
                             if user_id != matrix_client.user_id:  # Skip our own user
                                 # Get all devices for this user
-                                devices = (
-                                    matrix_client.device_store.active_user_devices(
-                                        user_id
-                                    )
-                                )
+                                devices = matrix_client.device_store.active_user_devices(user_id)
                                 if devices:
-                                    users_devices[user_id] = [
-                                        device.device_id for device in devices
-                                    ]
-
-                        # Make sure we have keys uploaded
-                        if matrix_client.should_upload_keys:
-                            logger.debug(
-                                "Uploading encryption keys before sending message"
-                            )
-                            try:
-                                await matrix_client.keys_upload()
-                                logger.debug("Keys uploaded successfully")
-                            except Exception as ke:
-                                logger.warning(f"Error uploading keys: {ke}")
+                                    users_devices[user_id] = [device.device_id for device in devices]
 
                         # Claim keys for all devices
                         if users_devices:
-                            logger.debug(f"Claiming keys for devices in room {room_id}")
+                            logger.debug(f"Claiming keys for {len(users_devices)} users in room {room_id}")
                             try:
                                 await matrix_client.keys_claim(users_devices)
-                                logger.debug("Keys claim completed successfully")
+                                logger.debug("Keys claimed successfully")
                             except Exception as ke:
                                 logger.warning(f"Error claiming keys: {ke}")
 
-                        # Force sharing a new group session to ensure all devices get keys
+                        # Force sharing a new group session for this room
                         logger.debug(f"Sharing new group session for room {room_id}")
                         try:
-                            # Verify all devices in the room first
-                            if matrix_client.device_store:
-                                for user_id in matrix_client.rooms[room_id].users:
-                                    if user_id == matrix_client.user_id:
-                                        continue
-                                    if user_id in matrix_client.device_store.users:
-                                        for device in matrix_client.device_store.active_user_devices(user_id):
-                                            matrix_client.verify_device(device)
-                                            logger.debug(f"Verified device {device.device_id} for user {user_id}")
-
-                            # Share a group session with ignore_unverified_devices=True
-                            await matrix_client.share_group_session(
-                                room_id, ignore_unverified_devices=True
-                            )
+                            # Always use ignore_unverified_devices=True to ensure messages can be sent
+                            await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
                             logger.debug(f"Shared new group session for room {room_id}")
                         except Exception as share_error:
-                            logger.warning(f"Error sharing group session: {share_error}")
+                            logger.error(f"Error sharing group session: {share_error}")
+                            # If sharing fails, try to recover by forcing a new upload and share
+                            try:
+                                logger.debug("Attempting recovery by uploading keys again...")
+                                await matrix_client.keys_upload()
+                                await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
+                                logger.debug("Recovery successful, shared new group session")
+                            except Exception as recovery_error:
+                                logger.error(f"Recovery failed: {recovery_error}")
                 except Exception as e:
-                    logger.warning(f"Error sharing group session: {e}")
+                    logger.error(f"Error preparing encryption: {e}")
             else:
                 logger.debug(f"Room {room_id} is not encrypted")
 
