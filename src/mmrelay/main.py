@@ -117,8 +117,13 @@ async def main(config):
             # Verify our own device first
             if matrix_client.device_store and matrix_client.user_id in matrix_client.device_store.users:
                 for device in matrix_client.device_store.active_user_devices(matrix_client.user_id):
+                    # Check if this is our current device
+                    if device.device_id == matrix_client.device_id:
+                        matrix_logger.info(f"Verifying our current device: {device.device_id}")
                     matrix_client.verify_device(device)
                     matrix_logger.debug(f"Verified our device: {device.device_id}")
+            else:
+                matrix_logger.warning("Our user not found in device store. Encryption may not work correctly.")
 
             # Verify all other devices
             if matrix_client.device_store:
@@ -135,15 +140,16 @@ async def main(config):
         matrix_logger.debug("Checking if encryption keys need to be uploaded...")
         matrix_logger.debug(f"should_upload_keys = {matrix_client.should_upload_keys}")
 
-        if matrix_client.should_upload_keys:
-            matrix_logger.debug("Uploading encryption keys...")
-            try:
-                await matrix_client.keys_upload()
-                matrix_logger.debug("Encryption keys uploaded successfully")
-            except Exception as ke:
+        # Always try to upload keys to ensure they're properly registered
+        matrix_logger.debug("Uploading encryption keys...")
+        try:
+            await matrix_client.keys_upload()
+            matrix_logger.debug("Encryption keys uploaded successfully")
+        except Exception as ke:
+            if "No key upload needed" in str(ke):
+                matrix_logger.debug("No key upload needed")
+            else:
                 matrix_logger.warning(f"Error uploading keys: {ke}")
-        else:
-            matrix_logger.debug("No key upload needed")
 
         # 3. Perform another sync to ensure everything is up-to-date
         matrix_logger.debug("Performing sync to update encryption state...")

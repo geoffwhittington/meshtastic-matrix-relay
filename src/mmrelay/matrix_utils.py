@@ -158,9 +158,9 @@ async def connect_matrix(passed_config=None):
     e2ee_device_id = None
 
     try:
-        if "e2ee" in config["matrix"] and config["matrix"]["e2ee"].get(
-            "enabled", False
-        ):
+        # Check both 'encryption' and 'e2ee' keys for backward compatibility
+        if (("encryption" in config["matrix"] and config["matrix"]["encryption"].get("enabled", False)) or
+            ("e2ee" in config["matrix"] and config["matrix"]["e2ee"].get("enabled", False))):
             # Check if python-olm is installed
             try:
                 import olm  # noqa: F401
@@ -169,18 +169,30 @@ async def connect_matrix(passed_config=None):
                 logger.info("End-to-End Encryption (E2EE) is enabled")
 
                 # Get store path from config or use default
-                if "store_path" in config["matrix"]["e2ee"]:
+                if "encryption" in config["matrix"] and "store_path" in config["matrix"]["encryption"]:
+                    e2ee_store_path = os.path.expanduser(
+                        config["matrix"]["encryption"]["store_path"]
+                    )
+                elif "e2ee" in config["matrix"] and "store_path" in config["matrix"]["e2ee"]:
                     e2ee_store_path = os.path.expanduser(
                         config["matrix"]["e2ee"]["store_path"]
                     )
                 else:
                     from mmrelay.config import get_e2ee_store_dir
-
                     e2ee_store_path = get_e2ee_store_dir()
 
                 # Create store directory if it doesn't exist
                 os.makedirs(e2ee_store_path, exist_ok=True)
-                logger.debug(f"Using E2EE store path: {e2ee_store_path}")
+
+                # Check if store directory contains database files
+                store_files = os.listdir(e2ee_store_path) if os.path.exists(e2ee_store_path) else []
+                db_files = [f for f in store_files if f.endswith('.db')]
+                if db_files:
+                    logger.info(f"Found existing E2EE store files: {', '.join(db_files)}")
+                else:
+                    logger.warning("No existing E2EE store files found. Encryption may not work correctly.")
+
+                logger.info(f"Using E2EE store path: {e2ee_store_path}")
 
                 # We'll get the device ID from whoami() later
                 e2ee_device_id = None
@@ -279,13 +291,25 @@ async def connect_matrix(passed_config=None):
     # If E2EE is enabled, load the store and set up encryption
     if e2ee_enabled:
         try:
+            # Check if store directory contains database files
+            store_files = os.listdir(e2ee_store_path) if os.path.exists(e2ee_store_path) else []
+            db_files = [f for f in store_files if f.endswith('.db')]
+            if db_files:
+                logger.info(f"Found existing E2EE store files: {', '.join(db_files)}")
+            else:
+                logger.warning("No existing E2EE store files found. Encryption may not work correctly.")
+
             # Load the store first
+            logger.debug("Loading encryption store...")
             matrix_client.load_store()
+            logger.debug("Encryption store loaded successfully")
 
             # Upload encryption keys if needed
+            logger.debug(f"should_upload_keys = {matrix_client.should_upload_keys}")
             if matrix_client.should_upload_keys:
                 logger.debug("Uploading encryption keys to server")
                 await matrix_client.keys_upload()
+                logger.debug("Encryption keys uploaded successfully")
 
             # Patch the client to handle unverified devices
             # This is a safer approach than monkey patching the OlmDevice class
@@ -633,16 +657,16 @@ async def matrix_relay(
                                     matrix_client.verify_device(device)
                                     logger.debug(f"Verified device {device.device_id} for user {user_id}")
 
-                        # Check if keys need to be uploaded
-                        if matrix_client.should_upload_keys:
-                            logger.debug("Uploading encryption keys before sending message")
-                            try:
-                                await matrix_client.keys_upload()
-                                logger.debug("Keys uploaded successfully")
-                            except Exception as ke:
+                        # Always try to upload keys to ensure they're properly registered
+                        logger.debug("Uploading encryption keys before sending message")
+                        try:
+                            await matrix_client.keys_upload()
+                            logger.debug("Keys uploaded successfully")
+                        except Exception as ke:
+                            if "No key upload needed" in str(ke):
+                                logger.debug("No key upload needed before sending message")
+                            else:
                                 logger.warning(f"Error uploading keys: {ke}")
-                        else:
-                            logger.debug("No key upload needed before sending message")
 
                         # Build a list of all devices in the room
                         users_devices = {}
