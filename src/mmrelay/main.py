@@ -154,10 +154,7 @@ async def main(config):
             # Check if any rooms should be encrypted but aren't
             for room_id, room in matrix_client.rooms.items():
                 if not room.encrypted:
-                    matrix_logger.debug(f"Room {room_id} is not encrypted. Checking state events...")
-                    for event in room.state.values():
-                        if isinstance(event, RoomEncryptionEvent):
-                            matrix_logger.warning(f"Room {room_id} has encryption event but is not marked as encrypted: {event}")
+                    matrix_logger.debug(f"Room {room_id} is not encrypted")
 
         matrix_logger.info("End-to-end encryption initialization complete")
 

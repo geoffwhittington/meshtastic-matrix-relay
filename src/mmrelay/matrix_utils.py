@@ -577,10 +577,6 @@ async def matrix_relay(
             # Debug room encryption status
             if room:
                 logger.debug(f"Room {room_id} encryption status: {room.encrypted}")
-                # Check if the room has encryption event
-                for event in room.state.values():
-                    if isinstance(event, RoomEncryptionEvent):
-                        logger.debug(f"Room {room_id} has encryption event: {event}")
             else:
                 logger.debug(f"Room {room_id} not found in client's rooms")
 
