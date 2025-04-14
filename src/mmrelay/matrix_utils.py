@@ -1525,6 +1525,7 @@ async def login_matrix_bot(
             # Get list of devices
             devices_response = await client.devices()
             if hasattr(devices_response, "devices"):
+                other_devices = []
                 for device in devices_response.devices:
                     # Debug the device structure
                     logger.debug(f"Device info: {device}")
@@ -1541,15 +1542,44 @@ async def login_matrix_bot(
                         logger.debug(f"Skipping current device: {device_id_attr}")
                         continue
 
-                    # Log out the device
-                    logger.debug(f"Logging out device {device_id_attr}")
-                    try:
-                        await client.logout_device(device_id_attr)
-                        logger.debug(f"Successfully logged out device {device_id_attr}")
-                    except Exception as e:
-                        logger.warning(f"Failed to log out device {device_id_attr}: {e}")
+                    # Add to list of devices to log out
+                    other_devices.append(device_id_attr)
 
-                logger.info("Other sessions logged out successfully")
+                if other_devices:
+                    # Use the API's delete_devices method which is the correct way to delete devices
+                    try:
+                        logger.debug(f"Using API delete_devices method to log out {len(other_devices)} devices")
+                        # The API method requires authentication, which may require an additional step
+                        # First try without auth data
+                        response = await client.api.delete_devices(other_devices)
+
+                        # If we get a DeleteDevicesAuthResponse, we need to provide auth data
+                        if hasattr(response, "session") and hasattr(response, "flows"):
+                            logger.debug("Authentication required for device deletion")
+                            # Create auth data using the password
+                            auth_dict = {
+                                "type": "m.login.password",
+                                "identifier": {
+                                    "type": "m.id.user",
+                                    "user": client.user_id
+                                },
+                                "password": password,
+                                "session": response.session
+                            }
+
+                            # Try again with auth data
+                            response = await client.api.delete_devices(other_devices, auth=auth_dict)
+
+                        if hasattr(response, "status_code") and response.status_code < 300:
+                            logger.info(f"Successfully logged out {len(other_devices)} other devices")
+                        else:
+                            logger.warning(f"Failed to log out devices: {response}")
+                    except Exception as e:
+                        logger.warning(f"Failed to log out other devices: {e}")
+                else:
+                    logger.info("No other devices to log out")
+
+                logger.info("Device logout process completed")
             else:
                 logger.warning(
                     f"Failed to get devices: {devices_response.message if hasattr(devices_response, 'message') else 'Unknown error'}"
