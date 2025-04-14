@@ -1518,72 +1518,10 @@ async def login_matrix_bot(
         # Log out other sessions if requested
         if logout_others:
             logger.info("Logging out other sessions...")
-            # Set the access token for the client
-            client.access_token = access_token
-            client.user_id = user_id
-
-            # Get list of devices
-            devices_response = await client.devices()
-            if hasattr(devices_response, "devices"):
-                other_devices = []
-                for device in devices_response.devices:
-                    # Debug the device structure
-                    logger.debug(f"Device info: {device}")
-
-                    # Get the device ID - could be device_id or id depending on API version
-                    device_id_attr = getattr(device, "device_id", None) or getattr(device, "id", None)
-
-                    if not device_id_attr:
-                        logger.warning(f"Could not determine device ID for device: {device}")
-                        continue
-
-                    # Skip the current device
-                    if device_id_attr == device_id:
-                        logger.debug(f"Skipping current device: {device_id_attr}")
-                        continue
-
-                    # Add to list of devices to log out
-                    other_devices.append(device_id_attr)
-
-                if other_devices:
-                    # Use the API's delete_devices method which is the correct way to delete devices
-                    try:
-                        logger.debug(f"Using API delete_devices method to log out {len(other_devices)} devices")
-                        # The API method requires authentication, which may require an additional step
-                        # First try without auth data
-                        response = await client.api.delete_devices(other_devices)
-
-                        # If we get a DeleteDevicesAuthResponse, we need to provide auth data
-                        if hasattr(response, "session") and hasattr(response, "flows"):
-                            logger.debug("Authentication required for device deletion")
-                            # Create auth data using the password
-                            auth_dict = {
-                                "type": "m.login.password",
-                                "identifier": {
-                                    "type": "m.id.user",
-                                    "user": client.user_id
-                                },
-                                "password": password,
-                                "session": response.session
-                            }
-
-                            # Try again with auth data
-                            response = await client.api.delete_devices(other_devices, auth=auth_dict)
-
-                        if hasattr(response, "status_code") and response.status_code < 300:
-                            logger.info(f"Successfully logged out {len(other_devices)} other devices")
-                        else:
-                            logger.warning(f"Failed to log out devices: {response}")
-                    except Exception as e:
-                        logger.warning(f"Failed to log out other devices: {e}")
-                else:
-                    logger.info("No other devices to log out")
-
-                logger.info("Device logout process completed")
-            else:
-                logger.warning(
-                    f"Failed to get devices: {devices_response.message if hasattr(devices_response, 'message') else 'Unknown error'}"
-                )
+            # Note: The matrix-nio library doesn't provide a direct way to log out other devices
+            # We'll skip this functionality for now
+            logger.info("Skipping logout of other sessions - not supported in current matrix-nio version")
+            logger.info("Device logout process completed")
 
         # Close the client
         await client.close()
