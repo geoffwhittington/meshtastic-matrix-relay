@@ -304,16 +304,27 @@ async def connect_matrix(passed_config=None):
             matrix_client.load_store()
             logger.debug("Encryption store loaded successfully")
 
-            # Always try to upload keys to ensure they're properly registered
+            # Debug store state
+            logger.debug(f"E2EE store path: {e2ee_store_path}")
+            logger.debug(f"Device store users immediately after load: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
+
+            # Perform early sync to populate device store
+            logger.debug("Performing early sync after store load to populate device store")
+            await matrix_client.sync(timeout=5000)
+
+            # Debug store state after sync
+            logger.debug(f"Device store users after sync: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
+
+            # Now try to upload keys after device store is populated
             logger.debug("Uploading encryption keys to server")
             try:
-                await matrix_client.keys_upload()
-                logger.debug("Encryption keys uploaded successfully")
-            except Exception as ke:
-                if "No key upload needed" in str(ke):
-                    logger.debug("No key upload needed")
+                if matrix_client.should_upload_keys:
+                    await matrix_client.keys_upload()
+                    logger.debug("Encryption keys uploaded successfully")
                 else:
-                    logger.warning(f"Error uploading keys: {ke}")
+                    logger.debug("No key upload needed at this stage")
+            except Exception as ke:
+                logger.warning(f"Error uploading keys: {ke}")
 
             # Patch the client to handle unverified devices
             # This is a safer approach than monkey patching the OlmDevice class
@@ -661,16 +672,23 @@ async def matrix_relay(
                                     matrix_client.verify_device(device)
                                     logger.debug(f"Verified device {device.device_id} for user {user_id}")
 
-                        # Always try to upload keys to ensure they're properly registered
+                        # Perform a sync to ensure device store is populated
+                        logger.debug("Performing sync to ensure device store is populated")
+                        await matrix_client.sync(timeout=3000)
+
+                        # Debug device store state
+                        logger.debug(f"Device store users before key operations: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
+
+                        # Upload keys if needed
                         logger.debug("Uploading encryption keys before sending message")
                         try:
-                            await matrix_client.keys_upload()
-                            logger.debug("Keys uploaded successfully")
-                        except Exception as ke:
-                            if "No key upload needed" in str(ke):
-                                logger.debug("No key upload needed before sending message")
+                            if matrix_client.should_upload_keys:
+                                await matrix_client.keys_upload()
+                                logger.debug("Keys uploaded successfully")
                             else:
-                                logger.warning(f"Error uploading keys: {ke}")
+                                logger.debug("No key upload needed before sending message")
+                        except Exception as ke:
+                            logger.warning(f"Error uploading keys: {ke}")
 
                         # Build a list of all devices in the room
                         users_devices = {}
@@ -681,6 +699,9 @@ async def matrix_relay(
                                 if devices:
                                     users_devices[user_id] = [device.device_id for device in devices]
 
+                        # Debug users_devices
+                        logger.debug(f"Users devices before key claim: {users_devices}")
+
                         # Claim keys for all devices
                         if users_devices:
                             logger.debug(f"Claiming keys for {len(users_devices)} users in room {room_id}")
@@ -689,6 +710,8 @@ async def matrix_relay(
                                 logger.debug("Keys claimed successfully")
                             except Exception as ke:
                                 logger.warning(f"Error claiming keys: {ke}")
+                        else:
+                            logger.debug("No devices found for keys_claim, skipping attempt")
 
                         # Force sharing a new group session for this room
                         logger.debug(f"Sharing new group session for room {room_id}")
@@ -700,9 +723,21 @@ async def matrix_relay(
                             except Exception as le:
                                 logger.warning(f"Error loading encryption store: {le}")
 
-                            # Always use ignore_unverified_devices=True to ensure messages can be sent
-                            await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
-                            logger.debug(f"Shared new group session for room {room_id}")
+                            # Implement exponential backoff retry for sharing group session
+                            import asyncio
+                            max_attempts = 3
+                            for attempt in range(max_attempts):
+                                try:
+                                    # Always use ignore_unverified_devices=True to ensure messages can be sent
+                                    await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
+                                    logger.debug(f"Shared new group session for room {room_id} on attempt {attempt + 1}")
+                                    break
+                                except Exception as share_error:
+                                    logger.warning(f"Group session sharing failed attempt {attempt + 1}: {share_error}")
+                                    if attempt < max_attempts - 1:  # Don't sleep on the last attempt
+                                        await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                                    else:
+                                        raise  # Re-raise on last attempt
 
                             # Perform a short sync to ensure the group session is properly registered
                             logger.debug("Performing short sync to update encryption state...")

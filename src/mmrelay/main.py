@@ -117,8 +117,16 @@ async def main(config):
             # Explicitly load the store
             matrix_client.load_store()
             matrix_logger.debug("Encryption store loaded successfully")
+
+            # Debug store state
+            matrix_logger.debug(f"Device store users immediately after load: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
         except Exception as le:
             matrix_logger.warning(f"Error loading encryption store: {le}")
+
+        # 1.5 Perform early sync to populate device store
+        matrix_logger.debug("Performing early sync to populate device store")
+        await matrix_client.sync(timeout=5000)
+        matrix_logger.debug(f"Device store users after sync: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
 
         # 2. Verify all devices to ensure encryption works
         matrix_logger.debug("Verifying devices for encryption...")
