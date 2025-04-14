@@ -668,6 +668,11 @@ async def matrix_relay(
                             # Always use ignore_unverified_devices=True to ensure messages can be sent
                             await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
                             logger.debug(f"Shared new group session for room {room_id}")
+
+                            # Perform a short sync to ensure the group session is properly registered
+                            logger.debug("Performing short sync to update encryption state...")
+                            await matrix_client.sync(timeout=3000)  # 3 second timeout
+
                         except Exception as share_error:
                             logger.error(f"Error sharing group session: {share_error}")
                             # If sharing fails, try to recover by forcing a new upload and share
@@ -675,6 +680,11 @@ async def matrix_relay(
                                 logger.debug("Attempting recovery by uploading keys again...")
                                 await matrix_client.keys_upload()
                                 await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
+
+                                # Perform a short sync to ensure the group session is properly registered
+                                logger.debug("Performing short sync to update encryption state...")
+                                await matrix_client.sync(timeout=3000)  # 3 second timeout
+
                                 logger.debug("Recovery successful, shared new group session")
                             except Exception as recovery_error:
                                 logger.error(f"Recovery failed: {recovery_error}")

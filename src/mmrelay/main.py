@@ -163,6 +163,10 @@ async def main(config):
         else:
             matrix_logger.debug("No encrypted rooms found")
 
+        # 5. Perform a final sync to ensure all group sessions are properly registered
+        matrix_logger.debug("Performing final sync to update encryption state...")
+        await matrix_client.sync(timeout=5000)  # 5 second timeout
+
         matrix_logger.info("End-to-end encryption initialization complete")
 
     # Now connect to Meshtastic after Matrix is ready
