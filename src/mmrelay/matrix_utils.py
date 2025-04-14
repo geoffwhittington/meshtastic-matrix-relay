@@ -85,8 +85,8 @@ async def initialize_e2ee(matrix_client: AsyncClient, config: Dict) -> None:
     # 1. Explicitly upload encryption keys and wait for completion
     logger.debug("Explicitly uploading encryption keys...")
     try:
-        # Use the direct olm method to ensure we wait for completion
-        await matrix_client.olm.upload_keys()
+        # Use the high-level method that handles the full encryption setup
+        await matrix_client.keys_upload()
         logger.debug("Encryption keys uploaded successfully")
     except Exception as ke:
         logger.debug(f"Key upload info: {ke}")
@@ -94,6 +94,38 @@ async def initialize_e2ee(matrix_client: AsyncClient, config: Dict) -> None:
     # 2. Perform another short sync to confirm key upload and room encryption state
     logger.debug("Performing short sync to confirm encryption setup...")
     await matrix_client.sync(timeout=3000)  # 3 second timeout
+
+    # Check if we need to enable encryption for any rooms
+    configured_room_ids = [room["id"] for room in config["matrix_rooms"]]
+    for room_id in configured_room_ids:
+        if room_id in matrix_client.rooms:
+            room = matrix_client.rooms[room_id]
+            if not room.encrypted:
+                logger.debug(f"Room {room_id} is not encrypted. Checking if we should enable encryption.")
+                # Check if encryption is enabled in the config
+                encryption_enabled = False
+                if ("encryption" in config["matrix"] and config["matrix"]["encryption"].get("enabled", False)) or \
+                   ("e2ee" in config["matrix"] and config["matrix"]["e2ee"].get("enabled", False)):
+                    encryption_enabled = True
+
+                if encryption_enabled:
+                    logger.debug(f"Enabling encryption for room {room_id}")
+                    try:
+                        # Enable encryption for the room
+                        await matrix_client.room_send(
+                            room_id=room_id,
+                            message_type="m.room.encryption",
+                            content={
+                                "algorithm": "m.megolm.v1.aes-sha2",
+                                "rotation_period_ms": 604800000,  # 1 week
+                                "rotation_period_msgs": 100
+                            },
+                        )
+                        logger.info(f"Enabled encryption for room {room_id}")
+                        # Force a sync to update room state
+                        await matrix_client.sync(timeout=3000)
+                    except Exception as e:
+                        logger.warning(f"Failed to enable encryption for room {room_id}: {e}")
 
     # 3. Share group sessions for all encrypted rooms
     encrypted_rooms = [
@@ -324,8 +356,7 @@ async def connect_matrix(passed_config=None):
             # Upload encryption keys if needed
             if matrix_client.should_upload_keys:
                 logger.debug("Uploading encryption keys to server")
-                # Use the direct olm method to ensure we wait for completion
-                await matrix_client.olm.upload_keys()
+                await matrix_client.keys_upload()
 
             # Patch the client to handle unverified devices
             # This is a safer approach than monkey patching the OlmDevice class
@@ -415,8 +446,7 @@ async def connect_matrix(passed_config=None):
             if matrix_client.should_upload_keys:
                 logger.debug("Uploading encryption keys to server")
                 try:
-                    # Use the direct olm method to ensure we wait for completion
-                    await matrix_client.olm.upload_keys()
+                    await matrix_client.keys_upload()
                     logger.debug("Keys uploaded successfully")
                 except Exception as ke:
                     logger.warning(f"Error uploading keys: {ke}")
@@ -676,8 +706,7 @@ async def matrix_relay(
                                 "Uploading encryption keys before sending message"
                             )
                             try:
-                                # Use the direct olm method to ensure we wait for completion
-                                await matrix_client.olm.upload_keys()
+                                await matrix_client.keys_upload()
                                 logger.debug("Keys uploaded successfully")
                             except Exception as ke:
                                 logger.warning(f"Error uploading keys: {ke}")
@@ -979,8 +1008,7 @@ async def on_room_message(
 
                     # 2. Upload our keys
                     if matrix_client.should_upload_keys:
-                        # Use the direct olm method to ensure we wait for completion
-                        await matrix_client.olm.upload_keys()
+                        await matrix_client.keys_upload()
                         logger.debug(f"Uploaded keys for {sender}")
 
                     # 3. Request keys from the sender
