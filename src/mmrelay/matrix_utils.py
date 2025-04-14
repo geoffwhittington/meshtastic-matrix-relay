@@ -574,6 +574,16 @@ async def matrix_relay(
             room = matrix_client.rooms.get(room_id)
             is_encrypted = room and room.encrypted
 
+            # Debug room encryption status
+            if room:
+                logger.debug(f"Room {room_id} encryption status: {room.encrypted}")
+                # Check if the room has encryption event
+                for event in room.state.values():
+                    if isinstance(event, RoomEncryptionEvent):
+                        logger.debug(f"Room {room_id} has encryption event: {event}")
+            else:
+                logger.debug(f"Room {room_id} not found in client's rooms")
+
             if is_encrypted:
                 logger.debug(f"Room {room_id} is encrypted, sending with encryption")
 
@@ -618,10 +628,22 @@ async def matrix_relay(
 
                         # Force sharing a new group session to ensure all devices get keys
                         logger.debug(f"Sharing new group session for room {room_id}")
-                        await matrix_client.share_group_session(
-                            room_id, ignore_unverified_devices=True
-                        )
-                        logger.debug(f"Shared new group session for room {room_id}")
+                        try:
+                            # First try to share a group session
+                            await matrix_client.share_group_session(
+                                room_id, ignore_unverified_devices=True
+                            )
+                            logger.debug(f"Shared new group session for room {room_id}")
+                        except Exception as share_error:
+                            logger.warning(f"Error sharing group session: {share_error}")
+                            # Try a more direct approach if the first one fails
+                            if matrix_client.olm and hasattr(matrix_client.olm, "share_group_session"):
+                                try:
+                                    # Try the direct olm method
+                                    await matrix_client.olm.share_group_session(room_id, ignore_unverified_devices=True)
+                                    logger.debug(f"Shared new group session using direct olm method for room {room_id}")
+                                except Exception as direct_share_error:
+                                    logger.warning(f"Error sharing group session with direct method: {direct_share_error}")
                 except Exception as e:
                     logger.warning(f"Error sharing group session: {e}")
             else:
