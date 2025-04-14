@@ -633,20 +633,16 @@ async def matrix_relay(
                                     matrix_client.verify_device(device)
                                     logger.debug(f"Verified device {device.device_id} for user {user_id}")
 
-                        # Make sure we have keys uploaded
-                        logger.debug("Uploading encryption keys before sending message")
-                        try:
-                            # Use the direct olm method to ensure we wait for completion
-                            await matrix_client.olm.upload_keys()
-                            logger.debug("Keys uploaded successfully using direct olm method")
-                        except Exception as ke:
-                            logger.warning(f"Error uploading keys with direct method: {ke}")
-                            # Fall back to standard method
+                        # Check if keys need to be uploaded
+                        if matrix_client.should_upload_keys:
+                            logger.debug("Uploading encryption keys before sending message")
                             try:
                                 await matrix_client.keys_upload()
-                                logger.debug("Keys uploaded successfully with standard method")
-                            except Exception as ke2:
-                                logger.warning(f"Error uploading keys with standard method: {ke2}")
+                                logger.debug("Keys uploaded successfully")
+                            except Exception as ke:
+                                logger.warning(f"Error uploading keys: {ke}")
+                        else:
+                            logger.debug("No key upload needed before sending message")
 
                         # Build a list of all devices in the room
                         users_devices = {}
@@ -1428,12 +1424,12 @@ async def login_matrix_bot(
 
     # Create a Matrix client for login
     ssl_context = ssl.create_default_context(cafile=certifi.where())
-    client_config = AsyncClientConfig(store_sync_tokens=True)
+    client_config = AsyncClientConfig(store_sync_tokens=True, encryption_enabled=True)
 
     # Check if we have existing credentials to reuse the device_id
     existing_device_id = None
     try:
-        from mmrelay.config import get_base_dir
+        from mmrelay.config import get_base_dir, get_e2ee_store_dir
         config_dir = get_base_dir()
         credentials_path = os.path.join(config_dir, "credentials.json")
 
@@ -1446,8 +1442,21 @@ async def login_matrix_bot(
     except Exception as e:
         logger.debug(f"Could not load existing credentials: {e}")
 
-    # Initialize client with existing device_id if available
-    client = AsyncClient(homeserver, username, device_id=existing_device_id, config=client_config, ssl=ssl_context)
+    # Get the E2EE store path
+    store_path = get_e2ee_store_dir()
+    os.makedirs(store_path, exist_ok=True)
+    logger.info(f"Using E2EE store path: {store_path}")
+
+    # Check if store directory contains database files
+    store_files = os.listdir(store_path) if os.path.exists(store_path) else []
+    db_files = [f for f in store_files if f.endswith('.db')]
+    if db_files:
+        logger.info(f"Found existing E2EE store files: {', '.join(db_files)}")
+    else:
+        logger.warning("No existing E2EE store files found. Encryption may not work correctly.")
+
+    # Initialize client with existing device_id if available and store_path for E2EE
+    client = AsyncClient(homeserver, username, device_id=existing_device_id, config=client_config, ssl=ssl_context, store_path=store_path)
 
     # Login
     logger.info(f"Logging in as {username} to {homeserver}...")

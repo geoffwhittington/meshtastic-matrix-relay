@@ -131,20 +131,19 @@ async def main(config):
         except Exception as ve:
             matrix_logger.debug(f"Device verification info: {ve}")
 
-        # 2. Upload encryption keys
-        matrix_logger.debug("Uploading encryption keys...")
-        try:
-            # Use the direct olm method to ensure we wait for completion
-            await matrix_client.olm.upload_keys()
-            matrix_logger.debug("Encryption keys uploaded successfully using direct olm method")
-        except Exception as ke:
-            matrix_logger.debug(f"Key upload info: {ke}")
-            # Fall back to standard method
+        # 2. Check if keys need to be uploaded and upload them if needed
+        matrix_logger.debug("Checking if encryption keys need to be uploaded...")
+        matrix_logger.debug(f"should_upload_keys = {matrix_client.should_upload_keys}")
+
+        if matrix_client.should_upload_keys:
+            matrix_logger.debug("Uploading encryption keys...")
             try:
                 await matrix_client.keys_upload()
-                matrix_logger.debug("Encryption keys uploaded successfully with standard method")
-            except Exception as ke2:
-                matrix_logger.debug(f"Error uploading keys with standard method: {ke2}")
+                matrix_logger.debug("Encryption keys uploaded successfully")
+            except Exception as ke:
+                matrix_logger.warning(f"Error uploading keys: {ke}")
+        else:
+            matrix_logger.debug("No key upload needed")
 
         # 3. Perform another sync to ensure everything is up-to-date
         matrix_logger.debug("Performing sync to update encryption state...")
