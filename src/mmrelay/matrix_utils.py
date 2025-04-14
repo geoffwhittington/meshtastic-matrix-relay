@@ -304,12 +304,16 @@ async def connect_matrix(passed_config=None):
             matrix_client.load_store()
             logger.debug("Encryption store loaded successfully")
 
-            # Upload encryption keys if needed
-            logger.debug(f"should_upload_keys = {matrix_client.should_upload_keys}")
-            if matrix_client.should_upload_keys:
-                logger.debug("Uploading encryption keys to server")
+            # Always try to upload keys to ensure they're properly registered
+            logger.debug("Uploading encryption keys to server")
+            try:
                 await matrix_client.keys_upload()
                 logger.debug("Encryption keys uploaded successfully")
+            except Exception as ke:
+                if "No key upload needed" in str(ke):
+                    logger.debug("No key upload needed")
+                else:
+                    logger.warning(f"Error uploading keys: {ke}")
 
             # Patch the client to handle unverified devices
             # This is a safer approach than monkey patching the OlmDevice class
@@ -689,6 +693,13 @@ async def matrix_relay(
                         # Force sharing a new group session for this room
                         logger.debug(f"Sharing new group session for room {room_id}")
                         try:
+                            # Make sure the store is loaded
+                            try:
+                                matrix_client.load_store()
+                                logger.debug("Encryption store loaded successfully")
+                            except Exception as le:
+                                logger.warning(f"Error loading encryption store: {le}")
+
                             # Always use ignore_unverified_devices=True to ensure messages can be sent
                             await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
                             logger.debug(f"Shared new group session for room {room_id}")
@@ -1496,12 +1507,15 @@ async def login_matrix_bot(
     logger.info(f"Logging in as {username} to {homeserver}...")
     # Login with the existing device_id if available, otherwise let the server assign one
     try:
+        # Use a consistent device name to help with identification
+        device_name = "mmrelay-e2ee"
+
         # If we have an existing device_id, use it to maintain encryption keys
         if existing_device_id:
-            response = await client.login(password, device_id=existing_device_id)
+            response = await client.login(password, device_name=device_name, device_id=existing_device_id)
         else:
-            # Let the server assign a new device_id
-            response = await client.login(password)
+            # Let the server assign a new device_id but use our consistent device name
+            response = await client.login(password, device_name=device_name)
     except Exception as e:
         logger.error(f"Error during login: {e}")
         await client.close()

@@ -111,7 +111,16 @@ async def main(config):
         ("e2ee" in config["matrix"] and config["matrix"]["e2ee"].get("enabled", False))) and matrix_client.olm:
         matrix_logger.info("Initializing end-to-end encryption...")
 
-        # 1. Verify all devices to ensure encryption works
+        # 1. Make sure the store is loaded
+        matrix_logger.debug("Loading encryption store...")
+        try:
+            # Explicitly load the store
+            matrix_client.load_store()
+            matrix_logger.debug("Encryption store loaded successfully")
+        except Exception as le:
+            matrix_logger.warning(f"Error loading encryption store: {le}")
+
+        # 2. Verify all devices to ensure encryption works
         matrix_logger.debug("Verifying devices for encryption...")
         try:
             # Verify our own device first
