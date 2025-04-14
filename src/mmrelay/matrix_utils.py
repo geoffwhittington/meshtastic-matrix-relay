@@ -225,12 +225,45 @@ async def connect_matrix(passed_config=None):
             logger.error(
                 "E2EE requires a valid device_id. E2EE may not work correctly."
             )
-        matrix_client.device_id = None
+        # Don't reset the device_id to None if we already have one from credentials
+        if not matrix_client.device_id:
+            logger.error("No device_id available. E2EE will not work correctly.")
     else:
-        # Always use the device_id from whoami for consistency
-        matrix_client.device_id = whoami_response.device_id
-        if matrix_client.device_id:
-            logger.info(f"Using device_id from server: {matrix_client.device_id}")
+        # Check if the device_id from whoami matches our credentials
+        server_device_id = whoami_response.device_id
+        if server_device_id:
+            if not matrix_client.device_id:
+                # If we don't have a device_id from credentials, use the one from whoami
+                matrix_client.device_id = server_device_id
+                logger.info(f"Using device_id from server: {matrix_client.device_id}")
+
+                # Update credentials.json with the correct device_id
+                if credentials and credentials_path:
+                    try:
+                        credentials["device_id"] = server_device_id
+                        with open(credentials_path, "w") as f:
+                            json.dump(credentials, f)
+                        logger.info(f"Updated credentials.json with device_id: {server_device_id}")
+                    except Exception as e:
+                        logger.warning(f"Failed to update credentials.json: {e}")
+            elif matrix_client.device_id != server_device_id:
+                # If the device_id from credentials doesn't match the server, update it
+                logger.warning(f"Device ID mismatch: credentials={matrix_client.device_id}, server={server_device_id}")
+                logger.info(f"Updating device_id to match server: {server_device_id}")
+                matrix_client.device_id = server_device_id
+
+                # Update credentials.json with the correct device_id
+                if credentials and credentials_path:
+                    try:
+                        credentials["device_id"] = server_device_id
+                        with open(credentials_path, "w") as f:
+                            json.dump(credentials, f)
+                        logger.info(f"Updated credentials.json with device_id: {server_device_id}")
+                    except Exception as e:
+                        logger.warning(f"Failed to update credentials.json: {e}")
+            else:
+                # Device IDs match, all good
+                logger.info(f"Using verified device_id: {matrix_client.device_id}")
         else:
             logger.error(
                 "No device_id returned by whoami(). E2EE will not work correctly."
@@ -1389,14 +1422,36 @@ async def login_matrix_bot(
     # Create a Matrix client for login
     ssl_context = ssl.create_default_context(cafile=certifi.where())
     client_config = AsyncClientConfig(store_sync_tokens=True)
-    # Initialize client exactly like m2m-lite does
-    client = AsyncClient(homeserver, username, device_id="mmrelay", config=client_config, ssl=ssl_context)
+
+    # Check if we have existing credentials to reuse the device_id
+    existing_device_id = None
+    try:
+        from mmrelay.config import get_base_dir
+        config_dir = get_base_dir()
+        credentials_path = os.path.join(config_dir, "credentials.json")
+
+        if os.path.exists(credentials_path):
+            with open(credentials_path, "r") as f:
+                existing_creds = json.load(f)
+                if "device_id" in existing_creds and existing_creds["user_id"] == username:
+                    existing_device_id = existing_creds["device_id"]
+                    logger.info(f"Reusing existing device_id: {existing_device_id}")
+    except Exception as e:
+        logger.debug(f"Could not load existing credentials: {e}")
+
+    # Initialize client with existing device_id if available
+    client = AsyncClient(homeserver, username, device_id=existing_device_id, config=client_config, ssl=ssl_context)
 
     # Login
     logger.info(f"Logging in as {username} to {homeserver}...")
-    # Login exactly like m2m-lite does
+    # Login with the existing device_id if available, otherwise let the server assign one
     try:
-        response = await client.login(password)
+        # If we have an existing device_id, use it to maintain encryption keys
+        if existing_device_id:
+            response = await client.login(password, device_id=existing_device_id)
+        else:
+            # Let the server assign a new device_id
+            response = await client.login(password)
     except Exception as e:
         logger.error(f"Error during login: {e}")
         await client.close()
