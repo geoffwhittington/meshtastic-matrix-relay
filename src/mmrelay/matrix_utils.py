@@ -625,21 +625,23 @@ async def matrix_relay(
                         # Force sharing a new group session to ensure all devices get keys
                         logger.debug(f"Sharing new group session for room {room_id}")
                         try:
-                            # First try to share a group session
+                            # Verify all devices in the room first
+                            if matrix_client.device_store:
+                                for user_id in matrix_client.rooms[room_id].users:
+                                    if user_id == matrix_client.user_id:
+                                        continue
+                                    if user_id in matrix_client.device_store.users:
+                                        for device in matrix_client.device_store.active_user_devices(user_id):
+                                            matrix_client.verify_device(device)
+                                            logger.debug(f"Verified device {device.device_id} for user {user_id}")
+
+                            # Share a group session with ignore_unverified_devices=True
                             await matrix_client.share_group_session(
                                 room_id, ignore_unverified_devices=True
                             )
                             logger.debug(f"Shared new group session for room {room_id}")
                         except Exception as share_error:
                             logger.warning(f"Error sharing group session: {share_error}")
-                            # Try a more direct approach if the first one fails
-                            if matrix_client.olm and hasattr(matrix_client.olm, "share_group_session"):
-                                try:
-                                    # Try the direct olm method
-                                    await matrix_client.olm.share_group_session(room_id, ignore_unverified_devices=True)
-                                    logger.debug(f"Shared new group session using direct olm method for room {room_id}")
-                                except Exception as direct_share_error:
-                                    logger.warning(f"Error sharing group session with direct method: {direct_share_error}")
                 except Exception as e:
                     logger.warning(f"Error sharing group session: {e}")
             else:

@@ -111,50 +111,52 @@ async def main(config):
         ("e2ee" in config["matrix"] and config["matrix"]["e2ee"].get("enabled", False))) and matrix_client.olm:
         matrix_logger.info("Initializing end-to-end encryption...")
 
-        # 1. Explicitly upload encryption keys and wait for completion
-        matrix_logger.debug("Explicitly uploading encryption keys...")
+        # 1. Verify all devices to ensure encryption works
+        matrix_logger.debug("Verifying devices for encryption...")
         try:
-            # First try the standard method
+            # Verify our own device first
+            if matrix_client.device_store and matrix_client.user_id in matrix_client.device_store.users:
+                for device in matrix_client.device_store.active_user_devices(matrix_client.user_id):
+                    matrix_client.verify_device(device)
+                    matrix_logger.debug(f"Verified our device: {device.device_id}")
+
+            # Verify all other devices
+            if matrix_client.device_store:
+                for user_id in matrix_client.device_store.users:
+                    if user_id == matrix_client.user_id:
+                        continue
+                    for device in matrix_client.device_store.active_user_devices(user_id):
+                        matrix_client.verify_device(device)
+                        matrix_logger.debug(f"Verified device {device.device_id} for user {user_id}")
+        except Exception as ve:
+            matrix_logger.debug(f"Device verification info: {ve}")
+
+        # 2. Upload encryption keys
+        matrix_logger.debug("Uploading encryption keys...")
+        try:
+            # Use the standard method
             await matrix_client.keys_upload()
             matrix_logger.debug("Encryption keys uploaded successfully")
-
-            # Then also try the direct olm method to ensure we wait for completion
-            if matrix_client.olm:
-                await matrix_client.olm.upload_keys()
-                matrix_logger.debug("Direct olm encryption keys uploaded successfully")
         except Exception as ke:
             matrix_logger.debug(f"Key upload info: {ke}")
 
-        # 2. Perform another short sync to confirm key upload and room encryption state
-        matrix_logger.debug("Performing short sync to confirm encryption setup...")
-        await matrix_client.sync(timeout=3000)  # 3 second timeout
+        # 3. Perform another sync to ensure everything is up-to-date
+        matrix_logger.debug("Performing sync to update encryption state...")
+        await matrix_client.sync(timeout=10000)  # 10 second timeout
 
-        # 3. Share group sessions for all encrypted rooms
+        # 4. Share group sessions for all encrypted rooms
         encrypted_rooms = [room_id for room_id, room in matrix_client.rooms.items() if room.encrypted]
         if encrypted_rooms:
             matrix_logger.debug(f"Sharing group sessions for {len(encrypted_rooms)} encrypted rooms")
             for room_id in encrypted_rooms:
                 try:
-                    # First try the standard method
+                    # Use ignore_unverified_devices=True to ensure messages can be sent
                     await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
                     matrix_logger.debug(f"Shared group session for room {room_id}")
                 except Exception as e:
                     matrix_logger.warning(f"Could not share group session for room {room_id}: {e}")
-                    # Try a more direct approach if the first one fails
-                    if matrix_client.olm and hasattr(matrix_client.olm, "share_group_session"):
-                        try:
-                            # Try the direct olm method
-                            await matrix_client.olm.share_group_session(room_id, ignore_unverified_devices=True)
-                            matrix_logger.debug(f"Shared group session using direct olm method for room {room_id}")
-                        except Exception as direct_e:
-                            matrix_logger.warning(f"Could not share group session with direct method for room {room_id}: {direct_e}")
         else:
             matrix_logger.debug("No encrypted rooms found")
-
-            # Check if any rooms should be encrypted but aren't
-            for room_id, room in matrix_client.rooms.items():
-                if not room.encrypted:
-                    matrix_logger.debug(f"Room {room_id} is not encrypted")
 
         matrix_logger.info("End-to-end encryption initialization complete")
 
