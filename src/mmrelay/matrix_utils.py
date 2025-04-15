@@ -373,6 +373,8 @@ async def connect_matrix(passed_config=None):
                 logger.warning("No rooms found after sync. Message delivery may not work correctly.")
             else:
                 logger.info(f"Verified {len(matrix_client.rooms)} rooms are available for message delivery")
+                # Log the room IDs for debugging
+                logger.debug(f"Available rooms: {list(matrix_client.rooms.keys())}")
 
             # Trust all of our own devices to ensure encryption works
             logger.debug("Trusting our own devices for encryption...")
@@ -684,6 +686,9 @@ async def matrix_relay(
                     await matrix_client.sync(
                         timeout=15000
                     )  # Increased timeout for better reliability
+
+                    # Log the rooms we have after sync
+                    logger.debug(f"Rooms after sync: {list(matrix_client.rooms.keys())}")
 
                     # Force the room to be added to the client's rooms if it's not there yet
                     # This is a workaround for the sync not always adding the room
