@@ -374,6 +374,36 @@ async def connect_matrix(passed_config=None):
             else:
                 logger.info(f"Verified {len(matrix_client.rooms)} rooms are available for message delivery")
 
+            # Trust all of our own devices to ensure encryption works
+            logger.debug("Trusting our own devices for encryption...")
+            try:
+                # Get all of our devices from the device store
+                my_devices = matrix_client.device_store.get(matrix_client.user_id, {})
+
+                if my_devices:
+                    logger.info(f"Found {len(my_devices)} of our own devices in the device store")
+
+                    # Trust each of our devices
+                    for device_id, device in my_devices.items():
+                        if not device.verified:
+                            try:
+                                matrix_client.verify_device(device)
+                                logger.info(f"Trusted own device {device_id}")
+                            except Exception as e:
+                                logger.error(f"Failed to trust device {device_id}: {e}")
+                        else:
+                            logger.debug(f"Device {device_id} already trusted")
+
+                    # Specifically log about our current device
+                    if matrix_client.device_id in my_devices:
+                        logger.info(f"Confirmed our current device is trusted: {matrix_client.device_id}")
+                    else:
+                        logger.warning(f"Our current device {matrix_client.device_id} not found in device store")
+                else:
+                    logger.warning("Our user not found in device store. Encryption may not work correctly.")
+            except Exception as ve:
+                logger.warning(f"Error verifying devices: {ve}")
+
             # Patch the client to handle unverified devices
             # This is a safer approach than monkey patching the OlmDevice class
             original_encrypt_for_devices = None
@@ -723,7 +753,27 @@ async def matrix_relay(
                 try:
                     # Ensure we have shared a group session
                     if matrix_client.olm:
-                        # First, verify ALL devices in the room to ensure encryption works
+                        # First, trust our own devices
+                        logger.debug("Trusting our own devices before sending encrypted message...")
+                        try:
+                            # Get all of our devices from the device store
+                            my_devices = matrix_client.device_store.get(matrix_client.user_id, {})
+
+                            if my_devices:
+                                # Trust each of our devices
+                                for device_id, device in my_devices.items():
+                                    if not device.verified:
+                                        try:
+                                            matrix_client.verify_device(device)
+                                            logger.debug(f"Trusted own device {device_id}")
+                                        except Exception as e:
+                                            logger.warning(f"Failed to trust device {device_id}: {e}")
+                            else:
+                                logger.warning("Our user not found in device store. Encryption may not work correctly.")
+                        except Exception as ve:
+                            logger.warning(f"Error verifying own devices: {ve}")
+
+                        # Then, verify ALL other devices in the room to ensure encryption works
                         logger.debug(f"Verifying all devices in room {room_id}")
                         if matrix_client.device_store:
                             for user_id in room.users:
