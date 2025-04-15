@@ -229,6 +229,29 @@ async def connect_matrix(passed_config=None):
     matrix_client.access_token = matrix_access_token
     matrix_client.user_id = bot_user_id
 
+    # =====================================================================
+    # MATRIX E2EE IMPLEMENTATION - CRITICAL SEQUENCE
+    # =====================================================================
+    # The sequence of operations is critical for proper E2EE functionality:
+    #
+    # 1. First, perform an early lightweight sync to initialize rooms and subscriptions
+    #    This is critical for message delivery to work properly. Without this sync,
+    #    the client would have no known rooms when messages are sent, causing silent failures.
+    #    This sync populates matrix_client.rooms with the room objects needed for message delivery.
+    #
+    # 2. After this initial sync, we'll retrieve the device_id, verify credentials,
+    #    load the encryption store, and upload keys BEFORE the main sync.
+    #
+    # 3. Only then will we perform the main sync that updates encryption state.
+    #
+    # This sequence ensures both proper message delivery AND encryption.
+    # =====================================================================
+
+    # Step 1: Early lightweight sync to initialize rooms and subscriptions
+    logger.info("Performing early lightweight sync to initialize rooms...")
+    await matrix_client.sync(timeout=2000)
+    logger.info(f"Early sync completed with {len(matrix_client.rooms)} rooms")
+
     # Retrieve the device_id using whoami() - this is critical for E2EE
     whoami_response = await matrix_client.whoami()
     if isinstance(whoami_response, WhoamiError):
@@ -288,6 +311,20 @@ async def connect_matrix(passed_config=None):
     else:
         bot_user_name = bot_user_id  # Fallback if display name is not set
 
+    # =====================================================================
+    # MATRIX E2EE IMPLEMENTATION - ENCRYPTION SETUP
+    # =====================================================================
+    # This section handles the critical encryption setup sequence:
+    # 1. Load the encryption store (contains keys and device information)
+    # 2. Upload keys BEFORE performing the main sync
+    # 3. Perform sync AFTER key upload
+    # 4. Verify that rooms are properly populated
+    #
+    # This sequence is critical for proper encryption. If keys are not uploaded
+    # before the first sync that handles encrypted messages, the first message
+    # will fail to encrypt properly ("waiting for this message" error in Element).
+    # =====================================================================
+
     # If E2EE is enabled, load the store and set up encryption
     if e2ee_enabled:
         try:
@@ -304,16 +341,38 @@ async def connect_matrix(passed_config=None):
             matrix_client.load_store()
             logger.debug("Encryption store loaded successfully")
 
-            # Always try to upload keys to ensure they're properly registered
-            logger.debug("Uploading encryption keys to server")
+            # Debug store state
+            logger.debug(f"E2EE store path: {e2ee_store_path}")
+            logger.debug(f"Device store users immediately after load: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
+
+            # Confirm client credentials are set
+            logger.debug(f"Checking client credentials: user_id={matrix_client.user_id}, device_id={matrix_client.device_id}")
+            if not (matrix_client.user_id and matrix_client.device_id and matrix_client.access_token):
+                logger.warning("Missing essential credentials for E2EE. Encryption may not work correctly.")
+
+            # Upload keys BEFORE first sync
+            logger.debug("Uploading encryption keys to server BEFORE sync")
             try:
-                await matrix_client.keys_upload()
-                logger.debug("Encryption keys uploaded successfully")
-            except Exception as ke:
-                if "No key upload needed" in str(ke):
-                    logger.debug("No key upload needed")
+                if matrix_client.should_upload_keys:
+                    await matrix_client.keys_upload()
+                    logger.debug("Encryption keys uploaded successfully")
                 else:
-                    logger.warning(f"Error uploading keys: {ke}")
+                    logger.debug("No key upload needed at this stage")
+            except Exception as ke:
+                logger.warning(f"Error uploading keys: {ke}")
+
+            # Now perform sync after keys are uploaded
+            logger.debug("Performing sync AFTER key upload")
+            await matrix_client.sync(timeout=5000)
+
+            # Debug store state after sync
+            logger.debug(f"Device store users after sync: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
+
+            # Verify that rooms are properly populated
+            if not matrix_client.rooms:
+                logger.warning("No rooms found after sync. Message delivery may not work correctly.")
+            else:
+                logger.info(f"Verified {len(matrix_client.rooms)} rooms are available for message delivery")
 
             # Patch the client to handle unverified devices
             # This is a safer approach than monkey patching the OlmDevice class
@@ -641,6 +700,22 @@ async def matrix_relay(
             else:
                 logger.debug(f"Room {room_id} not found in client's rooms")
 
+            # =====================================================================
+            # MATRIX E2EE IMPLEMENTATION - MESSAGE ENCRYPTION
+            # =====================================================================
+            # This section handles the encryption of outgoing messages:
+            # 1. Verify all devices in the room to ensure encryption works
+            # 2. Load the encryption store to ensure keys are available
+            # 3. Upload keys BEFORE sharing group session
+            # 4. Share group session for the room
+            # 5. Perform sync AFTER sharing group session
+            # 6. Send the encrypted message
+            #
+            # This sequence is critical for proper message encryption. If any step
+            # is skipped or performed out of order, messages may fail to encrypt
+            # properly or may not be decryptable by recipients.
+            # =====================================================================
+
             if is_encrypted:
                 logger.debug(f"Room {room_id} is encrypted, sending with encryption")
 
@@ -661,16 +736,30 @@ async def matrix_relay(
                                     matrix_client.verify_device(device)
                                     logger.debug(f"Verified device {device.device_id} for user {user_id}")
 
-                        # Always try to upload keys to ensure they're properly registered
-                        logger.debug("Uploading encryption keys before sending message")
+                        # Make sure the store is loaded
                         try:
-                            await matrix_client.keys_upload()
-                            logger.debug("Keys uploaded successfully")
-                        except Exception as ke:
-                            if "No key upload needed" in str(ke):
-                                logger.debug("No key upload needed before sending message")
+                            matrix_client.load_store()
+                            logger.debug("Encryption store loaded successfully")
+                        except Exception as le:
+                            logger.warning(f"Error loading encryption store: {le}")
+
+                        # Debug device store state
+                        logger.debug(f"Device store users before key operations: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
+
+                        # Upload keys BEFORE sync
+                        logger.debug("Uploading encryption keys BEFORE sync")
+                        try:
+                            if matrix_client.should_upload_keys:
+                                await matrix_client.keys_upload()
+                                logger.debug("Keys uploaded successfully")
                             else:
-                                logger.warning(f"Error uploading keys: {ke}")
+                                logger.debug("No key upload needed before sending message")
+                        except Exception as ke:
+                            logger.warning(f"Error uploading keys: {ke}")
+
+                        # Perform sync AFTER key upload
+                        logger.debug("Performing sync AFTER key upload")
+                        await matrix_client.sync(timeout=3000)
 
                         # Build a list of all devices in the room
                         users_devices = {}
@@ -681,6 +770,9 @@ async def matrix_relay(
                                 if devices:
                                     users_devices[user_id] = [device.device_id for device in devices]
 
+                        # Debug users_devices
+                        logger.debug(f"Users devices before key claim: {users_devices}")
+
                         # Claim keys for all devices
                         if users_devices:
                             logger.debug(f"Claiming keys for {len(users_devices)} users in room {room_id}")
@@ -689,6 +781,8 @@ async def matrix_relay(
                                 logger.debug("Keys claimed successfully")
                             except Exception as ke:
                                 logger.warning(f"Error claiming keys: {ke}")
+                        else:
+                            logger.debug("No devices found for keys_claim, skipping attempt")
 
                         # Force sharing a new group session for this room
                         logger.debug(f"Sharing new group session for room {room_id}")
@@ -700,9 +794,21 @@ async def matrix_relay(
                             except Exception as le:
                                 logger.warning(f"Error loading encryption store: {le}")
 
-                            # Always use ignore_unverified_devices=True to ensure messages can be sent
-                            await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
-                            logger.debug(f"Shared new group session for room {room_id}")
+                            # Implement exponential backoff retry for sharing group session
+                            import asyncio
+                            max_attempts = 3
+                            for attempt in range(max_attempts):
+                                try:
+                                    # Always use ignore_unverified_devices=True to ensure messages can be sent
+                                    await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
+                                    logger.debug(f"Shared new group session for room {room_id} on attempt {attempt + 1}")
+                                    break
+                                except Exception as share_error:
+                                    logger.warning(f"Group session sharing failed attempt {attempt + 1}: {share_error}")
+                                    if attempt < max_attempts - 1:  # Don't sleep on the last attempt
+                                        await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                                    else:
+                                        raise  # Re-raise on last attempt
 
                             # Perform a short sync to ensure the group session is properly registered
                             logger.debug("Performing short sync to update encryption state...")
