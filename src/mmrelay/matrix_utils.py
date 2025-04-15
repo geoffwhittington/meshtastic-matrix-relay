@@ -229,6 +229,12 @@ async def connect_matrix(passed_config=None):
     matrix_client.access_token = matrix_access_token
     matrix_client.user_id = bot_user_id
 
+    # Perform an early lightweight sync to initialize rooms and subscriptions
+    # This is critical for message delivery to work properly
+    logger.info("Performing early lightweight sync to initialize rooms...")
+    await matrix_client.sync(timeout=2000)
+    logger.info(f"Early sync completed with {len(matrix_client.rooms)} rooms")
+
     # Retrieve the device_id using whoami() - this is critical for E2EE
     whoami_response = await matrix_client.whoami()
     if isinstance(whoami_response, WhoamiError):
@@ -330,6 +336,12 @@ async def connect_matrix(passed_config=None):
 
             # Debug store state after sync
             logger.debug(f"Device store users after sync: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
+
+            # Verify that rooms are properly populated
+            if not matrix_client.rooms:
+                logger.warning("No rooms found after sync. Message delivery may not work correctly.")
+            else:
+                logger.info(f"Verified {len(matrix_client.rooms)} rooms are available for message delivery")
 
             # Patch the client to handle unverified devices
             # This is a safer approach than monkey patching the OlmDevice class

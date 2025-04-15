@@ -144,6 +144,12 @@ async def main(config):
         await matrix_client.sync(timeout=5000)
         matrix_logger.debug(f"Device store users after sync: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
 
+        # Verify that rooms are properly populated
+        if not matrix_client.rooms:
+            matrix_logger.warning("No rooms found after sync. Message delivery may not work correctly.")
+        else:
+            matrix_logger.info(f"Verified {len(matrix_client.rooms)} rooms are available for message delivery")
+
         # 2. Verify all devices to ensure encryption works
         matrix_logger.debug("Verifying devices for encryption...")
         try:
