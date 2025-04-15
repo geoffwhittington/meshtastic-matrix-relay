@@ -168,14 +168,14 @@ async def main(config):
         # 2. Trust all of our own devices to ensure encryption works
         matrix_logger.debug("Trusting our own devices for encryption...")
         try:
-            # Get all of our devices from the device store
-            my_devices = matrix_client.device_store.get(matrix_client.user_id, {})
+            # Fetch our own device keys using the client API
+            response = await matrix_client.device_keys(matrix_client.user_id)
 
-            if my_devices:
-                matrix_logger.info(f"Found {len(my_devices)} of our own devices in the device store")
+            if response and hasattr(response, 'devices'):
+                matrix_logger.info(f"Found {len(response.devices)} of our own devices")
 
                 # Trust each of our devices
-                for device_id, device in my_devices.items():
+                for device_id, device in response.devices.items():
                     if not device.verified:
                         try:
                             matrix_client.verify_device(device)
@@ -186,12 +186,12 @@ async def main(config):
                         matrix_logger.debug(f"Device {device_id} already trusted")
 
                 # Specifically log about our current device
-                if matrix_client.device_id in my_devices:
+                if matrix_client.device_id in response.devices:
                     matrix_logger.info(f"Confirmed our current device is trusted: {matrix_client.device_id}")
                 else:
-                    matrix_logger.warning(f"Our current device {matrix_client.device_id} not found in device store")
+                    matrix_logger.warning(f"Our current device {matrix_client.device_id} not found in device list")
             else:
-                matrix_logger.warning("Our user not found in device store. Encryption may not work correctly.")
+                matrix_logger.warning("Failed to fetch our own devices. Encryption may not work correctly.")
 
             # Verify all other devices
             if matrix_client.device_store:

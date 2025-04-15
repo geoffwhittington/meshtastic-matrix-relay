@@ -377,14 +377,14 @@ async def connect_matrix(passed_config=None):
             # Trust all of our own devices to ensure encryption works
             logger.debug("Trusting our own devices for encryption...")
             try:
-                # Get all of our devices from the device store
-                my_devices = matrix_client.device_store.get(matrix_client.user_id, {})
+                # Fetch our own device keys using the client API
+                response = await matrix_client.device_keys(matrix_client.user_id)
 
-                if my_devices:
-                    logger.info(f"Found {len(my_devices)} of our own devices in the device store")
+                if response and hasattr(response, 'devices'):
+                    logger.info(f"Found {len(response.devices)} of our own devices")
 
                     # Trust each of our devices
-                    for device_id, device in my_devices.items():
+                    for device_id, device in response.devices.items():
                         if not device.verified:
                             try:
                                 matrix_client.verify_device(device)
@@ -395,12 +395,12 @@ async def connect_matrix(passed_config=None):
                             logger.debug(f"Device {device_id} already trusted")
 
                     # Specifically log about our current device
-                    if matrix_client.device_id in my_devices:
+                    if matrix_client.device_id in response.devices:
                         logger.info(f"Confirmed our current device is trusted: {matrix_client.device_id}")
                     else:
-                        logger.warning(f"Our current device {matrix_client.device_id} not found in device store")
+                        logger.warning(f"Our current device {matrix_client.device_id} not found in device list")
                 else:
-                    logger.warning("Our user not found in device store. Encryption may not work correctly.")
+                    logger.warning("Failed to fetch our own devices. Encryption may not work correctly.")
             except Exception as ve:
                 logger.warning(f"Error verifying devices: {ve}")
 
@@ -756,20 +756,24 @@ async def matrix_relay(
                         # First, trust our own devices
                         logger.debug("Trusting our own devices before sending encrypted message...")
                         try:
-                            # Get all of our devices from the device store
-                            my_devices = matrix_client.device_store.get(matrix_client.user_id, {})
+                            # Fetch our own device keys using the client API
+                            response = await matrix_client.device_keys(matrix_client.user_id)
 
-                            if my_devices:
+                            if response and hasattr(response, 'devices'):
                                 # Trust each of our devices
-                                for device_id, device in my_devices.items():
+                                for device_id, device in response.devices.items():
                                     if not device.verified:
                                         try:
                                             matrix_client.verify_device(device)
                                             logger.debug(f"Trusted own device {device_id}")
                                         except Exception as e:
                                             logger.warning(f"Failed to trust device {device_id}: {e}")
+
+                                # Specifically check our current device
+                                if matrix_client.device_id in response.devices:
+                                    logger.debug(f"Confirmed our current device is trusted: {matrix_client.device_id}")
                             else:
-                                logger.warning("Our user not found in device store. Encryption may not work correctly.")
+                                logger.warning("Failed to fetch our own devices. Encryption may not work correctly.")
                         except Exception as ve:
                             logger.warning(f"Error verifying own devices: {ve}")
 
