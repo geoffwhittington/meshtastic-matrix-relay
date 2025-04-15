@@ -229,8 +229,25 @@ async def connect_matrix(passed_config=None):
     matrix_client.access_token = matrix_access_token
     matrix_client.user_id = bot_user_id
 
-    # Perform an early lightweight sync to initialize rooms and subscriptions
-    # This is critical for message delivery to work properly
+    # =====================================================================
+    # MATRIX E2EE IMPLEMENTATION - CRITICAL SEQUENCE
+    # =====================================================================
+    # The sequence of operations is critical for proper E2EE functionality:
+    #
+    # 1. First, perform an early lightweight sync to initialize rooms and subscriptions
+    #    This is critical for message delivery to work properly. Without this sync,
+    #    the client would have no known rooms when messages are sent, causing silent failures.
+    #    This sync populates matrix_client.rooms with the room objects needed for message delivery.
+    #
+    # 2. After this initial sync, we'll retrieve the device_id, verify credentials,
+    #    load the encryption store, and upload keys BEFORE the main sync.
+    #
+    # 3. Only then will we perform the main sync that updates encryption state.
+    #
+    # This sequence ensures both proper message delivery AND encryption.
+    # =====================================================================
+
+    # Step 1: Early lightweight sync to initialize rooms and subscriptions
     logger.info("Performing early lightweight sync to initialize rooms...")
     await matrix_client.sync(timeout=2000)
     logger.info(f"Early sync completed with {len(matrix_client.rooms)} rooms")
@@ -293,6 +310,20 @@ async def connect_matrix(passed_config=None):
         bot_user_name = response.displayname
     else:
         bot_user_name = bot_user_id  # Fallback if display name is not set
+
+    # =====================================================================
+    # MATRIX E2EE IMPLEMENTATION - ENCRYPTION SETUP
+    # =====================================================================
+    # This section handles the critical encryption setup sequence:
+    # 1. Load the encryption store (contains keys and device information)
+    # 2. Upload keys BEFORE performing the main sync
+    # 3. Perform sync AFTER key upload
+    # 4. Verify that rooms are properly populated
+    #
+    # This sequence is critical for proper encryption. If keys are not uploaded
+    # before the first sync that handles encrypted messages, the first message
+    # will fail to encrypt properly ("waiting for this message" error in Element).
+    # =====================================================================
 
     # If E2EE is enabled, load the store and set up encryption
     if e2ee_enabled:
@@ -668,6 +699,22 @@ async def matrix_relay(
                 logger.debug(f"Room {room_id} encryption status: {room.encrypted}")
             else:
                 logger.debug(f"Room {room_id} not found in client's rooms")
+
+            # =====================================================================
+            # MATRIX E2EE IMPLEMENTATION - MESSAGE ENCRYPTION
+            # =====================================================================
+            # This section handles the encryption of outgoing messages:
+            # 1. Verify all devices in the room to ensure encryption works
+            # 2. Load the encryption store to ensure keys are available
+            # 3. Upload keys BEFORE sharing group session
+            # 4. Share group session for the room
+            # 5. Perform sync AFTER sharing group session
+            # 6. Send the encrypted message
+            #
+            # This sequence is critical for proper message encryption. If any step
+            # is skipped or performed out of order, messages may fail to encrypt
+            # properly or may not be decryptable by recipients.
+            # =====================================================================
 
             if is_encrypted:
                 logger.debug(f"Room {room_id} is encrypted, sending with encryption")

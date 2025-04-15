@@ -106,6 +106,21 @@ async def main(config):
         f"Initial sync completed with {len(matrix_client.rooms)} total rooms ({configured_rooms_found} configured rooms)"
     )
 
+    # =====================================================================
+    # MATRIX E2EE IMPLEMENTATION - MAIN INITIALIZATION
+    # =====================================================================
+    # This section handles the critical encryption initialization sequence:
+    # 1. Load the encryption store (contains keys and device information)
+    # 2. Verify client credentials are set properly
+    # 3. Upload keys BEFORE performing the main sync
+    # 4. Perform sync AFTER key upload
+    # 5. Verify devices and share group sessions
+    #
+    # This sequence is critical for proper encryption. If keys are not uploaded
+    # before the first sync that handles encrypted messages, the first message
+    # will fail to encrypt properly ("waiting for this message" error in Element).
+    # =====================================================================
+
     # If E2EE is enabled, properly initialize encryption
     if (("encryption" in config["matrix"] and config["matrix"]["encryption"].get("enabled", False)) or
         ("e2ee" in config["matrix"] and config["matrix"]["e2ee"].get("enabled", False))) and matrix_client.olm:
