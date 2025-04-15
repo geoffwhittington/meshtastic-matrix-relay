@@ -123,8 +123,24 @@ async def main(config):
         except Exception as le:
             matrix_logger.warning(f"Error loading encryption store: {le}")
 
-        # 1.5 Perform early sync to populate device store
-        matrix_logger.debug("Performing early sync to populate device store")
+        # Confirm client credentials are set
+        matrix_logger.debug(f"Checking client credentials: user_id={matrix_client.user_id}, device_id={matrix_client.device_id}")
+        if not (matrix_client.user_id and matrix_client.device_id and matrix_client.access_token):
+            matrix_logger.warning("Missing essential credentials for E2EE. Encryption may not work correctly.")
+
+        # 1.5 Upload keys BEFORE first sync
+        matrix_logger.debug("Uploading encryption keys to server BEFORE sync")
+        try:
+            if matrix_client.should_upload_keys:
+                await matrix_client.keys_upload()
+                matrix_logger.debug("Encryption keys uploaded successfully")
+            else:
+                matrix_logger.debug("No key upload needed at this stage")
+        except Exception as ke:
+            matrix_logger.warning(f"Error uploading keys: {ke}")
+
+        # 1.6 Perform sync AFTER key upload
+        matrix_logger.debug("Performing sync AFTER key upload")
         await matrix_client.sync(timeout=5000)
         matrix_logger.debug(f"Device store users after sync: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
 

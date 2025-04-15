@@ -308,15 +308,13 @@ async def connect_matrix(passed_config=None):
             logger.debug(f"E2EE store path: {e2ee_store_path}")
             logger.debug(f"Device store users immediately after load: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
 
-            # Perform early sync to populate device store
-            logger.debug("Performing early sync after store load to populate device store")
-            await matrix_client.sync(timeout=5000)
+            # Confirm client credentials are set
+            logger.debug(f"Checking client credentials: user_id={matrix_client.user_id}, device_id={matrix_client.device_id}")
+            if not (matrix_client.user_id and matrix_client.device_id and matrix_client.access_token):
+                logger.warning("Missing essential credentials for E2EE. Encryption may not work correctly.")
 
-            # Debug store state after sync
-            logger.debug(f"Device store users after sync: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
-
-            # Now try to upload keys after device store is populated
-            logger.debug("Uploading encryption keys to server")
+            # Upload keys BEFORE first sync
+            logger.debug("Uploading encryption keys to server BEFORE sync")
             try:
                 if matrix_client.should_upload_keys:
                     await matrix_client.keys_upload()
@@ -325,6 +323,13 @@ async def connect_matrix(passed_config=None):
                     logger.debug("No key upload needed at this stage")
             except Exception as ke:
                 logger.warning(f"Error uploading keys: {ke}")
+
+            # Now perform sync after keys are uploaded
+            logger.debug("Performing sync AFTER key upload")
+            await matrix_client.sync(timeout=5000)
+
+            # Debug store state after sync
+            logger.debug(f"Device store users after sync: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
 
             # Patch the client to handle unverified devices
             # This is a safer approach than monkey patching the OlmDevice class
@@ -672,15 +677,18 @@ async def matrix_relay(
                                     matrix_client.verify_device(device)
                                     logger.debug(f"Verified device {device.device_id} for user {user_id}")
 
-                        # Perform a sync to ensure device store is populated
-                        logger.debug("Performing sync to ensure device store is populated")
-                        await matrix_client.sync(timeout=3000)
+                        # Make sure the store is loaded
+                        try:
+                            matrix_client.load_store()
+                            logger.debug("Encryption store loaded successfully")
+                        except Exception as le:
+                            logger.warning(f"Error loading encryption store: {le}")
 
                         # Debug device store state
                         logger.debug(f"Device store users before key operations: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
 
-                        # Upload keys if needed
-                        logger.debug("Uploading encryption keys before sending message")
+                        # Upload keys BEFORE sync
+                        logger.debug("Uploading encryption keys BEFORE sync")
                         try:
                             if matrix_client.should_upload_keys:
                                 await matrix_client.keys_upload()
@@ -689,6 +697,10 @@ async def matrix_relay(
                                 logger.debug("No key upload needed before sending message")
                         except Exception as ke:
                             logger.warning(f"Error uploading keys: {ke}")
+
+                        # Perform sync AFTER key upload
+                        logger.debug("Performing sync AFTER key upload")
+                        await matrix_client.sync(timeout=3000)
 
                         # Build a list of all devices in the room
                         users_devices = {}
