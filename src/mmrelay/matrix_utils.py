@@ -372,8 +372,8 @@ async def connect_matrix(passed_config=None):
             if not matrix_client.rooms:
                 logger.warning("No rooms found after sync. Message delivery may not work correctly.")
             else:
-                logger.info(f"Verified {len(matrix_client.rooms)} rooms are available for message delivery")
-                # Log the room IDs for debugging
+                # Only log room info at debug level
+                logger.debug(f"Found {len(matrix_client.rooms)} rooms after sync")
                 logger.debug(f"Available rooms: {list(matrix_client.rooms.keys())}")
 
             # Trust all of our own devices to ensure encryption works

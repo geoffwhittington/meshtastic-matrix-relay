@@ -163,7 +163,7 @@ async def main(config):
         if not matrix_client.rooms:
             matrix_logger.warning("No rooms found after sync. Message delivery may not work correctly.")
         else:
-            matrix_logger.info(f"Verified {len(matrix_client.rooms)} rooms are available for message delivery")
+            matrix_logger.debug(f"Found {len(matrix_client.rooms)} rooms after sync")
 
         # 2. Trust all of our own devices to ensure encryption works
         matrix_logger.debug("Trusting our own devices for encryption...")
