@@ -376,34 +376,37 @@ async def connect_matrix(passed_config=None):
                 # Log the room IDs for debugging
                 logger.debug(f"Available rooms: {list(matrix_client.rooms.keys())}")
 
-            # Trust all of our own devices to ensure encryption works
-            logger.debug("Trusting our own devices for encryption...")
+            # Verify our own device to ensure encryption works properly
+            logger.debug("Verifying our own device for encryption...")
             try:
-                # Check if our user_id is in the device_store
-                if matrix_client.device_store and matrix_client.user_id in matrix_client.device_store:
-                    devices = matrix_client.device_store[matrix_client.user_id]
-                    logger.info(f"Found {len(devices)} of our own devices in the device store")
+                # Fetch the device keys for the current user
+                response = await matrix_client.device_keys(matrix_client.user_id)
 
-                    # Trust each of our devices
-                    for device_id, device in devices.items():
-                        # Skip our current device as we can't verify it
-                        if device_id == matrix_client.device_id:
-                            logger.debug(f"Skipping our current device: {device_id}")
-                            continue
+                if response and hasattr(response, 'devices'):
+                    logger.info(f"Found {len(response.devices)} devices for our user")
 
-                        try:
-                            matrix_client.verify_device(device)
-                            logger.info(f"Trusted own device {device_id}")
-                        except Exception as e:
-                            logger.error(f"Failed to trust device {device_id}: {e}")
+                    # Get the current device
+                    device = response.devices.get(matrix_client.device_id)
 
-                    # Log about our current device
-                    if matrix_client.device_id in devices:
-                        logger.info(f"Our current device is in the device store: {matrix_client.device_id}")
+                    # Verify the device if it exists and isn't already verified
+                    if device:
+                        if not device.verified:
+                            logger.info(f"Verifying our own device: {device.id}")
+                            await matrix_client.verify_device(device)
+                            logger.info(f"Successfully verified device: {device.id}")
+                        else:
+                            logger.info(f"Device {device.id} already verified")
                     else:
-                        logger.debug(f"Our current device {matrix_client.device_id} not found in device store (this is normal)")
+                        logger.warning(f"Our current device {matrix_client.device_id} not found in device list")
+
+                    # Also verify any other devices we own
+                    for device_id, device in response.devices.items():
+                        if device_id != matrix_client.device_id and not device.verified:
+                            logger.info(f"Verifying additional device: {device_id}")
+                            await matrix_client.verify_device(device)
+                            logger.info(f"Successfully verified additional device: {device_id}")
                 else:
-                    logger.debug("No devices found for our user in the device store (this is normal for first run)")
+                    logger.warning("Failed to fetch device keys. Encryption may not work correctly.")
             except Exception as ve:
                 logger.warning(f"Error verifying devices: {ve}")
 
@@ -759,27 +762,32 @@ async def matrix_relay(
                 try:
                     # Ensure we have shared a group session
                     if matrix_client.olm:
-                        # First, trust our own devices
-                        logger.debug("Trusting our own devices before sending encrypted message...")
+                        # First, verify our own device
+                        logger.debug("Verifying our own device before sending encrypted message...")
                         try:
-                            # Check if our user_id is in the device_store
-                            if matrix_client.device_store and matrix_client.user_id in matrix_client.device_store:
-                                devices = matrix_client.device_store[matrix_client.user_id]
+                            # Fetch the device keys for the current user
+                            response = await matrix_client.device_keys(matrix_client.user_id)
 
-                                # Trust each of our devices
-                                for device_id, device in devices.items():
-                                    # Skip our current device as we can't verify it
-                                    if device_id == matrix_client.device_id:
-                                        logger.debug(f"Skipping our current device: {device_id}")
-                                        continue
+                            if response and hasattr(response, 'devices'):
+                                # Get the current device
+                                device = response.devices.get(matrix_client.device_id)
 
-                                    try:
-                                        matrix_client.verify_device(device)
-                                        logger.debug(f"Trusted own device {device_id}")
-                                    except Exception as e:
-                                        logger.warning(f"Failed to trust device {device_id}: {e}")
+                                # Verify the device if it exists and isn't already verified
+                                if device:
+                                    if not device.verified:
+                                        logger.debug(f"Verifying our own device: {device.id}")
+                                        await matrix_client.verify_device(device)
+                                        logger.debug(f"Successfully verified device: {device.id}")
+                                    else:
+                                        logger.debug(f"Device {device.id} already verified")
+
+                                # Also verify any other devices we own
+                                for device_id, device in response.devices.items():
+                                    if device_id != matrix_client.device_id and not device.verified:
+                                        logger.debug(f"Verifying additional device: {device_id}")
+                                        await matrix_client.verify_device(device)
                             else:
-                                logger.debug("No devices found for our user in the device store (this is normal for first run)")
+                                logger.debug("Failed to fetch device keys. Continuing anyway.")
                         except Exception as ve:
                             logger.warning(f"Error verifying own devices: {ve}")
 
@@ -864,7 +872,15 @@ async def matrix_relay(
                                     logger.debug(f"Shared new group session for room {room_id} on attempt {attempt + 1}")
                                     break
                                 except Exception as share_error:
-                                    logger.warning(f"Group session sharing failed attempt {attempt + 1}: {share_error}")
+                                    error_str = str(share_error)
+                                    logger.warning(f"Group session sharing failed attempt {attempt + 1}: {error_str}")
+
+                                    # If we're already sharing a group session, that's actually fine
+                                    # We can just continue without retrying
+                                    if "Already sharing a group session" in error_str:
+                                        logger.debug(f"Group session already being shared for room {room_id}, continuing")
+                                        break
+
                                     if attempt < max_attempts - 1:  # Don't sleep on the last attempt
                                         await asyncio.sleep(2 ** attempt)  # Exponential backoff
                                     else:
@@ -875,35 +891,75 @@ async def matrix_relay(
                             await matrix_client.sync(timeout=3000)  # 3 second timeout
 
                         except Exception as share_error:
-                            logger.error(f"Error sharing group session: {share_error}")
-                            # If sharing fails, try to recover by forcing a new upload and share
-                            try:
-                                logger.debug("Attempting recovery by uploading keys again...")
-                                await matrix_client.keys_upload()
-                                await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
+                            error_str = str(share_error)
+                            logger.error(f"Error sharing group session: {error_str}")
 
-                                # Perform a short sync to ensure the group session is properly registered
-                                logger.debug("Performing short sync to update encryption state...")
-                                await matrix_client.sync(timeout=3000)  # 3 second timeout
+                            # If we're already sharing a group session, that's actually fine
+                            # We can just continue without recovery
+                            if "Already sharing a group session" in error_str:
+                                logger.debug(f"Group session already being shared for room {room_id}, continuing without recovery")
+                            else:
+                                # If sharing fails for other reasons, try to recover by forcing a new upload and share
+                                try:
+                                    logger.debug("Attempting recovery by uploading keys again...")
+                                    await matrix_client.keys_upload()
 
-                                logger.debug("Recovery successful, shared new group session")
-                            except Exception as recovery_error:
-                                logger.error(f"Recovery failed: {recovery_error}")
+                                    # Try to share with retry for Already sharing errors
+                                    try:
+                                        await matrix_client.share_group_session(room_id, ignore_unverified_devices=True)
+                                    except Exception as retry_error:
+                                        if "Already sharing a group session" in str(retry_error):
+                                            logger.debug(f"Recovery detected group session already being shared, continuing")
+                                        else:
+                                            raise
+
+                                    # Perform a short sync to ensure the group session is properly registered
+                                    logger.debug("Performing short sync to update encryption state...")
+                                    await matrix_client.sync(timeout=3000)  # 3 second timeout
+
+                                    logger.debug("Recovery successful, shared new group session")
+                                except Exception as recovery_error:
+                                    logger.error(f"Recovery failed: {recovery_error}")
                 except Exception as e:
                     logger.error(f"Error preparing encryption: {e}")
             else:
                 logger.debug(f"Room {room_id} is not encrypted")
 
-            # Send the message with a timeout
-            response = await asyncio.wait_for(
-                matrix_client.room_send(
-                    room_id=room_id,
-                    message_type="m.room.message",
-                    content=content,
-                    ignore_unverified_devices=True,  # Important: ignore unverified devices
-                ),
-                timeout=10.0,  # Increased timeout
-            )
+            # Send the message with a timeout and retry logic
+            max_retries = 3
+            response = None
+
+            for attempt in range(1, max_retries + 1):
+                try:
+                    response = await asyncio.wait_for(
+                        matrix_client.room_send(
+                            room_id=room_id,
+                            message_type="m.room.message",
+                            content=content,
+                            ignore_unverified_devices=True,  # Important: ignore unverified devices
+                        ),
+                        timeout=10.0,  # Increased timeout
+                    )
+                    logger.debug(f"Message sent successfully to room {room_id} on attempt {attempt}")
+                    break
+                except Exception as send_error:
+                    error_str = str(send_error)
+                    logger.warning(f"Error sending message to room {room_id} on attempt {attempt}: {error_str}")
+
+                    # If we're already sharing a group session, wait a bit and retry
+                    if "Already sharing a group session" in error_str and attempt < max_retries:
+                        logger.debug(f"Group session already being shared for room {room_id}, waiting before retry")
+                        await asyncio.sleep(1.5 * attempt)  # Backoff
+                        continue
+                    elif attempt < max_retries:
+                        # For other errors, try a sync and retry
+                        logger.debug("Attempting recovery by forcing a sync...")
+                        await matrix_client.sync(timeout=3000)
+                        await asyncio.sleep(1.0 * attempt)  # Backoff
+                        continue
+                    else:
+                        # Re-raise on last attempt
+                        raise
 
             # Log at info level, matching one-point-oh pattern
             logger.info(f"Sent inbound radio message to matrix room: {room_id}")

@@ -165,34 +165,37 @@ async def main(config):
         else:
             matrix_logger.info(f"Verified {len(matrix_client.rooms)} rooms are available for message delivery")
 
-        # 2. Trust all of our own devices to ensure encryption works
-        matrix_logger.debug("Trusting our own devices for encryption...")
+        # 2. Verify our own device to ensure encryption works properly
+        matrix_logger.debug("Verifying our own device for encryption...")
         try:
-            # Check if our user_id is in the device_store
-            if matrix_client.device_store and matrix_client.user_id in matrix_client.device_store:
-                devices = matrix_client.device_store[matrix_client.user_id]
-                matrix_logger.info(f"Found {len(devices)} of our own devices in the device store")
+            # Fetch the device keys for the current user
+            response = await matrix_client.device_keys(matrix_client.user_id)
 
-                # Trust each of our devices
-                for device_id, device in devices.items():
-                    # Skip our current device as we can't verify it
-                    if device_id == matrix_client.device_id:
-                        matrix_logger.debug(f"Skipping our current device: {device_id}")
-                        continue
+            if response and hasattr(response, 'devices'):
+                matrix_logger.info(f"Found {len(response.devices)} devices for our user")
 
-                    try:
-                        matrix_client.verify_device(device)
-                        matrix_logger.info(f"Trusted own device {device_id}")
-                    except Exception as e:
-                        matrix_logger.error(f"Failed to trust device {device_id}: {e}")
+                # Get the current device
+                device = response.devices.get(matrix_client.device_id)
 
-                # Log about our current device
-                if matrix_client.device_id in devices:
-                    matrix_logger.info(f"Our current device is in the device store: {matrix_client.device_id}")
+                # Verify the device if it exists and isn't already verified
+                if device:
+                    if not device.verified:
+                        matrix_logger.info(f"Verifying our own device: {device.id}")
+                        await matrix_client.verify_device(device)
+                        matrix_logger.info(f"Successfully verified device: {device.id}")
+                    else:
+                        matrix_logger.info(f"Device {device.id} already verified")
                 else:
-                    matrix_logger.debug(f"Our current device {matrix_client.device_id} not found in device store (this is normal)")
+                    matrix_logger.warning(f"Our current device {matrix_client.device_id} not found in device list")
+
+                # Also verify any other devices we own
+                for device_id, device in response.devices.items():
+                    if device_id != matrix_client.device_id and not device.verified:
+                        matrix_logger.info(f"Verifying additional device: {device_id}")
+                        await matrix_client.verify_device(device)
+                        matrix_logger.info(f"Successfully verified additional device: {device_id}")
             else:
-                matrix_logger.debug("No devices found for our user in the device store (this is normal for first run)")
+                matrix_logger.warning("Failed to fetch device keys. Encryption may not work correctly.")
 
             # Verify all other devices
             if matrix_client.device_store:
