@@ -47,6 +47,11 @@ def parse_arguments():
         help="Generate a sample config.yaml file",
     )
     parser.add_argument(
+        "--bot-login",
+        action="store_true",
+        help="Login to Matrix as a bot and save the access token",
+    )
+    parser.add_argument(
         "--install-service",
         action="store_true",
         help="Install or update the systemd user service",
@@ -265,6 +270,26 @@ def main():
         print(f"mmrelay {get_version()}")
         return 0
 
+    # Handle --bot-login
+    if args.bot_login:
+        import asyncio
+
+        from mmrelay.matrix_utils import login_matrix_bot
+
+        # Only run the login function, not the main application
+        print("Matrix Bot Login")
+        print("================")
+        try:
+            # Run the login function with logout_others defaulting to True
+            result = asyncio.run(login_matrix_bot(logout_others=True))
+            return 0 if result else 1
+        except KeyboardInterrupt:
+            print("\nLogin cancelled by user.")
+            return 1
+        except Exception as e:
+            print(f"\nError during login: {e}")
+            return 1
+
     # If no command was specified, run the main functionality
     from mmrelay.main import run_main
 
@@ -317,6 +342,32 @@ def handle_cli_commands(args):
         import sys
 
         sys.exit(0 if check_config() else 1)
+
+    # Handle --bot-login
+    if args.bot_login:
+        import asyncio
+
+        from mmrelay.matrix_utils import login_matrix_bot
+
+        # Only run the login function, not the main application
+        print("Matrix Bot Login")
+        print("================")
+        try:
+            # Run the login function with logout_others defaulting to True
+            result = asyncio.run(login_matrix_bot(logout_others=True))
+            import sys
+
+            sys.exit(0 if result else 1)
+        except KeyboardInterrupt:
+            print("\nLogin cancelled by user.")
+            import sys
+
+            sys.exit(1)
+        except Exception as e:
+            print(f"\nError during login: {e}")
+            import sys
+
+            sys.exit(1)
 
     # No commands were handled
     return False

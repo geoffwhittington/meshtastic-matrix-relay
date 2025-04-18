@@ -65,7 +65,9 @@ def clone_or_update_repo(repo_url, tag, plugins_dir):
             subprocess.check_call(["git", "-C", repo_path, "fetch"])
             subprocess.check_call(["git", "-C", repo_path, "checkout", tag])
             subprocess.check_call(["git", "-C", repo_path, "pull", "origin", tag])
+            full_path = os.path.abspath(repo_path)
             logger.info(f"Updated repository {repo_name} to {tag}")
+            logger.info(f"Plugin location: {full_path}")
         except subprocess.CalledProcessError as e:
             logger.error(f"Error updating repository {repo_name}: {e}")
             logger.error(
@@ -78,7 +80,9 @@ def clone_or_update_repo(repo_url, tag, plugins_dir):
             subprocess.check_call(
                 ["git", "clone", "--branch", tag, repo_url], cwd=plugins_dir
             )
+            full_path = os.path.abspath(os.path.join(plugins_dir, repo_name))
             logger.info(f"Cloned repository {repo_name} from {repo_url} at {tag}")
+            logger.info(f"Plugin location: {full_path}")
         except subprocess.CalledProcessError as e:
             logger.error(f"Error cloning repository {repo_name}: {e}")
             logger.error(
@@ -223,7 +227,7 @@ def load_plugins(passed_config=None):
 
     # Get the first directory for cloning (prefer user directory)
     community_plugins_dir = community_plugin_dirs[
-        -1
+        0
     ]  # Use the user directory for new clones
 
     # Create community plugins directory if needed

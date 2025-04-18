@@ -43,10 +43,13 @@ class Plugin(BasePlugin):
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
     ):
-        from mmrelay.matrix_utils import connect_matrix
+        from mmrelay.matrix_utils import matrix_client
 
         packet = self.process(packet)
-        matrix_client = await connect_matrix()
+
+        if matrix_client is None:
+            self.logger.error("Matrix client is not initialized. Cannot relay message.")
+            return False
 
         packet_type = packet["decoded"]["portnum"]
         if "channel" in packet:

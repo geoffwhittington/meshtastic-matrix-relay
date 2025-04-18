@@ -119,6 +119,24 @@ def get_log_dir():
     return log_dir
 
 
+def get_e2ee_store_dir():
+    """
+    Returns the directory for storing E2EE data (encryption keys, etc.).
+    Creates the directory if it doesn't exist.
+    """
+    if sys.platform in ["linux", "darwin"]:
+        # Use ~/.mmrelay/store/ for Linux and Mac
+        store_dir = os.path.join(get_base_dir(), "store")
+    else:
+        # Use platformdirs default for Windows
+        store_dir = os.path.join(
+            platformdirs.user_data_dir(APP_NAME, APP_AUTHOR), "store"
+        )
+
+    os.makedirs(store_dir, exist_ok=True)
+    return store_dir
+
+
 # Set up a basic logger for config
 logger = logging.getLogger("Config")
 logger.setLevel(logging.INFO)
@@ -203,7 +221,7 @@ def load_config(config_file=None, args=None):
             logger.info(f"Loading configuration from: {config_path}")
             with open(config_path, "r") as f:
                 relay_config = yaml.load(f, Loader=SafeLoader)
-            logger.info(f"Loaded configuration with keys: {list(relay_config.keys())}")
+            # Configuration loaded successfully
             return relay_config
 
     # No config file found
