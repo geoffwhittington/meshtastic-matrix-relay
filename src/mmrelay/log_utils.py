@@ -36,10 +36,10 @@ def get_logger(name):
     # Check command line arguments for log file path
     args = parse_arguments()
 
-    # Check if file logging is enabled
+    # Check if file logging is enabled (default to True for better user experience)
     if (
         config is not None
-        and config.get("logging", {}).get("log_to_file", False)
+        and config.get("logging", {}).get("log_to_file", True)
         or args.logfile
     ):
         # Priority: 1. Command line arg, 2. Config file, 3. Default location (~/.mmrelay/logs)
@@ -78,7 +78,7 @@ def get_logger(name):
                 )
             )
             basic_logger.addHandler(basic_handler)
-            basic_logger.info(f"Writing logs to: {log_file}")
+            basic_logger.info(f"Log file location: {log_file}")
 
         # Create a file handler for logging
         try:
