@@ -77,6 +77,87 @@ def read_service_file():
     return None
 
 
+def get_template_service_path():
+    """Find the path to the template service file.
+
+    Returns:
+        str: The path to the template service file, or None if not found.
+    """
+    # Try to find the service template file
+    # First, check in the package directory (where it should be after installation)
+    package_dir = os.path.dirname(__file__)
+    template_path = os.path.join(
+        os.path.dirname(os.path.dirname(package_dir)), "tools", "mmrelay.service"
+    )
+
+    # If not found, try the repository root (for development)
+    if not os.path.exists(template_path):
+        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        template_path = os.path.join(repo_root, "tools", "mmrelay.service")
+
+    # If still not found, try the current directory (fallback)
+    if not os.path.exists(template_path):
+        template_path = os.path.join(os.getcwd(), "tools", "mmrelay.service")
+
+    if not os.path.exists(template_path):
+        return None
+
+    return template_path
+
+
+def get_template_service_content():
+    """Get the content of the template service file.
+
+    Returns:
+        str: The content of the template service file, or None if not found.
+    """
+    template_path = get_template_service_path()
+    if not template_path:
+        return None
+
+    # Read the template
+    with open(template_path, "r") as f:
+        service_template = f.read()
+
+    return service_template
+
+
+def is_service_enabled():
+    """Check if the service is enabled.
+
+    Returns:
+        bool: True if the service is enabled, False otherwise.
+    """
+    try:
+        result = subprocess.run(
+            ["/usr/bin/systemctl", "--user", "is-enabled", "mmrelay.service"],
+            check=False,  # Don't raise an exception if the service is not enabled
+            capture_output=True,
+            text=True,
+        )
+        return result.returncode == 0 and result.stdout.strip() == "enabled"
+    except Exception:
+        return False
+
+
+def is_service_active():
+    """Check if the service is active (running).
+
+    Returns:
+        bool: True if the service is active, False otherwise.
+    """
+    try:
+        result = subprocess.run(
+            ["/usr/bin/systemctl", "--user", "is-active", "mmrelay.service"],
+            check=False,  # Don't raise an exception if the service is not active
+            capture_output=True,
+            text=True,
+        )
+        return result.returncode == 0 and result.stdout.strip() == "active"
+    except Exception:
+        return False
+
+
 def create_service_file():
     """Create the systemd user service file."""
     executable_path = get_executable_path()
@@ -92,29 +173,11 @@ def create_service_file():
     logs_dir = Path.home() / ".mmrelay" / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
 
-    # Try to find the service template file
-    # First, check in the package directory
-    package_dir = os.path.dirname(__file__)
-    template_path = os.path.join(
-        os.path.dirname(os.path.dirname(package_dir)), "tools", "mmrelay.service"
-    )
-
-    # If not found, try the repository root
-    if not os.path.exists(template_path):
-        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        template_path = os.path.join(repo_root, "tools", "mmrelay.service")
-
-    # If still not found, try the current directory
-    if not os.path.exists(template_path):
-        template_path = os.path.join(os.getcwd(), "tools", "mmrelay.service")
-
-    if not os.path.exists(template_path):
-        print(f"Error: Could not find service template at {template_path}")
+    # Get the template service content
+    service_template = get_template_service_content()
+    if not service_template:
+        print("Error: Could not find service template file")
         return False
-
-    # Read the template
-    with open(template_path, "r") as f:
-        service_template = f.read()
 
     # Replace placeholders with actual values
     service_content = (
@@ -157,34 +220,88 @@ def reload_daemon():
         return False
 
 
+def service_needs_update():
+    """Check if the service file needs to be updated.
+
+    Returns:
+        tuple: (needs_update, reason) where needs_update is a boolean and reason is a string
+    """
+    # Check if service already exists
+    existing_service = read_service_file()
+    if not existing_service:
+        return True, "No existing service file found"
+
+    # Get the template service path
+    template_path = get_template_service_path()
+    if not template_path:
+        return False, "Could not find template service file"
+
+    # Get the executable path
+    executable_path = get_executable_path()
+    if not executable_path:
+        return False, "Could not find mmrelay executable"
+
+    # Check if the ExecStart line in the existing service file contains the correct executable
+    if executable_path not in existing_service:
+        return True, f"Service file does not use the current executable: {executable_path}"
+
+    # Check if the PATH environment includes pipx paths
+    if "%h/.local/pipx/venvs/mmrelay/bin" not in existing_service:
+        return True, "Service file does not include pipx paths in PATH environment"
+
+    # Check if the service file has been modified recently
+    template_mtime = os.path.getmtime(template_path)
+    service_path = get_user_service_path()
+    if os.path.exists(service_path):
+        service_mtime = os.path.getmtime(service_path)
+        if template_mtime > service_mtime:
+            return True, "Template service file is newer than installed service file"
+
+    return False, "Service file is up to date"
+
+
 def install_service():
     """Install or update the MMRelay user service."""
     # Check if service already exists
     existing_service = read_service_file()
+    service_path = get_user_service_path()
 
+    # Check if the service needs to be updated
+    update_needed, reason = service_needs_update()
+
+    # Check if the service is already installed and if it needs updating
     if existing_service:
-        print(f"A service file already exists at {get_user_service_path()}")
-        if (
-            not input("Do you want to reinstall/update the service? (y/n): ")
-            .lower()
-            .startswith("y")
-        ):
-            print("Service installation cancelled.")
-            print_service_commands()
-            return True
+        print(f"A service file already exists at {service_path}")
 
-    # Create or update service file
-    if not create_service_file():
-        return False
-
-    # Reload daemon
-    if not reload_daemon():
-        return False
-
-    if existing_service:
-        print("Service updated successfully")
+        if update_needed:
+            print(f"The service file needs to be updated: {reason}")
+            if (
+                not input("Do you want to update the service file? (y/n): ")
+                .lower()
+                .startswith("y")
+            ):
+                print("Service update cancelled.")
+                print_service_commands()
+                return True
+        else:
+            print(f"No update needed for the service file: {reason}")
     else:
-        print("Service installed successfully")
+        print(f"No service file found at {service_path}")
+        print("A new service file will be created.")
+
+    # Create or update service file if needed
+    if not existing_service or update_needed:
+        if not create_service_file():
+            return False
+
+        # Reload daemon
+        if not reload_daemon():
+            return False
+
+        if existing_service:
+            print("Service file updated successfully")
+        else:
+            print("Service file created successfully")
 
     # Check if config is valid before starting the service
     from mmrelay.cli import check_config
@@ -197,34 +314,66 @@ def install_service():
         print_service_commands()
         return True
 
-    # Ask if user wants to enable and start the service
-    if (
-        input("Do you want to enable the service to start at boot? (y/n): ")
-        .lower()
-        .startswith("y")
-    ):
-        try:
-            subprocess.run(
-                ["/usr/bin/systemctl", "--user", "enable", "mmrelay.service"],
-                check=True,
-            )
-            print("Service enabled successfully")
-        except subprocess.CalledProcessError as e:
-            print(f"Error enabling service: {e}")
-        except OSError as e:
-            print(f"Error: {e}")
+    # Check if the service is already enabled
+    service_enabled = is_service_enabled()
+    if service_enabled:
+        print("The service is already enabled to start at boot.")
+    else:
+        print("The service is not currently enabled to start at boot.")
+        if (
+            input("Do you want to enable the service to start at boot? (y/n): ")
+            .lower()
+            .startswith("y")
+        ):
+            try:
+                subprocess.run(
+                    ["/usr/bin/systemctl", "--user", "enable", "mmrelay.service"],
+                    check=True,
+                )
+                print("Service enabled successfully")
+                service_enabled = True
+            except subprocess.CalledProcessError as e:
+                print(f"Error enabling service: {e}")
+            except OSError as e:
+                print(f"Error: {e}")
 
-    if input("Do you want to start the service now? (y/n): ").lower().startswith("y"):
-        if start_service():
-            # Wait for the service to start
-            wait_for_service_start()
+    # Check if the service is already running
+    service_active = is_service_active()
+    if service_active:
+        print("The service is already running.")
+        if input("Do you want to restart the service? (y/n): ").lower().startswith("y"):
+            try:
+                subprocess.run(
+                    ["/usr/bin/systemctl", "--user", "restart", "mmrelay.service"],
+                    check=True,
+                )
+                print("Service restarted successfully")
+                # Wait for the service to restart
+                wait_for_service_start()
+                # Show service status
+                show_service_status()
+            except subprocess.CalledProcessError as e:
+                print(f"Error restarting service: {e}")
+            except OSError as e:
+                print(f"Error: {e}")
+    else:
+        print("The service is not currently running.")
+        if input("Do you want to start the service now? (y/n): ").lower().startswith("y"):
+            if start_service():
+                # Wait for the service to start
+                wait_for_service_start()
+                # Show service status
+                show_service_status()
+                print("Service started successfully")
+            else:
+                print("\nWarning: Failed to start the service. Please check the logs.")
 
-            # Show service status
-            show_service_status()
-            print("Service started successfully")
-        else:
-            print("\nWarning: Failed to start the service. Please check the logs.")
-
+    # Print a summary of the service status
+    print("\nService Status Summary:")
+    print(f"  Service File: {service_path}")
+    print(f"  Enabled at Boot: {'Yes' if service_enabled else 'No'}")
+    print(f"  Currently Running: {'Yes' if is_service_active() else 'No'}")
+    print("\nYou can manage the service with the following commands:")
     print_service_commands()
 
     return True
