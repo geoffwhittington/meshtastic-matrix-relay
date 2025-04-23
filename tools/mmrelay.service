@@ -1,12 +1,15 @@
 [Unit]
-Description=A Meshtastic <==> Matrix Relay
-After=default.target
+Description=A Meshtastic <=> Matrix Relay
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=idle
-WorkingDirectory=%h/meshtastic-matrix-relay
-ExecStart=%h/meshtastic-matrix-relay/.pyenv/bin/python %h/meshtastic-matrix-relay/main.py --config %h/.mmrelay/config/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
+# This is where pipx installs the mmrelay binary
+ExecStart=%h/.local/bin/mmrelay --config %h/.mmrelay/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
+WorkingDirectory=%h/.mmrelay
 Restart=on-failure
+Environment=PYTHONUNBUFFERED=1
 
 [Install]
 WantedBy=default.target
