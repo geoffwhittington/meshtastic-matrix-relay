@@ -14,8 +14,18 @@ from pathlib import Path
 
 
 def get_executable_path():
-    """Get the full path to the mmrelay executable."""
-    return shutil.which("mmrelay") or sys.executable
+    """Get the full path to the mmrelay executable.
+
+    This function tries to find the mmrelay executable in the PATH,
+    which works for both pipx and pip installations.
+    """
+    mmrelay_path = shutil.which("mmrelay")
+    if mmrelay_path:
+        print(f"Found mmrelay executable at: {mmrelay_path}")
+        return mmrelay_path
+    else:
+        print("Warning: Could not find mmrelay executable in PATH. Using current Python interpreter.")
+        return sys.executable
 
 
 def get_user_service_path():
