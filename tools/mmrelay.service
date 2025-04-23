@@ -5,11 +5,14 @@ Wants=network-online.target
 
 [Service]
 Type=idle
-# This is where pipx installs the mmrelay binary
+# The mmrelay binary can be installed via pipx or pip
 ExecStart=%h/.local/bin/mmrelay --config %h/.mmrelay/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
 WorkingDirectory=%h/.mmrelay
 Restart=on-failure
+RestartSec=10
 Environment=PYTHONUNBUFFERED=1
+# Ensure both pipx and pip environments are properly loaded
+Environment=PATH=%h/.local/bin:%h/.local/pipx/venvs/mmrelay/bin:/usr/local/bin:/usr/bin:/bin
 
 [Install]
 WantedBy=default.target

@@ -25,12 +25,14 @@ MMRelay runs on Linux, macOS, and Windows.
 ### Quick Installation
 
 ```bash
-# Install using pip
-pip install mmrelay
-
-# Or use pipx for isolated installation (recommended)
+# Install using pipx for isolated installation (recommended)
 pipx install mmrelay
+
+# Pip will also work if you prefer
+pip install mmrelay
 ```
+
+For pipx installation instructions, see: [pipx installation guide](https://pipx.pypa.io/stable/installation/#on-linux)
 
 ### Resources
 

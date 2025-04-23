@@ -8,7 +8,7 @@ This guide helps you migrate from previous versions to MMRelay v1.0. The new ver
 
 ### Major Improvements
 
-- **PyPI Packaging**: Simple installation via `pip install mmrelay`
+- **PyPI Packaging**: Simple installation via `pipx install mmrelay`
 - **Standardized Directories**: Configuration, logs, and plugins in `~/.mmrelay/`
 - **Enhanced CLI**: New command-line options and improved interface
 - **Better Code Structure**: Modernized codebase with absolute imports
@@ -41,12 +41,14 @@ See `mmrelay --help` for all available options.
 Install directly from PyPI:
 
 ```bash
-# Install using pip
-pip install mmrelay
-
-# Or use pipx for isolated installation (recommended)
+# Install using pipx for isolated installation (recommended)
 pipx install mmrelay
+
+# Pip will also work if you prefer
+pip install mmrelay
 ```
+
+For pipx installation instructions, see: [pipx installation guide](https://pipx.pypa.io/stable/installation/#on-linux)
 
 ### Option 2: Developer Upgrade
 
