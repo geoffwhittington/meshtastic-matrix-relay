@@ -11,8 +11,10 @@ from mmrelay.config import get_log_dir
 # Initialize Rich console
 console = Console()
 
-# Define custom log level colors
-LOG_LEVEL_COLORS = {
+# Define custom log level styles - not used directly but kept for reference
+# Rich 14.0.0+ supports level_styles parameter, but we're using an approach
+# that works with older versions too
+LOG_LEVEL_STYLES = {
     "DEBUG": "dim blue",
     "INFO": "green",
     "WARNING": "yellow",
@@ -29,7 +31,7 @@ def get_logger(name):
 
     # Default to INFO level if config is not available
     log_level = logging.INFO
-    use_colors = True  # Default to using colors
+    color_enabled = True  # Default to using colors
 
     # Try to get log level and color settings from config
     global config
@@ -37,14 +39,14 @@ def get_logger(name):
         if "level" in config["logging"]:
             log_level = getattr(logging, config["logging"]["level"].upper())
         # Check if colors should be disabled
-        if "use_colors" in config["logging"]:
-            use_colors = config["logging"]["use_colors"]
+        if "color_enabled" in config["logging"]:
+            color_enabled = config["logging"]["color_enabled"]
 
     logger.setLevel(log_level)
     logger.propagate = False
 
     # Add handler for console logging (with or without colors)
-    if use_colors:
+    if color_enabled:
         # Use Rich handler with colors
         console_handler = RichHandler(
             rich_tracebacks=True,
@@ -55,7 +57,6 @@ def get_logger(name):
             markup=True,
             log_time_format="%Y-%m-%d %H:%M:%S",
             omit_repeated_times=False,
-            level_styles=LOG_LEVEL_COLORS,
         )
         console_handler.setFormatter(logging.Formatter("%(name)s: %(message)s"))
     else:
@@ -108,7 +109,7 @@ def get_logger(name):
             basic_logger.setLevel(logging.INFO)
 
             # Add handler based on color setting
-            if use_colors:
+            if color_enabled:
                 # Use Rich handler with colors
                 basic_handler = RichHandler(
                     rich_tracebacks=True,
@@ -119,7 +120,6 @@ def get_logger(name):
                     markup=True,
                     log_time_format="%Y-%m-%d %H:%M:%S",
                     omit_repeated_times=False,
-                    level_styles=LOG_LEVEL_COLORS,
                 )
                 basic_handler.setFormatter(logging.Formatter("%(name)s: %(message)s"))
             else:
