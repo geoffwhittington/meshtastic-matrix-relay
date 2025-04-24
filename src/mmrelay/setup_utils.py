@@ -24,7 +24,9 @@ def get_executable_path():
         print(f"Found mmrelay executable at: {mmrelay_path}")
         return mmrelay_path
     else:
-        print("Warning: Could not find mmrelay executable in PATH. Using current Python interpreter.")
+        print(
+            "Warning: Could not find mmrelay executable in PATH. Using current Python interpreter."
+        )
         return sys.executable
 
 
@@ -242,7 +244,10 @@ def service_needs_update():
 
     # Check if the ExecStart line in the existing service file contains the correct executable
     if executable_path not in existing_service:
-        return True, f"Service file does not use the current executable: {executable_path}"
+        return (
+            True,
+            f"Service file does not use the current executable: {executable_path}",
+        )
 
     # Check if the PATH environment includes pipx paths
     if "%h/.local/pipx/venvs/mmrelay/bin" not in existing_service:
@@ -348,7 +353,11 @@ def install_service():
                 print(f"Error: {e}")
     else:
         print("The service is not currently running.")
-        if input("Do you want to start the service now? (y/n): ").lower().startswith("y"):
+        if (
+            input("Do you want to start the service now? (y/n): ")
+            .lower()
+            .startswith("y")
+        ):
             if start_service():
                 # Wait for the service to start
                 wait_for_service_start()

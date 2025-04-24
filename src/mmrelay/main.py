@@ -10,8 +10,9 @@ import sys
 
 from nio import ReactionEvent, RoomMessageEmote, RoomMessageNotice, RoomMessageText
 
+# Import version from package
 # Import meshtastic_utils as a module to set event_loop
-from mmrelay import meshtastic_utils
+from mmrelay import __version__, meshtastic_utils
 from mmrelay.db_utils import (
     initialize_database,
     update_longnames,
@@ -25,9 +26,6 @@ from mmrelay.matrix_utils import on_room_message
 from mmrelay.meshtastic_utils import connect_meshtastic
 from mmrelay.meshtastic_utils import logger as meshtastic_logger
 from mmrelay.plugin_loader import load_plugins
-
-# Import version from package
-from mmrelay import __version__
 
 # Initialize logger
 logger = get_logger(name="M<>M Relay")

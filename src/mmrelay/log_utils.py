@@ -2,8 +2,23 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 
+from rich.console import Console
+from rich.logging import RichHandler
+
 from mmrelay.cli import parse_arguments
 from mmrelay.config import get_log_dir
+
+# Initialize Rich console
+console = Console()
+
+# Define custom log level colors
+LOG_LEVEL_COLORS = {
+    "DEBUG": "dim blue",
+    "INFO": "green",
+    "WARNING": "yellow",
+    "ERROR": "bold red",
+    "CRITICAL": "bold white on red",
+}
 
 # Global config variable that will be set from main.py
 config = None
@@ -14,24 +29,45 @@ def get_logger(name):
 
     # Default to INFO level if config is not available
     log_level = logging.INFO
+    use_colors = True  # Default to using colors
 
-    # Try to get log level from config
+    # Try to get log level and color settings from config
     global config
-    if config is not None and "logging" in config and "level" in config["logging"]:
-        log_level = getattr(logging, config["logging"]["level"].upper())
+    if config is not None and "logging" in config:
+        if "level" in config["logging"]:
+            log_level = getattr(logging, config["logging"]["level"].upper())
+        # Check if colors should be disabled
+        if "use_colors" in config["logging"]:
+            use_colors = config["logging"]["use_colors"]
 
     logger.setLevel(log_level)
     logger.propagate = False
 
-    # Add stream handler (console logging)
-    stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(
-        logging.Formatter(
-            fmt="%(asctime)s %(levelname)s:%(name)s:%(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S %z",
+    # Add handler for console logging (with or without colors)
+    if use_colors:
+        # Use Rich handler with colors
+        console_handler = RichHandler(
+            rich_tracebacks=True,
+            console=console,
+            show_time=True,
+            show_level=True,
+            show_path=False,
+            markup=True,
+            log_time_format="%Y-%m-%d %H:%M:%S",
+            omit_repeated_times=False,
+            level_styles=LOG_LEVEL_COLORS,
         )
-    )
-    logger.addHandler(stream_handler)
+        console_handler.setFormatter(logging.Formatter("%(name)s: %(message)s"))
+    else:
+        # Use standard handler without colors
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(
+            logging.Formatter(
+                fmt="%(asctime)s %(levelname)s:%(name)s:%(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S %z",
+            )
+        )
+    logger.addHandler(console_handler)
 
     # Check command line arguments for log file path
     args = parse_arguments()
@@ -70,13 +106,32 @@ def get_logger(name):
             # This is needed because we can't use the logger we're creating to log its own creation
             basic_logger = logging.getLogger("LogSetup")
             basic_logger.setLevel(logging.INFO)
-            basic_handler = logging.StreamHandler()
-            basic_handler.setFormatter(
-                logging.Formatter(
-                    fmt="%(asctime)s %(levelname)s:%(name)s:%(message)s",
-                    datefmt="%Y-%m-%d %H:%M:%S %z",
+
+            # Add handler based on color setting
+            if use_colors:
+                # Use Rich handler with colors
+                basic_handler = RichHandler(
+                    rich_tracebacks=True,
+                    console=console,
+                    show_time=True,
+                    show_level=True,
+                    show_path=False,
+                    markup=True,
+                    log_time_format="%Y-%m-%d %H:%M:%S",
+                    omit_repeated_times=False,
+                    level_styles=LOG_LEVEL_COLORS,
                 )
-            )
+                basic_handler.setFormatter(logging.Formatter("%(name)s: %(message)s"))
+            else:
+                # Use standard handler without colors
+                basic_handler = logging.StreamHandler()
+                basic_handler.setFormatter(
+                    logging.Formatter(
+                        fmt="%(asctime)s %(levelname)s:%(name)s:%(message)s",
+                        datefmt="%Y-%m-%d %H:%M:%S %z",
+                    )
+                )
+
             basic_logger.addHandler(basic_handler)
             basic_logger.info(f"Log file location: {log_file}")
 
