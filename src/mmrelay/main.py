@@ -26,11 +26,19 @@ from mmrelay.meshtastic_utils import connect_meshtastic
 from mmrelay.meshtastic_utils import logger as meshtastic_logger
 from mmrelay.plugin_loader import load_plugins
 
+# Import version from package
+from mmrelay import __version__
+
 # Initialize logger
 logger = get_logger(name="M<>M Relay")
 
 # Set the logging level for 'nio' to ERROR to suppress warnings
 logging.getLogger("nio").setLevel(logging.ERROR)
+
+
+def print_banner():
+    """Print a simple startup message with version information."""
+    logger.info(f"Starting MMRelay v{__version__}")
 
 
 async def main(config):
@@ -202,6 +210,9 @@ def run_main(args):
     Returns:
         int: Exit code (0 for success, non-zero for failure)
     """
+    # Print the banner at startup
+    print_banner()
+
     # Handle the --data-dir option
     if args and args.data_dir:
         import os

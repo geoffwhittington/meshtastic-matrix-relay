@@ -22,8 +22,8 @@ meshtastic:
 
 logging:
   level: info
-  #log_to_file: true                          # Default is false
-  #filename: ~/.mmrelay/logs/mmrelay.log      # Default location
+  #log_to_file: true                          # Set to true to enable file logging
+  #filename: ~/.mmrelay/logs/mmrelay.log      # Default location if log_to_file is true
   #max_log_size: 10485760                     # 10 MB default if omitted
   #backup_count: 1                            # Keeps 1 backup as the default if omitted
 
