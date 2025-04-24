@@ -38,7 +38,7 @@ logging.getLogger("nio").setLevel(logging.ERROR)
 
 def print_banner():
     """Print a simple startup message with version information."""
-    print(f"Starting MMRelay v{__version__}")
+    logger.info(f"Starting MMRelay v{__version__}")
 
 
 async def main(config):
