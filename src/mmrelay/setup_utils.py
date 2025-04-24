@@ -50,24 +50,29 @@ def print_service_commands():
 
 
 def wait_for_service_start():
-    """Wait for the service to start with a loading animation."""
-    import sys
+    """Wait for the service to start with a Rich progress indicator."""
     import time
+    from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
-    print("\nStarting mmrelay service", end="")
-    sys.stdout.flush()
+    # Create a Rich progress display with spinner and elapsed time
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold green]Starting mmrelay service..."),
+        TimeElapsedColumn(),
+        transient=True,
+    ) as progress:
+        # Add a task that will run for approximately 10 seconds
+        task = progress.add_task("Starting", total=100)
 
-    # Animation characters
-    chars = ["-", "\\", "|", "/"]
+        # Update progress over 10 seconds
+        for i in range(10):
+            time.sleep(1)
+            progress.update(task, completed=10 * (i + 1))
 
-    # Wait for 10 seconds with animation
-    for i in range(40):  # 40 * 0.25s = 10s
-        time.sleep(0.25)
-        print(f"\rStarting mmrelay service {chars[i % len(chars)]}", end="")
-        sys.stdout.flush()
-
-    print("\rStarting mmrelay service... done!")
-    sys.stdout.flush()
+            # Check if service is active after 5 seconds to potentially finish early
+            if i >= 5 and is_service_active():
+                progress.update(task, completed=100)
+                break
 
 
 def read_service_file():

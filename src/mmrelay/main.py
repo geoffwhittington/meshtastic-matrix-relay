@@ -254,6 +254,14 @@ def run_main(args):
     set_config(db_utils, config)
     set_config(base_plugin, config)
 
+    # Reinitialize the Config logger to use Rich formatting
+    from mmrelay.config import logger as config_logger
+    # Remove existing handlers
+    for handler in config_logger.handlers[:]:
+        config_logger.removeHandler(handler)
+    # Add a new handler using get_logger
+    config_logger.handlers.append(get_logger("Config").handlers[0])
+
     # Check if config exists and has the required keys
     required_keys = ["matrix", "meshtastic", "matrix_rooms"]
 
