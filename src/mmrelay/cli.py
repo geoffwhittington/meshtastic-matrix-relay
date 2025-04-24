@@ -94,6 +94,13 @@ def get_version():
     return __version__
 
 
+def print_version():
+    """
+    Print the version in a simple format.
+    """
+    print(f"MMRelay v{__version__}")
+
+
 def check_config(args=None):
     """
     Check if the configuration file is valid.
@@ -262,7 +269,7 @@ def main():
 
     # Handle --version
     if args.version:
-        print(f"mmrelay {get_version()}")
+        print_version()
         return 0
 
     # If no command was specified, run the main functionality
@@ -289,7 +296,7 @@ def handle_cli_commands(args):
     """
     # Handle --version
     if args.version:
-        print(f"mmrelay {get_version()}")
+        print_version()
         return True
 
     # Handle --install-service

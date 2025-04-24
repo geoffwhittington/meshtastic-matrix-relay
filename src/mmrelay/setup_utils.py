@@ -41,7 +41,6 @@ def service_exists():
 
 def print_service_commands():
     """Print the commands for controlling the systemd user service."""
-    print("\nUse these commands to control the mmrelay service:")
     print("  systemctl --user start mmrelay.service    # Start the service")
     print("  systemctl --user stop mmrelay.service     # Stop the service")
     print("  systemctl --user restart mmrelay.service  # Restart the service")
@@ -303,16 +302,7 @@ def install_service():
         else:
             print("Service file created successfully")
 
-    # Check if config is valid before starting the service
-    from mmrelay.cli import check_config
-
-    if not check_config():
-        print(
-            "\nWarning: Configuration is not valid. Service is installed but not started."
-        )
-        print("Please fix your configuration and then start the service manually.")
-        print_service_commands()
-        return True
+    # We don't need to validate the config here as it will be validated when the service starts
 
     # Check if the service is already enabled
     service_enabled = is_service_enabled()
@@ -373,7 +363,7 @@ def install_service():
     print(f"  Service File: {service_path}")
     print(f"  Enabled at Boot: {'Yes' if service_enabled else 'No'}")
     print(f"  Currently Running: {'Yes' if is_service_active() else 'No'}")
-    print("\nYou can manage the service with the following commands:")
+    print("\nService Management Commands:")
     print_service_commands()
 
     return True
