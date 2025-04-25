@@ -2,12 +2,16 @@
 Meshtastic Matrix Relay - Bridge between Meshtastic mesh networks and Matrix chat rooms.
 """
 
-import importlib.metadata
 import os
+import pkg_resources
 
-# Try to get version from package metadata (setup.cfg)
-try:
-    __version__ = importlib.metadata.version("mmrelay")
-except importlib.metadata.PackageNotFoundError:
-    # If package is not installed, fall back to environment variable or default
-    __version__ = os.environ.get("GITHUB_REF_NAME", "1.0.1")
+# First try to get version from environment variable (GitHub tag)
+if "GITHUB_REF_NAME" in os.environ:
+    __version__ = os.environ.get("GITHUB_REF_NAME")
+else:
+    # Fall back to setup.cfg metadata using pkg_resources (compatible with PyInstaller)
+    try:
+        __version__ = pkg_resources.get_distribution("mmrelay").version
+    except pkg_resources.DistributionNotFound:
+        # If all else fails, use hardcoded version
+        __version__ = "1.0.1"
