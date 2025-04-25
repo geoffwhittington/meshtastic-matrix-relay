@@ -265,6 +265,7 @@ def run_main(args):
 
     # Now log the config file and log file locations with the properly formatted logger
     if config_path:
+        print("DEBUG: About to log config file location from main.py")
         config_logger.info(f"Config file location: {config_path}")
     if log_file_path:
         config_logger.info(f"Log file location: {log_file_path}")
