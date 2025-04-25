@@ -258,12 +258,11 @@ def run_main(args):
     from mmrelay.config import config_path
     from mmrelay.log_utils import log_file_path
 
-    # Create a completely new logger instead of modifying the existing one
-    config_rich_logger = get_logger("Config")
+    # Create a logger with a different name to avoid conflicts with the one in config.py
+    config_rich_logger = get_logger("ConfigInfo")
 
     # Now log the config file and log file locations with the properly formatted logger
     if config_path:
-        print("DEBUG: About to log config file location from main.py")
         config_rich_logger.info(f"Config file location: {config_path}")
     if log_file_path:
         config_rich_logger.info(f"Log file location: {log_file_path}")
