@@ -36,9 +36,16 @@ logger = get_logger(name="M<>M Relay")
 logging.getLogger("nio").setLevel(logging.ERROR)
 
 
+# Flag to track if banner has been printed
+_banner_printed = False
+
 def print_banner():
     """Print a simple startup message with version information."""
-    logger.info(f"Starting MMRelay v{__version__}")
+    global _banner_printed
+    # Only print the banner once
+    if not _banner_printed:
+        logger.info(f"Starting MMRelay v{__version__}")
+        _banner_printed = True
 
 
 async def main(config):
