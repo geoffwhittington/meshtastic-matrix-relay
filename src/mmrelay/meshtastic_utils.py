@@ -2,7 +2,6 @@ import asyncio
 import contextlib
 import io
 import os
-import sys
 import threading
 import time
 from typing import List
@@ -279,7 +278,13 @@ async def reconnect():
 
                 # Show reconnection countdown with Rich (if not in a service)
                 if not is_running_as_service():
-                    from rich.progress import Progress, TextColumn, BarColumn, TimeRemainingColumn
+                    from rich.progress import (
+                        BarColumn,
+                        Progress,
+                        TextColumn,
+                        TimeRemainingColumn,
+                    )
+
                     with Progress(
                         TextColumn("[cyan]Meshtastic: Reconnecting in"),
                         BarColumn(),

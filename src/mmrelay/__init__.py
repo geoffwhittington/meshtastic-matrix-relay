@@ -3,6 +3,7 @@ Meshtastic Matrix Relay - Bridge between Meshtastic mesh networks and Matrix cha
 """
 
 import os
+
 import pkg_resources
 
 # First try to get version from environment variable (GitHub tag)
