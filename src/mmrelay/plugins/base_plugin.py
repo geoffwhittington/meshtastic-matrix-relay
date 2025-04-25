@@ -1,3 +1,4 @@
+import os
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -5,6 +6,7 @@ from abc import ABC, abstractmethod
 import markdown
 import schedule
 
+from mmrelay.config import get_plugin_data_dir
 from mmrelay.db_utils import (
     delete_plugin_data,
     get_plugin_data,
@@ -194,6 +196,33 @@ class BasePlugin(ABC):
 
     def get_data(self):
         return get_plugin_data(self.plugin_name)
+
+    def get_plugin_data_dir(self, subdir=None):
+        """
+        Returns the directory for storing plugin-specific data files.
+        Creates the directory if it doesn't exist.
+
+        Args:
+            subdir (str, optional): Optional subdirectory within the plugin's data directory.
+                                   If provided, this subdirectory will be created.
+
+        Returns:
+            str: Path to the plugin's data directory or subdirectory
+
+        Example:
+            self.get_plugin_data_dir() returns ~/.mmrelay/data/plugins/your_plugin_name/
+            self.get_plugin_data_dir("gpx_files") returns ~/.mmrelay/data/plugins/your_plugin_name/gpx_files/
+        """
+        # Get the plugin-specific data directory
+        plugin_dir = get_plugin_data_dir(self.plugin_name)
+
+        # If a subdirectory is specified, create and return it
+        if subdir:
+            subdir_path = os.path.join(plugin_dir, subdir)
+            os.makedirs(subdir_path, exist_ok=True)
+            return subdir_path
+
+        return plugin_dir
 
     def matches(self, event):
         from mmrelay.matrix_utils import bot_command
