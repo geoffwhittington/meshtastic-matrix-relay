@@ -153,7 +153,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                         from rich.progress import Progress, SpinnerColumn, TextColumn
                         with Progress(
                             SpinnerColumn(),
-                            TextColumn(f"[cyan]Connecting to serial port {serial_port}..."),
+                            TextColumn(f"[cyan]Meshtastic: Connecting to serial port {serial_port}..."),
                             transient=True,
                         ) as progress:
                             progress.add_task("Connecting", total=None)
@@ -182,7 +182,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                             from rich.progress import Progress, SpinnerColumn, TextColumn
                             with Progress(
                                 SpinnerColumn(),
-                                TextColumn(f"[cyan]Connecting to BLE address {ble_address}..."),
+                                TextColumn(f"[cyan]Meshtastic: Connecting to BLE address {ble_address}..."),
                                 transient=True,
                             ) as progress:
                                 progress.add_task("Connecting", total=None)
@@ -213,7 +213,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                         from rich.progress import Progress, SpinnerColumn, TextColumn
                         with Progress(
                             SpinnerColumn(),
-                            TextColumn(f"[cyan]Connecting to host {target_host}..."),
+                            TextColumn(f"[cyan]Meshtastic: Connecting to host {target_host}..."),
                             transient=True,
                         ) as progress:
                             progress.add_task("Connecting", total=None)
@@ -318,7 +318,7 @@ async def reconnect():
                 if not is_running_as_service():
                     from rich.progress import Progress, TextColumn, BarColumn, TimeRemainingColumn
                     with Progress(
-                        TextColumn("[cyan]Reconnecting in"),
+                        TextColumn("[cyan]Meshtastic: Reconnecting in"),
                         BarColumn(),
                         TextColumn("[cyan]{task.percentage:.0f}%"),
                         TimeRemainingColumn(),
