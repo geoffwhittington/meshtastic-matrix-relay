@@ -146,17 +146,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                 if connection_type == "serial":
                     # Serial connection
                     serial_port = config["meshtastic"]["serial_port"]
-                    logger.info(f"Connecting to serial port {serial_port} ...")
-
-                    # Show connection progress with Rich (if not in a service)
-                    if not is_running_as_service():
-                        from rich.progress import Progress, SpinnerColumn, TextColumn
-                        with Progress(
-                            SpinnerColumn(),
-                            TextColumn(f"[cyan]Meshtastic: Connecting to serial port {serial_port}..."),
-                            transient=True,
-                        ) as progress:
-                            progress.add_task("Connecting", total=None)
+                    logger.info(f"Connecting to serial port {serial_port}")
 
                     # Check if serial port exists before connecting
                     if not serial_port_exists(serial_port):
@@ -175,30 +165,15 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                     # BLE connection
                     ble_address = config["meshtastic"].get("ble_address")
                     if ble_address:
-                        logger.info(f"Connecting to BLE address {ble_address} ...")
+                        logger.info(f"Connecting to BLE address {ble_address}")
 
-                        # Show connection progress with Rich (if not in a service)
-                        if not is_running_as_service():
-                            from rich.progress import Progress, SpinnerColumn, TextColumn
-                            with Progress(
-                                SpinnerColumn(),
-                                TextColumn(f"[cyan]Meshtastic: Connecting to BLE address {ble_address}..."),
-                                transient=True,
-                            ) as progress:
-                                progress.add_task("Connecting", total=None)
-                                meshtastic_client = meshtastic.ble_interface.BLEInterface(
-                                    address=ble_address,
-                                    noProto=False,
-                                    debugOut=None,
-                                    noNodes=False,
-                                )
-                        else:
-                            meshtastic_client = meshtastic.ble_interface.BLEInterface(
-                                address=ble_address,
-                                noProto=False,
-                                debugOut=None,
-                                noNodes=False,
-                            )
+                        # Connect without progress indicator
+                        meshtastic_client = meshtastic.ble_interface.BLEInterface(
+                            address=ble_address,
+                            noProto=False,
+                            debugOut=None,
+                            noNodes=False,
+                        )
                     else:
                         logger.error("No BLE address provided.")
                         return None
@@ -206,24 +181,12 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                 elif connection_type == "tcp":
                     # TCP connection
                     target_host = config["meshtastic"]["host"]
-                    logger.info(f"Connecting to host {target_host} ...")
+                    logger.info(f"Connecting to host {target_host}")
 
-                    # Show connection progress with Rich (if not in a service)
-                    if not is_running_as_service():
-                        from rich.progress import Progress, SpinnerColumn, TextColumn
-                        with Progress(
-                            SpinnerColumn(),
-                            TextColumn(f"[cyan]Meshtastic: Connecting to host {target_host}..."),
-                            transient=True,
-                        ) as progress:
-                            progress.add_task("Connecting", total=None)
-                            meshtastic_client = meshtastic.tcp_interface.TCPInterface(
-                                hostname=target_host
-                            )
-                    else:
-                        meshtastic_client = meshtastic.tcp_interface.TCPInterface(
-                            hostname=target_host
-                        )
+                    # Connect without progress indicator
+                    meshtastic_client = meshtastic.tcp_interface.TCPInterface(
+                        hostname=target_host
+                    )
                 else:
                     logger.error(f"Unknown connection type: {connection_type}")
                     return None
