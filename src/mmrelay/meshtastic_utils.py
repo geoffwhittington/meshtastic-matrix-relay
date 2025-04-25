@@ -1,6 +1,8 @@
 import asyncio
 import contextlib
 import io
+import os
+import sys
 import threading
 import time
 from typing import List
@@ -44,6 +46,32 @@ meshtastic_lock = (
 reconnecting = False
 shutting_down = False
 reconnect_task = None  # To keep track of the reconnect task
+
+
+def is_running_as_service():
+    """
+    Check if the application is running as a systemd service.
+    This is used to determine whether to show Rich progress indicators.
+
+    Returns:
+        bool: True if running as a service, False otherwise
+    """
+    # Check for INVOCATION_ID environment variable (set by systemd)
+    if os.environ.get("INVOCATION_ID"):
+        return True
+
+    # Check if parent process is systemd
+    try:
+        with open("/proc/self/status") as f:
+            for line in f:
+                if line.startswith("PPid:"):
+                    ppid = int(line.split()[1])
+                    with open(f"/proc/{ppid}/comm") as p:
+                        return p.read().strip() == "systemd"
+    except (FileNotFoundError, PermissionError, ValueError):
+        pass
+
+    return False
 
 
 def serial_port_exists(port_name):
@@ -118,7 +146,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                 if connection_type == "serial":
                     # Serial connection
                     serial_port = config["meshtastic"]["serial_port"]
-                    logger.info(f"Connecting to serial port {serial_port} ...")
+                    logger.info(f"Connecting to serial port {serial_port}")
 
                     # Check if serial port exists before connecting
                     if not serial_port_exists(serial_port):
@@ -137,7 +165,9 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                     # BLE connection
                     ble_address = config["meshtastic"].get("ble_address")
                     if ble_address:
-                        logger.info(f"Connecting to BLE address {ble_address} ...")
+                        logger.info(f"Connecting to BLE address {ble_address}")
+
+                        # Connect without progress indicator
                         meshtastic_client = meshtastic.ble_interface.BLEInterface(
                             address=ble_address,
                             noProto=False,
@@ -151,7 +181,9 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                 elif connection_type == "tcp":
                     # TCP connection
                     target_host = config["meshtastic"]["host"]
-                    logger.info(f"Connecting to host {target_host} ...")
+                    logger.info(f"Connecting to host {target_host}")
+
+                    # Connect without progress indicator
                     meshtastic_client = meshtastic.tcp_interface.TCPInterface(
                         hostname=target_host
                     )
@@ -244,7 +276,25 @@ async def reconnect():
                 logger.info(
                     f"Reconnection attempt starting in {backoff_time} seconds..."
                 )
-                await asyncio.sleep(backoff_time)
+
+                # Show reconnection countdown with Rich (if not in a service)
+                if not is_running_as_service():
+                    from rich.progress import Progress, TextColumn, BarColumn, TimeRemainingColumn
+                    with Progress(
+                        TextColumn("[cyan]Meshtastic: Reconnecting in"),
+                        BarColumn(),
+                        TextColumn("[cyan]{task.percentage:.0f}%"),
+                        TimeRemainingColumn(),
+                        transient=True,
+                    ) as progress:
+                        task = progress.add_task("Waiting", total=backoff_time)
+                        for _ in range(backoff_time):
+                            if shutting_down:
+                                break
+                            await asyncio.sleep(1)
+                            progress.update(task, advance=1)
+                else:
+                    await asyncio.sleep(backoff_time)
                 if shutting_down:
                     logger.debug(
                         "Shutdown in progress. Aborting reconnection attempts."

@@ -24,7 +24,9 @@ def get_executable_path():
         print(f"Found mmrelay executable at: {mmrelay_path}")
         return mmrelay_path
     else:
-        print("Warning: Could not find mmrelay executable in PATH. Using current Python interpreter.")
+        print(
+            "Warning: Could not find mmrelay executable in PATH. Using current Python interpreter."
+        )
         return sys.executable
 
 
@@ -48,24 +50,29 @@ def print_service_commands():
 
 
 def wait_for_service_start():
-    """Wait for the service to start with a loading animation."""
-    import sys
+    """Wait for the service to start with a Rich progress indicator."""
     import time
+    from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
-    print("\nStarting mmrelay service", end="")
-    sys.stdout.flush()
+    # Create a Rich progress display with spinner and elapsed time
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold green]Starting mmrelay service..."),
+        TimeElapsedColumn(),
+        transient=True,
+    ) as progress:
+        # Add a task that will run for approximately 10 seconds
+        task = progress.add_task("Starting", total=100)
 
-    # Animation characters
-    chars = ["-", "\\", "|", "/"]
+        # Update progress over 10 seconds
+        for i in range(10):
+            time.sleep(1)
+            progress.update(task, completed=10 * (i + 1))
 
-    # Wait for 10 seconds with animation
-    for i in range(40):  # 40 * 0.25s = 10s
-        time.sleep(0.25)
-        print(f"\rStarting mmrelay service {chars[i % len(chars)]}", end="")
-        sys.stdout.flush()
-
-    print("\rStarting mmrelay service... done!")
-    sys.stdout.flush()
+            # Check if service is active after 5 seconds to potentially finish early
+            if i >= 5 and is_service_active():
+                progress.update(task, completed=100)
+                break
 
 
 def read_service_file():
@@ -242,7 +249,10 @@ def service_needs_update():
 
     # Check if the ExecStart line in the existing service file contains the correct executable
     if executable_path not in existing_service:
-        return True, f"Service file does not use the current executable: {executable_path}"
+        return (
+            True,
+            f"Service file does not use the current executable: {executable_path}",
+        )
 
     # Check if the PATH environment includes pipx paths
     if "%h/.local/pipx/venvs/mmrelay/bin" not in existing_service:
@@ -348,7 +358,11 @@ def install_service():
                 print(f"Error: {e}")
     else:
         print("The service is not currently running.")
-        if input("Do you want to start the service now? (y/n): ").lower().startswith("y"):
+        if (
+            input("Do you want to start the service now? (y/n): ")
+            .lower()
+            .startswith("y")
+        ):
             if start_service():
                 # Wait for the service to start
                 wait_for_service_start()
