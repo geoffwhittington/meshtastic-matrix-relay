@@ -187,7 +187,7 @@ def load_config(config_file=None, args=None):
 
     # If a specific config file was provided, use it
     if config_file and os.path.isfile(config_file):
-        logger.info(f"Loading configuration from: {config_file}")
+        # Store the config path but don't log it yet - will be logged by main.py
         with open(config_file, "r") as f:
             relay_config = yaml.load(f, Loader=SafeLoader)
         config_path = config_file
@@ -200,7 +200,7 @@ def load_config(config_file=None, args=None):
     for path in config_paths:
         if os.path.isfile(path):
             config_path = path
-            logger.info(f"Config file location: {config_path}")
+            # Store the config path but don't log it yet - will be logged by main.py
             with open(config_path, "r") as f:
                 relay_config = yaml.load(f, Loader=SafeLoader)
             return relay_config
