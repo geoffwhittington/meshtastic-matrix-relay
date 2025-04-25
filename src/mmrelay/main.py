@@ -256,15 +256,18 @@ def run_main(args):
 
     # Reinitialize the Config logger to use Rich formatting
     from mmrelay.config import logger as config_logger, config_path
+    from mmrelay.log_utils import log_file_path
     # Remove existing handlers
     for handler in config_logger.handlers[:]:
         config_logger.removeHandler(handler)
     # Add a new handler using get_logger
     config_logger.handlers.append(get_logger("Config").handlers[0])
 
-    # Now log the config file location with the properly formatted logger
+    # Now log the config file and log file locations with the properly formatted logger
     if config_path:
         config_logger.info(f"Config file location: {config_path}")
+    if log_file_path:
+        config_logger.info(f"Log file location: {log_file_path}")
 
     # Check if config exists and has the required keys
     required_keys = ["matrix", "meshtastic", "matrix_rooms"]

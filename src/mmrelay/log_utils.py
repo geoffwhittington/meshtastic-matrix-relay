@@ -25,6 +25,9 @@ LOG_LEVEL_STYLES = {
 # Global config variable that will be set from main.py
 config = None
 
+# Global variable to store the log file path
+log_file_path = None
+
 
 def get_logger(name):
     logger = logging.getLogger(name=name)
@@ -101,39 +104,10 @@ def get_logger(name):
         if log_dir:  # Ensure non-empty directory paths exist
             os.makedirs(log_dir, exist_ok=True)
 
-        # Log which file we're using (only for the first logger)
+        # Store the log file path for later use
         if name == "M<>M Relay":
-            # Create a basic logger to log the log file path
-            # This is needed because we can't use the logger we're creating to log its own creation
-            basic_logger = logging.getLogger("LogSetup")
-            basic_logger.setLevel(logging.INFO)
-
-            # Add handler based on color setting
-            if color_enabled:
-                # Use Rich handler with colors
-                basic_handler = RichHandler(
-                    rich_tracebacks=True,
-                    console=console,
-                    show_time=True,
-                    show_level=True,
-                    show_path=False,
-                    markup=True,
-                    log_time_format="%Y-%m-%d %H:%M:%S",
-                    omit_repeated_times=False,
-                )
-                basic_handler.setFormatter(logging.Formatter("%(name)s: %(message)s"))
-            else:
-                # Use standard handler without colors
-                basic_handler = logging.StreamHandler()
-                basic_handler.setFormatter(
-                    logging.Formatter(
-                        fmt="%(asctime)s %(levelname)s:%(name)s:%(message)s",
-                        datefmt="%Y-%m-%d %H:%M:%S %z",
-                    )
-                )
-
-            basic_logger.addHandler(basic_handler)
-            basic_logger.info(f"Log file location: {log_file}")
+            global log_file_path
+            log_file_path = log_file
 
         # Create a file handler for logging
         try:
