@@ -52,6 +52,7 @@ def print_service_commands():
 def wait_for_service_start():
     """Wait for the service to start with a Rich progress indicator."""
     import time
+
     from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
     # Create a Rich progress display with spinner and elapsed time

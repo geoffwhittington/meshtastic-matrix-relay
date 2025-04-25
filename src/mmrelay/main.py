@@ -37,6 +37,7 @@ logging.getLogger("nio").setLevel(logging.ERROR)
 # Flag to track if banner has been printed
 _banner_printed = False
 
+
 def print_banner():
     """Print a simple startup message with version information."""
     global _banner_printed
