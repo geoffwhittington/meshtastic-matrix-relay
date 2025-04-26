@@ -60,33 +60,137 @@ def clone_or_update_repo(repo_url, tag, plugins_dir):
     # Extract the repository name from the URL
     repo_name = os.path.splitext(os.path.basename(repo_url.rstrip("/")))[0]
     repo_path = os.path.join(plugins_dir, repo_name)
+
+    # Default branch names to try if tag is not specified
+    default_branches = ["main", "master"]
+
+    # If tag is one of the default branches, we'll handle it as a branch
+    is_default_branch = tag in default_branches
+
     if os.path.isdir(repo_path):
         try:
-            # Fetch all tags and branches
-            subprocess.check_call(["git", "-C", repo_path, "fetch", "--all", "--tags"])
-
-            # Try to checkout the tag directly
+            # Fetch all branches but don't fetch tags to avoid conflicts
             try:
-                subprocess.check_call(["git", "-C", repo_path, "checkout", tag])
-                logger.info(f"Updated repository {repo_name} to tag {tag}")
-                return True
-            except subprocess.CalledProcessError:
-                # If tag checkout fails, try to fetch it specifically
-                logger.warning(f"Tag {tag} not found locally, trying to fetch it specifically")
+                subprocess.check_call(["git", "-C", repo_path, "fetch", "origin"])
+            except subprocess.CalledProcessError as e:
+                logger.warning(f"Error fetching from remote: {e}")
+                # Continue anyway, we'll try to use what we have
+
+            # If it's a default branch, handle it differently
+            if is_default_branch:
                 try:
-                    # Try to fetch the specific tag
-                    subprocess.check_call(["git", "-C", repo_path, "fetch", "origin", f"refs/tags/{tag}:refs/tags/{tag}"])
+                    # Check if we're already on the right branch
+                    current_branch = subprocess.check_output(
+                        ["git", "-C", repo_path, "rev-parse", "--abbrev-ref", "HEAD"],
+                        universal_newlines=True
+                    ).strip()
+
+                    if current_branch == tag:
+                        # We're on the right branch, just pull
+                        try:
+                            subprocess.check_call(["git", "-C", repo_path, "pull", "origin", tag])
+                            logger.info(f"Updated repository {repo_name} branch {tag}")
+                            return True
+                        except subprocess.CalledProcessError as e:
+                            logger.warning(f"Error pulling branch {tag}: {e}")
+                            # Continue anyway, we'll use what we have
+                            return True
+                    else:
+                        # Switch to the right branch
+                        subprocess.check_call(["git", "-C", repo_path, "checkout", tag])
+                        subprocess.check_call(["git", "-C", repo_path, "pull", "origin", tag])
+                        logger.info(f"Switched to and updated branch {tag}")
+                        return True
+                except subprocess.CalledProcessError:
+                    # If we can't checkout the specified branch, try the other default branch
+                    other_default = "main" if tag == "master" else "master"
+                    try:
+                        logger.warning(f"Branch {tag} not found, trying {other_default}")
+                        subprocess.check_call(["git", "-C", repo_path, "checkout", other_default])
+                        subprocess.check_call(["git", "-C", repo_path, "pull", "origin", other_default])
+                        logger.info(f"Using {other_default} branch instead of {tag}")
+                        return True
+                    except subprocess.CalledProcessError:
+                        # If that fails too, just use whatever branch we're on
+                        logger.warning("Could not checkout any default branch, using current branch")
+                        return True
+            else:
+                # Handle tag checkout
+                # Check if we're already on the correct tag/commit
+                try:
+                    # Get the current commit hash
+                    current_commit = subprocess.check_output(
+                        ["git", "-C", repo_path, "rev-parse", "HEAD"],
+                        universal_newlines=True
+                    ).strip()
+
+                    # Get the commit hash for the tag
+                    tag_commit = None
+                    try:
+                        tag_commit = subprocess.check_output(
+                            ["git", "-C", repo_path, "rev-parse", tag],
+                            universal_newlines=True
+                        ).strip()
+                    except subprocess.CalledProcessError:
+                        # Tag doesn't exist locally, we'll need to fetch it
+                        pass
+
+                    # If we're already at the tag's commit, we're done
+                    if tag_commit and current_commit == tag_commit:
+                        logger.info(f"Repository {repo_name} is already at tag {tag}")
+                        return True
+
+                    # Otherwise, try to checkout the tag
                     subprocess.check_call(["git", "-C", repo_path, "checkout", tag])
-                    logger.info(f"Successfully fetched and checked out tag {tag}")
+                    logger.info(f"Updated repository {repo_name} to tag {tag}")
                     return True
                 except subprocess.CalledProcessError:
-                    # If that fails too, try as a branch
-                    logger.warning(f"Could not fetch tag {tag}, trying as a branch")
-                    subprocess.check_call(["git", "-C", repo_path, "fetch", "origin", tag])
-                    subprocess.check_call(["git", "-C", repo_path, "checkout", tag])
-                    subprocess.check_call(["git", "-C", repo_path, "pull", "origin", tag])
-                    logger.info(f"Updated repository {repo_name} to branch {tag}")
-                    return True
+                    # If tag checkout fails, try to fetch it specifically
+                    logger.warning(f"Tag {tag} not found locally, trying to fetch it specifically")
+                    try:
+                        # Try to fetch the specific tag, but first remove any existing tag with the same name
+                        try:
+                            # Delete the local tag if it exists to avoid conflicts
+                            subprocess.check_call(["git", "-C", repo_path, "tag", "-d", tag])
+                        except subprocess.CalledProcessError:
+                            # Tag doesn't exist locally, which is fine
+                            pass
+
+                        # Now fetch the tag from remote
+                        try:
+                            # Try to fetch the tag
+                            subprocess.check_call(["git", "-C", repo_path, "fetch", "origin", f"refs/tags/{tag}"])
+                        except subprocess.CalledProcessError:
+                            # If that fails, try to fetch the tag without the refs/tags/ prefix
+                            subprocess.check_call(["git", "-C", repo_path, "fetch", "origin", f"refs/tags/{tag}:refs/tags/{tag}"])
+
+                        subprocess.check_call(["git", "-C", repo_path, "checkout", tag])
+                        logger.info(f"Successfully fetched and checked out tag {tag}")
+                        return True
+                    except subprocess.CalledProcessError:
+                        # If that fails too, try as a branch
+                        logger.warning(f"Could not fetch tag {tag}, trying as a branch")
+                        try:
+                            subprocess.check_call(["git", "-C", repo_path, "fetch", "origin", tag])
+                            subprocess.check_call(["git", "-C", repo_path, "checkout", tag])
+                            subprocess.check_call(["git", "-C", repo_path, "pull", "origin", tag])
+                            logger.info(f"Updated repository {repo_name} to branch {tag}")
+                            return True
+                        except subprocess.CalledProcessError:
+                            # If all else fails, just use a default branch
+                            logger.warning(f"Could not checkout {tag} as tag or branch, trying default branches")
+                            for default_branch in default_branches:
+                                try:
+                                    subprocess.check_call(["git", "-C", repo_path, "checkout", default_branch])
+                                    subprocess.check_call(["git", "-C", repo_path, "pull", "origin", default_branch])
+                                    logger.info(f"Using {default_branch} instead of {tag}")
+                                    return True
+                                except subprocess.CalledProcessError:
+                                    continue
+
+                            # If we get here, we couldn't checkout any branch
+                            logger.warning("Could not checkout any branch, using current state")
+                            return True
         except subprocess.CalledProcessError as e:
             logger.error(f"Error updating repository {repo_name}: {e}")
             logger.error(
@@ -94,30 +198,78 @@ def clone_or_update_repo(repo_url, tag, plugins_dir):
             )
             return False
     else:
+        # Repository doesn't exist yet, clone it
         try:
             os.makedirs(plugins_dir, exist_ok=True)
-            try:
-                # Try to clone with the specified tag/branch
-                subprocess.check_call(
-                    ["git", "clone", "--branch", tag, repo_url], cwd=plugins_dir
-                )
-                logger.info(f"Cloned repository {repo_name} from {repo_url} at {tag}")
-                return True
-            except subprocess.CalledProcessError:
-                # If that fails, clone without specifying a branch/tag
-                logger.warning(f"Could not clone with tag/branch {tag}, cloning default branch")
-                subprocess.check_call(
-                    ["git", "clone", repo_url], cwd=plugins_dir
-                )
-                # Then try to checkout the tag
+
+            # If it's a default branch, just clone it directly
+            if is_default_branch:
                 try:
-                    subprocess.check_call(["git", "-C", repo_path, "checkout", tag])
-                    logger.info(f"Cloned repository {repo_name} and checked out {tag}")
+                    # Try to clone with the specified branch
+                    subprocess.check_call(
+                        ["git", "clone", "--branch", tag, repo_url], cwd=plugins_dir
+                    )
+                    logger.info(f"Cloned repository {repo_name} from {repo_url} at branch {tag}")
                     return True
                 except subprocess.CalledProcessError:
-                    logger.warning(f"Could not checkout {tag}, using default branch")
-                    logger.info(f"Cloned repository {repo_name} from {repo_url} (default branch)")
+                    # If that fails, try the other default branch
+                    other_default = "main" if tag == "master" else "master"
+                    try:
+                        logger.warning(f"Could not clone with branch {tag}, trying {other_default}")
+                        subprocess.check_call(
+                            ["git", "clone", "--branch", other_default, repo_url], cwd=plugins_dir
+                        )
+                        logger.info(f"Cloned repository {repo_name} from {repo_url} at branch {other_default}")
+                        return True
+                    except subprocess.CalledProcessError:
+                        # If that fails too, clone without specifying a branch
+                        logger.warning(f"Could not clone with branch {other_default}, cloning default branch")
+                        subprocess.check_call(
+                            ["git", "clone", repo_url], cwd=plugins_dir
+                        )
+                        logger.info(f"Cloned repository {repo_name} from {repo_url} (default branch)")
+                        return True
+            else:
+                # It's a tag, try to clone with the tag
+                try:
+                    # Try to clone with the specified tag
+                    subprocess.check_call(
+                        ["git", "clone", "--branch", tag, repo_url], cwd=plugins_dir
+                    )
+                    logger.info(f"Cloned repository {repo_name} from {repo_url} at tag {tag}")
                     return True
+                except subprocess.CalledProcessError:
+                    # If that fails, clone without specifying a tag
+                    logger.warning(f"Could not clone with tag {tag}, cloning default branch")
+                    subprocess.check_call(
+                        ["git", "clone", repo_url], cwd=plugins_dir
+                    )
+
+                    # Then try to fetch and checkout the tag
+                    try:
+                        # Try to fetch the tag
+                        try:
+                            subprocess.check_call(["git", "-C", repo_path, "fetch", "origin", f"refs/tags/{tag}"])
+                        except subprocess.CalledProcessError:
+                            # If that fails, try to fetch the tag without the refs/tags/ prefix
+                            subprocess.check_call(["git", "-C", repo_path, "fetch", "origin", f"refs/tags/{tag}:refs/tags/{tag}"])
+
+                        # Now checkout the tag
+                        subprocess.check_call(["git", "-C", repo_path, "checkout", tag])
+                        logger.info(f"Cloned repository {repo_name} and checked out tag {tag}")
+                        return True
+                    except subprocess.CalledProcessError:
+                        # If that fails, try as a branch
+                        try:
+                            logger.warning(f"Could not checkout {tag} as a tag, trying as a branch")
+                            subprocess.check_call(["git", "-C", repo_path, "fetch", "origin", tag])
+                            subprocess.check_call(["git", "-C", repo_path, "checkout", tag])
+                            logger.info(f"Cloned repository {repo_name} and checked out branch {tag}")
+                            return True
+                        except subprocess.CalledProcessError:
+                            logger.warning(f"Could not checkout {tag}, using default branch")
+                            logger.info(f"Cloned repository {repo_name} from {repo_url} (default branch)")
+                            return True
         except subprocess.CalledProcessError as e:
             logger.error(f"Error cloning repository {repo_name}: {e}")
             logger.error(
