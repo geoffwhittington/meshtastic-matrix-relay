@@ -103,6 +103,32 @@ def get_data_dir():
     return data_dir
 
 
+def get_plugin_data_dir(plugin_name=None):
+    """
+    Returns the directory for storing plugin-specific data files.
+    If plugin_name is provided, returns a plugin-specific subdirectory.
+    Creates the directory if it doesn't exist.
+
+    Example:
+    - get_plugin_data_dir() returns ~/.mmrelay/data/plugins/
+    - get_plugin_data_dir("my_plugin") returns ~/.mmrelay/data/plugins/my_plugin/
+    """
+    # Get the base data directory
+    base_data_dir = get_data_dir()
+
+    # Create the plugins directory
+    plugins_data_dir = os.path.join(base_data_dir, "plugins")
+    os.makedirs(plugins_data_dir, exist_ok=True)
+
+    # If a plugin name is provided, create and return a plugin-specific directory
+    if plugin_name:
+        plugin_data_dir = os.path.join(plugins_data_dir, plugin_name)
+        os.makedirs(plugin_data_dir, exist_ok=True)
+        return plugin_data_dir
+
+    return plugins_data_dir
+
+
 def get_log_dir():
     """
     Returns the directory for storing log files.
