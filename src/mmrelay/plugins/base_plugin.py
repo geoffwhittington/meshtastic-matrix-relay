@@ -211,7 +211,7 @@ class BasePlugin(ABC):
 
         Example:
             self.get_plugin_data_dir() returns ~/.mmrelay/data/plugins/your_plugin_name/
-            self.get_plugin_data_dir("gpx_files") returns ~/.mmrelay/data/plugins/your_plugin_name/gpx_files/
+            self.get_plugin_data_dir("data_files") returns ~/.mmrelay/data/plugins/your_plugin_name/data_files/
         """
         # Get the plugin-specific data directory
         plugin_dir = get_plugin_data_dir(self.plugin_name)
