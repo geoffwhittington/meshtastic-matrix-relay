@@ -111,7 +111,7 @@ def get_plugin_data_dir(plugin_name=None):
 
     Example:
     - get_plugin_data_dir() returns ~/.mmrelay/data/plugins/
-    - get_plugin_data_dir("gpxtracker") returns ~/.mmrelay/data/plugins/gpxtracker/
+    - get_plugin_data_dir("my_plugin") returns ~/.mmrelay/data/plugins/my_plugin/
     """
     # Get the base data directory
     base_data_dir = get_data_dir()
