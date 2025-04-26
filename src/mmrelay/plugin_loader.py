@@ -62,29 +62,68 @@ def clone_or_update_repo(repo_url, tag, plugins_dir):
     repo_path = os.path.join(plugins_dir, repo_name)
     if os.path.isdir(repo_path):
         try:
-            subprocess.check_call(["git", "-C", repo_path, "fetch"])
-            subprocess.check_call(["git", "-C", repo_path, "checkout", tag])
-            subprocess.check_call(["git", "-C", repo_path, "pull", "origin", tag])
-            logger.info(f"Updated repository {repo_name} to {tag}")
+            # Fetch all tags and branches
+            subprocess.check_call(["git", "-C", repo_path, "fetch", "--all", "--tags"])
+
+            # Try to checkout the tag directly
+            try:
+                subprocess.check_call(["git", "-C", repo_path, "checkout", tag])
+                logger.info(f"Updated repository {repo_name} to tag {tag}")
+                return True
+            except subprocess.CalledProcessError:
+                # If tag checkout fails, try to fetch it specifically
+                logger.warning(f"Tag {tag} not found locally, trying to fetch it specifically")
+                try:
+                    # Try to fetch the specific tag
+                    subprocess.check_call(["git", "-C", repo_path, "fetch", "origin", f"refs/tags/{tag}:refs/tags/{tag}"])
+                    subprocess.check_call(["git", "-C", repo_path, "checkout", tag])
+                    logger.info(f"Successfully fetched and checked out tag {tag}")
+                    return True
+                except subprocess.CalledProcessError:
+                    # If that fails too, try as a branch
+                    logger.warning(f"Could not fetch tag {tag}, trying as a branch")
+                    subprocess.check_call(["git", "-C", repo_path, "fetch", "origin", tag])
+                    subprocess.check_call(["git", "-C", repo_path, "checkout", tag])
+                    subprocess.check_call(["git", "-C", repo_path, "pull", "origin", tag])
+                    logger.info(f"Updated repository {repo_name} to branch {tag}")
+                    return True
         except subprocess.CalledProcessError as e:
             logger.error(f"Error updating repository {repo_name}: {e}")
             logger.error(
                 f"Please manually git clone the repository {repo_url} into {repo_path}"
             )
-            sys.exit(1)
+            return False
     else:
         try:
             os.makedirs(plugins_dir, exist_ok=True)
-            subprocess.check_call(
-                ["git", "clone", "--branch", tag, repo_url], cwd=plugins_dir
-            )
-            logger.info(f"Cloned repository {repo_name} from {repo_url} at {tag}")
+            try:
+                # Try to clone with the specified tag/branch
+                subprocess.check_call(
+                    ["git", "clone", "--branch", tag, repo_url], cwd=plugins_dir
+                )
+                logger.info(f"Cloned repository {repo_name} from {repo_url} at {tag}")
+                return True
+            except subprocess.CalledProcessError:
+                # If that fails, clone without specifying a branch/tag
+                logger.warning(f"Could not clone with tag/branch {tag}, cloning default branch")
+                subprocess.check_call(
+                    ["git", "clone", repo_url], cwd=plugins_dir
+                )
+                # Then try to checkout the tag
+                try:
+                    subprocess.check_call(["git", "-C", repo_path, "checkout", tag])
+                    logger.info(f"Cloned repository {repo_name} and checked out {tag}")
+                    return True
+                except subprocess.CalledProcessError:
+                    logger.warning(f"Could not checkout {tag}, using default branch")
+                    logger.info(f"Cloned repository {repo_name} from {repo_url} (default branch)")
+                    return True
         except subprocess.CalledProcessError as e:
             logger.error(f"Error cloning repository {repo_name}: {e}")
             logger.error(
                 f"Please manually git clone the repository {repo_url} into {repo_path}"
             )
-            sys.exit(1)
+            return False
     # Install requirements if requirements.txt exists
     requirements_path = os.path.join(repo_path, "requirements.txt")
     if os.path.isfile(requirements_path):
@@ -255,11 +294,14 @@ def load_plugins(passed_config=None):
             tag = plugin_info.get("tag", "master")
             if repo_url:
                 # Clone to the user directory by default
-                clone_or_update_repo(repo_url, tag, community_plugins_dir)
+                success = clone_or_update_repo(repo_url, tag, community_plugins_dir)
+                if not success:
+                    logger.warning(f"Failed to clone/update plugin {plugin_name}, skipping")
+                    continue
             else:
                 logger.error("Repository URL not specified for a community plugin")
                 logger.error("Please specify the repository URL in config.yaml")
-                sys.exit(1)
+                continue
 
     # Only load community plugins that are explicitly enabled
     for plugin_name in active_community_plugins:
