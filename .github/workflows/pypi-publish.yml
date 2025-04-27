@@ -28,6 +28,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install build
 
+      - name: Verify package version
+        run: |
+          # Print the version that will be used
+          echo "Checking package version..."
+          VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); import mmrelay; print(mmrelay.__version__)")
+          echo "Package will be built with version: $VERSION"
+          # Verify it matches setup.cfg
+          SETUP_VERSION=$(grep "version =" setup.cfg | sed 's/.*= //')
+          echo "Version in setup.cfg: $SETUP_VERSION"
+          if [ "$VERSION" != "$SETUP_VERSION" ]; then
+            echo "WARNING: Version mismatch between package ($VERSION) and setup.cfg ($SETUP_VERSION)"
+            exit 1
+          fi
+          echo "Version check passed: $VERSION"
+
       - name: Build the package
         run: python -m build
 

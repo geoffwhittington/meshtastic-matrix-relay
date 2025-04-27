@@ -45,16 +45,27 @@ jobs:
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
             . "$HOME/.cargo/env"
             pip install --upgrade pip setuptools wheel maturin
-            pip install --no-binary=:all: rpds-py
+
+            # Install jsonschema with a version that doesn't require rpds-py
+            pip install "jsonschema<4.0.0" "referencing<0.30.0"
+
+            # Install the rest of the requirements
             pip install -r requirements.txt
             pip install shiv
             mkdir -p dist
+
+            # Build the PYZ file with the correct entry point
             python -m shiv --compressed \
               --compile-pyc \
               --reproducible \
-              --entry-point mmrelay \
+              --entry-point mmrelay.cli:main \
               --output-file dist/mmrelay-${{ env.VERSION }}-dev-${{ env.GIT_SHA }}-armv7.pyz \
               .
+
+            # Test the PYZ file
+            echo "--- Testing PYZ file ---"
+            chmod +x dist/mmrelay-${{ env.VERSION }}-dev-${{ env.GIT_SHA }}-armv7.pyz
+            dist/mmrelay-${{ env.VERSION }}-dev-${{ env.GIT_SHA }}-armv7.pyz --version || echo "PYZ test failed"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
