@@ -400,7 +400,8 @@ def clone_or_update_repo(repo_url, tag, plugins_dir):
             logger.error(
                 f"Please manually install the requirements from {requirements_path}"
             )
-            sys.exit(1)
+            # Don't exit, just continue with a warning
+            logger.warning(f"Plugin {repo_name} may not work correctly without its dependencies")
 
 
 def load_plugins_from_directory(directory, recursive=False):
@@ -418,14 +419,43 @@ def load_plugins_from_directory(directory, recursive=False):
                         module_name, plugin_path
                     )
                     plugin_module = importlib.util.module_from_spec(spec)
+
+                    # Create a compatibility layer for plugins
+                    # This allows plugins to import from 'plugins' or 'mmrelay.plugins'
+                    if "mmrelay.plugins" not in sys.modules:
+                        import mmrelay.plugins
+                        sys.modules["mmrelay.plugins"] = mmrelay.plugins
+
+                    # For backward compatibility with older plugins
+                    if "plugins" not in sys.modules:
+                        import mmrelay.plugins
+                        sys.modules["plugins"] = mmrelay.plugins
+
                     try:
+                        # Add the plugin's directory to sys.path temporarily
+                        plugin_dir = os.path.dirname(plugin_path)
+                        sys.path.insert(0, plugin_dir)
+
+                        # Execute the module
                         spec.loader.exec_module(plugin_module)
+
+                        # Remove the plugin directory from sys.path
+                        if plugin_dir in sys.path:
+                            sys.path.remove(plugin_dir)
+
                         if hasattr(plugin_module, "Plugin"):
                             plugins.append(plugin_module.Plugin())
                         else:
                             logger.warning(
                                 f"{plugin_path} does not define a Plugin class."
                             )
+                    except ModuleNotFoundError as e:
+                        missing_module = str(e).split()[-1].strip("'")
+                        logger.error(f"Error loading plugin {plugin_path}: {e}")
+                        logger.error("This plugin requires additional dependencies.")
+                        logger.error(f"If you installed mmrelay with pip: pip install {missing_module}")
+                        logger.error(f"If you installed mmrelay with pipx: pipx inject mmrelay {missing_module}")
+                        logger.error(f"Plugin directory: {os.path.dirname(plugin_path)}")
                     except Exception as e:
                         logger.error(f"Error loading plugin {plugin_path}: {e}")
             if not recursive:
@@ -580,7 +610,7 @@ def load_plugins(passed_config=None):
             for dir_path in community_plugin_dirs:
                 plugin_path = os.path.join(dir_path, repo_name)
                 if os.path.exists(plugin_path):
-                    logger.debug(f"Loading community plugin from: {plugin_path}")
+                    logger.info(f"Loading community plugin from: {plugin_path}")
                     plugins.extend(
                         load_plugins_from_directory(plugin_path, recursive=True)
                     )
