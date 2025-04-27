@@ -110,7 +110,10 @@ def clone_or_update_repo(repo_url, ref, plugins_dir):
                         subprocess.check_call(
                             ["git", "-C", repo_path, "pull", "origin", ref_value]
                         )
-                        logger.info(f"Switched to and updated branch {ref_value}")
+                        if ref_type == "branch":
+                            logger.info(f"Switched to and updated branch {ref_value}")
+                        else:
+                            logger.info(f"Switched to and updated tag {ref_value}")
                         return True
                 except subprocess.CalledProcessError:
                     # If we can't checkout the specified branch, try the other default branch
@@ -161,7 +164,10 @@ def clone_or_update_repo(repo_url, ref, plugins_dir):
 
                     # Otherwise, try to checkout the tag
                     subprocess.check_call(["git", "-C", repo_path, "checkout", ref_value])
-                    logger.info(f"Updated repository {repo_name} to tag {ref_value}")
+                    if ref_type == "branch":
+                        logger.info(f"Updated repository {repo_name} to branch {ref_value}")
+                    else:
+                        logger.info(f"Updated repository {repo_name} to tag {ref_value}")
                     return True
                 except subprocess.CalledProcessError:
                     # If tag checkout fails, try to fetch it specifically
@@ -206,7 +212,10 @@ def clone_or_update_repo(repo_url, ref, plugins_dir):
                             )
 
                         subprocess.check_call(["git", "-C", repo_path, "checkout", ref_value])
-                        logger.info(f"Successfully fetched and checked out tag {ref_value}")
+                        if ref_type == "branch":
+                            logger.info(f"Successfully fetched and checked out branch {ref_value}")
+                        else:
+                            logger.info(f"Successfully fetched and checked out tag {ref_value}")
                         return True
                     except subprocess.CalledProcessError:
                         # If that fails too, try as a branch
@@ -281,9 +290,14 @@ def clone_or_update_repo(repo_url, ref, plugins_dir):
                     subprocess.check_call(
                         ["git", "clone", "--branch", ref_value, repo_url], cwd=plugins_dir
                     )
-                    logger.info(
-                        f"Cloned repository {repo_name} from {repo_url} at branch {ref_value}"
-                    )
+                    if ref_type == "branch":
+                        logger.info(
+                            f"Cloned repository {repo_name} from {repo_url} at branch {ref_value}"
+                        )
+                    else:
+                        logger.info(
+                            f"Cloned repository {repo_name} from {repo_url} at tag {ref_value}"
+                        )
                     return True
                 except subprocess.CalledProcessError:
                     # If that fails, try the other default branch
@@ -319,9 +333,14 @@ def clone_or_update_repo(repo_url, ref, plugins_dir):
                     subprocess.check_call(
                         ["git", "clone", "--branch", ref_value, repo_url], cwd=plugins_dir
                     )
-                    logger.info(
-                        f"Cloned repository {repo_name} from {repo_url} at tag {ref_value}"
-                    )
+                    if ref_type == "branch":
+                        logger.info(
+                            f"Cloned repository {repo_name} from {repo_url} at branch {ref_value}"
+                        )
+                    else:
+                        logger.info(
+                            f"Cloned repository {repo_name} from {repo_url} at tag {ref_value}"
+                        )
                     return True
                 except subprocess.CalledProcessError:
                     # If that fails, clone without specifying a tag
@@ -359,9 +378,14 @@ def clone_or_update_repo(repo_url, ref, plugins_dir):
 
                         # Now checkout the tag
                         subprocess.check_call(["git", "-C", repo_path, "checkout", ref_value])
-                        logger.info(
-                            f"Cloned repository {repo_name} and checked out tag {ref_value}"
-                        )
+                        if ref_type == "branch":
+                            logger.info(
+                                f"Cloned repository {repo_name} and checked out branch {ref_value}"
+                            )
+                        else:
+                            logger.info(
+                                f"Cloned repository {repo_name} and checked out tag {ref_value}"
+                            )
                         return True
                     except subprocess.CalledProcessError:
                         # If that fails, try as a branch
