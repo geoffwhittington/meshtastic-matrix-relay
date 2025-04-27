@@ -524,7 +524,7 @@ def load_plugins(passed_config=None):
 
     # Get the first directory for cloning (prefer user directory)
     community_plugins_dir = community_plugin_dirs[
-        -1
+        0
     ]  # Use the user directory for new clones
 
     # Create community plugins directory if needed
