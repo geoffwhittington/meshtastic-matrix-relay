@@ -26,10 +26,8 @@ git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
 cd meshtastic-matrix-relay
 
 # Install in development mode using pipx (recommended)
+# Run this command each time before testing new changes.
 pipx install -e .
-
-# Or use pip if you prefer
-pip install -e .
 ```
 
 > **Upgrading from a previous version?** Please see [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) for migration guidance.
@@ -113,9 +111,6 @@ mmrelay --check-config
 
 # Install as a systemd user service (Linux only)
 mmrelay --install-service
-
-# Run with debug logging
-mmrelay --log-level debug
 ```
 
 ### What to Expect
