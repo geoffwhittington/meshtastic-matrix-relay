@@ -5,6 +5,8 @@ Command-line interface handling for the Meshtastic Matrix Relay.
 import argparse
 import os
 import sys
+import importlib.resources
+from pathlib import Path
 
 import yaml
 from yaml.loader import SafeLoader
@@ -363,29 +365,45 @@ def generate_sample_config():
     # Ensure the directory exists
     os.makedirs(os.path.dirname(target_path), exist_ok=True)
 
-    # Try to find the sample config file
-    # First, check in the package directory
-    package_dir = os.path.dirname(__file__)
-    sample_config_path = os.path.join(
-        os.path.dirname(os.path.dirname(package_dir)), "sample_config.yaml"
-    )
+    # Use importlib.resources to access the sample config file
+    try:
+        # Try to get the sample config from the package resources
+        sample_config_content = importlib.resources.files("mmrelay.tools").joinpath("sample_config.yaml").read_text()
 
-    # If not found, try the repository root
-    if not os.path.exists(sample_config_path):
-        repo_root = os.path.dirname(os.path.dirname(__file__))
-        sample_config_path = os.path.join(repo_root, "sample_config.yaml")
+        # Write the sample config to the target path
+        with open(target_path, "w") as f:
+            f.write(sample_config_content)
 
-    # If still not found, try the current directory
-    if not os.path.exists(sample_config_path):
-        sample_config_path = os.path.join(os.getcwd(), "sample_config.yaml")
-
-    if os.path.exists(sample_config_path):
-        shutil.copy(sample_config_path, target_path)
         print(f"Generated sample config file at: {target_path}")
         print(
             "\nEdit this file with your Matrix and Meshtastic settings before running mmrelay."
         )
         return True
-    else:
+    except (FileNotFoundError, ImportError, OSError) as e:
+        print(f"Error accessing sample_config.yaml: {e}")
+
+        # Fallback to traditional file paths if importlib.resources fails
+        # First, check in the package directory
+        package_dir = os.path.dirname(__file__)
+        sample_config_paths = [
+            # Check in the tools subdirectory of the package
+            os.path.join(package_dir, "tools", "sample_config.yaml"),
+            # Check in the package directory
+            os.path.join(package_dir, "sample_config.yaml"),
+            # Check in the repository root
+            os.path.join(os.path.dirname(os.path.dirname(package_dir)), "sample_config.yaml"),
+            # Check in the current directory
+            os.path.join(os.getcwd(), "sample_config.yaml")
+        ]
+
+        for path in sample_config_paths:
+            if os.path.exists(path):
+                shutil.copy(path, target_path)
+                print(f"Generated sample config file at: {target_path}")
+                print(
+                    "\nEdit this file with your Matrix and Meshtastic settings before running mmrelay."
+                )
+                return True
+
         print("Error: Could not find sample_config.yaml")
         return False

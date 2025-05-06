@@ -10,6 +10,7 @@ import os
 import shutil
 import subprocess
 import sys
+import importlib.resources
 from pathlib import Path
 
 
@@ -136,15 +137,23 @@ def get_template_service_content():
     Returns:
         str: The content of the template service file, or a default template if not found.
     """
-    template_path = get_template_service_path()
-    if template_path:
-        # Read the template from file
-        try:
-            with open(template_path, "r") as f:
-                service_template = f.read()
-            return service_template
-        except Exception as e:
-            print(f"Error reading service template file: {e}")
+    # Try to get the service template from the package resources
+    try:
+        service_template = importlib.resources.files("mmrelay.tools").joinpath("mmrelay.service").read_text()
+        return service_template
+    except (FileNotFoundError, ImportError, OSError) as e:
+        print(f"Error accessing mmrelay.service via importlib.resources: {e}")
+
+        # Fall back to the file path method
+        template_path = get_template_service_path()
+        if template_path:
+            # Read the template from file
+            try:
+                with open(template_path, "r") as f:
+                    service_template = f.read()
+                return service_template
+            except Exception as e:
+                print(f"Error reading service template file: {e}")
 
     # If we couldn't find or read the template file, use a default template
     print("Using default service template")
@@ -154,7 +163,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-Type=idle
+Type=simple
 # The mmrelay binary can be installed via pipx or pip
 ExecStart=%h/.local/bin/mmrelay --config %h/.mmrelay/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
 WorkingDirectory=%h/.mmrelay
@@ -310,6 +319,69 @@ def service_needs_update():
     return False, "Service file is up to date"
 
 
+def check_loginctl_available():
+    """Check if loginctl is available on the system.
+
+    Returns:
+        bool: True if loginctl is available, False otherwise.
+    """
+    try:
+        result = subprocess.run(
+            ["which", "loginctl"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
+def check_lingering_enabled():
+    """Check if user lingering is enabled.
+
+    Returns:
+        bool: True if lingering is enabled, False otherwise.
+    """
+    try:
+        username = os.environ.get("USER", os.environ.get("USERNAME"))
+        result = subprocess.run(
+            ["loginctl", "show-user", username, "--property=Linger"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        return result.returncode == 0 and "Linger=yes" in result.stdout
+    except Exception:
+        return False
+
+
+def enable_lingering():
+    """Enable user lingering using sudo.
+
+    Returns:
+        bool: True if lingering was enabled successfully, False otherwise.
+    """
+    try:
+        username = os.environ.get("USER", os.environ.get("USERNAME"))
+        print(f"Enabling lingering for user {username}...")
+        result = subprocess.run(
+            ["sudo", "loginctl", "enable-linger", username],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            print("Lingering enabled successfully")
+            return True
+        else:
+            print(f"Error enabling lingering: {result.stderr}")
+            return False
+    except Exception as e:
+        print(f"Error enabling lingering: {e}")
+        return False
+
+
 def install_service():
     """Install or update the MMRelay user service."""
     # Check if service already exists
@@ -354,6 +426,21 @@ def install_service():
             print("Service file created successfully")
 
     # We don't need to validate the config here as it will be validated when the service starts
+
+    # Check if loginctl is available
+    loginctl_available = check_loginctl_available()
+    if loginctl_available:
+        # Check if user lingering is enabled
+        lingering_enabled = check_lingering_enabled()
+        if not lingering_enabled:
+            print("\nUser lingering is not enabled. This is required for the service to start automatically at boot.")
+            print("Lingering allows user services to run even when you're not logged in.")
+            if (
+                input("Do you want to enable lingering for your user? (requires sudo) (y/n): ")
+                .lower()
+                .startswith("y")
+            ):
+                enable_lingering()
 
     # Check if the service is already enabled
     service_enabled = is_service_enabled()
@@ -417,6 +504,8 @@ def install_service():
     print("\nService Status Summary:")
     print(f"  Service File: {service_path}")
     print(f"  Enabled at Boot: {'Yes' if service_enabled else 'No'}")
+    if loginctl_available:
+        print(f"  User Lingering: {'Yes' if check_lingering_enabled() else 'No'}")
     print(f"  Currently Running: {'Yes' if is_service_active() else 'No'}")
     print("\nService Management Commands:")
     print_service_commands()
