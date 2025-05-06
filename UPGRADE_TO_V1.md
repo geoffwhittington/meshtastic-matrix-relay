@@ -169,7 +169,7 @@ The application looks for configuration in this order:
 1. Path specified with `--config` command-line option
 2. `~/.mmrelay/config.yaml` (recommended location)
 3. Current directory `config.yaml` (for backward compatibility)
-4. Current directory `sample_config.yaml` (fallback)
+4. Package's built-in sample configuration (fallback)
 
 ### Configuration Format Changes
 

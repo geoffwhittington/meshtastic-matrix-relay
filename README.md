@@ -38,7 +38,7 @@ For pipx installation instructions, see: [pipx installation guide](https://pipx.
 
 - **New Users**: See [INSTRUCTIONS.md](INSTRUCTIONS.md) for setup and configuration
 - **Existing Users**: See [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) for migration guidance
-- **Configuration**: Review [sample_config.yaml](sample_config.yaml) for examples
+- **Configuration**: Review [sample_config.yaml](src/mmrelay/tools/sample_config.yaml) for examples
 
 ### Command-Line Options
 
