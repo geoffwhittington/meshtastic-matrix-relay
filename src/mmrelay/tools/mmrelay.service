@@ -4,7 +4,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-Type=idle
+Type=simple
 # The mmrelay binary can be installed via pipx or pip
 ExecStart=%h/.local/bin/mmrelay --config %h/.mmrelay/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
 WorkingDirectory=%h/.mmrelay
