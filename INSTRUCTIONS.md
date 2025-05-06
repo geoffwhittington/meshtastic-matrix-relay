@@ -62,7 +62,7 @@ This command will:
 
 ### Configuration Tips
 
-- Review the comments in `sample_config.yaml` for detailed explanations
+- Review the comments in the sample configuration file for detailed explanations
 - At minimum, you'll need to configure your Matrix credentials and Meshtastic connection
 - For advanced setups, check the plugin configuration options
 

@@ -41,12 +41,12 @@ git checkout 0.10.1
 
 - **Quick Start**: `pipx install mmrelay` or `pip install mmrelay`
 - **Installation Guide**: [INSTRUCTIONS.md](https://github.com/geoffwhittington/meshtastic-matrix-relay/blob/main/INSTRUCTIONS.md)
-- **Configuration Template**: [sample_config.yaml](https://github.com/geoffwhittington/meshtastic-matrix-relay/blob/main/sample_config.yaml)
+- **Configuration Template**: [sample_config.yaml](https://github.com/geoffwhittington/meshtastic-matrix-relay/blob/main/src/mmrelay/tools/sample_config.yaml)
 
 ### For Existing Users
 
 - **Upgrade Guide**: [UPGRADE_TO_V1.md](https://github.com/geoffwhittington/meshtastic-matrix-relay/blob/main/UPGRADE_TO_V1.md) - Step-by-step migration instructions
-- **Configuration Changes**: See the [sample_config.yaml](https://github.com/geoffwhittington/meshtastic-matrix-relay/blob/main/sample_config.yaml) for examples of the new format
+- **Configuration Changes**: See the [sample_config.yaml](https://github.com/geoffwhittington/meshtastic-matrix-relay/blob/main/src/mmrelay/tools/sample_config.yaml) for examples of the new format
 
 ## Join the Conversation
 
