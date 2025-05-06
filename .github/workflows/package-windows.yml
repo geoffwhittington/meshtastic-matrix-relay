@@ -32,6 +32,12 @@ jobs:
           echo "Extracted version: $VERSION"
           GIT_SHA=$(git rev-parse --short HEAD)
           echo "GIT_SHA=$GIT_SHA" >> $GITHUB_ENV
+          # Set FILE_VERSION to just the version for releases, or version-dev-SHA for PRs/manual runs
+          if [ "${{ github.event_name }}" == "release" ]; then
+            echo "FILE_VERSION=$VERSION" >> $GITHUB_ENV
+          else
+            echo "FILE_VERSION=$VERSION-dev-$GIT_SHA" >> $GITHUB_ENV
+          fi
 
       - name: Install dependencies
         run: |
@@ -45,20 +51,20 @@ jobs:
       - name: Build installer
         uses: nadeemjazmawe/inno-setup-action-cli@v6.0.5
         with:
-          filepath: "/DAppVersion=${{ env.VERSION }}-dev-${{ env.GIT_SHA }} ./mmrelay.iss"
+          filepath: "/DAppVersion=${{ env.FILE_VERSION }} ./mmrelay.iss"
 
       - name: Upload installer as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MMRelay_setup_${{ env.VERSION }}-dev-${{ env.GIT_SHA }}
-          path: MMRelay_setup_${{ env.VERSION }}-dev-${{ env.GIT_SHA }}.exe
+          name: MMRelay_setup_${{ env.FILE_VERSION }}
+          path: MMRelay_setup_${{ env.FILE_VERSION }}.exe
 
       - name: Upload installer to GitHub Release
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: MMRelay_setup_${{ env.VERSION }}-dev-${{ env.GIT_SHA }}.exe
-          asset_name: MMRelay_setup_${{ env.VERSION }}-dev-${{ env.GIT_SHA }}.exe
+          file: MMRelay_setup_${{ env.FILE_VERSION }}.exe
+          asset_name: MMRelay_setup_${{ env.FILE_VERSION }}.exe
           tag: ${{ github.ref }}
           overwrite: true
