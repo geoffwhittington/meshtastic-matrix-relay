@@ -31,6 +31,12 @@ jobs:
           echo "Extracted version: $VERSION"
           GIT_SHA=$(git rev-parse --short HEAD)
           echo "GIT_SHA=$GIT_SHA" >> $GITHUB_ENV
+          # Set FILE_VERSION to just the version for releases, or version-dev-SHA for PRs/manual runs
+          if [ "${{ github.event_name }}" == "release" ]; then
+            echo "FILE_VERSION=$VERSION" >> $GITHUB_ENV
+          else
+            echo "FILE_VERSION=$VERSION-dev-$GIT_SHA" >> $GITHUB_ENV
+          fi
 
       - name: Build inside ARMv7 Docker (shiv, rustup, fixed cargo config)
         uses: addnab/docker-run-action@v3
@@ -59,18 +65,18 @@ jobs:
               --compile-pyc \
               --reproducible \
               --entry-point mmrelay.cli:main \
-              --output-file dist/mmrelay-${{ env.VERSION }}-dev-${{ env.GIT_SHA }}-armv7.pyz \
+              --output-file dist/mmrelay-${{ env.FILE_VERSION }}-armv7.pyz \
               .
 
             # Test the PYZ file
             echo "--- Testing PYZ file ---"
-            chmod +x dist/mmrelay-${{ env.VERSION }}-dev-${{ env.GIT_SHA }}-armv7.pyz
-            dist/mmrelay-${{ env.VERSION }}-dev-${{ env.GIT_SHA }}-armv7.pyz --version || echo "PYZ test failed"
+            chmod +x dist/mmrelay-${{ env.FILE_VERSION }}-armv7.pyz
+            dist/mmrelay-${{ env.FILE_VERSION }}-armv7.pyz --version || echo "PYZ test failed"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mmrelay-${{ env.VERSION }}-dev-${{ env.GIT_SHA }}-armv7
+          name: mmrelay-${{ env.FILE_VERSION }}-armv7
           path: dist/*.pyz
 
       - name: Upload PYZ to GitHub Release
