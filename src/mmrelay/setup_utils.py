@@ -91,42 +91,82 @@ def get_template_service_path():
         str: The path to the template service file, or None if not found.
     """
     # Try to find the service template file
-    # First, check in the package directory (where it should be after installation)
     package_dir = os.path.dirname(__file__)
-    template_path = os.path.join(
-        os.path.dirname(os.path.dirname(package_dir)), "tools", "mmrelay.service"
-    )
 
-    # If not found, try the repository root (for development)
-    if not os.path.exists(template_path):
-        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        template_path = os.path.join(repo_root, "tools", "mmrelay.service")
+    # Try to find the service template file in various locations
+    template_paths = [
+        # Check in the package directory (where it should be after installation)
+        os.path.join(package_dir, "mmrelay.service"),
+        # Check in a tools subdirectory of the package
+        os.path.join(package_dir, "tools", "mmrelay.service"),
+        # Check in the data files location (where it should be after installation)
+        os.path.join(sys.prefix, "share", "mmrelay", "mmrelay.service"),
+        os.path.join(sys.prefix, "share", "mmrelay", "tools", "mmrelay.service"),
+        # Check in the user site-packages location
+        os.path.join(os.path.expanduser("~"), ".local", "share", "mmrelay", "mmrelay.service"),
+        os.path.join(os.path.expanduser("~"), ".local", "share", "mmrelay", "tools", "mmrelay.service"),
+        # Check one level up from the package directory
+        os.path.join(os.path.dirname(package_dir), "tools", "mmrelay.service"),
+        # Check two levels up from the package directory (for development)
+        os.path.join(os.path.dirname(os.path.dirname(package_dir)), "tools", "mmrelay.service"),
+        # Check in the repository root (for development)
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "tools", "mmrelay.service"),
+        # Check in the current directory (fallback)
+        os.path.join(os.getcwd(), "tools", "mmrelay.service")
+    ]
 
-    # If still not found, try the current directory (fallback)
-    if not os.path.exists(template_path):
-        template_path = os.path.join(os.getcwd(), "tools", "mmrelay.service")
+    # Try each path until we find one that exists
+    for path in template_paths:
+        if os.path.exists(path):
+            return path
 
-    if not os.path.exists(template_path):
-        return None
+    # If we get here, we couldn't find the template
+    # Debug output to help diagnose issues
+    print("Debug: Could not find mmrelay.service in any of these locations:")
+    for path in template_paths:
+        print(f"  - {path}")
 
-    return template_path
+    # If we get here, we couldn't find the template
+    return None
 
 
 def get_template_service_content():
     """Get the content of the template service file.
 
     Returns:
-        str: The content of the template service file, or None if not found.
+        str: The content of the template service file, or a default template if not found.
     """
     template_path = get_template_service_path()
-    if not template_path:
-        return None
+    if template_path:
+        # Read the template from file
+        try:
+            with open(template_path, "r") as f:
+                service_template = f.read()
+            return service_template
+        except Exception as e:
+            print(f"Error reading service template file: {e}")
 
-    # Read the template
-    with open(template_path, "r") as f:
-        service_template = f.read()
+    # If we couldn't find or read the template file, use a default template
+    print("Using default service template")
+    return """[Unit]
+Description=A Meshtastic <=> Matrix Relay
+After=network-online.target
+Wants=network-online.target
 
-    return service_template
+[Service]
+Type=idle
+# The mmrelay binary can be installed via pipx or pip
+ExecStart=%h/.local/bin/mmrelay --config %h/.mmrelay/config.yaml --logfile %h/.mmrelay/logs/mmrelay.log
+WorkingDirectory=%h/.mmrelay
+Restart=on-failure
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+# Ensure both pipx and pip environments are properly loaded
+Environment=PATH=%h/.local/bin:%h/.local/pipx/venvs/mmrelay/bin:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=default.target
+"""
 
 
 def is_service_enabled():
