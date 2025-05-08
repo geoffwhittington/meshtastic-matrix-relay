@@ -14,6 +14,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from mmrelay.tools import get_service_template_path
+
 
 def get_executable_path():
     """Get the full path to the mmrelay executable.
@@ -153,7 +155,19 @@ def get_template_service_content():
     Returns:
         str: The content of the template service file, or a default template if not found.
     """
-    # Try to get the service template from the package resources
+    # Use the helper function to get the service template path
+    template_path = get_service_template_path()
+
+    if template_path and os.path.exists(template_path):
+        # Read the template from file
+        try:
+            with open(template_path, "r") as f:
+                service_template = f.read()
+            return service_template
+        except Exception as e:
+            print(f"Error reading service template file: {e}")
+
+    # If the helper function failed, try using importlib.resources directly
     try:
         service_template = (
             importlib.resources.files("mmrelay.tools")

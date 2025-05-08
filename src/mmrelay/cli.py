@@ -13,6 +13,7 @@ from yaml.loader import SafeLoader
 
 # Import version from package
 from mmrelay import __version__
+from mmrelay.tools import get_sample_config_path
 
 
 def parse_arguments():
@@ -365,7 +366,20 @@ def generate_sample_config():
     # Ensure the directory exists
     os.makedirs(os.path.dirname(target_path), exist_ok=True)
 
-    # Use importlib.resources to access the sample config file
+    # Use the helper function to get the sample config path
+    sample_config_path = get_sample_config_path()
+
+    if os.path.exists(sample_config_path):
+        # Copy the sample config file to the target path
+        import shutil
+        shutil.copy2(sample_config_path, target_path)
+        print(f"Generated sample config file at: {target_path}")
+        print(
+            "\nEdit this file with your Matrix and Meshtastic settings before running mmrelay."
+        )
+        return True
+
+    # If the helper function failed, try using importlib.resources directly
     try:
         # Try to get the sample config from the package resources
         sample_config_content = (
