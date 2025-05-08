@@ -1,37 +1,62 @@
 # M<>M Relay
 
+## ✨ Version 1.0 Released! ✨
+
+**We're excited to announce MMRelay v1.0 with improved packaging, standardized directories, and enhanced CLI!**
+
+**Existing users:** Version 1.0 requires a few quick migration steps:
+
+1. Follow the [Upgrade Guide](UPGRADE_TO_V1.md) guide for a smooth transition
+2. Move your configuration to the new standard location (`~/.mmrelay/config.yaml`)
+3. See [Announcement](ANNOUNCEMENT.md) for all the exciting new features
+
+Not ready to upgrade yet? No problem! Run `git checkout 0.10.1` to continue using the previous version.
+
 ## (Meshtastic <=> Matrix Relay)
 
 A powerful and easy-to-use relay between Meshtastic devices and Matrix chat rooms, allowing seamless communication across platforms. This opens the door for bridging Meshtastic devices to [many other platforms](https://matrix.org/bridges/).
 
-## Documentation
-
-All documentation has been moved to the `docs/` directory:
-
-- [Full Documentation](docs/README.md) - Complete project documentation
-- [Installation Instructions](docs/INSTRUCTIONS.md) - Setup and configuration guide
-- [Upgrade Guide](docs/UPGRADE_TO_V1.md) - Migration guidance for existing users
-- [Release Announcement for v1.0](docs/ANNOUNCEMENT.md) - Details about v1.0 release
-- [Plugins Guide](docs/PLUGINS.md) - Information about creating and using plugins
-
 ---
 
-## Quick Start
+## Getting Started
 
 MMRelay runs on Linux, macOS, and Windows.
+
+### Quick Installation
 
 ```bash
 # Install using pipx for isolated installation (recommended)
 pipx install mmrelay
 
-# Generate a sample configuration file
-mmrelay --generate-config
-
-# Start the relay (optionally without --install-service to run manually)
-mmrelay --install-service
+# Pip will also work if you prefer
+pip install mmrelay
 ```
 
-For detailed installation and configuration instructions, see the [Installation Guide](docs/INSTRUCTIONS.md).
+For pipx installation instructions, see: [pipx installation guide](https://pipx.pypa.io/stable/installation/#on-linux)
+
+### Resources
+
+- **New Users**: See [Instructions](INSTRUCTIONS.md) for setup and configuration
+- **Existing Users**: See [Upgrade Guide](UPGRADE_TO_V1.md) for migration guidance
+- **Configuration**: Review [Sample Config](../src/mmrelay/tools/sample_config.yaml) for examples
+
+### Command-Line Options
+
+```bash
+usage: mmrelay [-h] [--config CONFIG] [--data-dir DATA_DIR] [--log-level {error,warning,info,debug}] [--logfile LOGFILE] [--version] [--generate-config] [--install-service] [--check-config]
+
+Options:
+  -h, --help            Show this help message and exit
+  --config CONFIG       Path to config file
+  --data-dir DATA_DIR   Base directory for all data (logs, database, plugins)
+  --log-level {error,warning,info,debug}
+                        Set logging level
+  --logfile LOGFILE     Path to log file (can be overridden by --data-dir)
+  --version             Show version and exit
+  --generate-config     Generate a sample config.yaml file
+  --install-service     Install or update the systemd user service
+  --check-config        Check if the configuration file is valid
+```
 
 ---
 
@@ -78,7 +103,7 @@ See the full list of core plugins [here](https://github.com/geoffwhittington/mes
 
 ### Community & Custom Plugins
 
-It is possible to create custom plugins and share them with the community. Check the [Plugins Guide](docs/PLUGINS.md) and the [Community Plugins Development Guide](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Community-Plugin-Development-Guide).
+It is possible to create custom plugins and share them with the community. Check [Plugins Guide](PLUGINS.md) and the [Community Plugins Development Guide](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Community-Plugin-Development-Guide).
 
 ✨️ Visit the [Community Plugins List](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Community-Plugin-List)!
 

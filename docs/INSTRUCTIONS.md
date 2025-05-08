@@ -30,7 +30,7 @@ cd meshtastic-matrix-relay
 pipx install -e .
 ```
 
-> **Upgrading from a previous version?** Please see [UPGRADE_TO_V1.md](UPGRADE_TO_V1.md) for migration guidance.
+> **Upgrading from a previous version?** Please see [Upgrade Guide](UPGRADE_TO_V1.md) for migration guidance.
 
 ## Configuration
 

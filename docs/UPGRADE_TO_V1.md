@@ -2,7 +2,7 @@
 
 This guide helps you migrate from previous versions to MMRelay v1.0. The new version brings significant improvements while maintaining compatibility with your existing setup.
 
-> **New to MMRelay?** If you're installing for the first time, please see [INSTRUCTIONS.md](INSTRUCTIONS.md) instead.
+> **New to MMRelay?** If you're installing for the first time, please see [Instructions](INSTRUCTIONS.md) instead.
 
 ## What's New in v1.0
 
@@ -178,7 +178,7 @@ Some configuration options have been renamed for clarity:
 - `db:` → `database:` (old option still works but will show a deprecation notice)
 - `network` connection mode → `tcp` (both options supported for compatibility)
 
-For a complete list of deprecated options and breaking changes, please see [ANNOUNCEMENT.md](ANNOUNCEMENT.md).
+For a complete list of deprecated options and breaking changes, please see [Announcement](ANNOUNCEMENT.md).
 
 ### Backward Compatibility
 
