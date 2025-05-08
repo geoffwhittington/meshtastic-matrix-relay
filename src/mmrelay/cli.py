@@ -3,16 +3,16 @@ Command-line interface handling for the Meshtastic Matrix Relay.
 """
 
 import argparse
+import importlib.resources
 import os
 import sys
-import importlib.resources
-from pathlib import Path
 
 import yaml
 from yaml.loader import SafeLoader
 
 # Import version from package
 from mmrelay import __version__
+from mmrelay.tools import get_sample_config_path
 
 
 def parse_arguments():
@@ -365,10 +365,28 @@ def generate_sample_config():
     # Ensure the directory exists
     os.makedirs(os.path.dirname(target_path), exist_ok=True)
 
-    # Use importlib.resources to access the sample config file
+    # Use the helper function to get the sample config path
+    sample_config_path = get_sample_config_path()
+
+    if os.path.exists(sample_config_path):
+        # Copy the sample config file to the target path
+        import shutil
+
+        shutil.copy2(sample_config_path, target_path)
+        print(f"Generated sample config file at: {target_path}")
+        print(
+            "\nEdit this file with your Matrix and Meshtastic settings before running mmrelay."
+        )
+        return True
+
+    # If the helper function failed, try using importlib.resources directly
     try:
         # Try to get the sample config from the package resources
-        sample_config_content = importlib.resources.files("mmrelay.tools").joinpath("sample_config.yaml").read_text()
+        sample_config_content = (
+            importlib.resources.files("mmrelay.tools")
+            .joinpath("sample_config.yaml")
+            .read_text()
+        )
 
         # Write the sample config to the target path
         with open(target_path, "w") as f:
@@ -391,9 +409,11 @@ def generate_sample_config():
             # Check in the package directory
             os.path.join(package_dir, "sample_config.yaml"),
             # Check in the repository root
-            os.path.join(os.path.dirname(os.path.dirname(package_dir)), "sample_config.yaml"),
+            os.path.join(
+                os.path.dirname(os.path.dirname(package_dir)), "sample_config.yaml"
+            ),
             # Check in the current directory
-            os.path.join(os.getcwd(), "sample_config.yaml")
+            os.path.join(os.getcwd(), "sample_config.yaml"),
         ]
 
         for path in sample_config_paths:

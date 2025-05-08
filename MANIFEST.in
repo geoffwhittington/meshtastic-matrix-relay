@@ -3,3 +3,4 @@ include README.md
 include requirements.txt
 include sample_config.yaml
 recursive-include tools *
+recursive-include src/mmrelay/tools *
