@@ -3,10 +3,9 @@ Command-line interface handling for the Meshtastic Matrix Relay.
 """
 
 import argparse
+import importlib.resources
 import os
 import sys
-import importlib.resources
-from pathlib import Path
 
 import yaml
 from yaml.loader import SafeLoader
@@ -372,6 +371,7 @@ def generate_sample_config():
     if os.path.exists(sample_config_path):
         # Copy the sample config file to the target path
         import shutil
+
         shutil.copy2(sample_config_path, target_path)
         print(f"Generated sample config file at: {target_path}")
         print(
