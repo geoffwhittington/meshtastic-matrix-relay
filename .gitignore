@@ -1,23 +1,10 @@
 .pyenv
 .vscode
 config.yaml
-meshtastic.sqlite
 __pycache__/
-plugins/__pycache__/
 .aider*
 *.pyc
 *.pyo
 *.pyd
 *$py.class
-custom_plugins/
-logs/**
-plugins/custom/**
-plugins/community/**
-data/**
 src/mmrelay.egg-info
-
-# Allow the directories themselves to be tracked
-!data/.gitkeep
-!logs/.gitkeep
-!plugins/custom/.gitkeep
-!plugins/community/.gitkeep
