@@ -6,13 +6,11 @@ A powerful and easy-to-use relay between Meshtastic devices and Matrix chat room
 
 ## Documentation
 
-All documentation has been moved to the `docs/` directory:
+Visit our [Wiki](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki) for comprehensive guides and information.
 
-- [Full Documentation](docs/README.md) - Complete project documentation
 - [Installation Instructions](docs/INSTRUCTIONS.md) - Setup and configuration guide
 - [Upgrade Guide](docs/UPGRADE_TO_V1.md) - Migration guidance for existing users
-- [Release Announcement for v1.0](docs/ANNOUNCEMENT.md) - Details about v1.0 release
-- [Plugins Guide](docs/PLUGINS.md) - Information about creating and using plugins
+- [v1.0 Release Announcement](docs/ANNOUNCEMENT.md) - Major features in v1.0
 
 ---
 
@@ -78,7 +76,12 @@ See the full list of core plugins [here](https://github.com/geoffwhittington/mes
 
 ### Community & Custom Plugins
 
-It is possible to create custom plugins and share them with the community. Check the [Plugins Guide](docs/PLUGINS.md) and the [Community Plugins Development Guide](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Community-Plugin-Development-Guide).
+MMRelay's plugin system allows you to extend functionality in two ways:
+
+- **Custom Plugins**: Create personal plugins for your own use, stored in `~/.mmrelay/plugins/custom/`
+- **Community Plugins**: Share your creations with others or use plugins developed by the community
+
+Check the [Community Plugins Development Guide](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Community-Plugin-Development-Guide) in our wiki to get started.
 
 ✨️ Visit the [Community Plugins List](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Community-Plugin-List)!
 
