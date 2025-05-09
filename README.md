@@ -22,10 +22,10 @@ MMRelay runs on Linux, macOS, and Windows.
 # Install using pipx for isolated installation (recommended)
 pipx install mmrelay
 
-# Generate a sample configuration file
+# Generate a sample configuration file & then edit it
 mmrelay --generate-config
 
-# Start the relay (optionally without --install-service to run manually)
+# Start the relay (without --install-service to run manually)
 mmrelay --install-service
 ```
 
@@ -99,13 +99,11 @@ community-plugins:
 
 ### Plugin System
 
-MMRelay features a powerful plugin system with standardized locations:
+Plugins make it easy to extend functionality without modifying the core program. MMRelay features a powerful plugin system with standardized locations:
 
 - **Core Plugins**: Pre-installed with the package
 - **Custom Plugins**: Your own plugins in `~/.mmrelay/plugins/custom/`
 - **Community Plugins**: Third-party plugins in `~/.mmrelay/plugins/community/`
-
-Plugins make it easy to extend functionality without modifying the core code.
 
 ---
 
