@@ -9,8 +9,8 @@ A powerful and easy-to-use relay between Meshtastic devices and Matrix chat room
 Visit our [Wiki](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki) for comprehensive guides and information.
 
 - [Installation Instructions](docs/INSTRUCTIONS.md) - Setup and configuration guide
+- [v1.0 Release Announcement](docs/ANNOUNCEMENT.md) - New changes in v1.0
 - [Upgrade Guide](docs/UPGRADE_TO_V1.md) - Migration guidance for existing users
-- [v1.0 Release Announcement](docs/ANNOUNCEMENT.md) - Major features in v1.0
 
 ---
 
