@@ -6,7 +6,7 @@ requests==2.32.3
 markdown==3.8
 haversine==2.9.0
 schedule==1.2.2
-platformdirs==4.3.7
+platformdirs==4.3.8
 py-staticmaps>=0.4.0
 rich==14.0.0
 setuptools==80.3.1
