@@ -69,6 +69,8 @@ class BasePlugin(ABC):
                 room.get("meshtastic_channel")
                 for room in config.get("matrix_rooms", [])
             ]
+        else:
+            self.mapped_channels = []
 
         # Get the channels specified for this plugin, or default to all mapped channels
         self.channels = self.config.get("channels", self.mapped_channels)
