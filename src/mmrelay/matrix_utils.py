@@ -517,8 +517,14 @@ async def on_room_message(
             meshtastic_id, matrix_room_id, meshtastic_text_db, meshtastic_meshnet_db = (
                 orig
             )
-            display_name_response = await matrix_client.get_displayname(event.sender)
-            full_display_name = display_name_response.displayname or event.sender
+            # Get room-specific display name if available, fallback to global display name
+            room_display_name = room.user_name(event.sender)
+            if room_display_name:
+                full_display_name = room_display_name
+            else:
+                # Fallback to global display name if room-specific name is not available
+                display_name_response = await matrix_client.get_displayname(event.sender)
+                full_display_name = display_name_response.displayname or event.sender
 
             # If not from a remote meshnet, proceed as normal to relay back to the originating meshnet
             short_display_name = full_display_name[:5]
@@ -578,8 +584,14 @@ async def on_room_message(
             return
     else:
         # Normal Matrix message from a Matrix user
-        display_name_response = await matrix_client.get_displayname(event.sender)
-        full_display_name = display_name_response.displayname or event.sender
+        # Get room-specific display name if available, fallback to global display name
+        room_display_name = room.user_name(event.sender)
+        if room_display_name:
+            full_display_name = room_display_name
+        else:
+            # Fallback to global display name if room-specific name is not available
+            display_name_response = await matrix_client.get_displayname(event.sender)
+            full_display_name = display_name_response.displayname or event.sender
         short_display_name = full_display_name[:5]
         prefix = f"{short_display_name}[M]: "
         logger.debug(f"Processing matrix message from [{full_display_name}]: {text}")
