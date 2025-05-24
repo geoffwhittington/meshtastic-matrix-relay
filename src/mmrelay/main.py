@@ -9,6 +9,7 @@ import signal
 import sys
 
 from nio import ReactionEvent, RoomMessageEmote, RoomMessageNotice, RoomMessageText
+from nio.events.room_events import RoomMemberEvent
 
 # Import version from package
 # Import meshtastic_utils as a module to set event_loop
@@ -22,7 +23,7 @@ from mmrelay.db_utils import (
 from mmrelay.log_utils import get_logger
 from mmrelay.matrix_utils import connect_matrix, join_matrix_room
 from mmrelay.matrix_utils import logger as matrix_logger
-from mmrelay.matrix_utils import on_room_message
+from mmrelay.matrix_utils import on_room_message, on_room_member
 from mmrelay.meshtastic_utils import connect_meshtastic
 from mmrelay.meshtastic_utils import logger as meshtastic_logger
 from mmrelay.plugin_loader import load_plugins
@@ -109,6 +110,8 @@ async def main(config):
     )
     # Add ReactionEvent callback so we can handle matrix reactions
     matrix_client.add_event_callback(on_room_message, ReactionEvent)
+    # Add RoomMemberEvent callback to track room-specific display name changes
+    matrix_client.add_event_callback(on_room_member, RoomMemberEvent)
 
     # Set up shutdown event
     shutdown_event = asyncio.Event()

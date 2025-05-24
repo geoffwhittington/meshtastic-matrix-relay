@@ -18,6 +18,7 @@ from nio import (
     UploadResponse,
     WhoamiError,
 )
+from nio.events.room_events import RoomMemberEvent
 from PIL import Image
 
 from mmrelay.db_utils import (
@@ -764,3 +765,38 @@ async def send_room_image(
         message_type="m.room.message",
         content={"msgtype": "m.image", "url": upload_response.content_uri, "body": ""},
     )
+
+
+async def on_room_member(room: MatrixRoom, event: RoomMemberEvent) -> None:
+    """
+    Callback to handle room member events, specifically tracking room-specific display name changes.
+    This ensures we detect when users update their display names in specific rooms.
+    """
+    # Only track updates from active members
+    if event.membership != "join":
+        return
+
+    new_displayname = event.content.get("displayname")
+    old_displayname = event.prev_content.get("displayname") if event.prev_content else None
+    user_id = event.state_key
+    room_id = room.room_id
+
+    # Log display name changes for debugging
+    if new_displayname != old_displayname:
+        if new_displayname and old_displayname:
+            logger.info(
+                f"[Matrix] {user_id} updated room display name in {room_id}: "
+                f"'{old_displayname}' → '{new_displayname}'"
+            )
+        elif new_displayname and not old_displayname:
+            logger.info(
+                f"[Matrix] {user_id} set room display name in {room_id}: '{new_displayname}'"
+            )
+        elif not new_displayname and old_displayname:
+            logger.info(
+                f"[Matrix] {user_id} removed room display name in {room_id}: '{old_displayname}' → (global name)"
+            )
+
+    # Note: We don't need to maintain a separate cache here since matrix-nio
+    # automatically updates the room state and room.user_name() will return
+    # the updated room-specific display name immediately after this event.
