@@ -15,4 +15,4 @@ else:
         __version__ = pkg_resources.get_distribution("mmrelay").version
     except pkg_resources.DistributionNotFound:
         # If all else fails, use hardcoded version
-        __version__ = "1.0.1"
+        __version__ = "1.0.8"
