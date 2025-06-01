@@ -771,32 +771,12 @@ async def on_room_member(room: MatrixRoom, event: RoomMemberEvent) -> None:
     """
     Callback to handle room member events, specifically tracking room-specific display name changes.
     This ensures we detect when users update their display names in specific rooms.
+
+    Note: This callback doesn't need to do any explicit processing since matrix-nio
+    automatically updates the room state and room.user_name() will return the
+    updated room-specific display name immediately after this event.
     """
-    # Only track updates from active members
-    if event.membership != "join":
-        return
-
-    new_displayname = event.content.get("displayname")
-    old_displayname = event.prev_content.get("displayname") if event.prev_content else None
-    user_id = event.state_key
-    room_id = room.room_id
-
-    # Log display name changes for debugging
-    if new_displayname != old_displayname:
-        if new_displayname and old_displayname:
-            logger.info(
-                f"[Matrix] {user_id} updated room display name in {room_id}: "
-                f"'{old_displayname}' → '{new_displayname}'"
-            )
-        elif new_displayname and not old_displayname:
-            logger.info(
-                f"[Matrix] {user_id} set room display name in {room_id}: '{new_displayname}'"
-            )
-        elif not new_displayname and old_displayname:
-            logger.info(
-                f"[Matrix] {user_id} removed room display name in {room_id}: '{old_displayname}' → (global name)"
-            )
-
-    # Note: We don't need to maintain a separate cache here since matrix-nio
-    # automatically updates the room state and room.user_name() will return
-    # the updated room-specific display name immediately after this event.
+    # The callback is registered to ensure matrix-nio processes the event,
+    # but no explicit action is needed since room.user_name() automatically
+    # handles room-specific display names after the room state is updated.
+    pass
