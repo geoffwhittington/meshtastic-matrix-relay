@@ -776,24 +776,37 @@ async def on_room_member(room: MatrixRoom, event: RoomMemberEvent) -> None:
     if event.membership != "join":
         return
 
+    # Check if this room is mapped to a Meshtastic channel
+    # Only log changes for mapped rooms to avoid noise from unmapped rooms
+    room_is_mapped = False
+    if matrix_rooms:
+        for room_config in matrix_rooms:
+            if room_config["id"] == room.room_id:
+                room_is_mapped = True
+                break
+
+    # Skip logging for unmapped rooms
+    if not room_is_mapped:
+        return
+
     new_displayname = event.content.get("displayname")
     old_displayname = event.prev_content.get("displayname") if event.prev_content else None
     user_id = event.state_key
     room_id = room.room_id
 
-    # Log display name changes for debugging
+    # Log display name changes for debugging (debug level to reduce noise)
     if new_displayname != old_displayname:
         if new_displayname and old_displayname:
-            logger.info(
+            logger.debug(
                 f"[Matrix] {user_id} updated room display name in {room_id}: "
                 f"'{old_displayname}' → '{new_displayname}'"
             )
         elif new_displayname and not old_displayname:
-            logger.info(
+            logger.debug(
                 f"[Matrix] {user_id} set room display name in {room_id}: '{new_displayname}'"
             )
         elif not new_displayname and old_displayname:
-            logger.info(
+            logger.debug(
                 f"[Matrix] {user_id} removed room display name in {room_id}: '{old_displayname}' → (global name)"
             )
 
