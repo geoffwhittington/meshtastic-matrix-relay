@@ -8,12 +8,35 @@ from mmrelay.plugins.base_plugin import BasePlugin, config
 
 
 class Plugin(BasePlugin):
+    """Core mesh-to-Matrix relay plugin.
+
+    Handles bidirectional message relay between Meshtastic mesh network
+    and Matrix chat rooms. Processes radio packets and forwards them
+    to configured Matrix rooms, and vice versa.
+
+    This plugin is fundamental to the relay's core functionality and
+    typically runs with high priority to ensure messages are properly
+    bridged between the two networks.
+
+    Configuration:
+        max_data_rows_per_node: 50 (reduced storage for performance)
+    """
     plugin_name = "mesh_relay"
     max_data_rows_per_node = 50
 
     def normalize(self, dict_obj):
-        """
-        Packets are either a dict, string dict or string
+        """Normalize packet data to consistent dictionary format.
+
+        Args:
+            dict_obj: Packet data (dict, JSON string, or plain string)
+
+        Returns:
+            dict: Normalized packet dictionary with raw data stripped
+
+        Handles various packet formats:
+        - Dict objects (passed through)
+        - JSON strings (parsed)
+        - Plain strings (wrapped in TEXT_MESSAGE_APP format)
         """
         if not isinstance(dict_obj, dict):
             try:
@@ -24,6 +47,17 @@ class Plugin(BasePlugin):
         return self.strip_raw(dict_obj)
 
     def process(self, packet):
+        """Process and prepare packet data for relay.
+
+        Args:
+            packet: Raw packet data to process
+
+        Returns:
+            dict: Processed packet with base64-encoded binary payloads
+
+        Normalizes packet format and encodes binary payloads as base64
+        for JSON serialization and Matrix transmission.
+        """
         packet = self.normalize(packet)
 
         if "decoded" in packet and "payload" in packet["decoded"]:
@@ -35,14 +69,39 @@ class Plugin(BasePlugin):
         return packet
 
     def get_matrix_commands(self):
+        """Get Matrix commands handled by this plugin.
+
+        Returns:
+            list: Empty list (this plugin handles all traffic, not specific commands)
+        """
         return []
 
     def get_mesh_commands(self):
+        """Get mesh commands handled by this plugin.
+
+        Returns:
+            list: Empty list (this plugin handles all traffic, not specific commands)
+        """
         return []
 
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
     ):
+        """Handle incoming meshtastic message and relay to Matrix.
+
+        Args:
+            packet: Raw packet data (dict or JSON) to relay
+            formatted_message (str): Human-readable message extracted from packet
+            longname (str): Long name of the sender node
+            meshnet_name (str): Name of the mesh network
+
+        Returns:
+            bool: Always returns False to allow other plugins to process the same packet
+
+        Processes the packet by normalizing and preparing it, connects to the Matrix client,
+        checks if the meshtastic channel is mapped to a Matrix room based on config,
+        and sends the packet to the appropriate Matrix room.
+        """
         from mmrelay.matrix_utils import connect_matrix
 
         packet = self.process(packet)
@@ -80,6 +139,17 @@ class Plugin(BasePlugin):
         return False
 
     def matches(self, event):
+        """Check if Matrix event is a relayed radio packet.
+
+        Args:
+            event: Matrix room event object
+
+        Returns:
+            bool: True if event contains embedded meshtastic packet JSON
+
+        Identifies Matrix messages that contain embedded meshtastic packet
+        data by matching the default relay message format "Processed <portnum> radio packet".
+        """
         # Check for the presence of necessary keys in the event
         content = event.source.get("content", {})
         body = content.get("body", "")
@@ -90,6 +160,20 @@ class Plugin(BasePlugin):
         return False
 
     async def handle_room_message(self, room, event, full_message):
+        """Handle incoming Matrix room message and relay to meshtastic mesh.
+
+        Args:
+            room: Matrix Room object where message was received
+            event: Matrix room event containing the message
+            full_message (str): Raw message body text
+
+        Returns:
+            bool: True if packet relaying succeeded, False otherwise
+
+        Checks if the Matrix event matches the expected embedded packet format,
+        retrieves the packet JSON, decodes it, reconstructs a MeshPacket,
+        connects to the meshtastic client, and sends the packet via the radio.
+        """
         # Use the event for matching instead of full_message
         if not self.matches(event):
             return False
