@@ -1,3 +1,5 @@
+# Note: This plugin was experimental and is not functional.
+
 import base64
 import json
 import re

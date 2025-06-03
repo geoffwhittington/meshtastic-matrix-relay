@@ -23,7 +23,7 @@ from mmrelay.db_utils import (
 from mmrelay.log_utils import get_logger
 from mmrelay.matrix_utils import connect_matrix, join_matrix_room
 from mmrelay.matrix_utils import logger as matrix_logger
-from mmrelay.matrix_utils import on_room_message, on_room_member
+from mmrelay.matrix_utils import on_room_member, on_room_message
 from mmrelay.meshtastic_utils import connect_meshtastic
 from mmrelay.meshtastic_utils import logger as meshtastic_logger
 from mmrelay.plugin_loader import load_plugins
