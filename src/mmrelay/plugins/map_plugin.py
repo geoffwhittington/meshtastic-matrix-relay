@@ -156,6 +156,19 @@ class TextLabel(staticmaps.Object):
 
 
 def anonymize_location(lat, lon, radius=1000):
+    """Add random offset to GPS coordinates for privacy protection.
+
+    Args:
+        lat (float): Original latitude
+        lon (float): Original longitude
+        radius (int): Maximum offset distance in meters (default: 1000)
+
+    Returns:
+        tuple: (new_lat, new_lon) with random offset applied
+
+    Adds random offset within specified radius to obscure exact locations
+    while maintaining general geographic area for mapping purposes.
+    """
     # Generate random offsets for latitude and longitude
     lat_offset = random.uniform(-radius / 111320, radius / 111320)
     lon_offset = random.uniform(
@@ -233,6 +246,24 @@ async def send_image(client: AsyncClient, room_id: str, image: Image.Image):
 
 
 class Plugin(BasePlugin):
+    """Static map generation plugin for mesh node locations.
+
+    Generates static maps showing positions of mesh nodes with labeled markers.
+    Supports customizable zoom levels, image sizes, and privacy features.
+
+    Commands:
+        !map: Generate map with default settings
+        !map zoom=N: Set zoom level (0-30)
+        !map size=W,H: Set image dimensions (max 1000x1000)
+
+    Configuration:
+        zoom (int): Default zoom level (default: 8)
+        image_width/image_height (int): Default image size (default: 1000x1000)
+        anonymize (bool): Whether to offset coordinates for privacy (default: true)
+        radius (int): Anonymization offset radius in meters (default: 1000)
+
+    Uploads generated maps as images to Matrix rooms.
+    """
     plugin_name = "map"
 
     # No __init__ method needed with the simplified plugin system

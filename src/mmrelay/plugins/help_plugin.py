@@ -5,13 +5,28 @@ from mmrelay.plugins.base_plugin import BasePlugin
 
 
 class Plugin(BasePlugin):
-    plugin_name = "help"
+    """Help command plugin for listing available commands.
 
-    # No __init__ method needed with the simplified plugin system
-    # The BasePlugin will automatically use the class-level plugin_name
+    Provides users with information about available relay commands
+    and plugin functionality.
+
+    Commands:
+        !help: List all available commands
+        !help <command>: Show detailed help for a specific command
+
+    Dynamically discovers available commands from all loaded plugins
+    and their descriptions.
+    """
+
+    plugin_name = "help"
 
     @property
     def description(self):
+        """Get plugin description.
+
+        Returns:
+            str: Description of help functionality
+        """
         return "List supported relay commands"
 
     async def handle_meshtastic_message(
@@ -20,9 +35,19 @@ class Plugin(BasePlugin):
         return False
 
     def get_matrix_commands(self):
+        """Get Matrix commands handled by this plugin.
+
+        Returns:
+            list: List containing the help command
+        """
         return [self.plugin_name]
 
     def get_mesh_commands(self):
+        """Get mesh commands handled by this plugin.
+
+        Returns:
+            list: Empty list (help only works via Matrix)
+        """
         return []
 
     async def handle_room_message(self, room, event, full_message):
