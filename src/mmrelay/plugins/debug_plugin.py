@@ -2,6 +2,19 @@ from mmrelay.plugins.base_plugin import BasePlugin
 
 
 class Plugin(BasePlugin):
+    """Debug plugin for logging packet information.
+
+    A low-priority plugin that logs all received meshtastic packets
+    for debugging and development purposes. Strips raw binary data
+    before logging to keep output readable.
+
+    Configuration:
+        priority: 1 (runs first, before other plugins)
+
+    Never intercepts messages (always returns False) so other plugins
+    can still process the same packets.
+    """
+
     plugin_name = "debug"
     priority = 1
 

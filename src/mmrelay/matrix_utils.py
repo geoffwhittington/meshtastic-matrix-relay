@@ -524,7 +524,9 @@ async def on_room_message(
                 full_display_name = room_display_name
             else:
                 # Fallback to global display name if room-specific name is not available
-                display_name_response = await matrix_client.get_displayname(event.sender)
+                display_name_response = await matrix_client.get_displayname(
+                    event.sender
+                )
                 full_display_name = display_name_response.displayname or event.sender
 
             # If not from a remote meshnet, proceed as normal to relay back to the originating meshnet
