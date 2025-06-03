@@ -113,21 +113,6 @@ mmrelay --check-config
 mmrelay --install-service
 ```
 
-### What to Expect
-
-When running successfully, you'll see output similar to this:
-
-```text
-INFO: Loading configuration from: /home/user/.mmrelay/config.yaml
-INFO: Starting Meshtastic <==> Matrix Relay...
-INFO: Connecting to radio at meshtastic.local ...
-INFO: Connected to radio at meshtastic.local
-INFO: Listening for inbound radio messages ...
-INFO: Listening for inbound matrix messages ...
-```
-
-Messages will be relayed in both directions automatically:
-
 ## Running as a Service
 
 ### Systemd Service (Linux)
