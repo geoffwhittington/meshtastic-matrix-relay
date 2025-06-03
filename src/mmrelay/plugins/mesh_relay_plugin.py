@@ -21,6 +21,7 @@ class Plugin(BasePlugin):
     Configuration:
         max_data_rows_per_node: 50 (reduced storage for performance)
     """
+
     plugin_name = "mesh_relay"
     max_data_rows_per_node = 50
 

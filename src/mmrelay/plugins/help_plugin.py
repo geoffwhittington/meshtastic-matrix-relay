@@ -17,6 +17,7 @@ class Plugin(BasePlugin):
     Dynamically discovers available commands from all loaded plugins
     and their descriptions.
     """
+
     plugin_name = "help"
 
     @property

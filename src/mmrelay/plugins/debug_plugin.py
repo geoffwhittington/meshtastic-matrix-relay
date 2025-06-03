@@ -14,6 +14,7 @@ class Plugin(BasePlugin):
     Never intercepts messages (always returns False) so other plugins
     can still process the same packets.
     """
+
     plugin_name = "debug"
     priority = 1
 

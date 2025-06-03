@@ -21,20 +21,20 @@ config = None
 
 class BasePlugin(ABC):
     """Abstract base class for all mmrelay plugins.
-    
+
     Provides common functionality for plugin development including:
     - Configuration management and validation
-    - Database storage for plugin-specific data  
+    - Database storage for plugin-specific data
     - Channel and direct message handling
     - Matrix message sending capabilities
     - Scheduling support for background tasks
     - Command matching and routing
-    
+
     Attributes:
         plugin_name (str): Unique identifier for the plugin
         max_data_rows_per_node (int): Maximum data rows stored per node (default: 100)
         priority (int): Plugin execution priority (lower = higher priority, default: 10)
-    
+
     Subclasses must:
     - Set plugin_name as a class attribute
     - Implement handle_meshtastic_message() and handle_room_message()
@@ -49,10 +49,10 @@ class BasePlugin(ABC):
     @property
     def description(self):
         """Get the plugin description for help text.
-        
+
         Returns:
             str: Human-readable description of plugin functionality
-        
+
         Override this property in subclasses to provide meaningful help text
         that will be displayed by the help plugin.
         """
@@ -60,17 +60,17 @@ class BasePlugin(ABC):
 
     def __init__(self, plugin_name=None) -> None:
         """Initialize the plugin with configuration and logging.
-        
+
         Args:
             plugin_name (str, optional): Plugin name override. If not provided,
                                        uses class-level plugin_name attribute.
-        
+
         Raises:
             ValueError: If plugin_name is not set via parameter or class attribute
-        
+
         Sets up:
         - Plugin-specific logger
-        - Configuration from global config  
+        - Configuration from global config
         - Channel mapping and validation
         - Response delay settings
         """
@@ -141,16 +141,16 @@ class BasePlugin(ABC):
 
     def start(self):
         """Start the plugin and set up scheduled tasks if configured.
-        
+
         Called automatically when the plugin is loaded. Checks plugin configuration
         for scheduling settings and sets up background jobs accordingly.
-        
+
         Supported schedule formats in config:
         - schedule.hours + schedule.at: Run every N hours at specific time
-        - schedule.minutes + schedule.at: Run every N minutes at specific time  
+        - schedule.minutes + schedule.at: Run every N minutes at specific time
         - schedule.hours: Run every N hours
         - schedule.minutes: Run every N minutes
-        
+
         Creates a daemon thread to run the scheduler if any schedule is configured.
         """
         if "schedule" not in self.config or (
@@ -195,23 +195,23 @@ class BasePlugin(ABC):
     # trunk-ignore(ruff/B027)
     def background_job(self):
         """Background task executed on schedule.
-        
+
         Override this method in subclasses to implement scheduled functionality.
         Called automatically based on schedule configuration in start().
-        
+
         Default implementation does nothing.
         """
         pass  # Implement in subclass if needed
 
     def strip_raw(self, data):
         """Recursively remove 'raw' keys from data structures.
-        
+
         Args:
             data: Data structure (dict, list, or other) to clean
-        
+
         Returns:
             Cleaned data structure with 'raw' keys removed
-        
+
         Useful for cleaning packet data before logging or storage to remove
         binary protobuf data that's not human-readable.
         """
@@ -225,10 +225,10 @@ class BasePlugin(ABC):
 
     def get_response_delay(self):
         """Get the configured response delay for meshtastic messages.
-        
+
         Returns:
             int: Delay in seconds before sending responses (default: 3)
-        
+
         Used to prevent message flooding and ensure proper radio etiquette.
         Delay is configured via meshtastic.plugin_response_delay in config.
         """
@@ -236,14 +236,14 @@ class BasePlugin(ABC):
 
     def is_channel_enabled(self, channel, is_direct_message=False):
         """Check if the plugin should respond on a specific channel.
-        
+
         Args:
             channel: Channel identifier to check
             is_direct_message (bool): Whether this is a direct message
-        
+
         Returns:
             bool: True if plugin should respond, False otherwise
-        
+
         Direct messages always return True if the plugin is active.
         For channel messages, checks if channel is in plugin's configured channels list.
         """
@@ -254,10 +254,10 @@ class BasePlugin(ABC):
 
     def get_matrix_commands(self):
         """Get list of Matrix commands this plugin responds to.
-        
+
         Returns:
             list: List of command strings (without ! prefix)
-        
+
         Default implementation returns [plugin_name]. Override to provide
         custom commands or multiple command aliases.
         """
@@ -265,15 +265,15 @@ class BasePlugin(ABC):
 
     async def send_matrix_message(self, room_id, message, formatted=True):
         """Send a message to a Matrix room.
-        
+
         Args:
             room_id (str): Matrix room identifier
             message (str): Message content to send
             formatted (bool): Whether to send as formatted HTML (default: True)
-        
+
         Returns:
             dict: Response from Matrix API room_send
-        
+
         Connects to Matrix using matrix_utils and sends a room message
         with optional HTML formatting via markdown.
         """
@@ -294,10 +294,10 @@ class BasePlugin(ABC):
 
     def get_mesh_commands(self):
         """Get list of mesh/radio commands this plugin responds to.
-        
+
         Returns:
             list: List of command strings (without ! prefix)
-        
+
         Default implementation returns empty list. Override to handle
         commands sent over the mesh radio network.
         """
@@ -305,11 +305,11 @@ class BasePlugin(ABC):
 
     def store_node_data(self, meshtastic_id, node_data):
         """Store data for a specific node, appending to existing data.
-        
+
         Args:
             meshtastic_id (str): Node identifier
             node_data: Data to store (single item or list)
-        
+
         Retrieves existing data, appends new data, trims to max_data_rows_per_node,
         and stores back to database. Use for accumulating time-series data.
         """
@@ -323,11 +323,11 @@ class BasePlugin(ABC):
 
     def set_node_data(self, meshtastic_id, node_data):
         """Replace all data for a specific node.
-        
+
         Args:
             meshtastic_id (str): Node identifier
             node_data: Data to store (replaces existing data)
-        
+
         Completely replaces existing data for the node, trimming to
         max_data_rows_per_node if needed. Use when you want to reset
         or completely replace a node's data.
@@ -337,10 +337,10 @@ class BasePlugin(ABC):
 
     def delete_node_data(self, meshtastic_id):
         """Delete all stored data for a specific node.
-        
+
         Args:
             meshtastic_id (str): Node identifier
-        
+
         Returns:
             bool: True if deletion succeeded, False otherwise
         """
@@ -348,10 +348,10 @@ class BasePlugin(ABC):
 
     def get_node_data(self, meshtastic_id):
         """Retrieve stored data for a specific node.
-        
+
         Args:
             meshtastic_id (str): Node identifier
-        
+
         Returns:
             list: Stored data for the node (JSON deserialized)
         """
@@ -359,10 +359,10 @@ class BasePlugin(ABC):
 
     def get_data(self):
         """Retrieve all stored data for this plugin across all nodes.
-        
+
         Returns:
             list: List of tuples containing raw data entries
-        
+
         Returns raw data without JSON deserialization. Use get_node_data()
         for individual node data that's automatically deserialized.
         """
@@ -371,16 +371,16 @@ class BasePlugin(ABC):
     def get_plugin_data_dir(self, subdir=None):
         """
         Returns the directory for storing plugin-specific data files.
-        
+
         Creates the directory if it doesn't exist.
-        
+
         Args:
             subdir (str, optional): Optional subdirectory within the plugin's data directory.
                                    If provided, this subdirectory will be created.
-        
+
         Returns:
             str: Path to the plugin's data directory or subdirectory
-        
+
         Example:
             self.get_plugin_data_dir() returns ~/.mmrelay/data/plugins/your_plugin_name/
             self.get_plugin_data_dir("data_files") returns ~/.mmrelay/data/plugins/your_plugin_name/data_files/
@@ -398,13 +398,13 @@ class BasePlugin(ABC):
 
     def matches(self, event):
         """Check if a Matrix event matches this plugin's commands.
-        
+
         Args:
             event: Matrix room event to check
-        
+
         Returns:
             bool: True if event matches plugin commands, False otherwise
-        
+
         Uses bot_command() utility to check if the event contains any of
         the plugin's matrix commands with proper bot command syntax.
         """
