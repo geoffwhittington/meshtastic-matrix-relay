@@ -3,12 +3,7 @@ Meshtastic Matrix Relay - Bridge between Meshtastic mesh networks and Matrix cha
 """
 
 import os
-
-try:
-    from importlib.metadata import PackageNotFoundError, version
-except ImportError:
-    # Fallback for Python < 3.8
-    from importlib_metadata import PackageNotFoundError, version
+from importlib.metadata import PackageNotFoundError, version
 
 # First try to get version from environment variable (GitHub tag)
 if "GITHUB_REF_NAME" in os.environ:
