@@ -13,6 +13,19 @@ from mmrelay.plugins.base_plugin import BasePlugin
 
 
 def textsize(self: PIL.ImageDraw.ImageDraw, *args, **kwargs):
+    """Compatibility wrapper for PIL textsize method.
+
+    Args:
+        self: PIL ImageDraw instance
+        *args: Arguments passed to textbbox
+        **kwargs: Keyword arguments passed to textbbox
+
+    Returns:
+        tuple: (width, height) of text bounding box
+
+    Provides backward compatibility for textsize method that was removed
+    in newer PIL versions by using textbbox and calculating dimensions.
+    """
     x, y, w, h = self.textbbox((0, 0), *args, **kwargs)
     return w, h
 
@@ -22,6 +35,23 @@ PIL.ImageDraw.ImageDraw.textsize = textsize
 
 
 class TextLabel(staticmaps.Object):
+    """Custom text label overlay for static map generation.
+
+    Creates labeled callout bubbles positioned at specific geographic coordinates
+    for display on static maps. Supports multiple rendering backends.
+
+    Args:
+        latlng (s2sphere.LatLng): Geographic coordinates for label placement
+        text (str): Text content to display in label
+        fontSize (int): Font size for text rendering (default: 12)
+    """
+    """Initialize a text label for map overlay.
+
+    Args:
+        latlng (s2sphere.LatLng): Geographic coordinates for label placement
+        text (str): Text content to display
+        fontSize (int): Font size for text rendering (default: 12)
+    """
     def __init__(self, latlng: s2sphere.LatLng, text: str, fontSize: int = 12) -> None:
         staticmaps.Object.__init__(self)
         self._latlng = latlng
@@ -30,12 +60,30 @@ class TextLabel(staticmaps.Object):
         self._arrow = 16
         self._font_size = fontSize
 
+    """Get the geographic coordinates of this label.
+
+    Returns:
+        s2sphere.LatLng: Coordinates where label should be positioned
+    """
     def latlng(self) -> s2sphere.LatLng:
         return self._latlng
 
+    """Get geographic bounds for this label.
+
+    Returns:
+        s2sphere.LatLngRect: Rectangle containing the label position
+    """
     def bounds(self) -> s2sphere.LatLngRect:
         return s2sphere.LatLngRect.from_point(self._latlng)
 
+    """Calculate extra pixel space needed for label rendering.
+
+    Returns:
+        tuple: (left, top, right, bottom) pixel margins needed for label
+
+    Estimates text dimensions and callout arrow space to ensure
+    proper label rendering without clipping.
+    """
     def extra_pixel_bounds(self) -> staticmaps.PixelBoundsT:
         # Guess text extents.
         tw = len(self._text) * self._font_size * 0.5
@@ -43,6 +91,14 @@ class TextLabel(staticmaps.Object):
         w = max(self._arrow, tw + 2.0 * self._margin)
         return (int(w / 2.0), int(th + 2.0 * self._margin + self._arrow), int(w / 2), 0)
 
+    """Render label using Pillow/PIL backend.
+
+    Args:
+        renderer: Pillow renderer instance
+
+    Draws a white callout bubble with red border and black text,
+    positioned with an arrow pointing to the geographic location.
+    """
     def render_pillow(self, renderer: staticmaps.PillowRenderer) -> None:
         x, y = renderer.transformer().ll2pixel(self.latlng())
         x = x + renderer.offset_x()
@@ -71,6 +127,14 @@ class TextLabel(staticmaps.Object):
             fill=(0, 0, 0, 255),
         )
 
+    """Render label using Cairo backend.
+
+    Args:
+        renderer: Cairo renderer instance
+
+    Draws the same callout bubble design as Pillow version but
+    using Cairo graphics operations.
+    """
     def render_cairo(self, renderer: staticmaps.CairoRenderer) -> None:
         x, y = renderer.transformer().ll2pixel(self.latlng())
 
@@ -116,6 +180,14 @@ class TextLabel(staticmaps.Object):
         ctx.show_text(self._text)
         ctx.stroke()
 
+    """Render label using SVG backend.
+
+    Args:
+        renderer: SVG renderer instance
+
+    Generates SVG path and text elements for the callout bubble
+    with same visual design as other backends.
+    """
     def render_svg(self, renderer: staticmaps.SvgRenderer) -> None:
         x, y = renderer.transformer().ll2pixel(self.latlng())
 
@@ -155,6 +227,19 @@ class TextLabel(staticmaps.Object):
         )
 
 
+"""Add random offset to GPS coordinates for privacy protection.
+
+Args:
+    lat (float): Original latitude
+    lon (float): Original longitude
+    radius (int): Maximum offset distance in meters (default: 1000)
+
+Returns:
+    tuple: (new_lat, new_lon) with random offset applied
+
+Adds random offset within specified radius to obscure exact locations
+while maintaining general geographic area for mapping purposes.
+"""
 def anonymize_location(lat, lon, radius=1000):
     # Generate random offsets for latitude and longitude
     lat_offset = random.uniform(-radius / 111320, radius / 111320)
@@ -233,28 +318,52 @@ async def send_image(client: AsyncClient, room_id: str, image: Image.Image):
 
 
 class Plugin(BasePlugin):
+    """Static map generation plugin for mesh node locations.
+
+    Generates static maps showing positions of mesh nodes with labeled markers.
+    Supports customizable zoom levels, image sizes, and privacy features.
+
+    Commands:
+        !map: Generate map with default settings
+        !map zoom=N: Set zoom level (0-30)
+        !map size=W,H: Set image dimensions (max 1000x1000)
+
+    Configuration:
+        zoom (int): Default zoom level (default: 8)
+        image_width/image_height (int): Default image size (default: 1000x1000)
+        anonymize (bool): Whether to offset coordinates for privacy (default: true)
+        radius (int): Anonymization offset radius in meters (default: 1000)
+
+    Uploads generated maps as images to Matrix rooms.
+    """
     plugin_name = "map"
 
-    # No __init__ method needed with the simplified plugin system
-    # The BasePlugin will automatically use the class-level plugin_name
-
     @property
+    """Get plugin description.
+
+    Returns:
+        str: Description of map generation functionality and options
+    """
     def description(self):
         return (
             "Map of mesh radio nodes. Supports `zoom` and `size` options to customize"
         )
 
-    async def handle_meshtastic_message(
-        self, packet, formatted_message, longname, meshnet_name
-    ):
-        return False
+    """Get Matrix commands handled by this plugin.
 
+    Returns:
+        list: List containing the map command
+    """
     def get_matrix_commands(self):
         return [self.plugin_name]
 
+    """Get mesh commands handled by this plugin.
+
+    Returns:
+        list: Empty list (map generation only works via Matrix due to image upload)
+    """
     def get_mesh_commands(self):
         return []
-
     async def handle_room_message(self, room, event, full_message):
         # Pass the whole event to matches() for compatibility w/ updated base_plugin.py
         if not self.matches(event):
