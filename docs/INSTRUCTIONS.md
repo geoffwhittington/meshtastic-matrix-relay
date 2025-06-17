@@ -27,7 +27,7 @@ cd meshtastic-matrix-relay
 
 # Install in development mode using pipx (recommended)
 # Run this command each time before testing new changes.
-pipx install -e .
+pipx install -e . --force
 ```
 
 > **Upgrading from a previous version?** Please see [Upgrade Guide](UPGRADE_TO_V1.md) for migration guidance.
