@@ -664,11 +664,13 @@ async def on_room_message(
                     # If relay_reactions is True, we store the message map for these messages as well.
                     # If False, skip storing.
                     if relay_reactions and sent_packet and hasattr(sent_packet, "id"):
+                        # Strip quoted lines from text before storing to prevent issues with reactions to replies
+                        cleaned_text = strip_quoted_lines(text)
                         store_message_map(
                             sent_packet.id,
                             event.event_id,
                             room.room_id,
-                            text,
+                            cleaned_text,
                             meshtastic_meshnet=local_meshnet_name,
                         )
                         # Check database config for message map settings (preferred format)
@@ -706,11 +708,13 @@ async def on_room_message(
                     return
                 # Store message_map only if relay_reactions is True
                 if relay_reactions and sent_packet and hasattr(sent_packet, "id"):
+                    # Strip quoted lines from text before storing to prevent issues with reactions to replies
+                    cleaned_text = strip_quoted_lines(text)
                     store_message_map(
                         sent_packet.id,
                         event.event_id,
                         room.room_id,
-                        text,
+                        cleaned_text,
                         meshtastic_meshnet=local_meshnet_name,
                     )
                     # Check database config for message map settings (preferred format)
