@@ -466,7 +466,7 @@ def format_reply_message(full_display_name, text):
     return truncate_message(reply_message)
 
 
-async def send_reply_to_meshtastic(reply_message, full_display_name, room_config, event, text, storage_enabled, local_meshnet_name):
+async def send_reply_to_meshtastic(reply_message, full_display_name, room_config, room, event, text, storage_enabled, local_meshnet_name):
     """
     Send a reply message to Meshtastic and handle storage.
 
@@ -474,6 +474,7 @@ async def send_reply_to_meshtastic(reply_message, full_display_name, room_config
         reply_message (str): The formatted reply message
         full_display_name (str): The user's display name
         room_config (dict): Room configuration
+        room: The Matrix room object
         event: The Matrix event
         text (str): Original reply text
         storage_enabled (bool): Whether message storage is enabled
@@ -500,7 +501,7 @@ async def send_reply_to_meshtastic(reply_message, full_display_name, room_config
                 store_message_map(
                     sent_packet.id,
                     event.event_id,
-                    event.room_id,
+                    room.room_id,
                     cleaned_text,
                     meshtastic_meshnet=local_meshnet_name,
                 )
@@ -543,7 +544,7 @@ async def handle_matrix_reply(room, event, reply_to_event_id, text, room_config,
 
     # Send the reply to Meshtastic
     await send_reply_to_meshtastic(
-        reply_message, full_display_name, room_config, event, text, storage_enabled, local_meshnet_name
+        reply_message, full_display_name, room_config, room, event, text, storage_enabled, local_meshnet_name
     )
 
     return True  # Reply was handled, stop further processing
