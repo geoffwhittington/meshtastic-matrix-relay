@@ -661,35 +661,8 @@ async def on_room_message(
                         channelIndex=meshtastic_channel,
                         portNum=meshtastic.protobuf.portnums_pb2.PortNum.DETECTION_SENSOR_APP,
                     )
-                    # If relay_reactions is True, we store the message map for these messages as well.
-                    # If False, skip storing.
-                    if relay_reactions and sent_packet and hasattr(sent_packet, "id"):
-                        # Strip quoted lines from text before storing to prevent issues with reactions to replies
-                        cleaned_text = strip_quoted_lines(text)
-                        store_message_map(
-                            sent_packet.id,
-                            event.event_id,
-                            room.room_id,
-                            cleaned_text,
-                            meshtastic_meshnet=local_meshnet_name,
-                        )
-                        # Check database config for message map settings (preferred format)
-                        database_config = config.get("database", {})
-                        msg_map_config = database_config.get("msg_map", {})
-
-                        # If not found in database config, check legacy db config
-                        if not msg_map_config:
-                            db_config = config.get("db", {})
-                            legacy_msg_map_config = db_config.get("msg_map", {})
-
-                            if legacy_msg_map_config:
-                                msg_map_config = legacy_msg_map_config
-                                logger.warning(
-                                    "Using 'db.msg_map' configuration (legacy). 'database.msg_map' is now the preferred format and 'db.msg_map' will be deprecated in a future version."
-                                )
-                        msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)
-                        if msgs_to_keep > 0:
-                            prune_message_map(msgs_to_keep)
+                    # Note: Detection sensor messages are not stored in message_map because they are never replied to
+                    # Only TEXT_MESSAGE_APP messages need to be stored for reaction handling
                 else:
                     meshtastic_logger.debug(
                         f"Detection sensor packet received from {full_display_name}, but detection sensor processing is disabled."
@@ -706,7 +679,8 @@ async def on_room_message(
                 except Exception as e:
                     meshtastic_logger.error(f"Error sending message to Meshtastic: {e}")
                     return
-                # Store message_map only if relay_reactions is True
+                # Store message_map only if relay_reactions is True and only for TEXT_MESSAGE_APP
+                # (these are the only messages that can be replied to and thus need reaction handling)
                 if relay_reactions and sent_packet and hasattr(sent_packet, "id"):
                     # Strip quoted lines from text before storing to prevent issues with reactions to replies
                     cleaned_text = strip_quoted_lines(text)
