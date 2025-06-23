@@ -431,41 +431,54 @@ def strip_quoted_lines(text: str) -> str:
     return " ".join(filtered).strip()
 
 
-async def handle_matrix_reply(room, event, reply_to_event_id, text, room_config, storage_enabled, local_meshnet_name):
+async def get_user_display_name(room, event):
     """
-    Handle Matrix replies to Meshtastic messages.
+    Get the display name for a Matrix user.
 
     Returns:
-        bool: True if the reply was handled and processing should stop, False otherwise.
+        str: The user's display name
     """
-    # Look up the original message in the message map
-    orig = get_message_map_by_matrix_event_id(reply_to_event_id)
-    if not orig:
-        logger.debug(f"Original message for Matrix reply not found in DB: {reply_to_event_id}")
-        return False  # Continue processing as normal message if original not found
-
-    # orig = (meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
-    original_meshtastic_id, _, _, _ = orig
-
-    # Get user display name
     room_display_name = room.user_name(event.sender)
     if room_display_name:
-        full_display_name = room_display_name
-    else:
-        display_name_response = await matrix_client.get_displayname(event.sender)
-        full_display_name = display_name_response.displayname or event.sender
+        return room_display_name
 
+    display_name_response = await matrix_client.get_displayname(event.sender)
+    return display_name_response.displayname or event.sender
+
+
+def format_reply_message(full_display_name, text):
+    """
+    Format a reply message with prefix and truncation.
+
+    Args:
+        full_display_name (str): The user's full display name
+        text (str): The reply text
+
+    Returns:
+        str: The formatted reply message
+    """
     short_display_name = full_display_name[:5]
     prefix = f"{short_display_name}[M]: "
 
     # Strip quoted content from the reply text
     clean_text = strip_quoted_lines(text)
     reply_message = f"{prefix}{clean_text}"
-    reply_message = truncate_message(reply_message)
+    return truncate_message(reply_message)
 
-    logger.info(f"Relaying Matrix reply from {full_display_name} to Meshtastic")
 
-    # Send the reply to Meshtastic with replyId
+async def send_reply_to_meshtastic(reply_message, full_display_name, room_config, event, text, storage_enabled, local_meshnet_name):
+    """
+    Send a reply message to Meshtastic and handle storage.
+
+    Args:
+        reply_message (str): The formatted reply message
+        full_display_name (str): The user's display name
+        room_config (dict): Room configuration
+        event: The Matrix event
+        text (str): Original reply text
+        storage_enabled (bool): Whether message storage is enabled
+        local_meshnet_name (str): Local meshnet name
+    """
     meshtastic_interface = connect_meshtastic()
     from mmrelay.meshtastic_utils import logger as meshtastic_logger
 
@@ -473,11 +486,10 @@ async def handle_matrix_reply(room, event, reply_to_event_id, text, room_config,
 
     if config["meshtastic"]["broadcast_enabled"]:
         try:
-            # Send as a reply with the original meshtastic_id as replyId
+            # Send as regular message (Matrix replies work as regular messages to Meshtastic)
             sent_packet = meshtastic_interface.sendText(
                 text=reply_message,
-                channelIndex=meshtastic_channel,
-                replyId=original_meshtastic_id
+                channelIndex=meshtastic_channel
             )
             meshtastic_logger.info(f"Relaying Matrix reply from {full_display_name} to radio broadcast")
 
@@ -488,7 +500,7 @@ async def handle_matrix_reply(room, event, reply_to_event_id, text, room_config,
                 store_message_map(
                     sent_packet.id,
                     event.event_id,
-                    room.room_id,
+                    event.room_id,
                     cleaned_text,
                     meshtastic_meshnet=local_meshnet_name,
                 )
@@ -506,6 +518,33 @@ async def handle_matrix_reply(room, event, reply_to_event_id, text, room_config,
 
         except Exception as e:
             meshtastic_logger.error(f"Error sending Matrix reply to Meshtastic: {e}")
+
+
+async def handle_matrix_reply(room, event, reply_to_event_id, text, room_config, storage_enabled, local_meshnet_name):
+    """
+    Handle Matrix replies to Meshtastic messages.
+
+    Returns:
+        bool: True if the reply was handled and processing should stop, False otherwise.
+    """
+    # Look up the original message in the message map
+    orig = get_message_map_by_matrix_event_id(reply_to_event_id)
+    if not orig:
+        logger.debug(f"Original message for Matrix reply not found in DB: {reply_to_event_id}")
+        return False  # Continue processing as normal message if original not found
+
+    # Get user display name
+    full_display_name = await get_user_display_name(room, event)
+
+    # Format the reply message
+    reply_message = format_reply_message(full_display_name, text)
+
+    logger.info(f"Relaying Matrix reply from {full_display_name} to Meshtastic")
+
+    # Send the reply to Meshtastic
+    await send_reply_to_meshtastic(
+        reply_message, full_display_name, room_config, event, text, storage_enabled, local_meshnet_name
+    )
 
     return True  # Reply was handled, stop further processing
 
@@ -862,9 +901,9 @@ async def on_room_message(
                 except Exception as e:
                     meshtastic_logger.error(f"Error sending message to Meshtastic: {e}")
                     return
-                # Store message_map only if relay_reactions is True and only for TEXT_MESSAGE_APP
+                # Store message_map only if storage is enabled and only for TEXT_MESSAGE_APP
                 # (these are the only messages that can be replied to and thus need reaction handling)
-                if relay_reactions and sent_packet and hasattr(sent_packet, "id"):
+                if storage_enabled and sent_packet and hasattr(sent_packet, "id"):
                     # Strip quoted lines from text before storing to prevent issues with reactions to replies
                     cleaned_text = strip_quoted_lines(text)
                     store_message_map(
