@@ -274,17 +274,25 @@ async def matrix_relay(
             # For Matrix replies, we need to format the body with quoted content
             # Get the original message details for proper quoting
             try:
-                from mmrelay.db_utils import get_message_map_by_matrix_event_id
                 orig = get_message_map_by_matrix_event_id(reply_to_event_id)
                 if orig:
                     # orig = (meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
                     _, _, original_text, original_meshnet = orig
+
+                    # Use the relay bot's user ID for attribution (this is correct for relay messages)
+                    bot_user_id = matrix_client.user_id
+                    original_sender_display = f"{longname}/{original_meshnet}"
+
                     # Create the quoted reply format
-                    quoted_text = f"> <@{matrix_client.user_id}> [{longname}/{original_meshnet}]: {original_text}"
+                    quoted_text = f"> <@{bot_user_id}> [{original_sender_display}]: {original_text}"
                     content["body"] = f"{quoted_text}\n\n{message}"
                     content["format"] = "org.matrix.custom.html"
-                    # Create formatted HTML version
-                    content["formatted_body"] = f'<mx-reply><blockquote><a href="https://matrix.to/#/{room_id}/{reply_to_event_id}">In reply to</a> <a href="https://matrix.to/#/@{matrix_client.user_id}">@{matrix_client.user_id}</a><br>[{longname}/{original_meshnet}]: {original_text}</blockquote></mx-reply>{message}'
+
+                    # Create formatted HTML version with better readability
+                    reply_link = f"https://matrix.to/#/{room_id}/{reply_to_event_id}"
+                    bot_link = f"https://matrix.to/#/@{bot_user_id}"
+                    blockquote_content = f'<a href="{reply_link}">In reply to</a> <a href="{bot_link}">@{bot_user_id}</a><br>[{original_sender_display}]: {original_text}'
+                    content["formatted_body"] = f'<mx-reply><blockquote>{blockquote_content}</blockquote></mx-reply>{message}'
                 else:
                     logger.warning(f"Could not find original message for reply_to_event_id: {reply_to_event_id}")
             except Exception as e:
@@ -370,6 +378,85 @@ def strip_quoted_lines(text: str) -> str:
     lines = text.splitlines()
     filtered = [line for line in lines if not line.strip().startswith(">")]
     return " ".join(filtered).strip()
+
+
+async def handle_matrix_reply(room, event, reply_to_event_id, text, room_config, relay_reactions, local_meshnet_name):
+    """
+    Handle Matrix replies to Meshtastic messages.
+
+    Returns:
+        bool: True if the reply was handled and processing should stop, False otherwise.
+    """
+    # Look up the original message in the message map
+    orig = get_message_map_by_matrix_event_id(reply_to_event_id)
+    if not orig:
+        logger.debug(f"Original message for Matrix reply not found in DB: {reply_to_event_id}")
+        return False  # Continue processing as normal message if original not found
+
+    # orig = (meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
+    original_meshtastic_id, _, _, _ = orig
+
+    # Get user display name
+    room_display_name = room.user_name(event.sender)
+    if room_display_name:
+        full_display_name = room_display_name
+    else:
+        display_name_response = await matrix_client.get_displayname(event.sender)
+        full_display_name = display_name_response.displayname or event.sender
+
+    short_display_name = full_display_name[:5]
+    prefix = f"{short_display_name}[M]: "
+
+    # Strip quoted content from the reply text
+    clean_text = strip_quoted_lines(text)
+    reply_message = f"{prefix}{clean_text}"
+    reply_message = truncate_message(reply_message)
+
+    logger.info(f"Relaying Matrix reply from {full_display_name} to Meshtastic")
+
+    # Send the reply to Meshtastic with replyId
+    meshtastic_interface = connect_meshtastic()
+    from mmrelay.meshtastic_utils import logger as meshtastic_logger
+
+    meshtastic_channel = room_config["meshtastic_channel"]
+
+    if config["meshtastic"]["broadcast_enabled"]:
+        try:
+            # Send as a reply with the original meshtastic_id as replyId
+            sent_packet = meshtastic_interface.sendText(
+                text=reply_message,
+                channelIndex=meshtastic_channel,
+                replyId=original_meshtastic_id
+            )
+            meshtastic_logger.info(f"Relaying Matrix reply from {full_display_name} to radio broadcast")
+
+            # Store the reply in message map if relay_reactions is enabled
+            if relay_reactions and sent_packet and hasattr(sent_packet, "id"):
+                # Strip quoted lines from text before storing to prevent issues with reactions to replies
+                cleaned_text = strip_quoted_lines(text)
+                store_message_map(
+                    sent_packet.id,
+                    event.event_id,
+                    room.room_id,
+                    cleaned_text,
+                    meshtastic_meshnet=local_meshnet_name,
+                )
+                # Prune old messages if configured
+                database_config = config.get("database", {})
+                msg_map_config = database_config.get("msg_map", {})
+                if not msg_map_config:
+                    db_config = config.get("db", {})
+                    legacy_msg_map_config = db_config.get("msg_map", {})
+                    if legacy_msg_map_config:
+                        msg_map_config = legacy_msg_map_config
+                msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)
+                if msgs_to_keep > 0:
+                    prune_message_map(msgs_to_keep)
+
+        except Exception as e:
+            meshtastic_logger.error(f"Error sending Matrix reply to Meshtastic: {e}")
+
+    return True  # Reply was handled, stop further processing
 
 
 # Callback for new messages in Matrix room
@@ -604,75 +691,11 @@ async def on_room_message(
 
     # Handle Matrix replies to Meshtastic messages
     if is_reply and reply_to_event_id:
-        # Look up the original message in the message map
-        orig = get_message_map_by_matrix_event_id(reply_to_event_id)
-        if orig:
-            # orig = (meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
-            original_meshtastic_id, _, _, _ = orig
-
-            # Get user display name
-            room_display_name = room.user_name(event.sender)
-            if room_display_name:
-                full_display_name = room_display_name
-            else:
-                display_name_response = await matrix_client.get_displayname(event.sender)
-                full_display_name = display_name_response.displayname or event.sender
-
-            short_display_name = full_display_name[:5]
-            prefix = f"{short_display_name}[M]: "
-
-            # Strip quoted content from the reply text
-            clean_text = strip_quoted_lines(text)
-            reply_message = f"{prefix}{clean_text}"
-            reply_message = truncate_message(reply_message)
-
-            logger.info(f"Relaying Matrix reply from {full_display_name} to Meshtastic")
-
-            # Send the reply to Meshtastic with replyId
-            meshtastic_interface = connect_meshtastic()
-            from mmrelay.meshtastic_utils import logger as meshtastic_logger
-
-            meshtastic_channel = room_config["meshtastic_channel"]
-
-            if config["meshtastic"]["broadcast_enabled"]:
-                try:
-                    # Send as a reply with the original meshtastic_id as replyId
-                    sent_packet = meshtastic_interface.sendText(
-                        text=reply_message,
-                        channelIndex=meshtastic_channel,
-                        replyId=original_meshtastic_id
-                    )
-                    meshtastic_logger.info(f"Relaying Matrix reply from {full_display_name} to radio broadcast")
-
-                    # Store the reply in message map if relay_reactions is enabled
-                    if relay_reactions and sent_packet and hasattr(sent_packet, "id"):
-                        # Strip quoted lines from text before storing to prevent issues with reactions to replies
-                        cleaned_text = strip_quoted_lines(text)
-                        store_message_map(
-                            sent_packet.id,
-                            event.event_id,
-                            room.room_id,
-                            cleaned_text,
-                            meshtastic_meshnet=local_meshnet_name,
-                        )
-                        # Prune old messages if configured
-                        database_config = config.get("database", {})
-                        msg_map_config = database_config.get("msg_map", {})
-                        if not msg_map_config:
-                            db_config = config.get("db", {})
-                            legacy_msg_map_config = db_config.get("msg_map", {})
-                            if legacy_msg_map_config:
-                                msg_map_config = legacy_msg_map_config
-                        msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)
-                        if msgs_to_keep > 0:
-                            prune_message_map(msgs_to_keep)
-
-                except Exception as e:
-                    meshtastic_logger.error(f"Error sending Matrix reply to Meshtastic: {e}")
+        reply_handled = await handle_matrix_reply(
+            room, event, reply_to_event_id, text, room_config, relay_reactions, local_meshnet_name
+        )
+        if reply_handled:
             return
-        else:
-            logger.debug(f"Original message for Matrix reply not found in DB: {reply_to_event_id}")
-            # Continue processing as normal message if original not found
 
     # For Matrix->Mesh messages from a remote meshnet, rewrite the message format
     if longname and meshnet_name:
