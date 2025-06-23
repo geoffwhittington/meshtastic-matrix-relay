@@ -32,36 +32,63 @@ from mmrelay.log_utils import get_logger
 from mmrelay.meshtastic_utils import connect_meshtastic
 
 
-def get_message_interactions_enabled(config):
+def get_interaction_settings(config):
     """
-    Get the message interactions setting with backward compatibility.
+    Get granular interaction settings with backward compatibility.
 
-    This setting controls whether message mapping is enabled for reactions and replies.
+    Returns a dictionary with separate controls for reactions and replies.
     Both features require storing messages in the database for cross-referencing.
 
     Returns:
-        bool: True if message interactions (reactions/replies) are enabled
+        dict: {'reactions': bool, 'replies': bool}
     """
     if config is None:
-        return False
+        return {'reactions': False, 'replies': False}
 
     meshtastic_config = config.get("meshtastic", {})
 
-    # Check for new setting name first
-    if "enable_message_interactions" in meshtastic_config:
-        return meshtastic_config["enable_message_interactions"]
+    # Check for new structured configuration first
+    if "message_interactions" in meshtastic_config:
+        interactions = meshtastic_config["message_interactions"]
+        return {
+            'reactions': interactions.get('reactions', False),
+            'replies': interactions.get('replies', False)
+        }
 
-    # Fall back to legacy setting name with deprecation warning
+    # Check for enable_message_interactions (previous implementation)
+    if "enable_message_interactions" in meshtastic_config:
+        enabled = meshtastic_config["enable_message_interactions"]
+        logger.warning(
+            "Configuration setting 'enable_message_interactions' is deprecated. "
+            "Please use 'message_interactions: {reactions: bool, replies: bool}' instead."
+        )
+        return {'reactions': enabled, 'replies': enabled}
+
+    # Fall back to legacy relay_reactions setting
     if "relay_reactions" in meshtastic_config:
+        enabled = meshtastic_config["relay_reactions"]
         logger.warning(
             "Configuration setting 'relay_reactions' is deprecated. "
-            "Please use 'enable_message_interactions' instead. "
-            "This setting now controls both reactions AND replies."
+            "Please use 'message_interactions: {reactions: bool, replies: bool}' instead. "
+            "Legacy mode: enabling reactions only."
         )
-        return meshtastic_config["relay_reactions"]
+        return {'reactions': enabled, 'replies': False}  # Only reactions for legacy compatibility
 
-    # Default to False for privacy
-    return False
+    # Default to privacy-first (both disabled)
+    return {'reactions': False, 'replies': False}
+
+
+def message_storage_enabled(interactions):
+    """
+    Check if message storage should be enabled based on interaction settings.
+
+    Args:
+        interactions (dict): Result from get_interaction_settings()
+
+    Returns:
+        bool: True if any interaction requiring storage is enabled
+    """
+    return interactions['reactions'] or interactions['replies']
 
 # Global config variable that will be set from config.py
 config = None
@@ -235,8 +262,8 @@ async def matrix_relay(
     """
     Relay a message from Meshtastic to Matrix, optionally storing message maps.
 
-    IMPORTANT: Message maps are only stored if message interactions are enabled.
-    This setting controls both reactions and replies, as both require message storage
+    IMPORTANT: Message maps are only stored if any message interactions are enabled.
+    Interactions include reactions and replies, both require message storage
     for cross-referencing. When disabled, no message mapping occurs, maintaining privacy.
 
     Additionally, if `msgs_to_keep` > 0, we prune the oldest messages after storing
@@ -254,8 +281,9 @@ async def matrix_relay(
         logger.error("No configuration available. Cannot relay message to Matrix.")
         return
 
-    # Check if message interactions (reactions/replies) are enabled
-    message_interactions_enabled = get_message_interactions_enabled(config)
+    # Get interaction settings
+    interactions = get_interaction_settings(config)
+    storage_enabled = message_storage_enabled(interactions)
 
     # Retrieve db config for message_map pruning
     # Check database config for message map settings (preferred format)
@@ -359,10 +387,10 @@ async def matrix_relay(
             logger.error(f"Error sending message to Matrix room {room_id}: {e}")
             return
 
-        # Only store message map if message interactions are enabled and conditions are met
-        # This enables both reactions and replies functionality
+        # Only store message map if any interactions are enabled and conditions are met
+        # This enables reactions and/or replies functionality based on configuration
         if (
-            message_interactions_enabled
+            storage_enabled
             and meshtastic_id is not None
             and not emote
             and hasattr(response, "event_id")
@@ -412,7 +440,7 @@ def strip_quoted_lines(text: str) -> str:
     return " ".join(filtered).strip()
 
 
-async def handle_matrix_reply(room, event, reply_to_event_id, text, room_config, message_interactions_enabled, local_meshnet_name):
+async def handle_matrix_reply(room, event, reply_to_event_id, text, room_config, storage_enabled, local_meshnet_name):
     """
     Handle Matrix replies to Meshtastic messages.
 
@@ -462,8 +490,8 @@ async def handle_matrix_reply(room, event, reply_to_event_id, text, room_config,
             )
             meshtastic_logger.info(f"Relaying Matrix reply from {full_display_name} to radio broadcast")
 
-            # Store the reply in message map if message interactions are enabled
-            if message_interactions_enabled and sent_packet and hasattr(sent_packet, "id"):
+            # Store the reply in message map if storage is enabled
+            if storage_enabled and sent_packet and hasattr(sent_packet, "id"):
                 # Strip quoted lines from text before storing to prevent issues with reactions to replies
                 cleaned_text = strip_quoted_lines(text)
                 store_message_map(
@@ -505,8 +533,8 @@ async def on_room_message(
     as we do not store them in the database. If we can't find the original message in the DB,
     it likely means it's a reaction to a reaction, and we stop there.
 
-    Message interactions (reactions and replies) only work when message mapping is enabled,
-    as both features require storing messages in the database for cross-referencing.
+    Reactions and replies can be enabled independently. Each feature requires message mapping
+    to be enabled for cross-referencing, which happens automatically when either is enabled.
     """
     # Importing here to avoid circular imports and to keep logic consistent
     # Note: We do not call store_message_map directly here for inbound matrix->mesh messages.
@@ -549,8 +577,9 @@ async def on_room_message(
         logger.error("No configuration available. Cannot process Matrix message.")
         return
 
-    # Check if message interactions (reactions/replies) are enabled
-    message_interactions_enabled = get_message_interactions_enabled(config)
+    # Get interaction settings
+    interactions = get_interaction_settings(config)
+    storage_enabled = message_storage_enabled(interactions)
 
     # Check if this is a Matrix ReactionEvent (usually m.reaction)
     if isinstance(event, ReactionEvent):
@@ -587,10 +616,10 @@ async def on_room_message(
     if suppress:
         return
 
-    # If this is a reaction and message interactions are disabled, do nothing
-    if is_reaction and not message_interactions_enabled:
+    # If this is a reaction and reactions are disabled, do nothing
+    if is_reaction and not interactions['reactions']:
         logger.debug(
-            "Reaction event encountered but message interactions are disabled. Doing nothing."
+            "Reaction event encountered but reactions are disabled. Doing nothing."
         )
         return
 
@@ -605,8 +634,8 @@ async def on_room_message(
             is_reply = True
             logger.debug(f"Processing Matrix reply to event: {reply_to_event_id}")
 
-    # If this is a reaction and message interactions are enabled, attempt to relay it
-    if is_reaction and message_interactions_enabled:
+    # If this is a reaction and reactions are enabled, attempt to relay it
+    if is_reaction and interactions['reactions']:
         # Check if we need to relay a reaction from a remote meshnet to our local meshnet.
         # If meshnet_name != local_meshnet_name and meshtastic_replyId is present and this is an emote,
         # it's a remote reaction that needs to be forwarded as a text message describing the reaction.
@@ -721,10 +750,10 @@ async def on_room_message(
                 )
             return
 
-    # Handle Matrix replies to Meshtastic messages
-    if is_reply and reply_to_event_id:
+    # Handle Matrix replies to Meshtastic messages (only if replies are enabled)
+    if is_reply and reply_to_event_id and interactions['replies']:
         reply_handled = await handle_matrix_reply(
-            room, event, reply_to_event_id, text, room_config, message_interactions_enabled, local_meshnet_name
+            room, event, reply_to_event_id, text, room_config, storage_enabled, local_meshnet_name
         )
         if reply_handled:
             return

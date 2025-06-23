@@ -18,8 +18,10 @@ meshtastic:
   broadcast_enabled: true # Must be set to true to enable Matrix to Meshtastic messages
   detection_sensor: true # Must be set to true to forward messages of Meshtastic's detection sensor module
   plugin_response_delay: 3 # Default response delay in seconds for plugins that respond on the mesh;
-  enable_message_interactions: false # Enable reactions and replies (requires message storage in database)
-  # relay_reactions: false # DEPRECATED: Use enable_message_interactions instead
+  message_interactions: # Configure reactions and replies (both require message storage in database)
+    reactions: false # Enable reaction relaying between platforms
+    replies: false   # Enable reply relaying between platforms
+  # Note: Legacy 'relay_reactions' setting is deprecated but still supported
 
 logging:
   level: info

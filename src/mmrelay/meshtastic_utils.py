@@ -341,20 +341,20 @@ def on_meshtastic_message(packet, interface):
         logger.error("No configuration available. Cannot process Meshtastic message.")
         return
 
-    # Import the configuration helper
-    from mmrelay.matrix_utils import get_message_interactions_enabled
+    # Import the configuration helpers
+    from mmrelay.matrix_utils import get_interaction_settings, message_storage_enabled
 
-    # Check if message interactions (reactions/replies) are enabled
-    message_interactions_enabled = get_message_interactions_enabled(config)
+    # Get interaction settings
+    interactions = get_interaction_settings(config)
+    storage_enabled = message_storage_enabled(interactions)
 
-    # Filter packets based on message interactions setting
+    # Filter packets based on interaction settings
     if packet.get("decoded", {}).get("portnum") == "TEXT_MESSAGE_APP":
         decoded = packet.get("decoded", {})
-        # Filter out reactions if message interactions are disabled
-        # Note: We allow replies to pass through for basic functionality, but they won't be stored
-        if not message_interactions_enabled and "emoji" in decoded and decoded.get("emoji") == 1:
+        # Filter out reactions if reactions are disabled
+        if not interactions['reactions'] and "emoji" in decoded and decoded.get("emoji") == 1:
             logger.debug(
-                "Filtered out reaction packet due to message interactions being disabled."
+                "Filtered out reaction packet due to reactions being disabled."
             )
             return
 
@@ -396,8 +396,8 @@ def on_meshtastic_message(packet, interface):
     meshnet_name = config["meshtastic"]["meshnet_name"]
 
     # Reaction handling (Meshtastic -> Matrix)
-    # If replyId and emoji_flag are present and message interactions are enabled, we relay as text reactions in Matrix
-    if replyId and emoji_flag and message_interactions_enabled:
+    # If replyId and emoji_flag are present and reactions are enabled, we relay as text reactions in Matrix
+    if replyId and emoji_flag and interactions['reactions']:
         longname = get_longname(sender) or str(sender)
         shortname = get_shortname(sender) or str(sender)
         orig = get_message_map_by_meshtastic_id(replyId)
@@ -439,7 +439,7 @@ def on_meshtastic_message(packet, interface):
 
     # Reply handling (Meshtastic -> Matrix)
     # If replyId is present but emoji is not (or not 1), this is a reply
-    if replyId and not emoji_flag:
+    if replyId and not emoji_flag and interactions['replies']:
         longname = get_longname(sender) or str(sender)
         shortname = get_shortname(sender) or str(sender)
         orig = get_message_map_by_meshtastic_id(replyId)
