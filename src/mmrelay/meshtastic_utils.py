@@ -344,12 +344,14 @@ def on_meshtastic_message(packet, interface):
     # Apply reaction filtering based on config
     relay_reactions = config["meshtastic"].get("relay_reactions", False)
 
-    # If relay_reactions is False, filter out reaction/tapback packets to avoid complexity
+    # If relay_reactions is False, filter out reaction packets to avoid complexity
+    # Note: We allow replies even when relay_reactions is False, but filter reactions
     if packet.get("decoded", {}).get("portnum") == "TEXT_MESSAGE_APP":
         decoded = packet.get("decoded", {})
-        if not relay_reactions and ("emoji" in decoded or "replyId" in decoded):
+        # Only filter out reactions (emoji=1), not replies (replyId without emoji)
+        if not relay_reactions and "emoji" in decoded and decoded.get("emoji") == 1:
             logger.debug(
-                "Filtered out reaction/tapback packet due to relay_reactions=false."
+                "Filtered out reaction packet due to relay_reactions=false."
             )
             return
 
@@ -430,6 +432,42 @@ def on_meshtastic_message(packet, interface):
             )
         else:
             logger.debug("Original message for reaction not found in DB.")
+        return
+
+    # Reply handling (Meshtastic -> Matrix)
+    # If replyId is present but emoji is not (or not 1), this is a reply
+    if replyId and not emoji_flag:
+        longname = get_longname(sender) or str(sender)
+        shortname = get_shortname(sender) or str(sender)
+        orig = get_message_map_by_meshtastic_id(replyId)
+        if orig:
+            # orig = (matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
+            matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet = orig
+
+            # Format the reply message for Matrix
+            full_display_name = f"{longname}/{meshnet_name}"
+            formatted_message = f"[{full_display_name}]: {text}"
+
+            logger.info(f"Relaying Meshtastic reply from {longname} to Matrix")
+
+            # Relay the reply to Matrix with proper reply formatting
+            asyncio.run_coroutine_threadsafe(
+                matrix_relay(
+                    matrix_room_id,
+                    formatted_message,
+                    longname,
+                    shortname,
+                    meshnet_name,
+                    decoded.get("portnum"),
+                    meshtastic_id=packet.get("id"),
+                    meshtastic_replyId=replyId,
+                    meshtastic_text=text,
+                    reply_to_event_id=matrix_event_id,
+                ),
+                loop=loop,
+            )
+        else:
+            logger.debug("Original message for reply not found in DB.")
         return
 
     # Normal text messages or detection sensor messages
