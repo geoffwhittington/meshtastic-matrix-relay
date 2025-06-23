@@ -55,15 +55,6 @@ def get_interaction_settings(config):
             'replies': interactions.get('replies', False)
         }
 
-    # Check for enable_message_interactions (previous implementation)
-    if "enable_message_interactions" in meshtastic_config:
-        enabled = meshtastic_config["enable_message_interactions"]
-        logger.warning(
-            "Configuration setting 'enable_message_interactions' is deprecated. "
-            "Please use 'message_interactions: {reactions: bool, replies: bool}' instead."
-        )
-        return {'reactions': enabled, 'replies': enabled}
-
     # Fall back to legacy relay_reactions setting
     if "relay_reactions" in meshtastic_config:
         enabled = meshtastic_config["relay_reactions"]
