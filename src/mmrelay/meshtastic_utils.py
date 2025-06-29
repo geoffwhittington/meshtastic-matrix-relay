@@ -12,6 +12,7 @@ import meshtastic.tcp_interface
 import serial  # For serial port exceptions
 import serial.tools.list_ports  # Import serial tools for port listing
 from bleak.exc import BleakDBusError, BleakError
+from meshtastic.protobuf import mesh_pb2, portnums_pb2
 from pubsub import pub
 
 from mmrelay.db_utils import (
@@ -322,9 +323,9 @@ async def reconnect():
 
 def on_meshtastic_message(packet, interface):
     """
-    Handle incoming Meshtastic messages. For reaction messages, if relay_reactions is False,
-    we do not store message maps and thus won't be able to relay reactions back to Matrix.
-    If relay_reactions is True, message maps are stored inside matrix_relay().
+    Processes incoming Meshtastic messages and relays them to Matrix rooms or plugins based on message type and interaction settings.
+
+    Handles reactions and replies by relaying them to Matrix if enabled in the interaction settings. Normal text messages are relayed to all mapped Matrix rooms unless handled by a plugin or directed to the relay node. Non-text messages are passed to plugins for processing. Filters out messages from unmapped channels or disabled detection sensors, and ensures sender information is retrieved or stored as needed.
     """
     global config, matrix_rooms
 
@@ -341,15 +342,24 @@ def on_meshtastic_message(packet, interface):
         logger.error("No configuration available. Cannot process Meshtastic message.")
         return
 
-    # Apply reaction filtering based on config
-    relay_reactions = config["meshtastic"].get("relay_reactions", False)
+    # Import the configuration helpers
+    from mmrelay.matrix_utils import get_interaction_settings, message_storage_enabled
 
-    # If relay_reactions is False, filter out reaction/tapback packets to avoid complexity
+    # Get interaction settings
+    interactions = get_interaction_settings(config)
+    message_storage_enabled(interactions)
+
+    # Filter packets based on interaction settings
     if packet.get("decoded", {}).get("portnum") == "TEXT_MESSAGE_APP":
         decoded = packet.get("decoded", {})
-        if not relay_reactions and ("emoji" in decoded or "replyId" in decoded):
+        # Filter out reactions if reactions are disabled
+        if (
+            not interactions["reactions"]
+            and "emoji" in decoded
+            and decoded.get("emoji") == 1
+        ):
             logger.debug(
-                "Filtered out reaction/tapback packet due to relay_reactions=false."
+                "Filtered out reaction packet due to reactions being disabled."
             )
             return
 
@@ -391,8 +401,8 @@ def on_meshtastic_message(packet, interface):
     meshnet_name = config["meshtastic"]["meshnet_name"]
 
     # Reaction handling (Meshtastic -> Matrix)
-    # If replyId and emoji_flag are present and relay_reactions is True, we relay as text reactions in Matrix
-    if replyId and emoji_flag and relay_reactions:
+    # If replyId and emoji_flag are present and reactions are enabled, we relay as text reactions in Matrix
+    if replyId and emoji_flag and interactions["reactions"]:
         longname = get_longname(sender) or str(sender)
         shortname = get_shortname(sender) or str(sender)
         orig = get_message_map_by_meshtastic_id(replyId)
@@ -430,6 +440,42 @@ def on_meshtastic_message(packet, interface):
             )
         else:
             logger.debug("Original message for reaction not found in DB.")
+        return
+
+    # Reply handling (Meshtastic -> Matrix)
+    # If replyId is present but emoji is not (or not 1), this is a reply
+    if replyId and not emoji_flag and interactions["replies"]:
+        longname = get_longname(sender) or str(sender)
+        shortname = get_shortname(sender) or str(sender)
+        orig = get_message_map_by_meshtastic_id(replyId)
+        if orig:
+            # orig = (matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
+            matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet = orig
+
+            # Format the reply message for Matrix
+            full_display_name = f"{longname}/{meshnet_name}"
+            formatted_message = f"[{full_display_name}]: {text}"
+
+            logger.info(f"Relaying Meshtastic reply from {longname} to Matrix")
+
+            # Relay the reply to Matrix with proper reply formatting
+            asyncio.run_coroutine_threadsafe(
+                matrix_relay(
+                    matrix_room_id,
+                    formatted_message,
+                    longname,
+                    shortname,
+                    meshnet_name,
+                    decoded.get("portnum"),
+                    meshtastic_id=packet.get("id"),
+                    meshtastic_replyId=replyId,
+                    meshtastic_text=text,
+                    reply_to_event_id=matrix_event_id,
+                ),
+                loop=loop,
+            )
+        else:
+            logger.debug("Original message for reply not found in DB.")
         return
 
     # Normal text messages or detection sensor messages
@@ -613,6 +659,51 @@ async def check_connection():
                 logger.error(f"{connection_type.capitalize()} connection lost: {e}")
                 on_lost_meshtastic_connection(meshtastic_client)
         await asyncio.sleep(30)  # Check connection every 30 seconds
+
+
+def sendTextReply(
+    interface,
+    text: str,
+    reply_id: int,
+    destinationId=meshtastic.BROADCAST_ADDR,
+    wantAck: bool = False,
+    channelIndex: int = 0,
+):
+    """
+    Send a text message as a reply to a previous message.
+
+    This function creates a proper Meshtastic reply by setting the reply_id field
+    in the Data protobuf message, which the standard sendText() method doesn't support.
+
+    Args:
+        interface: The Meshtastic interface to send through
+        text: The text message to send
+        reply_id: The ID of the message this is replying to
+        destinationId: Where to send the message (default: broadcast)
+        wantAck: Whether to request acknowledgment
+        channelIndex: Which channel to send on
+
+    Returns:
+        The sent packet with populated ID field
+    """
+    logger.debug(f"Sending text reply: '{text}' replying to message ID {reply_id}")
+
+    # Create the Data protobuf message with reply_id set
+    data_msg = mesh_pb2.Data()
+    data_msg.portnum = portnums_pb2.PortNum.TEXT_MESSAGE_APP
+    data_msg.payload = text.encode("utf-8")
+    data_msg.reply_id = reply_id
+
+    # Create the MeshPacket
+    mesh_packet = mesh_pb2.MeshPacket()
+    mesh_packet.channel = channelIndex
+    mesh_packet.decoded.CopyFrom(data_msg)
+    mesh_packet.id = interface._generatePacketId()
+
+    # Send the packet using the existing infrastructure
+    return interface._sendPacket(
+        mesh_packet, destinationId=destinationId, wantAck=wantAck
+    )
 
 
 if __name__ == "__main__":

@@ -31,6 +31,56 @@ from mmrelay.log_utils import get_logger
 # Do not import plugin_loader here to avoid circular imports
 from mmrelay.meshtastic_utils import connect_meshtastic
 
+
+def get_interaction_settings(config):
+    """
+    Returns a dictionary indicating whether message reactions and replies are enabled based on the provided configuration.
+
+    Supports both the new `message_interactions` structure and the legacy `relay_reactions` flag for backward compatibility. Defaults to disabling both features if not specified.
+    """
+    if config is None:
+        return {"reactions": False, "replies": False}
+
+    meshtastic_config = config.get("meshtastic", {})
+
+    # Check for new structured configuration first
+    if "message_interactions" in meshtastic_config:
+        interactions = meshtastic_config["message_interactions"]
+        return {
+            "reactions": interactions.get("reactions", False),
+            "replies": interactions.get("replies", False),
+        }
+
+    # Fall back to legacy relay_reactions setting
+    if "relay_reactions" in meshtastic_config:
+        enabled = meshtastic_config["relay_reactions"]
+        logger.warning(
+            "Configuration setting 'relay_reactions' is deprecated. "
+            "Please use 'message_interactions: {reactions: bool, replies: bool}' instead. "
+            "Legacy mode: enabling reactions only."
+        )
+        return {
+            "reactions": enabled,
+            "replies": False,
+        }  # Only reactions for legacy compatibility
+
+    # Default to privacy-first (both disabled)
+    return {"reactions": False, "replies": False}
+
+
+def message_storage_enabled(interactions):
+    """
+    Return True if message storage is required for enabled message interactions.
+
+    Parameters:
+        interactions (dict): Dictionary with 'reactions' and 'replies' boolean flags.
+
+    Returns:
+        bool: True if reactions or replies are enabled; otherwise, False.
+    """
+    return interactions["reactions"] or interactions["replies"]
+
+
 # Global config variable that will be set from config.py
 config = None
 
@@ -198,16 +248,29 @@ async def matrix_relay(
     meshtastic_text=None,
     emote=False,
     emoji=False,
+    reply_to_event_id=None,
 ):
     """
-    Relay a message from Meshtastic to Matrix, optionally storing message maps.
+    Relays a message from Meshtastic to a Matrix room, supporting replies and message mapping for interactions.
 
-    IMPORTANT CHANGE: Now, we only store message maps if `relay_reactions` is True.
-    If `relay_reactions` is False, we skip storing to the message map entirely.
-    This helps maintain privacy and prevents message_map usage unless needed.
+    If `reply_to_event_id` is provided, sends the message as a Matrix reply, formatting the content to include quoted original text and appropriate Matrix reply relations. When message interactions (reactions or replies) are enabled in the configuration, stores a mapping between the Meshtastic message ID and the resulting Matrix event ID to enable cross-referencing for future interactions. Prunes old message mappings based on configuration to limit storage.
 
-    Additionally, if `msgs_to_keep` > 0, we prune the oldest messages after storing
-    to prevent database bloat and maintain privacy.
+    Parameters:
+        room_id (str): The Matrix room ID to send the message to.
+        message (str): The message content to relay.
+        longname (str): The sender's long display name from Meshtastic.
+        shortname (str): The sender's short display name from Meshtastic.
+        meshnet_name (str): The originating meshnet name.
+        portnum (int): The Meshtastic port number.
+        meshtastic_id (str, optional): The Meshtastic message ID for mapping.
+        meshtastic_replyId (str, optional): The Meshtastic message ID being replied to, if any.
+        meshtastic_text (str, optional): The original Meshtastic message text.
+        emote (bool, optional): Whether to send the message as an emote.
+        emoji (bool, optional): Whether the message is an emoji reaction.
+        reply_to_event_id (str, optional): The Matrix event ID being replied to, if sending a reply.
+
+    Returns:
+        None
     """
     global config
 
@@ -221,8 +284,9 @@ async def matrix_relay(
         logger.error("No configuration available. Cannot relay message to Matrix.")
         return
 
-    # Retrieve relay_reactions configuration; default to False now if not specified.
-    relay_reactions = config["meshtastic"].get("relay_reactions", False)
+    # Get interaction settings
+    interactions = get_interaction_settings(config)
+    storage_enabled = message_storage_enabled(interactions)
 
     # Retrieve db config for message_map pruning
     # Check database config for message map settings (preferred format)
@@ -263,6 +327,40 @@ async def matrix_relay(
         if emoji:
             content["meshtastic_emoji"] = 1
 
+        # Add Matrix reply formatting if this is a reply
+        if reply_to_event_id:
+            content["m.relates_to"] = {"m.in_reply_to": {"event_id": reply_to_event_id}}
+            # For Matrix replies, we need to format the body with quoted content
+            # Get the original message details for proper quoting
+            try:
+                orig = get_message_map_by_matrix_event_id(reply_to_event_id)
+                if orig:
+                    # orig = (meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
+                    _, _, original_text, original_meshnet = orig
+
+                    # Use the relay bot's user ID for attribution (this is correct for relay messages)
+                    bot_user_id = matrix_client.user_id
+                    original_sender_display = f"{longname}/{original_meshnet}"
+
+                    # Create the quoted reply format
+                    quoted_text = f"> <@{bot_user_id}> [{original_sender_display}]: {original_text}"
+                    content["body"] = f"{quoted_text}\n\n{message}"
+                    content["format"] = "org.matrix.custom.html"
+
+                    # Create formatted HTML version with better readability
+                    reply_link = f"https://matrix.to/#/{room_id}/{reply_to_event_id}"
+                    bot_link = f"https://matrix.to/#/@{bot_user_id}"
+                    blockquote_content = f'<a href="{reply_link}">In reply to</a> <a href="{bot_link}">@{bot_user_id}</a><br>[{original_sender_display}]: {original_text}'
+                    content["formatted_body"] = (
+                        f"<mx-reply><blockquote>{blockquote_content}</blockquote></mx-reply>{message}"
+                    )
+                else:
+                    logger.warning(
+                        f"Could not find original message for reply_to_event_id: {reply_to_event_id}"
+                    )
+            except Exception as e:
+                logger.error(f"Error formatting Matrix reply: {e}")
+
         try:
             # Ensure matrix_client is not None
             if not matrix_client:
@@ -292,10 +390,10 @@ async def matrix_relay(
             logger.error(f"Error sending message to Matrix room {room_id}: {e}")
             return
 
-        # Only store message map if relay_reactions is True and meshtastic_id is present and not an emote.
-        # If relay_reactions is False, we skip storing entirely.
+        # Only store message map if any interactions are enabled and conditions are met
+        # This enables reactions and/or replies functionality based on configuration
         if (
-            relay_reactions
+            storage_enabled
             and meshtastic_id is not None
             and not emote
             and hasattr(response, "event_id")
@@ -337,12 +435,179 @@ def truncate_message(text, max_bytes=227):
 
 def strip_quoted_lines(text: str) -> str:
     """
-    Remove lines that begin with '>' to avoid including
-    the original quoted part of a Matrix reply in reaction text.
+    Removes lines starting with '>' from the input text.
+
+    This is typically used to exclude quoted content from Matrix replies, such as when processing reaction text.
     """
     lines = text.splitlines()
     filtered = [line for line in lines if not line.strip().startswith(">")]
     return " ".join(filtered).strip()
+
+
+async def get_user_display_name(room, event):
+    """
+    Retrieve the display name of a Matrix user, preferring the room-specific name if available.
+
+    Returns:
+        str: The user's display name, or their Matrix ID if no display name is set.
+    """
+    room_display_name = room.user_name(event.sender)
+    if room_display_name:
+        return room_display_name
+
+    display_name_response = await matrix_client.get_displayname(event.sender)
+    return display_name_response.displayname or event.sender
+
+
+def format_reply_message(full_display_name, text):
+    """
+    Format a reply message by prefixing a truncated display name and removing quoted lines.
+
+    The resulting message is prefixed with the first five characters of the user's display name followed by "[M]: ", has quoted lines removed, and is truncated to fit within the allowed message length.
+
+    Parameters:
+        full_display_name (str): The user's full display name to be truncated for the prefix.
+        text (str): The reply text, possibly containing quoted lines.
+
+    Returns:
+        str: The formatted and truncated reply message.
+    """
+    short_display_name = full_display_name[:5]
+    prefix = f"{short_display_name}[M]: "
+
+    # Strip quoted content from the reply text
+    clean_text = strip_quoted_lines(text)
+    reply_message = f"{prefix}{clean_text}"
+    return truncate_message(reply_message)
+
+
+async def send_reply_to_meshtastic(
+    reply_message,
+    full_display_name,
+    room_config,
+    room,
+    event,
+    text,
+    storage_enabled,
+    local_meshnet_name,
+    reply_id=None,
+):
+    """
+    Sends a reply message from Matrix to Meshtastic and optionally stores the message mapping for future interactions.
+
+    If message storage is enabled and the message is successfully sent, stores a mapping between the Meshtastic packet ID and the Matrix event ID, after removing quoted lines from the reply text. Prunes old message mappings based on configuration to limit storage size. Logs errors if sending fails.
+
+    Args:
+        reply_id: If provided, sends as a structured Meshtastic reply to this message ID
+    """
+    meshtastic_interface = connect_meshtastic()
+    from mmrelay.meshtastic_utils import logger as meshtastic_logger
+    from mmrelay.meshtastic_utils import sendTextReply
+
+    meshtastic_channel = room_config["meshtastic_channel"]
+
+    if config["meshtastic"]["broadcast_enabled"]:
+        try:
+            if reply_id is not None:
+                # Send as a structured reply using our custom function
+                sent_packet = sendTextReply(
+                    meshtastic_interface,
+                    text=reply_message,
+                    reply_id=reply_id,
+                    channelIndex=meshtastic_channel,
+                )
+                meshtastic_logger.info(
+                    f"Relaying Matrix reply from {full_display_name} to radio broadcast as structured reply to message {reply_id}"
+                )
+            else:
+                # Send as regular message (fallback for when no reply_id is available)
+                sent_packet = meshtastic_interface.sendText(
+                    text=reply_message, channelIndex=meshtastic_channel
+                )
+                meshtastic_logger.info(
+                    f"Relaying Matrix reply from {full_display_name} to radio broadcast as regular message"
+                )
+
+            # Store the reply in message map if storage is enabled
+            if storage_enabled and sent_packet and hasattr(sent_packet, "id"):
+                # Strip quoted lines from text before storing to prevent issues with reactions to replies
+                cleaned_text = strip_quoted_lines(text)
+                store_message_map(
+                    sent_packet.id,
+                    event.event_id,
+                    room.room_id,
+                    cleaned_text,
+                    meshtastic_meshnet=local_meshnet_name,
+                )
+                # Prune old messages if configured
+                database_config = config.get("database", {})
+                msg_map_config = database_config.get("msg_map", {})
+                if not msg_map_config:
+                    db_config = config.get("db", {})
+                    legacy_msg_map_config = db_config.get("msg_map", {})
+                    if legacy_msg_map_config:
+                        msg_map_config = legacy_msg_map_config
+                msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)
+                if msgs_to_keep > 0:
+                    prune_message_map(msgs_to_keep)
+
+        except Exception as e:
+            meshtastic_logger.error(f"Error sending Matrix reply to Meshtastic: {e}")
+
+
+async def handle_matrix_reply(
+    room,
+    event,
+    reply_to_event_id,
+    text,
+    room_config,
+    storage_enabled,
+    local_meshnet_name,
+):
+    """
+    Relays a Matrix reply to the corresponding Meshtastic message if a mapping exists.
+
+    Looks up the original Meshtastic message using the Matrix event ID being replied to. If found, formats and sends the reply to Meshtastic, preserving conversational context. Returns True if the reply was successfully handled; otherwise, returns False to allow normal message processing.
+
+    Returns:
+        bool: True if the reply was relayed to Meshtastic, False otherwise.
+    """
+    # Look up the original message in the message map
+    orig = get_message_map_by_matrix_event_id(reply_to_event_id)
+    if not orig:
+        logger.debug(
+            f"Original message for Matrix reply not found in DB: {reply_to_event_id}"
+        )
+        return False  # Continue processing as normal message if original not found
+
+    # Extract the original meshtastic_id to use as reply_id
+    # orig = (meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
+    original_meshtastic_id = orig[0]
+
+    # Get user display name
+    full_display_name = await get_user_display_name(room, event)
+
+    # Format the reply message
+    reply_message = format_reply_message(full_display_name, text)
+
+    logger.info(
+        f"Relaying Matrix reply from {full_display_name} to Meshtastic as reply to message {original_meshtastic_id}"
+    )
+
+    # Send the reply to Meshtastic with the original message ID as reply_id
+    await send_reply_to_meshtastic(
+        reply_message,
+        full_display_name,
+        room_config,
+        room,
+        event,
+        text,
+        storage_enabled,
+        local_meshnet_name,
+        reply_id=original_meshtastic_id,
+    )
+
+    return True  # Reply was handled, stop further processing
 
 
 # Callback for new messages in Matrix room
@@ -351,16 +616,9 @@ async def on_room_message(
     event: Union[RoomMessageText, RoomMessageNotice, ReactionEvent, RoomMessageEmote],
 ) -> None:
     """
-    Handle new messages and reactions in Matrix. For reactions, we ensure that when relaying back
-    to Meshtastic, we always apply our local meshnet_name to outgoing events.
+    Handles incoming Matrix room messages, reactions, and replies, relaying them to Meshtastic as appropriate.
 
-    We must be careful not to relay reactions to reactions (reaction-chains),
-    especially remote reactions that got relayed into the room as m.emote events,
-    as we do not store them in the database. If we can't find the original message in the DB,
-    it likely means it's a reaction to a reaction, and we stop there.
-
-    Additionally, we only deal with message_map storage (and thus reaction linking)
-    if relay_reactions is True. If it's False, none of these mappings are stored or used.
+    Processes events from Matrix rooms, including text messages, reactions, and replies. Relays supported messages to Meshtastic if broadcasting is enabled, applying message mapping for cross-referencing when reactions or replies are enabled. Prevents relaying of reactions to reactions and avoids processing messages from the bot itself or messages sent before the bot started. Integrates with plugins for command and message handling, and ensures that only supported messages are forwarded to Meshtastic.
     """
     # Importing here to avoid circular imports and to keep logic consistent
     # Note: We do not call store_message_map directly here for inbound matrix->mesh messages.
@@ -403,8 +661,9 @@ async def on_room_message(
         logger.error("No configuration available. Cannot process Matrix message.")
         return
 
-    # Retrieve relay_reactions option from config, now defaulting to False
-    relay_reactions = config["meshtastic"].get("relay_reactions", False)
+    # Get interaction settings
+    interactions = get_interaction_settings(config)
+    storage_enabled = message_storage_enabled(interactions)
 
     # Check if this is a Matrix ReactionEvent (usually m.reaction)
     if isinstance(event, ReactionEvent):
@@ -441,17 +700,26 @@ async def on_room_message(
     if suppress:
         return
 
-    # If this is a reaction and relay_reactions is False, do nothing
-    if is_reaction and not relay_reactions:
+    # If this is a reaction and reactions are disabled, do nothing
+    if is_reaction and not interactions["reactions"]:
         logger.debug(
-            "Reaction event encountered but relay_reactions is disabled. Doing nothing."
+            "Reaction event encountered but reactions are disabled. Doing nothing."
         )
         return
 
     local_meshnet_name = config["meshtastic"]["meshnet_name"]
 
-    # If this is a reaction and relay_reactions is True, attempt to relay it
-    if is_reaction and relay_reactions:
+    # Check if this is a Matrix reply (not a reaction)
+    is_reply = False
+    reply_to_event_id = None
+    if not is_reaction and relates_to and "m.in_reply_to" in relates_to:
+        reply_to_event_id = relates_to["m.in_reply_to"].get("event_id")
+        if reply_to_event_id:
+            is_reply = True
+            logger.debug(f"Processing Matrix reply to event: {reply_to_event_id}")
+
+    # If this is a reaction and reactions are enabled, attempt to relay it
+    if is_reaction and interactions["reactions"]:
         # Check if we need to relay a reaction from a remote meshnet to our local meshnet.
         # If meshnet_name != local_meshnet_name and meshtastic_replyId is present and this is an emote,
         # it's a remote reaction that needs to be forwarded as a text message describing the reaction.
@@ -564,6 +832,20 @@ async def on_room_message(
                 meshtastic_interface.sendText(
                     text=reaction_message, channelIndex=meshtastic_channel
                 )
+            return
+
+    # Handle Matrix replies to Meshtastic messages (only if replies are enabled)
+    if is_reply and reply_to_event_id and interactions["replies"]:
+        reply_handled = await handle_matrix_reply(
+            room,
+            event,
+            reply_to_event_id,
+            text,
+            room_config,
+            storage_enabled,
+            local_meshnet_name,
+        )
+        if reply_handled:
             return
 
     # For Matrix->Mesh messages from a remote meshnet, rewrite the message format
@@ -679,9 +961,9 @@ async def on_room_message(
                 except Exception as e:
                     meshtastic_logger.error(f"Error sending message to Meshtastic: {e}")
                     return
-                # Store message_map only if relay_reactions is True and only for TEXT_MESSAGE_APP
+                # Store message_map only if storage is enabled and only for TEXT_MESSAGE_APP
                 # (these are the only messages that can be replied to and thus need reaction handling)
-                if relay_reactions and sent_packet and hasattr(sent_packet, "id"):
+                if storage_enabled and sent_packet and hasattr(sent_packet, "id"):
                     # Strip quoted lines from text before storing to prevent issues with reactions to replies
                     cleaned_text = strip_quoted_lines(text)
                     store_message_map(
