@@ -44,7 +44,7 @@ For detailed installation and configuration instructions, see the [Installation 
 - Configurable through a simple YAML file
 - Supports mapping multiple rooms and channels 1:1
 - Relays messages to/from an MQTT broker, if configured in the Meshtastic firmware
-- ✨️ _Cross-platform reactions support_ ✨️ **NEW!!**
+- ✨️ _Bidirectional replies and reactions support_ ✨️ **NEW!!**
 
 _We would love to support [Matrix E2EE rooms](https://github.com/geoffwhittington/meshtastic-matrix-relay/issues/33), but this is currently not implemented._
 
