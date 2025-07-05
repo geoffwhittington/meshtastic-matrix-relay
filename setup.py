@@ -26,8 +26,8 @@ setup(
     python_requires=">=3.8",
     install_requires=[
         # TEMPORARY: Using fork with BLE hanging fix until upstream merge
-        # Commit: 19f5174a7ee3d166dceea317be09782d663263d5
-        "meshtastic @ git+https://github.com/jeremiah-k/meshtastic-python.git@19f5174a7ee3d166dceea317be09782d663263d5",
+        # Commit: 33d23e9c28508a740da6567627e42d81552c9b58
+        "meshtastic @ git+https://github.com/jeremiah-k/meshtastic-python.git@33d23e9c28508a740da6567627e42d81552c9b58",
         "Pillow==11.2.1",
         "matrix-nio==0.25.2",
         "matplotlib==3.10.1",
