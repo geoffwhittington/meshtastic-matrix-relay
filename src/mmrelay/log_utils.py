@@ -172,3 +172,4 @@ def setup_upstream_logging_capture():
         upstream_logger = logging.getLogger(logger_name)
         upstream_logger.addHandler(upstream_handler)
         upstream_logger.setLevel(logging.WARNING)
+        upstream_logger.propagate = False  # Prevent duplicate messages via root logger
