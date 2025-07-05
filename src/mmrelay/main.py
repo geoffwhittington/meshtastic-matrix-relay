@@ -135,11 +135,11 @@ async def main(config):
         pass
 
     # -------------------------------------------------------------------
-    # IMPORTANT: We create a task to run the meshtastic_utils.check_connection()
-    # so its while loop runs in parallel with the matrix sync loop
-    # Use "_" to avoid trunk's "assigned but unused variable" warning
+    # NOTE: Disabled custom check_connection() to rely on improved meshtastic library
+    # disconnection detection. The updated fork (commit 33d23e9c28508a740da6567627e42d81552c9b58)
+    # includes better detection for all interface types, eliminating duplicate detection.
     # -------------------------------------------------------------------
-    _ = asyncio.create_task(meshtastic_utils.check_connection())
+    # _ = asyncio.create_task(meshtastic_utils.check_connection())
 
     # Start the Matrix client sync loop
     try:
