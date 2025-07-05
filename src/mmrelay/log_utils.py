@@ -134,3 +134,41 @@ def get_logger(name):
         logger.addHandler(file_handler)
 
     return logger
+
+
+def setup_upstream_logging_capture():
+    """
+    Captures upstream library logging (like ERROR:root messages) and redirects
+    them to our formatted logger to maintain consistent log formatting.
+    """
+    # Get our main logger
+    main_logger = get_logger("Upstream")
+
+    # Create a custom handler that redirects root logger messages
+    class UpstreamLogHandler(logging.Handler):
+        def emit(self, record):
+            # Skip if this is already from our logger to avoid recursion
+            if record.name.startswith("mmrelay") or record.name == "Upstream":
+                return
+
+            # Map the log level and emit through our logger
+            if record.levelno >= logging.ERROR:
+                main_logger.error(f"[{record.name}] {record.getMessage()}")
+            elif record.levelno >= logging.WARNING:
+                main_logger.warning(f"[{record.name}] {record.getMessage()}")
+            elif record.levelno >= logging.INFO:
+                main_logger.info(f"[{record.name}] {record.getMessage()}")
+            else:
+                main_logger.debug(f"[{record.name}] {record.getMessage()}")
+
+    # Add our handler to the root logger
+    root_logger = logging.getLogger()
+    upstream_handler = UpstreamLogHandler()
+    upstream_handler.setLevel(logging.WARNING)  # Only capture warnings and errors
+    root_logger.addHandler(upstream_handler)
+
+    # Also set up specific loggers for known upstream libraries
+    for logger_name in ["meshtastic", "bleak", "asyncio"]:
+        upstream_logger = logging.getLogger(logger_name)
+        upstream_logger.addHandler(upstream_handler)
+        upstream_logger.setLevel(logging.WARNING)

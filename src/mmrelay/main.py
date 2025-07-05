@@ -20,7 +20,7 @@ from mmrelay.db_utils import (
     update_shortnames,
     wipe_message_map,
 )
-from mmrelay.log_utils import get_logger
+from mmrelay.log_utils import get_logger, setup_upstream_logging_capture
 from mmrelay.matrix_utils import connect_matrix, join_matrix_room
 from mmrelay.matrix_utils import logger as matrix_logger
 from mmrelay.matrix_utils import on_room_member, on_room_message
@@ -68,6 +68,9 @@ async def main(config):
 
     # Initialize the SQLite database
     initialize_database()
+
+    # Set up upstream logging capture to format library messages consistently
+    setup_upstream_logging_capture()
 
     # Check database config for wipe_on_restart (preferred format)
     database_config = config.get("database", {})
