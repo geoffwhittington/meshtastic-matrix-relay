@@ -1,0 +1,56 @@
+# Sample configuration for Docker deployment
+# Copy this to config.yaml and modify for your setup
+
+# Logging configuration
+logging:
+  level: "INFO"
+  color_enabled: false  # Disable colors for container logs
+  log_to_file: true
+  filename: "/app/logs/mmrelay.log"
+  max_log_size: 10485760  # 10MB
+  backup_count: 3
+
+# Matrix configuration
+matrix:
+  homeserver: "https://matrix.org"
+  username: "@your-bot:matrix.org"
+  password: "your-bot-password"
+  # Alternative: use access token instead of password
+  # access_token: "your-access-token"
+
+# Matrix rooms configuration
+matrix_rooms:
+  - id: "!your-room-id:matrix.org"
+    meshtastic_channel: "LongFast"
+    relay_config:
+      meshtastic_to_matrix: true
+      matrix_to_meshtastic: true
+
+# Meshtastic configuration
+meshtastic:
+  connection_type: "tcp"  # or "serial" or "ble"
+  
+  # For TCP connection
+  host: "192.168.1.100"  # IP of your Meshtastic device
+  
+  # For serial connection (uncomment and modify)
+  # serial_port: "/dev/ttyUSB0"
+  
+  # For BLE connection (uncomment and modify)
+  # ble_address: "AA:BB:CC:DD:EE:FF"
+
+# Database configuration
+database:
+  msg_map:
+    wipe_on_restart: false
+
+# Bot configuration
+bot:
+  enabled: true
+  prefix: "!"
+  
+# Plugin configuration
+plugins:
+  enabled: true
+  custom_dir: "/app/data/plugins/custom"
+  community_dir: "/app/data/plugins/community"

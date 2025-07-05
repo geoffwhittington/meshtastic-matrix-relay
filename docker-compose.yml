@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  mmrelay:
+    build: .
+    container_name: meshtastic-matrix-relay
+    restart: unless-stopped
+    
+    # Environment variables
+    environment:
+      - TZ=UTC
+      - PYTHONUNBUFFERED=1
+    
+    # Volume mounts for persistence
+    volumes:
+      # Configuration file
+      - ./config.yaml:/app/config/config.yaml:ro
+      # Data directory for database and other persistent data
+      - mmrelay_data:/app/data
+      # Logs directory
+      - mmrelay_logs:/app/logs
+    
+    # Network configuration
+    network_mode: host
+    
+    # Device access for BLE and serial connections
+    devices:
+      # Uncomment and modify as needed for your setup
+      # - /dev/ttyUSB0:/dev/ttyUSB0  # Serial connection
+      # - /dev/ttyACM0:/dev/ttyACM0  # Alternative serial
+    
+    # Privileged mode for BLE access (can be removed if not using BLE)
+    privileged: true
+    
+    # Alternative to privileged mode - more secure but may need adjustment
+    # cap_add:
+    #   - NET_ADMIN
+    #   - SYS_ADMIN
+    # devices:
+    #   - /dev/bus/usb:/dev/bus/usb
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "mmrelay"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Named volumes for data persistence
+volumes:
+  mmrelay_data:
+    driver: local
+  mmrelay_logs:
+    driver: local
