@@ -62,12 +62,12 @@ setup:
 
 # Build the Docker image with --no-cache for fresh builds
 build:
-	$(DOCKER_COMPOSE) build --no-cache --pull --progress=plain
+	$(DOCKER_COMPOSE) build --no-cache --progress=plain
 
 # Stop, rebuild, and restart container (for updates)
 rebuild:
 	$(DOCKER_COMPOSE) down
-	$(DOCKER_COMPOSE) build --no-cache --pull --progress=plain
+	$(DOCKER_COMPOSE) build --no-cache --progress=plain
 	$(DOCKER_COMPOSE) up -d
 
 # Start the container
