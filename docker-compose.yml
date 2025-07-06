@@ -9,13 +9,16 @@ services:
       - PYTHONUNBUFFERED=1
 
     volumes:
-      # Mount your config.yaml file
-      - ./config.yaml:/app/config.yaml:ro
-      # Persistent data and logs
-      - mmrelay_data:/app/data
-      - mmrelay_logs:/app/logs
+      # Configuration - uses standard ~/.mmrelay/config.yaml location
+      # Create this first with: make config
+      - ~/.mmrelay/config.yaml:/app/config.yaml:ro
 
-    # For TCP connections (most common)
+      # Data and logs - same locations as standalone installation
+      # These directories will be created automatically
+      - ~/.mmrelay/data:/app/data
+      - ~/.mmrelay/logs:/app/logs
+
+    # For TCP connections (most common) - works out of the box
     network_mode: host
 
     # For serial connections, uncomment the device you need:
@@ -25,7 +28,3 @@ services:
 
     # For BLE connections, uncomment this:
     # privileged: true
-
-volumes:
-  mmrelay_data:
-  mmrelay_logs:
