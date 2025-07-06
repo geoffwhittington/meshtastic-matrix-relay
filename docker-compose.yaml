@@ -11,12 +11,12 @@ services:
     volumes:
       # Configuration - uses standard ~/.mmrelay/config.yaml location
       # Create this first with: make config
-      - ~/.mmrelay/config.yaml:/app/config.yaml:ro
-      
+      - ${HOME}/.mmrelay/config.yaml:/app/config.yaml:ro
+
       # Data and logs - same locations as standalone installation
       # These directories will be created automatically
-      - ~/.mmrelay/data:/app/data
-      - ~/.mmrelay/logs:/app/logs
+      - ${HOME}/.mmrelay/data:/app/data
+      - ${HOME}/.mmrelay/logs:/app/logs
     
     # For TCP connections (most common) - works out of the box
     # Meshtastic typically uses port 4403 for TCP connections

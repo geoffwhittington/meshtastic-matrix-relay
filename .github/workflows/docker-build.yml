@@ -32,8 +32,10 @@ jobs:
 
       - name: Extract version and git SHA
         id: get_version
+        env:
+          BUILD_TYPE: ${{ github.event.inputs.build_type || 'dev' }}
         run: |
-          VERSION=$(grep "version =" setup.cfg | sed 's/.*= //')
+          VERSION=$(python -c "import configparser; c=configparser.ConfigParser(); c.read('setup.cfg'); print(c['metadata']['version'])")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Extracted version: $VERSION"
           GIT_SHA=$(git rev-parse --short HEAD)
@@ -46,7 +48,6 @@ jobs:
             echo "Building release version: $VERSION"
           else
             # Manual workflow_dispatch - dev build
-            BUILD_TYPE="${{ github.event.inputs.build_type || 'dev' }}"
             echo "DOCKER_TAG=$VERSION-$BUILD_TYPE-$GIT_SHA" >> $GITHUB_ENV
             echo "IS_RELEASE=false" >> $GITHUB_ENV
             echo "Building $BUILD_TYPE version: $VERSION-$BUILD_TYPE-$GIT_SHA"
@@ -71,13 +72,13 @@ jobs:
           tags: |
             # For releases: create version tag and latest
             type=raw,value=${{ env.DOCKER_TAG }},enable=true
-            type=raw,value=latest,enable=${{ env.IS_RELEASE }}
+            type=raw,value=latest,enable=${{ env.IS_RELEASE == 'true' }}
           labels: |
             org.opencontainers.image.title=Meshtastic Matrix Relay
             org.opencontainers.image.description=Bridge between Meshtastic mesh networks and Matrix chat rooms
             org.opencontainers.image.version=${{ env.VERSION }}
             org.opencontainers.image.revision=${{ env.GIT_SHA }}
-            mmrelay.build.type=${{ github.event_name == 'release' && 'release' || github.event.inputs.build_type || 'dev' }}
+            mmrelay.build.type=${{ github.event_name == 'release' && 'release' || (github.event.inputs.build_type || 'dev') }}
             mmrelay.build.version=${{ env.VERSION }}
             mmrelay.build.commit=${{ env.GIT_SHA }}
 

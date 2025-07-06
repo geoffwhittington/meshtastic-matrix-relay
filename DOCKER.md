@@ -24,8 +24,9 @@ make run      # Start container
 - `make setup` - Copy sample config and open editor (recommended for first time)
 - `make config` - Copy sample config to ~/.mmrelay/config.yaml
 - `make edit` - Edit config file with your preferred editor
-- `make build` - Build Docker image with --no-cache for fresh builds
-- `make rebuild` - Stop, rebuild, and restart container (for updates)
+- `make build` - Build Docker image (uses layer caching for faster builds)
+- `make build-nocache` - Build Docker image with --no-cache for fresh builds
+- `make rebuild` - Stop, rebuild with --no-cache, and restart container (for updates)
 - `make run` - Start container
 - `make stop` - Stop container
 - `make logs` - Show container logs
