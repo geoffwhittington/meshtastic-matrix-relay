@@ -1,20 +1,25 @@
 # Makefile for Meshtastic Matrix Relay Docker operations
 
-.PHONY: help build run stop logs shell clean config
+.PHONY: help build run stop logs shell clean config generate-compose
 
 # Default target
 help:
 	@echo "Available targets:"
-	@echo "  build    - Build the Docker image"
-	@echo "  run      - Start the container with docker-compose"
-	@echo "  stop     - Stop the container"
+	@echo "  generate-compose - Generate docker-compose.yml from sample_config.yaml"
+	@echo "  build           - Build the Docker image"
+	@echo "  run             - Start the container with docker-compose"
+	@echo "  stop            - Stop the container"
 	@echo "  restart  - Restart the container"
-	@echo "  logs     - Show container logs"
-	@echo "  shell    - Access container shell"
-	@echo "  clean    - Remove containers and images"
-	@echo "  config   - Copy sample config file"
-	@echo "  backup   - Backup container data"
-	@echo "  restore  - Restore container data"
+	@echo "  logs            - Show container logs"
+	@echo "  shell           - Access container shell"
+	@echo "  clean           - Remove containers and images"
+	@echo "  config          - Copy sample config file"
+	@echo "  backup          - Backup container data"
+	@echo "  restore         - Restore container data"
+
+# Generate docker-compose.yml from sample config
+generate-compose:
+	python3 scripts/generate-docker-compose.py
 
 # Build the Docker image
 build:
