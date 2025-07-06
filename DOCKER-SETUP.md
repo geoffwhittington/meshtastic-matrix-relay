@@ -14,16 +14,38 @@ Since you can't store secrets in the main repo, use your fork for automated buil
      - `DOCKER_TOKEN`: Your Docker Hub access token
 
 2. **The workflow will automatically:**
-   - Build on every release/tag
+   - Build on official releases (tags `latest` and version number)
    - Build multi-architecture images (amd64, arm64, armv7)
-   - Push to Docker Hub as `yourusername/mmrelay:latest`
-   - Update Docker Hub description
+   - Push to Docker Hub as `yourusername/mmrelay:latest` and `yourusername/mmrelay:1.0.13`
+   - Update Docker Hub description on releases
 
-3. **To trigger a build:**
+3. **Release builds (updates :latest tag):**
    ```bash
    git tag v1.0.13
    git push jkfork v1.0.13
    ```
+
+4. **Test/dev builds (manual):**
+   - Go to Actions tab in your fork
+   - Click "Build and Push Docker Image"
+   - Click "Run workflow"
+   - Choose "dev" or "test" build type
+   - Creates tags like `1.0.13-dev-abc1234` or `1.0.13-test-abc1234`
+
+### Docker Hub Tag Organization
+
+**Release builds:**
+- `latest` - Always points to the latest stable release
+- `1.0.13` - Specific version tags for releases
+
+**Development builds:**
+- `1.0.13-dev-abc1234` - Development builds with commit hash
+- `1.0.13-test-abc1234` - Test builds with commit hash
+
+**How to identify on Docker Hub:**
+- Release builds have clean version numbers and `latest` tag
+- Dev/test builds have `-dev-` or `-test-` in the tag name
+- All builds include labels showing build type and commit hash
 
 ### Option 2: Manual Build and Push
 
