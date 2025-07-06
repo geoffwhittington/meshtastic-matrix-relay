@@ -3,7 +3,7 @@
 # Detect docker compose command (prefer newer 'docker compose' over 'docker-compose')
 DOCKER_COMPOSE := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
 
-.PHONY: help build run stop logs shell clean config edit setup
+.PHONY: help build rebuild run stop logs shell clean config edit setup
 
 # Default target
 help:
@@ -11,7 +11,8 @@ help:
 	@echo "  setup   - Copy sample config and open editor (recommended for first time)"
 	@echo "  config  - Copy sample config to ~/.mmrelay/config.yaml"
 	@echo "  edit    - Edit the config file with your preferred editor"
-	@echo "  build   - Build the Docker image"
+	@echo "  build   - Build Docker image with --no-cache for fresh builds"
+	@echo "  rebuild - Stop, rebuild, and restart container (for updates)"
 	@echo "  run     - Start the container"
 	@echo "  stop    - Stop the container"
 	@echo "  logs    - Show container logs"
@@ -59,9 +60,15 @@ setup:
 	@$(MAKE) config
 	@$(MAKE) edit
 
-# Build the Docker image
+# Build the Docker image with --no-cache for fresh builds
 build:
-	$(DOCKER_COMPOSE) build
+	$(DOCKER_COMPOSE) build --no-cache --pull --progress=plain
+
+# Stop, rebuild, and restart container (for updates)
+rebuild:
+	$(DOCKER_COMPOSE) down
+	$(DOCKER_COMPOSE) build --no-cache --pull --progress=plain
+	$(DOCKER_COMPOSE) up -d
 
 # Start the container
 run:
