@@ -1,5 +1,8 @@
 # Makefile for Meshtastic Matrix Relay Docker operations
 
+# Detect docker compose command (prefer newer 'docker compose' over 'docker-compose')
+DOCKER_COMPOSE := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
+
 .PHONY: help build run stop logs shell clean config edit setup
 
 # Default target
@@ -58,24 +61,24 @@ setup:
 
 # Build the Docker image
 build:
-	docker-compose build
+	$(DOCKER_COMPOSE) build
 
 # Start the container
 run:
-	docker-compose up -d
+	$(DOCKER_COMPOSE) up -d
 
 # Stop the container
 stop:
-	docker-compose down
+	$(DOCKER_COMPOSE) down
 
 # Show logs
 logs:
-	docker-compose logs -f
+	$(DOCKER_COMPOSE) logs -f
 
 # Access container shell
 shell:
-	docker-compose exec mmrelay bash
+	$(DOCKER_COMPOSE) exec mmrelay bash
 
 # Clean up containers (data in ~/.mmrelay/ is preserved)
 clean:
-	docker-compose down
+	$(DOCKER_COMPOSE) down
