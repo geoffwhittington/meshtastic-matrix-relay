@@ -1,9 +1,30 @@
-FROM python:3.11-slim
+# Build stage
+FROM python:3.11-slim as builder
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python build tools
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Copy source files
+COPY requirements.txt setup.py ./
+COPY README.md ./
+COPY src/ ./src/
+
+# Build wheels
+RUN pip wheel --no-cache-dir . -w /wheels
+
+# Runtime stage
+FROM python:3.11-slim
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     bluez \
     procps \
     && rm -rf /var/lib/apt/lists/*
@@ -14,14 +35,12 @@ RUN groupadd -r mmrelay && useradd -r -g mmrelay -d /app -s /bin/bash mmrelay
 # Set working directory
 WORKDIR /app
 
-# Copy and install application
-COPY requirements.txt setup.py ./
-COPY README.md ./
-COPY src/ ./src/
+# Copy wheels from builder stage
+COPY --from=builder /wheels /wheels
 
-# Install Python dependencies and application
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir .
+# Install application from pre-built wheels
+RUN pip install --no-cache-dir --no-index --find-links=/wheels mmrelay && \
+    rm -rf /wheels
 
 # Create directories and set permissions
 RUN mkdir -p /app/data /app/logs && \

@@ -36,9 +36,10 @@ make run      # Start container
 ## Connection Types
 
 **TCP (recommended):**
-- Works out of the box with `network_mode: host`
+- Uses port mapping for cross-platform compatibility
 - Set `meshtastic.host` in ~/.mmrelay/config.yaml
 - Meshtastic typically uses port 4403 for TCP connections
+- Container exposes port 4403 to host
 
 **Serial:**
 - Uncomment device mapping in docker-compose.yaml
@@ -57,6 +58,12 @@ Uses the same directories as standalone installation:
 - **Logs**: `~/.mmrelay/logs/` (persistent)
 
 This means your Docker and standalone installations share the same data!
+
+**Custom Data Location:**
+If you need to use a different location, edit the `.env` file:
+```bash
+MMRELAY_HOME=/path/to/your/data
+```
 
 ## Updates
 
