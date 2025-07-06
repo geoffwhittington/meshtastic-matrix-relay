@@ -36,20 +36,20 @@ jobs:
           BUILD_TYPE: ${{ github.event.inputs.build_type || 'dev' }}
         run: |
           VERSION=$(python -c "import configparser; c=configparser.ConfigParser(); c.read('setup.cfg'); print(c['metadata']['version'])")
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Extracted version: $VERSION"
           GIT_SHA=$(git rev-parse --short HEAD)
-          echo "GIT_SHA=$GIT_SHA" >> $GITHUB_ENV
+          echo "git_sha=$GIT_SHA" >> $GITHUB_OUTPUT
 
           # Set DOCKER_TAG based on event type
           if [ "${{ github.event_name }}" == "release" ]; then
-            echo "DOCKER_TAG=$VERSION" >> $GITHUB_ENV
-            echo "IS_RELEASE=true" >> $GITHUB_ENV
+            echo "docker_tag=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
             echo "Building release version: $VERSION"
           else
             # Manual workflow_dispatch - dev build
-            echo "DOCKER_TAG=$VERSION-$BUILD_TYPE-$GIT_SHA" >> $GITHUB_ENV
-            echo "IS_RELEASE=false" >> $GITHUB_ENV
+            echo "docker_tag=$VERSION-$BUILD_TYPE-$GIT_SHA" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
             echo "Building $BUILD_TYPE version: $VERSION-$BUILD_TYPE-$GIT_SHA"
           fi
 
@@ -71,16 +71,16 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
           tags: |
             # For releases: create version tag and latest
-            type=raw,value=${{ env.DOCKER_TAG }},enable=true
-            type=raw,value=latest,enable=${{ env.IS_RELEASE == 'true' }}
+            type=raw,value=${{ steps.get_version.outputs.docker_tag }},enable=true
+            type=raw,value=latest,enable=${{ steps.get_version.outputs.is_release == 'true' }}
           labels: |
             org.opencontainers.image.title=Meshtastic Matrix Relay
             org.opencontainers.image.description=Bridge between Meshtastic mesh networks and Matrix chat rooms
-            org.opencontainers.image.version=${{ env.VERSION }}
-            org.opencontainers.image.revision=${{ env.GIT_SHA }}
+            org.opencontainers.image.version=${{ steps.get_version.outputs.version }}
+            org.opencontainers.image.revision=${{ steps.get_version.outputs.git_sha }}
             mmrelay.build.type=${{ github.event_name == 'release' && 'release' || (github.event.inputs.build_type || 'dev') }}
-            mmrelay.build.version=${{ env.VERSION }}
-            mmrelay.build.commit=${{ env.GIT_SHA }}
+            mmrelay.build.version=${{ steps.get_version.outputs.version }}
+            mmrelay.build.commit=${{ steps.get_version.outputs.git_sha }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5

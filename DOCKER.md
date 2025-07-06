@@ -59,8 +59,14 @@ Uses the same directories as standalone installation:
 
 This means your Docker and standalone installations share the same data!
 
+**Environment Configuration:**
+Docker Compose uses the `.env` file to set data directory paths. The `make config` command creates this automatically with:
+```bash
+MMRELAY_HOME=$HOME
+```
+
 **Custom Data Location:**
-If you need to use a different location, edit the `.env` file:
+To use a different location, edit the `.env` file:
 ```bash
 MMRELAY_HOME=/path/to/your/data
 ```

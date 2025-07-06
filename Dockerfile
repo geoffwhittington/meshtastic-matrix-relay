@@ -25,8 +25,8 @@ FROM python:3.11-slim
 
 # Install only runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    bluez \
     procps \
+    && (apt-get install -y --no-install-recommends bluez || echo "bluez not available on this architecture") \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -39,8 +39,8 @@ WORKDIR /app
 COPY --from=builder /wheels /wheels
 
 # Install application from pre-built wheels
-RUN pip install --no-cache-dir --no-index --find-links=/wheels mmrelay && \
-    rm -rf /wheels
+RUN pip install --no-cache-dir --no-index --find-links=/wheels mmrelay \
+    && rm -rf /wheels
 
 # Create directories and set permissions
 RUN mkdir -p /app/data /app/logs && \

@@ -20,7 +20,7 @@ help:
 	@echo "  shell   - Access container shell"
 	@echo "  clean   - Remove containers"
 
-# Copy sample config to ~/.mmrelay/config.yaml
+# Copy sample config to ~/.mmrelay/config.yaml and create .env file
 config:
 	@mkdir -p ~/.mmrelay
 	@if [ ! -f ~/.mmrelay/config.yaml ]; then \
@@ -28,6 +28,12 @@ config:
 		echo "Sample config copied to ~/.mmrelay/config.yaml - please edit it before running"; \
 	else \
 		echo "~/.mmrelay/config.yaml already exists"; \
+	fi
+	@if [ ! -f .env ]; then \
+		cp src/mmrelay/tools/sample.env .env; \
+		echo ".env file created from sample - edit if needed"; \
+	else \
+		echo ".env file already exists"; \
 	fi
 
 # Edit the config file with preferred editor

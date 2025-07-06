@@ -60,6 +60,7 @@ dist/
 Dockerfile*
 docker-compose*
 .dockerignore
+.env
 
 # Config files (will be mounted)
 config.yaml
