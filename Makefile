@@ -52,19 +52,21 @@ edit:
 		$$EDITOR ~/.mmrelay/config.yaml; \
 	else \
 		echo "Select your editor:"; \
-		echo "1) nano (beginner-friendly)"; \
+		echo "1) nano (beginner-friendly) [default]"; \
 		echo "2) vim"; \
 		echo "3) emacs"; \
 		echo "4) code (VS Code)"; \
 		echo "5) gedit"; \
-		read -p "Enter choice (1-5): " choice; \
-		case $$choice in \
-			1) nano ~/.mmrelay/config.yaml ;; \
+		echo "6) other (specify command)"; \
+		read -p "Enter choice (1-6, or press Enter for nano): " choice; \
+		case "$$choice" in \
+			""|1) nano ~/.mmrelay/config.yaml ;; \
 			2) vim ~/.mmrelay/config.yaml ;; \
 			3) emacs ~/.mmrelay/config.yaml ;; \
 			4) code ~/.mmrelay/config.yaml ;; \
 			5) gedit ~/.mmrelay/config.yaml ;; \
-			*) echo "Invalid choice. Set EDITOR environment variable or try again."; exit 1 ;; \
+			6) read -p "Enter editor command: " custom_editor; $$custom_editor ~/.mmrelay/config.yaml ;; \
+			*) echo "Invalid choice. Using nano as default."; nano ~/.mmrelay/config.yaml ;; \
 		esac \
 	fi
 
@@ -75,16 +77,16 @@ setup:
 
 # Build the Docker image (uses layer caching for faster builds)
 build:
-	$(DOCKER_COMPOSE) build --progress=plain
+	$(DOCKER_COMPOSE) --progress=plain build
 
 # Build the Docker image with --no-cache for fresh builds
 build-nocache:
-	$(DOCKER_COMPOSE) build --no-cache --progress=plain
+	$(DOCKER_COMPOSE) --progress=plain build --no-cache
 
 # Stop, rebuild with --no-cache, and restart container (for updates)
 rebuild:
 	$(DOCKER_COMPOSE) down
-	$(DOCKER_COMPOSE) build --no-cache --progress=plain
+	$(DOCKER_COMPOSE) --progress=plain build --no-cache
 	$(DOCKER_COMPOSE) up -d
 
 # Start the container

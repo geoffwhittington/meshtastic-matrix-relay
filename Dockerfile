@@ -25,6 +25,7 @@ FROM python:3.11-slim
 
 # Install only runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
     procps \
     && (apt-get install -y --no-install-recommends bluez || echo "Warning: bluez package not found for this architecture. BLE support will be unavailable.") \
     && rm -rf /var/lib/apt/lists/*
