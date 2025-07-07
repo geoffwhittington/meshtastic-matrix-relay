@@ -27,16 +27,11 @@ jobs:
         id: get_version
         shell: bash
         run: |
-          # Try setup.cfg first, then setup.py as fallback
-          VERSION=""
-          if [ -f setup.cfg ]; then
-            VERSION=$(grep "version =" setup.cfg | sed 's/.*= //' 2>/dev/null || echo "")
-          fi
-          if [ -z "$VERSION" ] && [ -f setup.py ]; then
-            VERSION=$(grep -E "^\s*version\s*=" setup.py | sed -E 's/.*version\s*=\s*["\x27]([^"\x27]+)["\x27].*/\1/' || echo "1.0.12")
-          fi
-          if [ -z "$VERSION" ]; then
-            VERSION="1.0.12"
+          # Extract version from setup.py
+          if [ -f setup.py ]; then
+            VERSION=$(grep -E "^\s*version\s*=" setup.py | sed -E 's/.*version\s*=\s*["\x27]([^"\x27]+)["\x27].*/\1/' || echo "1.1.0")
+          else
+            VERSION="1.1.0"
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Extracted version: $VERSION"

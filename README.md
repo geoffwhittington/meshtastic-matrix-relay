@@ -9,8 +9,6 @@ A powerful and easy-to-use relay between Meshtastic devices and Matrix chat room
 Visit our [Wiki](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki) for comprehensive guides and information.
 
 - [Installation Instructions](docs/INSTRUCTIONS.md) - Setup and configuration guide
-- [v1.0 Release Announcement](docs/ANNOUNCEMENT.md) - New changes in v1.0
-- [Upgrade Guide](docs/UPGRADE_TO_V1.md) - Migration guidance for existing users
 
 ---
 
@@ -30,6 +28,31 @@ mmrelay --install-service
 ```
 
 For detailed installation and configuration instructions, see the [Installation Guide](docs/INSTRUCTIONS.md).
+
+## Docker
+
+MMRelay includes official Docker support for easy deployment and management:
+
+```bash
+# Quick setup with Docker
+make config  # Creates config files and directories
+make build   # Build the Docker image
+make run     # Start the container
+
+# View logs
+make logs
+
+# Stop the container
+make stop
+```
+
+Docker provides:
+- **Isolated environment** - No dependency conflicts
+- **Easy deployment** - Single command setup
+- **Automatic restarts** - Container restarts on failure
+- **Volume persistence** - Data and logs preserved across restarts
+
+For detailed Docker setup instructions, see the [Installation Guide](docs/INSTRUCTIONS.md#docker).
 
 ---
 
