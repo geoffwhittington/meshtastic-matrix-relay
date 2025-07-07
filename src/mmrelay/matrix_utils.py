@@ -207,9 +207,9 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
         if room_id_or_alias.startswith("#"):
             # If it's a room alias, resolve it to a room ID
             response = await matrix_client.room_resolve_alias(room_id_or_alias)
-            if not response.room_id:
+            if not hasattr(response, 'room_id') or not response.room_id:
                 logger.error(
-                    f"Failed to resolve room alias '{room_id_or_alias}': {response.message}"
+                    f"Failed to resolve room alias '{room_id_or_alias}': {getattr(response, 'message', str(response))}"
                 )
                 return
             room_id = response.room_id

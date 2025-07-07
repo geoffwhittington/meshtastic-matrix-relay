@@ -35,15 +35,10 @@ jobs:
         env:
           BUILD_TYPE: ${{ github.event.inputs.build_type || 'dev' }}
         run: |
-          # Try setup.cfg first, then setup.py as fallback
-          VERSION=""
-          if [ -f setup.cfg ]; then
-            VERSION=$(python -c "import configparser; c=configparser.ConfigParser(); c.read('setup.cfg'); print(c['metadata']['version'])" 2>/dev/null || echo "")
-          fi
-          if [ -z "$VERSION" ] && [ -f setup.py ]; then
+          # Extract version from setup.py
+          if [ -f setup.py ]; then
             VERSION=$(grep -E "^\s*version\s*=" setup.py | sed -E 's/.*version\s*=\s*["\x27]([^"\x27]+)["\x27].*/\1/' || echo "1.1.0")
-          fi
-          if [ -z "$VERSION" ]; then
+          else
             VERSION="1.1.0"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT

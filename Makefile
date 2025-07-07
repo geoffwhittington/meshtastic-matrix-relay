@@ -22,7 +22,7 @@ help:
 
 # Copy sample config to ~/.mmrelay/config.yaml and create Docker files
 config:
-	@mkdir -p ~/.mmrelay
+	@mkdir -p ~/.mmrelay ~/.mmrelay/data ~/.mmrelay/logs
 	@if [ ! -f ~/.mmrelay/config.yaml ]; then \
 		cp src/mmrelay/tools/sample_config.yaml ~/.mmrelay/config.yaml; \
 		echo "Sample config copied to ~/.mmrelay/config.yaml - please edit it before running"; \
@@ -41,6 +41,7 @@ config:
 	else \
 		echo "docker-compose.yaml already exists"; \
 	fi
+	@echo "Created directories: ~/.mmrelay/data and ~/.mmrelay/logs with proper ownership"
 
 # Edit the config file with preferred editor
 edit:
@@ -87,11 +88,11 @@ build-nocache:
 rebuild:
 	$(DOCKER_COMPOSE) down
 	$(DOCKER_COMPOSE) --progress=plain build --no-cache
-	$(DOCKER_COMPOSE) up -d
+	UID=$(shell id -u) GID=$(shell id -g) $(DOCKER_COMPOSE) up -d
 
 # Start the container
 run:
-	$(DOCKER_COMPOSE) up -d
+	UID=$(shell id -u) GID=$(shell id -g) $(DOCKER_COMPOSE) up -d
 
 # Stop the container
 stop:

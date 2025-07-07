@@ -9,10 +9,9 @@ reduce the number of locations where version numbers need to be maintained.
 
 Current version locations:
 - setup.py (line 9)
-- setup.cfg (line 3) 
 - src/mmrelay/__init__.py (line 17, fallback)
-- .github/workflows/build-pyz-armv7.yml (lines 35, 38, fallbacks)
-- .github/workflows/docker-publish.yml (lines 44, 47, fallbacks)
+- .github/workflows/build-pyz-armv7.yml (fallback)
+- .github/workflows/docker-publish.yml (fallback)
 
 Usage:
     python scripts/bump_version.py <new_version>
@@ -67,15 +66,7 @@ def bump_version(new_version: str):
     ):
         updates_made += 1
     
-    # Update setup.cfg
-    setup_cfg = root_dir / "setup.cfg"
-    if update_file(
-        setup_cfg,
-        r'version = [^\n]*',
-        f'version = {new_version}',
-        "setup.cfg version"
-    ):
-        updates_made += 1
+
     
     # Update __init__.py fallback version
     init_py = root_dir / "src/mmrelay/__init__.py"

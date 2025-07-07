@@ -13,7 +13,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Copy source files
-COPY requirements.txt setup.py setup.cfg ./
+COPY requirements.txt setup.py ./
 COPY README.md ./
 COPY src/ ./src/
 
@@ -27,12 +27,10 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     procps \
-    gosu \
     && (apt-get install -y --no-install-recommends bluez || echo "Warning: bluez package not found for this architecture. BLE support will be unavailable.") \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN groupadd -r mmrelay && useradd -r -g mmrelay -d /app -s /bin/bash mmrelay
+# Note: User will be set via docker-compose user directive
 
 # Set working directory
 WORKDIR /app
@@ -43,14 +41,8 @@ COPY --from=builder /install /usr/local/lib/python3.11/site-packages
 # Copy scripts to the correct location
 COPY --from=builder /install/bin/* /usr/local/bin/
 
-# Copy entrypoint script
-COPY scripts/docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-# Create directories and set permissions
-RUN mkdir -p /app/data /app/logs && \
-    chown -R mmrelay:mmrelay /app && \
-    chmod -R 755 /app
+# Create app directory
+RUN mkdir -p /app
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -59,6 +51,5 @@ ENV PYTHONUNBUFFERED=1
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD pgrep -f mmrelay || exit 1
 
-# Set entrypoint and default command
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+# Default command - uses config.yaml from volume mount
 CMD ["mmrelay", "--config", "/app/config.yaml", "--data-dir", "/app/data", "--logfile", "/app/logs/mmrelay.log"]
