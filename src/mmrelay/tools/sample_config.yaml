@@ -18,6 +18,7 @@ meshtastic:
   broadcast_enabled: true # Must be set to true to enable Matrix to Meshtastic messages
   detection_sensor: true # Must be set to true to forward messages of Meshtastic's detection sensor module
   plugin_response_delay: 3 # Default response delay in seconds for plugins that respond on the mesh;
+  # heartbeat_interval: 60 # Interval in seconds to check connection health using getMetadata() (default: 60)
   message_interactions: # Configure reactions and replies (both require message storage in database)
     reactions: false # Enable reaction relaying between platforms
     replies: false   # Enable reply relaying between platforms

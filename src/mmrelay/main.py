@@ -133,12 +133,9 @@ async def main(config):
         # On Windows, we can't use add_signal_handler, so we'll handle KeyboardInterrupt
         pass
 
-    # -------------------------------------------------------------------
-    # NOTE: Disabled custom check_connection() to rely on improved meshtastic library
-    # disconnection detection. The updated fork (commit 33d23e9c28508a740da6567627e42d81552c9b58)
-    # includes better detection for all interface types, eliminating duplicate detection.
-    # -------------------------------------------------------------------
-    # _ = asyncio.create_task(meshtastic_utils.check_connection())
+    # Start connection health monitoring using getMetadata() heartbeat
+    # This provides proactive connection detection for all interface types
+    _ = asyncio.create_task(meshtastic_utils.check_connection())
 
     # Start the Matrix client sync loop
     try:

@@ -49,6 +49,9 @@ edit:
 		echo "Config file not found. Run 'make config' first."; \
 		exit 1; \
 	fi
+	@if [ -f .env ]; then \
+		. ./.env; \
+	fi
 	@if [ -n "$$EDITOR" ]; then \
 		$$EDITOR ~/.mmrelay/config.yaml; \
 	else \
@@ -61,13 +64,29 @@ edit:
 		echo "6) other (specify command)"; \
 		read -p "Enter choice (1-6, or press Enter for nano): " choice; \
 		case "$$choice" in \
-			""|1) nano ~/.mmrelay/config.yaml ;; \
-			2) vim ~/.mmrelay/config.yaml ;; \
-			3) emacs ~/.mmrelay/config.yaml ;; \
-			4) code ~/.mmrelay/config.yaml ;; \
-			5) gedit ~/.mmrelay/config.yaml ;; \
-			6) read -p "Enter editor command: " custom_editor; $$custom_editor ~/.mmrelay/config.yaml ;; \
-			*) echo "Invalid choice. Using nano as default."; nano ~/.mmrelay/config.yaml ;; \
+			""|1) \
+				echo "EDITOR=nano" >> .env; \
+				nano ~/.mmrelay/config.yaml ;; \
+			2) \
+				echo "EDITOR=vim" >> .env; \
+				vim ~/.mmrelay/config.yaml ;; \
+			3) \
+				echo "EDITOR=emacs" >> .env; \
+				emacs ~/.mmrelay/config.yaml ;; \
+			4) \
+				echo "EDITOR=code" >> .env; \
+				code ~/.mmrelay/config.yaml ;; \
+			5) \
+				echo "EDITOR=gedit" >> .env; \
+				gedit ~/.mmrelay/config.yaml ;; \
+			6) \
+				read -p "Enter editor command: " custom_editor; \
+				echo "EDITOR=$$custom_editor" >> .env; \
+				$$custom_editor ~/.mmrelay/config.yaml ;; \
+			*) \
+				echo "Invalid choice. Using nano as default."; \
+				echo "EDITOR=nano" >> .env; \
+				nano ~/.mmrelay/config.yaml ;; \
 		esac \
 	fi
 
