@@ -160,7 +160,13 @@ tail -f ~/.mmrelay/logs/mmrelay.log
 
 ## Docker
 
-MMRelay includes official Docker support for easy deployment and management. Docker provides an isolated environment with automatic dependency management and easy updates.
+MMRelay includes official Docker support for easy deployment and management. Docker provides several key benefits:
+
+- **Isolated environment** - No conflicts with system dependencies
+- **Automatic dependency management** - All required packages included
+- **Easy updates** - Simple container rebuilds for new versions
+- **Consistent deployment** - Same environment across different systems
+- **Quick setup** - Get running in minutes with minimal configuration
 
 ### Quick Docker Setup
 

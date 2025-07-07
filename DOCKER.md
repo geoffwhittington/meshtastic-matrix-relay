@@ -24,7 +24,7 @@ make run      # Start container
 ## Commands
 
 - `make setup` - Copy sample config and open editor (recommended for first time)
-- `make config` - Copy sample files (config.yaml, .env, docker-compose.yaml)
+- `make config` - Copy sample files and create directories (config.yaml, .env, docker-compose.yaml)
 - `make edit` - Edit config file with your preferred editor
 - `make build` - Build Docker image (uses layer caching for faster builds)
 - `make build-nocache` - Build Docker image with --no-cache for fresh builds

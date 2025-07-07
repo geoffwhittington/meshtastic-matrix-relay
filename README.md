@@ -53,7 +53,7 @@ Docker provides:
 - **Automatic restarts** - Container restarts on failure
 - **Volume persistence** - Data and logs preserved across restarts
 
-For detailed Docker setup instructions, see the [Installation Guide](docs/INSTRUCTIONS.md#docker).
+For detailed Docker setup instructions, see the [Docker Guide](DOCKER.md) or [Installation Guide](docs/INSTRUCTIONS.md#docker).
 
 ---
 

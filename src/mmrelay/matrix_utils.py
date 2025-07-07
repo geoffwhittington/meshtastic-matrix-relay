@@ -1000,25 +1000,25 @@ async def on_room_message(
                 )
 
                 try:
-                    meshtastic_logger.info(
-                        f"DEBUG: Attempting to send text to Meshtastic: '{full_message}' on channel {meshtastic_channel}"
+                    meshtastic_logger.debug(
+                        f"Attempting to send text to Meshtastic: '{full_message}' on channel {meshtastic_channel}"
                     )
-                    meshtastic_logger.info(
-                        f"DEBUG: Meshtastic interface connected: {meshtastic_interface is not None}"
+                    meshtastic_logger.debug(
+                        f"Meshtastic interface connected: {meshtastic_interface is not None}"
                     )
                     if hasattr(meshtastic_interface, "isConnected"):
-                        meshtastic_logger.info(
-                            f"DEBUG: Meshtastic interface isConnected: {meshtastic_interface.isConnected.is_set()}"
+                        meshtastic_logger.debug(
+                            f"Meshtastic interface isConnected: {meshtastic_interface.isConnected.is_set()}"
                         )
                     sent_packet = meshtastic_interface.sendText(
                         text=full_message, channelIndex=meshtastic_channel
                     )
-                    meshtastic_logger.info(
-                        f"DEBUG: sendText returned packet: {sent_packet}"
+                    meshtastic_logger.debug(
+                        f"sendText returned packet: {sent_packet}"
                     )
                     if sent_packet:
-                        meshtastic_logger.info(
-                            f"DEBUG: Packet ID: {getattr(sent_packet, 'id', 'No ID')}"
+                        meshtastic_logger.debug(
+                            f"Packet ID: {getattr(sent_packet, 'id', 'No ID')}"
                         )
                     else:
                         meshtastic_logger.warning(
