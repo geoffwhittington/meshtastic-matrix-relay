@@ -44,7 +44,7 @@ COPY --from=builder /install /usr/local/lib/python3.11/site-packages
 COPY --from=builder /install/bin/* /usr/local/bin/
 
 # Copy entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
+COPY scripts/docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Create directories and set permissions

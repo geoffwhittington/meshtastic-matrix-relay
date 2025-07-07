@@ -32,10 +32,10 @@ jobs:
             VERSION=$(grep "version =" setup.cfg | sed 's/.*= //' 2>/dev/null || echo "")
           fi
           if [ -z "$VERSION" ] && [ -f setup.py ]; then
-            VERSION=$(grep -E "^\s*version\s*=" setup.py | sed -E 's/.*version\s*=\s*["\x27]([^"\x27]+)["\x27].*/\1/' || echo "1.0.12")
+            VERSION=$(grep -E "^\s*version\s*=" setup.py | sed -E 's/.*version\s*=\s*["\x27]([^"\x27]+)["\x27].*/\1/' || echo "1.1.0")
           fi
           if [ -z "$VERSION" ]; then
-            VERSION="1.0.12"
+            VERSION="1.1.0"
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Extracted version: $VERSION"

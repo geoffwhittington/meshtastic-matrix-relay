@@ -61,7 +61,7 @@ jobs:
       - name: Build installer
         uses: nadeemjazmawe/inno-setup-action-cli@v6.0.5
         with:
-          filepath: "/DAppVersion=${{ env.FILE_VERSION }} ./mmrelay.iss"
+          filepath: "/DAppVersion=${{ env.FILE_VERSION }} ./scripts/mmrelay.iss"
 
       - name: Upload installer as artifact
         uses: actions/upload-artifact@v4

@@ -74,7 +74,7 @@ logs/
 
 # Windows installer
 *.iss
-mmrelay.iss
+scripts/mmrelay.iss
 
 # Other
 .trunk/
