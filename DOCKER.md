@@ -6,14 +6,14 @@ Simple Docker setup for Meshtastic Matrix Relay.
 
 **Option 1: One-step setup (recommended for first time):**
 ```bash
-make setup    # Copies config and opens your editor
+make setup    # Copies config, .env, and docker-compose.yaml, then opens editor
 make build    # Build Docker image
 make run      # Start container
 ```
 
 **Option 2: Manual steps:**
 ```bash
-make config   # Copy sample config
+make config   # Copy sample files (config.yaml, .env, docker-compose.yaml)
 make edit     # Edit config with your preferred editor
 make build    # Build Docker image
 make run      # Start container
@@ -22,16 +22,16 @@ make run      # Start container
 ## Commands
 
 - `make setup` - Copy sample config and open editor (recommended for first time)
-- `make config` - Copy sample config to ~/.mmrelay/config.yaml
+- `make config` - Copy sample files (config.yaml, .env, docker-compose.yaml)
 - `make edit` - Edit config file with your preferred editor
 - `make build` - Build Docker image (uses layer caching for faster builds)
 - `make build-nocache` - Build Docker image with --no-cache for fresh builds
 - `make rebuild` - Stop, rebuild with --no-cache, and restart container (for updates)
 - `make run` - Start container
-- `make stop` - Stop container
+- `make stop` - Stop container (keeps container for restart)
 - `make logs` - Show container logs
 - `make shell` - Access container shell
-- `make clean` - Remove containers
+- `make clean` - Remove containers and networks
 
 ## Connection Types
 

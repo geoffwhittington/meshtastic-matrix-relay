@@ -15,12 +15,12 @@ help:
 	@echo "  build-nocache - Build Docker image with --no-cache for fresh builds"
 	@echo "  rebuild - Stop, rebuild with --no-cache, and restart container (for updates)"
 	@echo "  run     - Start the container"
-	@echo "  stop    - Stop the container"
+	@echo "  stop    - Stop the container (keeps container for restart)"
 	@echo "  logs    - Show container logs"
 	@echo "  shell   - Access container shell"
-	@echo "  clean   - Remove containers"
+	@echo "  clean   - Remove containers and networks"
 
-# Copy sample config to ~/.mmrelay/config.yaml and create .env file
+# Copy sample config to ~/.mmrelay/config.yaml and create Docker files
 config:
 	@mkdir -p ~/.mmrelay
 	@if [ ! -f ~/.mmrelay/config.yaml ]; then \
@@ -34,6 +34,12 @@ config:
 		echo ".env file created from sample - edit if needed"; \
 	else \
 		echo ".env file already exists"; \
+	fi
+	@if [ ! -f docker-compose.yaml ]; then \
+		cp src/mmrelay/tools/sample-docker-compose.yaml docker-compose.yaml; \
+		echo "docker-compose.yaml created from sample - edit if needed"; \
+	else \
+		echo "docker-compose.yaml already exists"; \
 	fi
 
 # Edit the config file with preferred editor
@@ -87,7 +93,7 @@ run:
 
 # Stop the container
 stop:
-	$(DOCKER_COMPOSE) down
+	$(DOCKER_COMPOSE) stop
 
 # Show logs
 logs:
@@ -97,6 +103,6 @@ logs:
 shell:
 	$(DOCKER_COMPOSE) exec mmrelay bash
 
-# Clean up containers (data in ~/.mmrelay/ is preserved)
+# Remove containers and networks (data in ~/.mmrelay/ is preserved)
 clean:
 	$(DOCKER_COMPOSE) down
