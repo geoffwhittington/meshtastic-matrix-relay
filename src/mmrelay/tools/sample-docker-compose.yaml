@@ -3,11 +3,11 @@ services:
     build: .
     container_name: meshtastic-matrix-relay
     restart: unless-stopped
-    
+
     environment:
       - TZ=UTC
       - PYTHONUNBUFFERED=1
-    
+
     volumes:
       # Configuration - uses standard ~/.mmrelay/config.yaml location
       # Create this first with: make config
@@ -17,15 +17,15 @@ services:
       # These directories will be created automatically
       - ${MMRELAY_HOME}/.mmrelay/data:/app/data
       - ${MMRELAY_HOME}/.mmrelay/logs:/app/logs
-    
+
     # For TCP connections (most common) - Meshtastic typically uses port 4403
     ports:
-      - "4403:4403"
-    
+      - 4403:4403
+
     # For serial connections, uncomment the device you need:
     # devices:
     #   - /dev/ttyUSB0:/dev/ttyUSB0
     #   - /dev/ttyACM0:/dev/ttyACM0
-    
+
     # For BLE connections, uncomment this:
     # privileged: true

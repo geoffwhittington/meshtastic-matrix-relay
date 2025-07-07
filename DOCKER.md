@@ -5,6 +5,7 @@ Simple Docker setup for Meshtastic Matrix Relay.
 ## Quick Start
 
 **Option 1: One-step setup (recommended for first time):**
+
 ```bash
 make setup    # Copies config, .env, and docker-compose.yaml, then opens editor
 make build    # Build Docker image
@@ -12,6 +13,7 @@ make run      # Start container
 ```
 
 **Option 2: Manual steps:**
+
 ```bash
 make config   # Copy sample files (config.yaml, .env, docker-compose.yaml)
 make edit     # Edit config with your preferred editor
@@ -36,16 +38,19 @@ make run      # Start container
 ## Connection Types
 
 **TCP (recommended):**
+
 - Uses port mapping for cross-platform compatibility
 - Set `meshtastic.host` in ~/.mmrelay/config.yaml
 - Meshtastic typically uses port 4403 for TCP connections
 - Container exposes port 4403 to host
 
 **Serial:**
+
 - Uncomment device mapping in docker-compose.yaml
 - Set `meshtastic.serial_port` in ~/.mmrelay/config.yaml
 
 **BLE:**
+
 - Uncomment `privileged: true` in docker-compose.yaml
 - Set `meshtastic.ble_address` in ~/.mmrelay/config.yaml
 
@@ -61,12 +66,14 @@ This means your Docker and standalone installations share the same data!
 
 **Environment Configuration:**
 Docker Compose uses the `.env` file to set data directory paths. The `make config` command creates this automatically with:
+
 ```bash
 MMRELAY_HOME=$HOME
 ```
 
 **Custom Data Location:**
 To use a different location, edit the `.env` file:
+
 ```bash
 MMRELAY_HOME=/path/to/your/data
 ```

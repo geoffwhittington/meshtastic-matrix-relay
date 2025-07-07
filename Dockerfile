@@ -17,8 +17,8 @@ COPY requirements.txt setup.py ./
 COPY README.md ./
 COPY src/ ./src/
 
-# Build wheels
-RUN pip wheel --no-cache-dir . -w /wheels
+# Install application and dependencies to a target directory
+RUN pip install --no-cache-dir --target=/install .
 
 # Runtime stage
 FROM python:3.11-slim
@@ -36,12 +36,8 @@ RUN groupadd -r mmrelay && useradd -r -g mmrelay -d /app -s /bin/bash mmrelay
 # Set working directory
 WORKDIR /app
 
-# Copy wheels from builder stage
-COPY --from=builder /wheels /wheels
-
-# Install application from pre-built wheels
-RUN pip install --no-cache-dir --no-index --find-links=/wheels mmrelay \
-    && rm -rf /wheels
+# Copy installed packages from builder stage
+COPY --from=builder /install /usr/local/lib/python3.11/site-packages
 
 # Create directories and set permissions
 RUN mkdir -p /app/data /app/logs && \
