@@ -4,27 +4,19 @@ on:
   release:
     types: [published]
   workflow_dispatch:
-    inputs:
-      build_type:
-        description: Build type
-        required: true
-        default: dev
-        type: choice
-        options:
-          - dev
-          - test
 
 env:
   REGISTRY: docker.io
   IMAGE_NAME: mmrelay
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     if: github.repository == 'jeremiah-k/meshtastic-matrix-relay'
-    permissions:
-      contents: read
-      packages: write
 
     steps:
       - name: Checkout repository
@@ -32,8 +24,6 @@ jobs:
 
       - name: Extract version and git SHA
         id: get_version
-        env:
-          BUILD_TYPE: ${{ github.event.inputs.build_type || 'dev' }}
         run: |
           # Extract version from setup.py
           if [ -f setup.py ]; then
@@ -53,9 +43,9 @@ jobs:
             echo "Building release version: $VERSION"
           else
             # Manual workflow_dispatch - dev build
-            echo "docker_tag=$VERSION-$BUILD_TYPE-$GIT_SHA" >> $GITHUB_OUTPUT
+            echo "docker_tag=$VERSION-dev-$GIT_SHA" >> $GITHUB_OUTPUT
             echo "is_release=false" >> $GITHUB_OUTPUT
-            echo "Building $BUILD_TYPE version: $VERSION-$BUILD_TYPE-$GIT_SHA"
+            echo "Building dev version: $VERSION-dev-$GIT_SHA"
           fi
 
       - name: Set up Docker Buildx
@@ -83,7 +73,7 @@ jobs:
             org.opencontainers.image.description=Bridge between Meshtastic mesh networks and Matrix chat rooms
             org.opencontainers.image.version=${{ steps.get_version.outputs.version }}
             org.opencontainers.image.revision=${{ steps.get_version.outputs.git_sha }}
-            mmrelay.build.type=${{ github.event_name == 'release' && 'release' || (github.event.inputs.build_type || 'dev') }}
+            mmrelay.build.type=${{ github.event_name == 'release' && 'release' || 'dev' }}
             mmrelay.build.version=${{ steps.get_version.outputs.version }}
             mmrelay.build.commit=${{ steps.get_version.outputs.git_sha }}
 

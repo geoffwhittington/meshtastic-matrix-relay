@@ -78,7 +78,7 @@ _We would love to support [Matrix E2EE rooms](https://github.com/geoffwhittingto
 
 ![Windows Installer Screenshot](https://user-images.githubusercontent.com/1770544/235249050-8c79107a-50cc-4803-b989-39e58100342d.png)
 
-The latest installer is available [here](https://github.com/geoffwhittington/meshtastic-matrix-relay/releases).
+The latest installer is available in the [releases section](https://github.com/geoffwhittington/meshtastic-matrix-relay/releases).
 
 ---
 
@@ -96,7 +96,7 @@ Produce high-level details about your mesh:
 
 ![Mesh Details Screenshot](https://user-images.githubusercontent.com/1770544/235245873-1ddc773b-a4cd-4c67-b0a5-b55a29504b73.png)
 
-See the full list of core plugins [here](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Core-Plugins).
+See the full list of [core plugins](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Core-Plugins).
 
 ### Community & Custom Plugins
 
