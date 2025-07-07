@@ -7,6 +7,7 @@ services:
     environment:
       - TZ=UTC
       - PYTHONUNBUFFERED=1
+      - MPLCONFIGDIR=/tmp/matplotlib
 
     volumes:
       # Configuration - uses standard ~/.mmrelay/config.yaml location
