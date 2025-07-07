@@ -655,16 +655,20 @@ async def check_connection():
         logger.error("No configuration available. Cannot check connection.")
         return
 
-    # Get heartbeat interval from config, default to 60 seconds
-    heartbeat_interval = config["meshtastic"].get("heartbeat_interval", 60)
+    # Get heartbeat interval from config, default to 180 seconds
+    heartbeat_interval = config["meshtastic"].get("heartbeat_interval", 180)
     connection_type = config["meshtastic"]["connection_type"]
 
-    logger.info(f"Starting connection heartbeat monitor (interval: {heartbeat_interval}s)")
+    logger.info(
+        f"Starting connection heartbeat monitor (interval: {heartbeat_interval}s)"
+    )
 
     while not shutting_down:
         if meshtastic_client and not reconnecting:
             try:
-                logger.debug(f"Checking {connection_type} connection health using getMetadata()")
+                logger.debug(
+                    f"Checking {connection_type} connection health using getMetadata()"
+                )
                 output_capture = io.StringIO()
                 with contextlib.redirect_stdout(
                     output_capture
@@ -680,7 +684,9 @@ async def check_connection():
             except Exception as e:
                 # Only trigger reconnection if we're not already reconnecting
                 if not reconnecting:
-                    logger.warning(f"{connection_type.capitalize()} connection health check failed: {e}")
+                    logger.warning(
+                        f"{connection_type.capitalize()} connection health check failed: {e}"
+                    )
                     on_lost_meshtastic_connection(meshtastic_client)
                 else:
                     logger.debug("Skipping reconnection trigger - already reconnecting")

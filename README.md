@@ -47,6 +47,7 @@ make stop
 ```
 
 Docker provides:
+
 - **Isolated environment** - No dependency conflicts
 - **Easy deployment** - Single command setup
 - **Automatic restarts** - Container restarts on failure
