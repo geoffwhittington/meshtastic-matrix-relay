@@ -54,6 +54,7 @@ RUN mkdir -p /app && chown -R mmrelay:mmrelay /app
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV MPLCONFIGDIR=/tmp/matplotlib
+ENV PATH=/usr/local/bin:/usr/bin:/bin
 
 # Switch to non-root user
 USER mmrelay
