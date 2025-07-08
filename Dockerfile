@@ -18,10 +18,10 @@ COPY README.md ./
 COPY src/ ./src/
 
 # Install dependencies from requirements.txt first (includes BLE fixes fork)
-RUN pip install --no-cache-dir --target=/install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Install application package (without dependencies since they're already installed)
-RUN pip install --no-cache-dir --target=/install --no-deps .
+RUN pip install --no-cache-dir --no-deps .
 
 # Runtime stage
 FROM python:3.11-slim
@@ -43,10 +43,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Copy installed packages from builder stage
-COPY --from=builder /install /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
 # Copy scripts to the correct location
-COPY --from=builder /install/bin/* /usr/local/bin/
+COPY --from=builder /usr/local/bin/mmrelay /usr/local/bin/mmrelay
 
 # Create app directory and set ownership
 RUN mkdir -p /app && chown -R mmrelay:mmrelay /app
