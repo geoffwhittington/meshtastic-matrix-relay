@@ -3,7 +3,7 @@ name: Check for Upstream Releases
 on:
   schedule:
     # Check every 2 hours
-    - cron: '0 */2 * * *'
+    - cron: 0 */2 * * *
   workflow_dispatch:
 
 permissions:
@@ -13,10 +13,11 @@ jobs:
   check-releases:
     runs-on: ubuntu-latest
     if: github.repository == 'jeremiah-k/meshtastic-matrix-relay'
-    
+
     steps:
       - name: Check for new releases
         id: check
+        # checkov:skip=CKV_GHA_3:Public API calls are safe
         run: |
           # Get latest release from main repo
           LATEST_RELEASE=$(curl -s https://api.github.com/repos/geoffwhittington/meshtastic-matrix-relay/releases/latest | jq -r '.tag_name')
@@ -33,8 +34,8 @@ jobs:
           echo "Checking for Docker tag: $DOCKER_TAG"
 
           # Check if we have a Docker image for this release
-          # Use Docker Hub API v2 to check if tag exists
-          DOCKER_CHECK=$(curl -s "https://hub.docker.com/v2/repositories/${{ secrets.DOCKER_USERNAME }}/mmrelay/tags/$DOCKER_TAG" | jq -r '.name // "null"')
+          # Use Docker Hub API v2 to check if tag exists (hardcoded username to avoid secrets in curl)
+          DOCKER_CHECK=$(curl -s "https://hub.docker.com/v2/repositories/tadchilly/mmrelay/tags/${DOCKER_TAG}" | jq -r '.name // "null"')
 
           if [ "$DOCKER_CHECK" = "null" ]; then
             echo "No Docker image found for release $LATEST_RELEASE (tag: $DOCKER_TAG)"

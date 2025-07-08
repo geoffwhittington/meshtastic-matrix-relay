@@ -131,6 +131,6 @@ See our Wiki page [Getting Started With Matrix & MM Relay](https://github.com/ge
 
 Join us!
 
-- Our project's room: [#mmrelay:meshnet.club](https://matrix.to/#/#mmrelay:meshnet.club)
-- Part of the Meshtastic Community Matrix space: [#meshtastic-community:meshnet.club](https://matrix.to/#/#meshtastic-community:meshnet.club)
-- Public Relay Room: [#relay-room:meshnet.club](https://matrix.to/#/#relay-room:meshnet.club) - Where we bridge multiple meshnets. Feel free to join us, with or without a relay!
+- Our project's room: [#mmrelay:matrix.org](https://matrix.to/#/#mmrelay:matrix.org)
+- Part of the Meshtastic Community Matrix space: [#meshnetclub:matrix.org](https://matrix.to/#/#meshnetclub:matrix.org)
+- Public Relay Room: [#mmrelay-relay-room:matrix.org](https://matrix.to/#/#mmrelay-relay-room:matrix.org) - Where we bridge multiple meshnets. Feel free to join us, with or without a relay!
