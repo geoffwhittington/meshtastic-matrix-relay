@@ -16,6 +16,7 @@ A powerful and easy-to-use relay between Meshtastic devices and Matrix chat room
 - Supports mapping multiple rooms and channels 1:1
 - Relays messages to/from an MQTT broker, if configured in the Meshtastic firmware
 - ✨️ _Bidirectional replies and reactions support_ ✨️ **NEW!!**
+- ✨️ _Native Docker support_ ✨️ **NEW!!**
 
 _We would love to support [Matrix E2EE rooms](https://github.com/geoffwhittington/meshtastic-matrix-relay/issues/33), but this is currently not implemented._
 
