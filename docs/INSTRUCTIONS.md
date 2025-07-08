@@ -25,9 +25,13 @@ If you want to contribute or modify the code:
 git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
 cd meshtastic-matrix-relay
 
-# Install in development mode using pipx (recommended)
-# Run this command each time before testing new changes.
-pipx install -e . --force
+# Create and activate a virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies and package in development mode
+pip install -r requirements.txt
+pip install -e .
 ```
 
 > **Upgrading from a previous version?** Please see [Upgrade Guide](UPGRADE_TO_V1.md) for migration guidance from pre-v1.0 versions.
