@@ -7,7 +7,7 @@ Simple Docker setup for Meshtastic Matrix Relay.
 **Option 1: One-step setup (recommended for first time):**
 
 ```bash
-make setup    # Copies config, .env, and docker-compose.yaml, then opens editor
+make setup    # Copy config, .env, and docker-compose.yaml, then opens editor
 make build    # Build Docker image
 make run      # Start container
 ```
@@ -15,7 +15,7 @@ make run      # Start container
 **Option 2: Manual steps:**
 
 ```bash
-make config   # Copy sample files (config.yaml, .env, docker-compose.yaml)
+make config   # Copy sample files and create directories
 make edit     # Edit config with your preferred editor
 make build    # Build Docker image
 make run      # Start container

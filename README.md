@@ -4,6 +4,21 @@
 
 A powerful and easy-to-use relay between Meshtastic devices and Matrix chat rooms, allowing seamless communication across platforms. This opens the door for bridging Meshtastic devices to [many other platforms](https://matrix.org/bridges/).
 
+## Features
+
+- Bidirectional message relay between Meshtastic devices and Matrix chat rooms, capable of supporting multiple meshnets
+- Supports serial, network, and **_BLE (now too!)_** connections for Meshtastic devices
+- Custom fields are embedded in Matrix messages for relaying messages between multiple meshnets
+- Truncates long messages to fit within Meshtastic's payload size
+- SQLite database to store node information for improved functionality
+- Customizable logging level for easy debugging
+- Configurable through a simple YAML file
+- Supports mapping multiple rooms and channels 1:1
+- Relays messages to/from an MQTT broker, if configured in the Meshtastic firmware
+- ✨️ _Bidirectional replies and reactions support_ ✨️ **NEW!!**
+
+_We would love to support [Matrix E2EE rooms](https://github.com/geoffwhittington/meshtastic-matrix-relay/issues/33), but this is currently not implemented._
+
 ## Documentation
 
 Visit our [Wiki](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki) for comprehensive guides and information.
@@ -35,42 +50,15 @@ MMRelay includes official Docker support for easy deployment and management:
 
 ```bash
 # Quick setup with Docker
-make config  # Creates config files and directories
+make setup   # Copy config and open editor (first time)
 make build   # Build the Docker image
 make run     # Start the container
-
-# View logs
-make logs
-
-# Stop the container
-make stop
+make logs    # View logs
 ```
 
-Docker provides:
+Docker provides isolated environment, easy deployment, automatic restarts, and volume persistence.
 
-- **Isolated environment** - No dependency conflicts
-- **Easy deployment** - Single command setup
-- **Automatic restarts** - Container restarts on failure
-- **Volume persistence** - Data and logs preserved across restarts
-
-For detailed Docker setup instructions, see the [Docker Guide](DOCKER.md) or [Installation Guide](docs/INSTRUCTIONS.md#docker).
-
----
-
-## Features
-
-- Bidirectional message relay between Meshtastic devices and Matrix chat rooms, capable of supporting multiple meshnets
-- Supports serial, network, and **_BLE (now too!)_** connections for Meshtastic devices
-- Custom fields are embedded in Matrix messages for relaying messages between multiple meshnets
-- Truncates long messages to fit within Meshtastic's payload size
-- SQLite database to store node information for improved functionality
-- Customizable logging level for easy debugging
-- Configurable through a simple YAML file
-- Supports mapping multiple rooms and channels 1:1
-- Relays messages to/from an MQTT broker, if configured in the Meshtastic firmware
-- ✨️ _Bidirectional replies and reactions support_ ✨️ **NEW!!**
-
-_We would love to support [Matrix E2EE rooms](https://github.com/geoffwhittington/meshtastic-matrix-relay/issues/33), but this is currently not implemented._
+For detailed Docker setup instructions, see the [Docker Guide](DOCKER.md).
 
 ---
 
