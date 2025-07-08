@@ -51,8 +51,9 @@ make run      # Start container
 
 **BLE:**
 
-- Uncomment `privileged: true` in docker-compose.yaml
+- Uncomment the BLE section in docker-compose.yaml (includes privileged mode, host networking, and D-Bus access)
 - Set `meshtastic.ble_address` in ~/.mmrelay/config.yaml
+- Note: BLE requires host networking mode which may affect port isolation
 
 ## Data Persistence
 
