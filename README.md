@@ -58,7 +58,7 @@ make logs    # View logs
 
 Docker provides isolated environment, easy deployment, automatic restarts, and volume persistence.
 
-For detailed Docker setup instructions, see the [Docker Guide](DOCKER.md).
+For detailed Docker setup instructions, see the [Docker Guide](docs/DOCKER.md).
 
 > **Note**: Docker builds currently use a temporary fork of the meshtastic library with BLE hanging fixes. PyPI releases use the upstream library. This will be resolved when the fixes are merged upstream.
 

@@ -121,4 +121,4 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
           repository: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
-          readme-filepath: ./DOCKER.md
+          readme-filepath: ./docs/DOCKER.md

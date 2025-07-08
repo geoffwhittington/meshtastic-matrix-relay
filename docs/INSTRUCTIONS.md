@@ -180,7 +180,7 @@ make run      # Start the container
 make logs     # View logs
 ```
 
-For detailed Docker commands, configuration options, connection types, and troubleshooting, see the [Docker Guide](../DOCKER.md).
+For detailed Docker commands, configuration options, connection types, and troubleshooting, see the [Docker Guide](DOCKER.md).
 
 ## Development
 
