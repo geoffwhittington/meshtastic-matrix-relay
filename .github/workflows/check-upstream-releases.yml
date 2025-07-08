@@ -1,0 +1,50 @@
+name: Check for Upstream Releases
+
+on:
+  schedule:
+    # Check every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-releases:
+    runs-on: ubuntu-latest
+    if: github.repository == 'jeremiah-k/meshtastic-matrix-relay'
+    
+    steps:
+      - name: Check for new releases
+        id: check
+        run: |
+          # Get latest release from main repo
+          LATEST_RELEASE=$(curl -s https://api.github.com/repos/geoffwhittington/meshtastic-matrix-relay/releases/latest | jq -r '.tag_name')
+          echo "Latest upstream release: $LATEST_RELEASE"
+          
+          # Check if we have a Docker image for this release
+          DOCKER_CHECK=$(curl -s "https://hub.docker.com/v2/repositories/${{ secrets.DOCKER_USERNAME }}/mmrelay/tags/$LATEST_RELEASE" | jq -r '.name // "null"')
+          
+          if [ "$DOCKER_CHECK" = "null" ]; then
+            echo "No Docker image found for release $LATEST_RELEASE"
+            echo "trigger_build=true" >> $GITHUB_OUTPUT
+            echo "release_tag=$LATEST_RELEASE" >> $GITHUB_OUTPUT
+          else
+            echo "Docker image already exists for release $LATEST_RELEASE"
+            echo "trigger_build=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger Docker build if needed
+        if: steps.check.outputs.trigger_build == 'true'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ github.token }}
+          repository: jeremiah-k/meshtastic-matrix-relay
+          event-type: release-published
+          client-payload: |
+            {
+              "release_tag": "${{ steps.check.outputs.release_tag }}",
+              "release_name": "Upstream Release ${{ steps.check.outputs.release_tag }}",
+              "repository": "geoffwhittington/meshtastic-matrix-relay",
+              "triggered_by": "scheduled-check"
+            }

@@ -27,7 +27,7 @@ cd meshtastic-matrix-relay
 
 # Create and activate a virtual environment
 python -m venv .pyenv
-source .pyenv/bin/activate  # On Windows: venv\Scripts\activate
+source .pyenv/bin/activate  # On Windows: .pyenv\Scripts\activate
 
 # Install dependencies and package in development mode
 pip install -r requirements.txt
