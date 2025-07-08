@@ -31,11 +31,7 @@ services:
     # For BLE connections, uncomment these:
     # privileged: true
     # network_mode: host
-    # volumes:
-    #   - ${MMRELAY_HOME}/.mmrelay/config.yaml:/app/config.yaml:ro
-    #   - ${MMRELAY_HOME}/.mmrelay/data:/app/data
-    #   - ${MMRELAY_HOME}/.mmrelay/logs:/app/logs
-    #   # BLE requirements:
+    # Additional volumes for BLE (add to existing volumes section above):
     #   - /var/run/dbus:/var/run/dbus:ro
     #   - /sys/bus/usb:/sys/bus/usb:ro
     #   - /sys/class/bluetooth:/sys/class/bluetooth:ro
