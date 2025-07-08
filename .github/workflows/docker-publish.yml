@@ -39,9 +39,13 @@ jobs:
           echo "git_sha=$GIT_SHA" >> $GITHUB_OUTPUT
 
           # Set DOCKER_TAG based on event type
-          if [ "${{ github.event_name }}" == "release" ] || [ "${{ github.event_name }}" == "repository_dispatch" ]; then
+          if [ "${{ github.event_name }}" == "release" ]; then
+            echo "docker_tag=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "Building release version: $VERSION"
+          elif [ "${{ github.event_name }}" == "repository_dispatch" ]; then
             # For repository_dispatch, use the release tag from payload if available
-            if [ "${{ github.event_name }}" == "repository_dispatch" ] && [ -n "${{ github.event.client_payload.release_tag }}" ]; then
+            if [ -n "${{ github.event.client_payload.release_tag }}" ]; then
               RELEASE_VERSION="${{ github.event.client_payload.release_tag }}"
               # Remove 'v' prefix if present
               RELEASE_VERSION=${RELEASE_VERSION#v}

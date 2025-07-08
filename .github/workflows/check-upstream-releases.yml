@@ -2,8 +2,8 @@ name: Check for Upstream Releases
 
 on:
   schedule:
-    # Check every 6 hours
-    - cron: '0 */6 * * *'
+    # Check every 2 hours
+    - cron: '0 */2 * * *'
   workflow_dispatch:
 
 permissions:
@@ -21,16 +21,28 @@ jobs:
           # Get latest release from main repo
           LATEST_RELEASE=$(curl -s https://api.github.com/repos/geoffwhittington/meshtastic-matrix-relay/releases/latest | jq -r '.tag_name')
           echo "Latest upstream release: $LATEST_RELEASE"
-          
+
+          if [ "$LATEST_RELEASE" = "null" ] || [ -z "$LATEST_RELEASE" ]; then
+            echo "No releases found in upstream repo"
+            echo "trigger_build=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Remove 'v' prefix for Docker tag comparison
+          DOCKER_TAG=${LATEST_RELEASE#v}
+          echo "Checking for Docker tag: $DOCKER_TAG"
+
           # Check if we have a Docker image for this release
-          DOCKER_CHECK=$(curl -s "https://hub.docker.com/v2/repositories/${{ secrets.DOCKER_USERNAME }}/mmrelay/tags/$LATEST_RELEASE" | jq -r '.name // "null"')
-          
+          # Use Docker Hub API v2 to check if tag exists
+          DOCKER_CHECK=$(curl -s "https://hub.docker.com/v2/repositories/${{ secrets.DOCKER_USERNAME }}/mmrelay/tags/$DOCKER_TAG" | jq -r '.name // "null"')
+
           if [ "$DOCKER_CHECK" = "null" ]; then
-            echo "No Docker image found for release $LATEST_RELEASE"
+            echo "No Docker image found for release $LATEST_RELEASE (tag: $DOCKER_TAG)"
             echo "trigger_build=true" >> $GITHUB_OUTPUT
             echo "release_tag=$LATEST_RELEASE" >> $GITHUB_OUTPUT
+            echo "docker_tag=$DOCKER_TAG" >> $GITHUB_OUTPUT
           else
-            echo "Docker image already exists for release $LATEST_RELEASE"
+            echo "Docker image already exists for release $LATEST_RELEASE (tag: $DOCKER_TAG)"
             echo "trigger_build=false" >> $GITHUB_OUTPUT
           fi
 
