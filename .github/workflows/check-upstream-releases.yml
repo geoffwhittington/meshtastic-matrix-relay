@@ -49,15 +49,14 @@ jobs:
 
       - name: Trigger Docker build if needed
         if: steps.check.outputs.trigger_build == 'true'
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ github.token }}
-          repository: jeremiah-k/meshtastic-matrix-relay
-          event-type: release-published
-          client-payload: |
-            {
-              "release_tag": "${{ steps.check.outputs.release_tag }}",
-              "release_name": "Upstream Release ${{ steps.check.outputs.release_tag }}",
-              "repository": "geoffwhittington/meshtastic-matrix-relay",
-              "triggered_by": "scheduled-check"
-            }
+        run: |
+          echo "New release detected: ${{ steps.check.outputs.release_tag }}"
+          echo "Docker tag needed: ${{ steps.check.outputs.docker_tag }}"
+          echo "Triggering Docker workflow via workflow_dispatch..."
+
+          # Trigger the docker-publish workflow manually
+          curl -X POST \
+            -H "Authorization: token ${{ github.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/jeremiah-k/meshtastic-matrix-relay/actions/workflows/docker-publish.yml/dispatches" \
+            -d '{"ref":"main"}'
