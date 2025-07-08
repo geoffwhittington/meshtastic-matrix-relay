@@ -207,9 +207,9 @@ async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
         if room_id_or_alias.startswith("#"):
             # If it's a room alias, resolve it to a room ID
             response = await matrix_client.room_resolve_alias(room_id_or_alias)
-            if not response.room_id:
+            if not hasattr(response, "room_id") or not response.room_id:
                 logger.error(
-                    f"Failed to resolve room alias '{room_id_or_alias}': {response.message}"
+                    f"Failed to resolve room alias '{room_id_or_alias}': {getattr(response, 'message', str(response))}"
                 )
                 return
             room_id = response.room_id
@@ -510,23 +510,42 @@ async def send_reply_to_meshtastic(
         try:
             if reply_id is not None:
                 # Send as a structured reply using our custom function
-                sent_packet = sendTextReply(
-                    meshtastic_interface,
-                    text=reply_message,
-                    reply_id=reply_id,
-                    channelIndex=meshtastic_channel,
-                )
-                meshtastic_logger.info(
-                    f"Relaying Matrix reply from {full_display_name} to radio broadcast as structured reply to message {reply_id}"
-                )
+                try:
+                    sent_packet = sendTextReply(
+                        meshtastic_interface,
+                        text=reply_message,
+                        reply_id=reply_id,
+                        channelIndex=meshtastic_channel,
+                    )
+                    meshtastic_logger.info(
+                        f"Relaying Matrix reply from {full_display_name} to radio broadcast as structured reply to message {reply_id}"
+                    )
+                    meshtastic_logger.debug(
+                        f"sendTextReply returned packet: {sent_packet}"
+                    )
+                except Exception as e:
+                    meshtastic_logger.error(
+                        f"Error sending structured reply to Meshtastic: {e}"
+                    )
+                    return
             else:
                 # Send as regular message (fallback for when no reply_id is available)
-                sent_packet = meshtastic_interface.sendText(
-                    text=reply_message, channelIndex=meshtastic_channel
-                )
-                meshtastic_logger.info(
-                    f"Relaying Matrix reply from {full_display_name} to radio broadcast as regular message"
-                )
+                try:
+                    meshtastic_logger.debug(
+                        f"Attempting to send text to Meshtastic: '{reply_message}' on channel {meshtastic_channel}"
+                    )
+                    sent_packet = meshtastic_interface.sendText(
+                        text=reply_message, channelIndex=meshtastic_channel
+                    )
+                    meshtastic_logger.info(
+                        f"Relaying Matrix reply from {full_display_name} to radio broadcast as regular message"
+                    )
+                    meshtastic_logger.debug(f"sendText returned packet: {sent_packet}")
+                except Exception as e:
+                    meshtastic_logger.error(
+                        f"Error sending reply message to Meshtastic: {e}"
+                    )
+                    return
 
             # Store the reply in message map if storage is enabled
             if storage_enabled and sent_packet and hasattr(sent_packet, "id"):
@@ -766,9 +785,16 @@ async def on_room_message(
                 logger.debug(
                     f"Sending reaction to Meshtastic with meshnet={local_meshnet_name}: {reaction_message}"
                 )
-                meshtastic_interface.sendText(
-                    text=reaction_message, channelIndex=meshtastic_channel
-                )
+                try:
+                    sent_packet = meshtastic_interface.sendText(
+                        text=reaction_message, channelIndex=meshtastic_channel
+                    )
+                    logger.debug(
+                        f"Remote reaction sendText returned packet: {sent_packet}"
+                    )
+                except Exception as e:
+                    logger.error(f"Error sending remote reaction to Meshtastic: {e}")
+                    return
             # We've relayed the remote reaction to our local mesh, so we're done.
             return
 
@@ -829,9 +855,16 @@ async def on_room_message(
                 logger.debug(
                     f"Sending reaction to Meshtastic with meshnet={local_meshnet_name}: {reaction_message}"
                 )
-                meshtastic_interface.sendText(
-                    text=reaction_message, channelIndex=meshtastic_channel
-                )
+                try:
+                    sent_packet = meshtastic_interface.sendText(
+                        text=reaction_message, channelIndex=meshtastic_channel
+                    )
+                    logger.debug(
+                        f"Local reaction sendText returned packet: {sent_packet}"
+                    )
+                except Exception as e:
+                    logger.error(f"Error sending local reaction to Meshtastic: {e}")
+                    return
             return
 
     # Handle Matrix replies to Meshtastic messages (only if replies are enabled)
@@ -938,13 +971,25 @@ async def on_room_message(
             if portnum == "DETECTION_SENSOR_APP":
                 # If detection_sensor is enabled, forward this data as detection sensor data
                 if config["meshtastic"].get("detection_sensor", False):
-                    sent_packet = meshtastic_interface.sendData(
-                        data=full_message.encode("utf-8"),
-                        channelIndex=meshtastic_channel,
-                        portNum=meshtastic.protobuf.portnums_pb2.PortNum.DETECTION_SENSOR_APP,
-                    )
-                    # Note: Detection sensor messages are not stored in message_map because they are never replied to
-                    # Only TEXT_MESSAGE_APP messages need to be stored for reaction handling
+                    try:
+                        meshtastic_logger.debug(
+                            f"Attempting to send detection sensor data to Meshtastic: '{full_message}' on channel {meshtastic_channel}"
+                        )
+                        sent_packet = meshtastic_interface.sendData(
+                            data=full_message.encode("utf-8"),
+                            channelIndex=meshtastic_channel,
+                            portNum=meshtastic.protobuf.portnums_pb2.PortNum.DETECTION_SENSOR_APP,
+                        )
+                        meshtastic_logger.debug(
+                            f"sendData returned packet: {sent_packet}"
+                        )
+                        # Note: Detection sensor messages are not stored in message_map because they are never replied to
+                        # Only TEXT_MESSAGE_APP messages need to be stored for reaction handling
+                    except Exception as e:
+                        meshtastic_logger.error(
+                            f"Error sending detection sensor data to Meshtastic: {e}"
+                        )
+                        return
                 else:
                     meshtastic_logger.debug(
                         f"Detection sensor packet received from {full_display_name}, but detection sensor processing is disabled."
@@ -958,8 +1003,15 @@ async def on_room_message(
                     sent_packet = meshtastic_interface.sendText(
                         text=full_message, channelIndex=meshtastic_channel
                     )
+                    if not sent_packet:
+                        meshtastic_logger.warning(
+                            "sendText returned None - message may not have been sent"
+                        )
                 except Exception as e:
                     meshtastic_logger.error(f"Error sending message to Meshtastic: {e}")
+                    import traceback
+
+                    meshtastic_logger.error(f"Full traceback: {traceback.format_exc()}")
                     return
                 # Store message_map only if storage is enabled and only for TEXT_MESSAGE_APP
                 # (these are the only messages that can be replied to and thus need reaction handling)

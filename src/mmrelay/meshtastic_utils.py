@@ -55,7 +55,7 @@ subscribed_to_connection_lost = False
 def is_running_as_service():
     """
     Determine if the application is running as a systemd service.
-    
+
     Returns:
         bool: True if running under systemd (either via environment variable or parent process), False otherwise.
     """
@@ -89,13 +89,13 @@ def serial_port_exists(port_name):
 def connect_meshtastic(passed_config=None, force_connect=False):
     """
     Establishes and manages a connection to a Meshtastic device using the configured connection type (serial, BLE, or TCP).
-    
+
     If a configuration is provided, updates the global configuration and Matrix room mappings. Handles reconnection logic, including closing any existing connection if `force_connect` is True. Retries connection attempts with exponential backoff until successful or shutdown is initiated. Subscribes to message and connection lost events only once per process to avoid duplicate subscriptions.
-    
+
     Parameters:
         passed_config (dict, optional): Configuration dictionary to use for the connection. If provided, updates the global configuration.
         force_connect (bool, optional): If True, forces a new connection even if one already exists.
-    
+
     Returns:
         Meshtastic interface client if the connection is successful, or None if the connection fails or shutdown is in progress.
     """
@@ -210,7 +210,9 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                     logger.debug("Subscribed to meshtastic.receive")
 
                 if not subscribed_to_connection_lost:
-                    pub.subscribe(on_lost_meshtastic_connection, "meshtastic.connection.lost")
+                    pub.subscribe(
+                        on_lost_meshtastic_connection, "meshtastic.connection.lost"
+                    )
                     subscribed_to_connection_lost = True
                     logger.debug("Subscribed to meshtastic.connection.lost")
 
@@ -642,20 +644,31 @@ def on_meshtastic_message(packet, interface):
 async def check_connection():
     """
     Periodically checks the Meshtastic connection by calling localNode.getMetadata().
+    This creates an admin message to verify the connection is alive for all interface types.
     If it fails or doesn't return the firmware version, we assume the connection is lost
     and attempt to reconnect.
     """
-    global meshtastic_client, shutting_down, config
+    global meshtastic_client, shutting_down, config, reconnecting
 
     # Check if config is available
     if config is None:
         logger.error("No configuration available. Cannot check connection.")
         return
 
+    # Get heartbeat interval from config, default to 180 seconds
+    heartbeat_interval = config["meshtastic"].get("heartbeat_interval", 180)
     connection_type = config["meshtastic"]["connection_type"]
+
+    logger.info(
+        f"Starting connection heartbeat monitor (interval: {heartbeat_interval}s)"
+    )
+
     while not shutting_down:
-        if meshtastic_client:
+        if meshtastic_client and not reconnecting:
             try:
+                logger.debug(
+                    f"Checking {connection_type} connection health using getMetadata()"
+                )
                 output_capture = io.StringIO()
                 with contextlib.redirect_stdout(
                     output_capture
@@ -666,10 +679,23 @@ async def check_connection():
                 if "firmware_version" not in console_output:
                     raise Exception("No firmware_version in getMetadata output.")
 
+                logger.debug(f"{connection_type.capitalize()} connection healthy")
+
             except Exception as e:
-                logger.error(f"{connection_type.capitalize()} connection lost: {e}")
-                on_lost_meshtastic_connection(meshtastic_client)
-        await asyncio.sleep(30)  # Check connection every 30 seconds
+                # Only trigger reconnection if we're not already reconnecting
+                if not reconnecting:
+                    logger.warning(
+                        f"{connection_type.capitalize()} connection health check failed: {e}"
+                    )
+                    on_lost_meshtastic_connection(meshtastic_client)
+                else:
+                    logger.debug("Skipping reconnection trigger - already reconnecting")
+        elif reconnecting:
+            logger.debug("Skipping connection check - reconnection in progress")
+        elif not meshtastic_client:
+            logger.debug("Skipping connection check - no client available")
+
+        await asyncio.sleep(heartbeat_interval)
 
 
 def sendTextReply(
