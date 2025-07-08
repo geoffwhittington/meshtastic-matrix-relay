@@ -26,8 +26,8 @@ git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
 cd meshtastic-matrix-relay
 
 # Create and activate a virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python -m venv .pyenv
+source .pyenv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies and package in development mode
 pip install -r requirements.txt
