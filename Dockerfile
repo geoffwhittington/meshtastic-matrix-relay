@@ -17,8 +17,11 @@ COPY requirements.txt setup.py ./
 COPY README.md ./
 COPY src/ ./src/
 
-# Install application and dependencies to a target directory
-RUN pip install --no-cache-dir --target=/install .
+# Install dependencies from requirements.txt first (includes BLE fixes fork)
+RUN pip install --no-cache-dir --target=/install -r requirements.txt
+
+# Install application package (without dependencies since they're already installed)
+RUN pip install --no-cache-dir --target=/install --no-deps .
 
 # Runtime stage
 FROM python:3.11-slim
