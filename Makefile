@@ -3,7 +3,7 @@
 # Detect docker compose command (prefer newer 'docker compose' over 'docker-compose')
 DOCKER_COMPOSE := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
 
-.PHONY: help build build-nocache rebuild run stop logs shell clean config edit setup
+.PHONY: help build build-nocache rebuild run stop logs shell clean config edit setup update-compose
 
 # Default target
 help:
@@ -11,6 +11,7 @@ help:
 	@echo "  setup   - Copy sample config and open editor (recommended for first time)"
 	@echo "  config  - Copy sample config to ~/.mmrelay/config.yaml"
 	@echo "  edit    - Edit the config file with your preferred editor"
+	@echo "  update-compose - Update docker-compose.yaml with latest sample"
 	@echo "  build   - Build Docker image (uses layer caching for faster builds)"
 	@echo "  build-nocache - Build Docker image with --no-cache for fresh builds"
 	@echo "  rebuild - Stop, rebuild with --no-cache, and restart container (for updates)"
@@ -94,6 +95,16 @@ edit:
 setup:
 	@$(MAKE) config
 	@$(MAKE) edit
+
+# Update docker-compose.yaml with latest sample
+update-compose:
+	@if [ -f docker-compose.yaml ]; then \
+		echo "Backing up existing docker-compose.yaml to docker-compose.yaml.bak"; \
+		cp docker-compose.yaml docker-compose.yaml.bak; \
+	fi
+	@cp src/mmrelay/tools/sample-docker-compose.yaml docker-compose.yaml
+	@echo "Updated docker-compose.yaml with latest sample"
+	@echo "Please review and edit for your specific configuration (BLE, serial, etc.)"
 
 # Build the Docker image (uses layer caching for faster builds)
 build:
