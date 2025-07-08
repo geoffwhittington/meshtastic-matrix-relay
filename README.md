@@ -60,6 +60,8 @@ Docker provides isolated environment, easy deployment, automatic restarts, and v
 
 For detailed Docker setup instructions, see the [Docker Guide](DOCKER.md).
 
+> **Note**: Docker builds currently use a temporary fork of the meshtastic library with BLE hanging fixes. PyPI releases use the upstream library. This will be resolved when the fixes are merged upstream.
+
 ---
 
 ## Windows Installer
