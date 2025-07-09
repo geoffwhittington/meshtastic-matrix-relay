@@ -721,7 +721,7 @@ async def check_connection():
                             f"{connection_type.capitalize()} connection health check failed: {e}"
                         )
                         # Use existing handler with health check reason
-                        on_lost_meshtastic_connection(meshtastic_client, f"health check failed: {str(e)}")
+                        on_lost_meshtastic_connection(detection_source=f"health check failed: {str(e)}")
                     else:
                         logger.debug("Skipping reconnection trigger - already reconnecting")
         elif reconnecting:
