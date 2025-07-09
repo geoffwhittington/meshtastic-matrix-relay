@@ -249,14 +249,14 @@ def connect_meshtastic(passed_config=None, force_connect=False):
     return meshtastic_client
 
 
-def on_lost_meshtastic_connection(interface=None, reason="detected by library"):
+def on_lost_meshtastic_connection(interface=None, detection_source="detected by library"):
     """
     Callback invoked when the Meshtastic connection is lost.
     Initiates a reconnect sequence unless shutting_down is True.
 
     Args:
         interface: The interface that lost connection (unused but kept for compatibility)
-        reason: String describing how the disconnection was detected
+        detection_source: String describing how the disconnection was detected
     """
     global meshtastic_client, reconnecting, shutting_down, event_loop, reconnect_task
     with meshtastic_lock:
@@ -269,7 +269,7 @@ def on_lost_meshtastic_connection(interface=None, reason="detected by library"):
             )
             return
         reconnecting = True
-        logger.error(f"Lost connection ({reason}). Reconnecting...")
+        logger.error(f"Lost connection ({detection_source}). Reconnecting...")
 
         if meshtastic_client:
             try:
@@ -721,7 +721,7 @@ async def check_connection():
                             f"{connection_type.capitalize()} connection health check failed: {e}"
                         )
                         # Use existing handler with health check reason
-                        on_lost_meshtastic_connection(meshtastic_client, "detected by health check")
+                        on_lost_meshtastic_connection(meshtastic_client, f"health check failed: {str(e)}")
                     else:
                         logger.debug("Skipping reconnection trigger - already reconnecting")
         elif reconnecting:
