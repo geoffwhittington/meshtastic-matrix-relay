@@ -249,10 +249,14 @@ def connect_meshtastic(passed_config=None, force_connect=False):
     return meshtastic_client
 
 
-def on_lost_meshtastic_connection(interface=None):
+def on_lost_meshtastic_connection(interface=None, reason="detected by library"):
     """
     Callback invoked when the Meshtastic connection is lost.
     Initiates a reconnect sequence unless shutting_down is True.
+
+    Args:
+        interface: The interface that lost connection (unused but kept for compatibility)
+        reason: String describing how the disconnection was detected
     """
     global meshtastic_client, reconnecting, shutting_down, event_loop, reconnect_task
     with meshtastic_lock:
@@ -265,7 +269,7 @@ def on_lost_meshtastic_connection(interface=None):
             )
             return
         reconnecting = True
-        logger.error("Lost connection (detected by library). Reconnecting...")
+        logger.error(f"Lost connection ({reason}). Reconnecting...")
 
         if meshtastic_client:
             try:
@@ -348,8 +352,9 @@ def on_established_meshtastic_connection(interface=None):
     This helps track connection state and can be used for logging/monitoring.
     """
     global reconnecting
-    logger.info("Connection established (detected by library)")
-    reconnecting = False  # Clear reconnecting flag when connection is confirmed
+    with meshtastic_lock:
+        logger.info("Connection established (detected by library)")
+        reconnecting = False  # Clear reconnecting flag when connection is confirmed
 
 
 def on_meshtastic_message(packet, interface):
@@ -659,41 +664,6 @@ def on_meshtastic_message(packet, interface):
                     )
 
 
-def on_health_check_failure(interface=None):
-    """
-    Callback invoked when MMRelay's health check detects a connection failure.
-    This is separate from library-detected disconnections to avoid confusion.
-    """
-    global meshtastic_client, reconnecting, shutting_down, event_loop, reconnect_task
-    with meshtastic_lock:
-        if shutting_down:
-            logger.debug("Shutdown in progress. Not attempting to reconnect.")
-            return
-        if reconnecting:
-            logger.debug(
-                "Reconnection already in progress. Skipping health check reconnection attempt."
-            )
-            return
-        reconnecting = True
-        logger.error("Lost connection (detected by health check). Reconnecting...")
-
-        if meshtastic_client:
-            try:
-                meshtastic_client.close()
-            except OSError as e:
-                if e.errno == 9:
-                    # Bad file descriptor, already closed
-                    pass
-                else:
-                    logger.warning(f"Error closing Meshtastic client: {e}")
-            except Exception as e:
-                logger.warning(f"Error closing Meshtastic client: {e}")
-        meshtastic_client = None
-
-        if event_loop:
-            reconnect_task = asyncio.run_coroutine_threadsafe(reconnect(), event_loop)
-
-
 async def check_connection():
     """
     Periodically checks the Meshtastic connection by calling localNode.getMetadata().
@@ -716,12 +686,17 @@ async def check_connection():
         f"Starting connection heartbeat monitor (interval: {heartbeat_interval}s)"
     )
 
+    # Track if we've logged the BLE skip message to avoid spam
+    ble_skip_logged = False
+
     while not shutting_down:
         if meshtastic_client and not reconnecting:
             # BLE has real-time disconnection detection in the library
             # Skip periodic health checks to avoid duplicate reconnection attempts
             if connection_type == "ble":
-                logger.debug("BLE connection uses real-time disconnection detection - skipping health check")
+                if not ble_skip_logged:
+                    logger.info("BLE connection uses real-time disconnection detection - health checks disabled")
+                    ble_skip_logged = True
             else:
                 try:
                     logger.debug(
@@ -743,10 +718,10 @@ async def check_connection():
                     # Only trigger reconnection if we're not already reconnecting
                     if not reconnecting:
                         logger.warning(
-                            f"{connection_type.capitalize()} connection health check failed (detected by MMRelay): {e}"
+                            f"{connection_type.capitalize()} connection health check failed: {e}"
                         )
-                        # Create a custom handler to distinguish health check failures
-                        on_health_check_failure(meshtastic_client)
+                        # Use existing handler with health check reason
+                        on_lost_meshtastic_connection(meshtastic_client, "detected by health check")
                     else:
                         logger.debug("Skipping reconnection trigger - already reconnecting")
         elif reconnecting:
