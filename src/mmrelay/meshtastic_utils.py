@@ -47,6 +47,10 @@ reconnecting = False
 shutting_down = False
 reconnect_task = None  # To keep track of the reconnect task
 
+# Subscription flags to prevent duplicate subscriptions
+subscribed_to_messages = False
+subscribed_to_connection_lost = False
+
 
 def is_running_as_service():
     """
@@ -198,11 +202,19 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                     f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}"
                 )
 
-                # Subscribe to message and connection lost events
-                pub.subscribe(on_meshtastic_message, "meshtastic.receive")
-                pub.subscribe(
-                    on_lost_meshtastic_connection, "meshtastic.connection.lost"
-                )
+                # Subscribe to message and connection lost events (only once per application run)
+                global subscribed_to_messages, subscribed_to_connection_lost
+                if not subscribed_to_messages:
+                    pub.subscribe(on_meshtastic_message, "meshtastic.receive")
+                    subscribed_to_messages = True
+                    logger.debug("Subscribed to meshtastic.receive")
+
+                if not subscribed_to_connection_lost:
+                    pub.subscribe(
+                        on_lost_meshtastic_connection, "meshtastic.connection.lost"
+                    )
+                    subscribed_to_connection_lost = True
+                    logger.debug("Subscribed to meshtastic.connection.lost")
 
             except (
                 serial.SerialException,
@@ -644,7 +656,7 @@ async def check_connection():
 
     connection_type = config["meshtastic"]["connection_type"]
     while not shutting_down:
-        if meshtastic_client:
+        if meshtastic_client and not reconnecting:
             try:
                 output_capture = io.StringIO()
                 with contextlib.redirect_stdout(
@@ -657,8 +669,17 @@ async def check_connection():
                     raise Exception("No firmware_version in getMetadata output.")
 
             except Exception as e:
-                logger.error(f"{connection_type.capitalize()} connection lost: {e}")
-                on_lost_meshtastic_connection(meshtastic_client)
+                # Only trigger reconnection if we're not already reconnecting
+                if not reconnecting:
+                    logger.error(f"{connection_type.capitalize()} connection lost: {e}")
+                    on_lost_meshtastic_connection(meshtastic_client)
+                else:
+                    logger.debug("Skipping reconnection trigger - already reconnecting")
+        elif reconnecting:
+            logger.debug("Skipping connection check - reconnection in progress")
+        elif not meshtastic_client:
+            logger.debug("Skipping connection check - no client available")
+
         await asyncio.sleep(30)  # Check connection every 30 seconds
 
 
