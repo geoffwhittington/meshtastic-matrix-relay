@@ -4,6 +4,7 @@ It uses Meshtastic-python and Matrix nio client library to interface with the ra
 """
 
 import asyncio
+import concurrent.futures
 import logging
 import signal
 import sys
@@ -181,7 +182,6 @@ async def main(config):
                 # The meshtastic library can sometimes hang indefinitely during close()
                 # operations, especially with BLE connections. This timeout ensures
                 # the application can shut down gracefully within 10 seconds.
-                import concurrent.futures
 
                 def _close_meshtastic():
                     """

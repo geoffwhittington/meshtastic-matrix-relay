@@ -660,31 +660,40 @@ async def check_connection():
 
     connection_type = config["meshtastic"]["connection_type"]
     heartbeat_interval = config["meshtastic"].get("heartbeat_interval", 30)
+    ble_skip_logged = False
+
     while not shutting_down:
         if meshtastic_client and not reconnecting:
-            try:
-                output_capture = io.StringIO()
-                with contextlib.redirect_stdout(
-                    output_capture
-                ), contextlib.redirect_stderr(output_capture):
-                    meshtastic_client.localNode.getMetadata()
+            # BLE has real-time disconnection detection in the library
+            # Skip periodic health checks to avoid duplicate reconnection attempts
+            if connection_type == "ble":
+                if not ble_skip_logged:
+                    logger.info("BLE connection uses real-time disconnection detection - health checks disabled")
+                    ble_skip_logged = True
+            else:
+                try:
+                    output_capture = io.StringIO()
+                    with contextlib.redirect_stdout(
+                        output_capture
+                    ), contextlib.redirect_stderr(output_capture):
+                        meshtastic_client.localNode.getMetadata()
 
-                console_output = output_capture.getvalue()
-                if "firmware_version" not in console_output:
-                    raise Exception("No firmware_version in getMetadata output.")
+                    console_output = output_capture.getvalue()
+                    if "firmware_version" not in console_output:
+                        raise Exception("No firmware_version in getMetadata output.")
 
-            except Exception as e:
-                # Only trigger reconnection if we're not already reconnecting
-                if not reconnecting:
-                    logger.error(
-                        f"{connection_type.capitalize()} connection health check failed: {e}"
-                    )
-                    on_lost_meshtastic_connection(
-                        interface=meshtastic_client,
-                        detection_source=f"health check failed: {str(e)}",
-                    )
-                else:
-                    logger.debug("Skipping reconnection trigger - already reconnecting")
+                except Exception as e:
+                    # Only trigger reconnection if we're not already reconnecting
+                    if not reconnecting:
+                        logger.error(
+                            f"{connection_type.capitalize()} connection health check failed: {e}"
+                        )
+                        on_lost_meshtastic_connection(
+                            interface=meshtastic_client,
+                            detection_source=f"health check failed: {str(e)}",
+                        )
+                    else:
+                        logger.debug("Skipping reconnection trigger - already reconnecting")
         elif reconnecting:
             logger.debug("Skipping connection check - reconnection in progress")
         elif not meshtastic_client:
