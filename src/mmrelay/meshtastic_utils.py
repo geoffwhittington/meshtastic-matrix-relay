@@ -659,6 +659,7 @@ async def check_connection():
         return
 
     connection_type = config["meshtastic"]["connection_type"]
+    heartbeat_interval = config["meshtastic"].get("heartbeat_interval", 30)
     while not shutting_down:
         if meshtastic_client and not reconnecting:
             try:
@@ -689,7 +690,7 @@ async def check_connection():
         elif not meshtastic_client:
             logger.debug("Skipping connection check - no client available")
 
-        await asyncio.sleep(30)  # Check connection every 30 seconds
+        await asyncio.sleep(heartbeat_interval)
 
 
 def sendTextReply(
@@ -706,6 +707,7 @@ def sendTextReply(
     Creates and sends a reply message by setting the `reply_id` field in the Meshtastic Data protobuf, enabling proper reply threading. Returns the sent packet with its ID populated.
 
     Parameters:
+        interface: The Meshtastic interface to send through.
         text (str): The message content to send.
         reply_id (int): The ID of the message being replied to.
         destinationId: The recipient address (defaults to broadcast).
