@@ -96,10 +96,6 @@ def get_logger(name):
     logger.setLevel(log_level)
     logger.propagate = False
 
-    # Configure component debug logging if this is the main logger
-    if name == "M<>M Relay":
-        configure_component_debug_logging()
-
     # Add handler for console logging (with or without colors)
     if color_enabled:
         # Use Rich handler with colors

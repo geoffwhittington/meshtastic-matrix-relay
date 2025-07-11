@@ -27,6 +27,7 @@ meshtastic:
   #  enabled: true                    # Enable/disable periodic health checks (default: true)
   #  heartbeat_interval: 60           # Interval in seconds between health checks (default: 60)
   #                                   # Note: BLE connections use real-time disconnection detection and skip periodic checks
+  #                                   # Legacy: heartbeat_interval at meshtastic level still supported but deprecated
 
 logging:
   level: info
