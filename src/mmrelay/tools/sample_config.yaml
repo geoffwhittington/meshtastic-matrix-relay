@@ -18,15 +18,15 @@ meshtastic:
   broadcast_enabled: true # Must be set to true to enable Matrix to Meshtastic messages
   detection_sensor: true # Must be set to true to forward messages of Meshtastic's detection sensor module
   plugin_response_delay: 3 # Default response delay in seconds for plugins that respond on the mesh;
+  message_interactions: # Configure reactions and replies (both require message storage in database)
+    reactions: false # Enable reaction relaying between platforms
+    replies: false   # Enable reply relaying between platforms
 
   # Connection health monitoring configuration
   #health_check:
   #  enabled: true                    # Enable/disable periodic health checks (default: true)
-  #  heartbeat_interval: 30           # Interval in seconds between health checks (default: 30)
+  #  heartbeat_interval: 60           # Interval in seconds between health checks (default: 60)
   #                                   # Note: BLE connections use real-time disconnection detection and skip periodic checks
-  message_interactions: # Configure reactions and replies (both require message storage in database)
-    reactions: false # Enable reaction relaying between platforms
-    replies: false   # Enable reply relaying between platforms
 
 logging:
   level: info

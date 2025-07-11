@@ -650,7 +650,7 @@ async def check_connection():
     Periodically checks the health of the Meshtastic connection and triggers reconnection if the connection is lost.
 
     Health checks can be enabled/disabled via configuration. When enabled, for non-BLE connections,
-    invokes `localNode.getMetadata()` at configurable intervals (default 30 seconds) to verify connectivity.
+    invokes `localNode.getMetadata()` at configurable intervals (default 60 seconds) to verify connectivity.
     If the check fails or the firmware version is missing, initiates reconnection logic.
 
     BLE connections rely on real-time disconnection detection and skip periodic health checks.
@@ -658,7 +658,7 @@ async def check_connection():
 
     Configuration:
         health_check.enabled: Enable/disable health checks (default: true)
-        health_check.heartbeat_interval: Interval between checks in seconds (default: 30)
+        health_check.heartbeat_interval: Interval between checks in seconds (default: 60)
     """
     global meshtastic_client, shutting_down, config
 
@@ -672,7 +672,7 @@ async def check_connection():
     # Get health check configuration
     health_config = config["meshtastic"].get("health_check", {})
     health_check_enabled = health_config.get("enabled", True)
-    heartbeat_interval = health_config.get("heartbeat_interval", 30)
+    heartbeat_interval = health_config.get("heartbeat_interval", 60)
 
     # Support legacy heartbeat_interval configuration for backward compatibility
     if "heartbeat_interval" in config["meshtastic"]:
