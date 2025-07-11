@@ -649,7 +649,16 @@ async def check_connection():
     """
     Periodically checks the health of the Meshtastic connection and triggers reconnection if the connection is lost.
 
-    For non-BLE connections, invokes `localNode.getMetadata()` at regular intervals (default 30 seconds) to verify connectivity. If the check fails or the firmware version is missing, initiates reconnection logic. BLE connections rely on real-time disconnection detection and skip periodic health checks. The function runs continuously until shutdown is requested.
+    Health checks can be enabled/disabled via configuration. When enabled, for non-BLE connections,
+    invokes `localNode.getMetadata()` at configurable intervals (default 30 seconds) to verify connectivity.
+    If the check fails or the firmware version is missing, initiates reconnection logic.
+
+    BLE connections rely on real-time disconnection detection and skip periodic health checks.
+    The function runs continuously until shutdown is requested.
+
+    Configuration:
+        health_check.enabled: Enable/disable health checks (default: true)
+        health_check.heartbeat_interval: Interval between checks in seconds (default: 30)
     """
     global meshtastic_client, shutting_down, config
 
@@ -659,10 +668,26 @@ async def check_connection():
         return
 
     connection_type = config["meshtastic"]["connection_type"]
-    heartbeat_interval = config["meshtastic"].get("heartbeat_interval", 30)
+
+    # Get health check configuration
+    health_config = config["meshtastic"].get("health_check", {})
+    health_check_enabled = health_config.get("enabled", True)
+    heartbeat_interval = health_config.get("heartbeat_interval", 30)
+
+    # Support legacy heartbeat_interval configuration for backward compatibility
+    if "heartbeat_interval" in config["meshtastic"]:
+        heartbeat_interval = config["meshtastic"]["heartbeat_interval"]
     ble_skip_logged = False
+    health_check_disabled_logged = False
 
     while not shutting_down:
+        # Check if health checks are disabled
+        if not health_check_enabled:
+            if not health_check_disabled_logged:
+                logger.info("Connection health checks are disabled in configuration")
+                health_check_disabled_logged = True
+            await asyncio.sleep(heartbeat_interval)
+            continue
         if meshtastic_client and not reconnecting:
             # BLE has real-time disconnection detection in the library
             # Skip periodic health checks to avoid duplicate reconnection attempts
