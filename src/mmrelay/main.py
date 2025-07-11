@@ -68,9 +68,6 @@ async def main(config):
     # Initialize the SQLite database
     initialize_database()
 
-    # Set up upstream logging capture to format library messages consistently
-    setup_upstream_logging_capture()
-
     # Check database config for wipe_on_restart (preferred format)
     database_config = config.get("database", {})
     msg_map_config = database_config.get("msg_map", {})
