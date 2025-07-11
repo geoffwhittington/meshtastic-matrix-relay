@@ -672,7 +672,7 @@ async def check_connection():
                 # Only trigger reconnection if we're not already reconnecting
                 if not reconnecting:
                     logger.error(f"{connection_type.capitalize()} connection lost: {e}")
-                    on_lost_meshtastic_connection(meshtastic_client)
+                    on_lost_meshtastic_connection(interface=meshtastic_client)
                 else:
                     logger.debug("Skipping reconnection trigger - already reconnecting")
         elif reconnecting:

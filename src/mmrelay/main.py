@@ -177,7 +177,10 @@ async def main(config):
         if meshtastic_utils.meshtastic_client:
             meshtastic_logger.info("Closing Meshtastic client...")
             try:
-                # Simple timeout wrapper to prevent hanging
+                # Timeout wrapper to prevent infinite hanging during shutdown
+                # The meshtastic library can sometimes hang indefinitely during close()
+                # operations, especially with BLE connections. This timeout ensures
+                # the application can shut down gracefully within 10 seconds.
                 import concurrent.futures
 
                 def _close_meshtastic():
@@ -196,7 +199,7 @@ async def main(config):
                     "Meshtastic client close timed out - forcing shutdown"
                 )
             except Exception as e:
-                meshtastic_logger.warning(f"Error closing Meshtastic client: {e}")
+                meshtastic_logger.error(f"Unexpected error during Meshtastic client close: {e}")
 
         # Attempt to wipe message_map on shutdown if enabled
         if wipe_on_restart:
