@@ -28,16 +28,58 @@ config = None
 # Global variable to store the log file path
 log_file_path = None
 
+# Track if component debug logging has been configured
+_component_debug_configured = False
+
+
+def configure_component_debug_logging():
+    """
+    Configure debug logging for specific components based on configuration settings.
+
+    This function enables debug-level logging for external libraries when requested
+    in the configuration. It should be called once during application startup.
+
+    Supported components:
+    - matrix_nio: Matrix client library debugging
+    - bleak: Bluetooth Low Energy library debugging
+    - meshtastic: Meshtastic library debugging
+    """
+    global _component_debug_configured, config
+
+    # Only configure once
+    if _component_debug_configured or config is None:
+        return
+
+    debug_config = config.get("logging", {}).get("debug", {})
+
+    if debug_config.get("matrix_nio", False):
+        logging.getLogger("nio").setLevel(logging.DEBUG)
+        logging.getLogger("nio.client").setLevel(logging.DEBUG)
+        logging.getLogger("nio.http").setLevel(logging.DEBUG)
+        logging.getLogger("nio.crypto").setLevel(logging.DEBUG)
+
+    if debug_config.get("bleak", False):
+        logging.getLogger("bleak").setLevel(logging.DEBUG)
+        logging.getLogger("bleak.backends").setLevel(logging.DEBUG)
+
+    if debug_config.get("meshtastic", False):
+        logging.getLogger("meshtastic").setLevel(logging.DEBUG)
+        logging.getLogger("meshtastic.serial_interface").setLevel(logging.DEBUG)
+        logging.getLogger("meshtastic.tcp_interface").setLevel(logging.DEBUG)
+        logging.getLogger("meshtastic.ble_interface").setLevel(logging.DEBUG)
+
+    _component_debug_configured = True
+
 
 def get_logger(name):
     """
     Create and configure a logger with console and optional file logging, using settings from global configuration and command-line arguments.
-    
+
     The logger supports colorized console output via Rich if enabled, and writes logs to a rotating file if configured or requested via command-line. Log file location and rotation parameters are determined by priority: command-line argument, configuration file, or default directory. The function ensures the log directory exists and stores the log file path globally if the logger name is "M<>M Relay".
-    
+
     Parameters:
         name (str): The name of the logger to create and configure.
-    
+
     Returns:
         logging.Logger: The configured logger instance.
     """
@@ -58,6 +100,10 @@ def get_logger(name):
 
     logger.setLevel(log_level)
     logger.propagate = False
+
+    # Configure component debug logging if this is the main logger
+    if name == "M<>M Relay":
+        configure_component_debug_logging()
 
     # Add handler for console logging (with or without colors)
     if color_enabled:

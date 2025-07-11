@@ -668,7 +668,9 @@ async def check_connection():
             # Skip periodic health checks to avoid duplicate reconnection attempts
             if connection_type == "ble":
                 if not ble_skip_logged:
-                    logger.info("BLE connection uses real-time disconnection detection - health checks disabled")
+                    logger.info(
+                        "BLE connection uses real-time disconnection detection - health checks disabled"
+                    )
                     ble_skip_logged = True
             else:
                 try:
@@ -693,7 +695,9 @@ async def check_connection():
                             detection_source=f"health check failed: {str(e)}",
                         )
                     else:
-                        logger.debug("Skipping reconnection trigger - already reconnecting")
+                        logger.debug(
+                            "Skipping reconnection trigger - already reconnecting"
+                        )
         elif reconnecting:
             logger.debug("Skipping connection check - reconnection in progress")
         elif not meshtastic_client:
