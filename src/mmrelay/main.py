@@ -51,7 +51,7 @@ def print_banner():
 async def main(config):
     """
     Run the main asynchronous relay loop, managing connections between Meshtastic and Matrix, event handling, and graceful shutdown.
-    
+
     Initializes the database, loads plugins, connects to Meshtastic and Matrix, joins configured Matrix rooms, and registers event callbacks for message and membership events. Periodically updates node names from the Meshtastic network and manages the Matrix sync loop, handling reconnections and shutdown signals. If configured, wipes the message map on both startup and shutdown.
     """
     # Extract Matrix configuration
@@ -199,7 +199,9 @@ async def main(config):
                     "Meshtastic client close timed out - forcing shutdown"
                 )
             except Exception as e:
-                meshtastic_logger.error(f"Unexpected error during Meshtastic client close: {e}")
+                meshtastic_logger.error(
+                    f"Unexpected error during Meshtastic client close: {e}"
+                )
 
         # Attempt to wipe message_map on shutdown if enabled
         if wipe_on_restart:
