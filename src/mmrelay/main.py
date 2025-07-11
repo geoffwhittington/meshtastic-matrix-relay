@@ -182,7 +182,6 @@ async def main(config):
             try:
                 # Simple timeout wrapper to prevent hanging
                 import concurrent.futures
-                import threading
 
                 def _close_meshtastic():
                     meshtastic_utils.meshtastic_client.close()
@@ -193,7 +192,9 @@ async def main(config):
 
                 meshtastic_logger.info("Meshtastic client closed successfully")
             except concurrent.futures.TimeoutError:
-                meshtastic_logger.warning("Meshtastic client close timed out - forcing shutdown")
+                meshtastic_logger.warning(
+                    "Meshtastic client close timed out - forcing shutdown"
+                )
             except Exception as e:
                 meshtastic_logger.warning(f"Error closing Meshtastic client: {e}")
 
