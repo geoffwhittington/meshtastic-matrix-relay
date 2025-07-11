@@ -677,17 +677,15 @@ async def check_connection():
     # Support legacy heartbeat_interval configuration for backward compatibility
     if "heartbeat_interval" in config["meshtastic"]:
         heartbeat_interval = config["meshtastic"]["heartbeat_interval"]
+
+    # Exit early if health checks are disabled
+    if not health_check_enabled:
+        logger.info("Connection health checks are disabled in configuration")
+        return
+
     ble_skip_logged = False
-    health_check_disabled_logged = False
 
     while not shutting_down:
-        # Check if health checks are disabled
-        if not health_check_enabled:
-            if not health_check_disabled_logged:
-                logger.info("Connection health checks are disabled in configuration")
-                health_check_disabled_logged = True
-            await asyncio.sleep(heartbeat_interval)
-            continue
         if meshtastic_client and not reconnecting:
             # BLE has real-time disconnection detection in the library
             # Skip periodic health checks to avoid duplicate reconnection attempts
