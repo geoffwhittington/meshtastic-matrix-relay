@@ -52,21 +52,22 @@ def configure_component_debug_logging():
 
     debug_config = config.get("logging", {}).get("debug", {})
 
-    if debug_config.get("matrix_nio", False):
-        logging.getLogger("nio").setLevel(logging.DEBUG)
-        logging.getLogger("nio.client").setLevel(logging.DEBUG)
-        logging.getLogger("nio.http").setLevel(logging.DEBUG)
-        logging.getLogger("nio.crypto").setLevel(logging.DEBUG)
+    # Component logger mapping for data-driven configuration
+    COMPONENT_LOGGERS = {
+        "matrix_nio": ["nio", "nio.client", "nio.http", "nio.crypto"],
+        "bleak": ["bleak", "bleak.backends"],
+        "meshtastic": [
+            "meshtastic",
+            "meshtastic.serial_interface",
+            "meshtastic.tcp_interface",
+            "meshtastic.ble_interface",
+        ],
+    }
 
-    if debug_config.get("bleak", False):
-        logging.getLogger("bleak").setLevel(logging.DEBUG)
-        logging.getLogger("bleak.backends").setLevel(logging.DEBUG)
-
-    if debug_config.get("meshtastic", False):
-        logging.getLogger("meshtastic").setLevel(logging.DEBUG)
-        logging.getLogger("meshtastic.serial_interface").setLevel(logging.DEBUG)
-        logging.getLogger("meshtastic.tcp_interface").setLevel(logging.DEBUG)
-        logging.getLogger("meshtastic.ble_interface").setLevel(logging.DEBUG)
+    for component, loggers in COMPONENT_LOGGERS.items():
+        if debug_config.get(component, False):
+            for logger_name in loggers:
+                logging.getLogger(logger_name).setLevel(logging.DEBUG)
 
     _component_debug_configured = True
 
