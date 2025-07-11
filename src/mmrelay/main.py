@@ -201,7 +201,7 @@ async def main(config):
             except Exception as e:
                 meshtastic_logger.error(
                     f"Unexpected error during Meshtastic client close: {e}",
-                    exc_info=True
+                    exc_info=True,
                 )
 
         # Attempt to wipe message_map on shutdown if enabled
