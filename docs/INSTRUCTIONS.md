@@ -25,13 +25,9 @@ If you want to contribute or modify the code:
 git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
 cd meshtastic-matrix-relay
 
-# Create and activate a virtual environment
-python -m venv .pyenv
-source .pyenv/bin/activate  # On Windows: .pyenv\Scripts\activate
-
-# Install dependencies and package in development mode
-pip install -r requirements.txt
-pip install -e .
+# Install in development mode using pipx (recommended)
+pipx install -e .
+pipx uninstall mmrelay # each time before testing new changes
 ```
 
 > **Upgrading from a previous version?** Please see [Upgrade Guide](UPGRADE_TO_V1.md) for migration guidance from pre-v1.0 versions.
@@ -180,7 +176,7 @@ make run      # Start the container
 make logs     # View logs
 ```
 
-For detailed Docker commands, configuration options, connection types, and troubleshooting, see the [Docker Guide](DOCKER.md).
+For detailed Docker commands, configuration options, connection types, and troubleshooting, see the [Docker Guide](../DOCKER.md).
 
 ## Development
 
