@@ -30,8 +30,6 @@ pipx install -e .
 pipx uninstall mmrelay # each time before testing new changes
 ```
 
-> **Upgrading from a previous version?** Please see [Upgrade Guide](UPGRADE_TO_V1.md) for migration guidance from pre-v1.0 versions.
-
 ## Configuration
 
 ### Configuration File Locations
