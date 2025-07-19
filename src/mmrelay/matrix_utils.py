@@ -81,6 +81,15 @@ def message_storage_enabled(interactions):
     return interactions["reactions"] or interactions["replies"]
 
 
+def get_meshtastic_prefix(config, short_display_name):
+    """
+    Returns the Meshtastic prefix for messages based on the configuration.
+    """
+    if config.get("meshtastic", {}).get("prefix_enabled", True):
+        return f"{short_display_name}[M]: "
+    return ""
+
+
 # Global config variable that will be set from config.py
 config = None
 
@@ -459,7 +468,7 @@ async def get_user_display_name(room, event):
     return display_name_response.displayname or event.sender
 
 
-def format_reply_message(full_display_name, text):
+def format_reply_message(config, full_display_name, text):
     """
     Format a reply message by prefixing a truncated display name and removing quoted lines.
 
@@ -473,7 +482,7 @@ def format_reply_message(full_display_name, text):
         str: The formatted and truncated reply message.
     """
     short_display_name = full_display_name[:5]
-    prefix = f"{short_display_name}[M]: "
+    prefix = get_meshtastic_prefix(config, short_display_name)
 
     # Strip quoted content from the reply text
     clean_text = strip_quoted_lines(text)
@@ -582,6 +591,7 @@ async def handle_matrix_reply(
     room_config,
     storage_enabled,
     local_meshnet_name,
+    config,
 ):
     """
     Relays a Matrix reply to the corresponding Meshtastic message if a mapping exists.
@@ -607,7 +617,7 @@ async def handle_matrix_reply(
     full_display_name = await get_user_display_name(room, event)
 
     # Format the reply message
-    reply_message = format_reply_message(full_display_name, text)
+    reply_message = format_reply_message(config, full_display_name, text)
 
     logger.info(
         f"Relaying Matrix reply from {full_display_name} to Meshtastic as reply to message {original_meshtastic_id}"
@@ -825,7 +835,7 @@ async def on_room_message(
 
             # If not from a remote meshnet, proceed as normal to relay back to the originating meshnet
             short_display_name = full_display_name[:5]
-            prefix = f"{short_display_name}[M]: "
+            prefix = get_meshtastic_prefix(config, short_display_name)
 
             # Remove quoted lines so we don't bring in the original '>' lines from replies
             meshtastic_text_db = strip_quoted_lines(meshtastic_text_db)
@@ -877,6 +887,7 @@ async def on_room_message(
             room_config,
             storage_enabled,
             local_meshnet_name,
+            config,
         )
         if reply_handled:
             return
@@ -911,7 +922,7 @@ async def on_room_message(
             display_name_response = await matrix_client.get_displayname(event.sender)
             full_display_name = display_name_response.displayname or event.sender
         short_display_name = full_display_name[:5]
-        prefix = f"{short_display_name}[M]: "
+        prefix = get_meshtastic_prefix(config, short_display_name)
         logger.debug(f"Processing matrix message from [{full_display_name}]: {text}")
         full_message = f"{prefix}{text}"
         text = truncate_message(text)
