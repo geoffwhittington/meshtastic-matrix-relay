@@ -93,7 +93,7 @@ jobs:
             mmrelay.build.commit=${{ steps.get_version.outputs.git_sha }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
