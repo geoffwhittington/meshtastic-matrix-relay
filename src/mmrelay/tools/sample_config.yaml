@@ -15,13 +15,9 @@ meshtastic:
   serial_port: /dev/ttyUSB0 # Only used when connection is "serial"
   ble_address: AA:BB:CC:DD:EE:FF # Only used when connection is "ble" - Uses either an address or name from a `meshtastic --ble-scan`
   meshnet_name: Your Meshnet Name # This is displayed in full on Matrix, but is truncated when sent to a Meshnet
-  broadcast_enabled: true # Must be set to true to enable Matrix to Meshtastic messages
-  detection_sensor: true # Must be set to true to forward messages of Meshtastic's detection sensor module
-  plugin_response_delay: 3 # Default response delay in seconds for plugins that respond on the mesh;
   message_interactions: # Configure reactions and replies (both require message storage in database)
     reactions: false # Enable reaction relaying between platforms
     replies: false   # Enable reply relaying between platforms
-  prefix_enabled: true
 
   # Connection health monitoring configuration
   #health_check:
@@ -29,6 +25,13 @@ meshtastic:
   #  heartbeat_interval: 60           # Interval in seconds between health checks (default: 60)
   #                                   # Note: BLE connections use real-time disconnection detection and skip periodic checks
   #                                   # Legacy: heartbeat_interval at meshtastic level still supported but deprecated
+
+  # Additional configuration options (commented out with defaults)
+  #broadcast_enabled: true # Must be set to true to enable Matrix to Meshtastic messages
+  #detection_sensor: true # Must be set to true to forward messages of Meshtastic's detection sensor module
+  #message_delay: 2.2 # Delay in seconds before sending messages to mesh (minimum: 2.0 due to firmware)
+  #prefix_enabled: true # Add username prefix (e.g., "Alice[M]: ") to Matrix->Meshtastic messages
+  #plugin_response_delay: 2.1 # DEPRECATED: Use message_delay instead. Will be removed in future version.
 
 logging:
   level: info

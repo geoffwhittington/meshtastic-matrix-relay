@@ -132,12 +132,33 @@ class BasePlugin(ABC):
                 f"Plugin '{self.plugin_name}': Channels {invalid_channels} are not mapped in configuration."
             )
 
-        # Get the response delay from the meshtastic config only
-        self.response_delay = 3  # Default value
+        # Get the response delay from the meshtastic config
+        self.response_delay = 2.1  # Default value (minimum 2 seconds due to firmware delay)
         if config is not None:
-            self.response_delay = config.get("meshtastic", {}).get(
-                "plugin_response_delay", self.response_delay
-            )
+            meshtastic_config = config.get("meshtastic", {})
+
+            # Check for new message_delay option first
+            if "message_delay" in meshtastic_config:
+                self.response_delay = meshtastic_config["message_delay"]
+                # Enforce minimum delay of 2 seconds due to firmware constraints
+                if self.response_delay < 2.0:
+                    self.logger.warning(
+                        f"message_delay of {self.response_delay}s is below minimum of 2.0s (firmware constraint). Using 2.0s."
+                    )
+                    self.response_delay = 2.0
+            # Check for deprecated plugin_response_delay option
+            elif "plugin_response_delay" in meshtastic_config:
+                self.response_delay = meshtastic_config["plugin_response_delay"]
+                self.logger.warning(
+                    "Configuration option 'plugin_response_delay' is deprecated. "
+                    "Please use 'message_delay' instead. Support for 'plugin_response_delay' will be removed in a future version."
+                )
+                # Enforce minimum delay of 2 seconds due to firmware constraints
+                if self.response_delay < 2.0:
+                    self.logger.warning(
+                        f"plugin_response_delay of {self.response_delay}s is below minimum of 2.0s (firmware constraint). Using 2.0s."
+                    )
+                    self.response_delay = 2.0
 
     def start(self):
         """Start the plugin and set up scheduled tasks if configured.
@@ -227,10 +248,14 @@ class BasePlugin(ABC):
         """Get the configured response delay for meshtastic messages.
 
         Returns:
-            int: Delay in seconds before sending responses (default: 3)
+            float: Delay in seconds before sending responses (default: 2.1, minimum: 2.0)
 
         Used to prevent message flooding and ensure proper radio etiquette.
-        Delay is configured via meshtastic.plugin_response_delay in config.
+        Delay is configured via meshtastic.message_delay in config.
+        Minimum delay of 2.0 seconds is enforced due to firmware constraints.
+
+        Note: The deprecated meshtastic.plugin_response_delay is still supported
+        but will be removed in a future version.
         """
         return self.response_delay
 

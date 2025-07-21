@@ -84,6 +84,13 @@ def message_storage_enabled(interactions):
 def get_meshtastic_prefix(config, short_display_name):
     """
     Returns the Meshtastic prefix for messages based on the configuration.
+
+    Args:
+        config (dict): The application configuration dictionary.
+        short_display_name (str): The truncated display name to include in the prefix.
+
+    Returns:
+        str: The formatted prefix string if enabled, empty string otherwise.
     """
     if config.get("meshtastic", {}).get("prefix_enabled", True):
         return f"{short_display_name}[M]: "
