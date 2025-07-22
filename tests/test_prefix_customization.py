@@ -7,7 +7,7 @@ Demonstrates the new configurable prefix formats for both directions.
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from mmrelay.matrix_utils import get_matrix_prefix, get_meshtastic_prefix
 
