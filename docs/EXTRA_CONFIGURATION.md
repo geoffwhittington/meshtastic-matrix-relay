@@ -38,7 +38,6 @@ matrix:
 - `{user}` - Full Matrix user ID (e.g., "@alice:matrix.org")
 - `{username}` - Username part only (e.g., "alice" from "@alice:matrix.org")
 - `{server}` - Server part only (e.g., "matrix.org" from "@alice:matrix.org")
-- `{M}` - Platform indicator ("M")
 
 **For Meshtastic → Matrix messages:**
 

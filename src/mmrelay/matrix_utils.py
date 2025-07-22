@@ -116,7 +116,7 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
     """
     Generate a Meshtastic message prefix using the configured format, supporting variable-length truncation and user-specific variables.
 
-    If prefix formatting is enabled in the configuration, returns a formatted prefix string for Meshtastic messages using the user's display name and optional Matrix user ID. Supports custom format strings with placeholders for the display name, truncated display name segments (e.g., `{display5}`), user ID, and a platform indicator. Falls back to a default format if the custom format is invalid or missing. Returns an empty string if prefixing is disabled.
+    If prefix formatting is enabled in the configuration, returns a formatted prefix string for Meshtastic messages using the user's display name and optional Matrix user ID. Supports custom format strings with placeholders for the display name, truncated display name segments (e.g., `{display5}`), and user ID components. Falls back to a default format if the custom format is invalid or missing. Returns an empty string if prefixing is disabled.
 
     Args:
         config (dict): The application configuration dictionary.
@@ -161,7 +161,6 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
         "user": user_id or "",
         "username": username,
         "server": server,
-        "M": "M",  # Platform indicator
     }
 
     # Add variable length display name truncation (display1, display2, display3, etc.)
@@ -174,9 +173,9 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
         logger.warning(
             f"Invalid prefix_format '{prefix_format}': {e}. Using default format."
         )
-        # The default format only uses 'display5' and 'M', which are safe to format
+        # The default format only uses 'display5', which is safe to format
         return DEFAULT_MESHTASTIC_PREFIX.format(
-            display5=display_name[:5] if display_name else "", M="M"
+            display5=display_name[:5] if display_name else ""
         )
 
 
