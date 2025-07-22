@@ -61,13 +61,13 @@ class BasePlugin(ABC):
     def __init__(self, plugin_name=None) -> None:
         """
         Initializes the plugin instance with configuration, logging, channel mapping, and response delay settings.
-        
+
         Parameters:
             plugin_name (str, optional): Overrides the plugin's name. If not provided, uses the class-level `plugin_name` attribute.
-        
+
         Raises:
             ValueError: If the plugin name is not set via parameter or class attribute.
-        
+
         Sets up a plugin-specific logger, loads configuration from the global config, validates and assigns channels, and determines the response delay based on configuration, enforcing a minimum of 2.0 seconds due to firmware constraints.
         """
         # Allow plugin_name to be passed as a parameter for simpler initialization
@@ -129,7 +129,9 @@ class BasePlugin(ABC):
             )
 
         # Get the response delay from the meshtastic config
-        self.response_delay = 2.1  # Default value (minimum 2 seconds due to firmware delay)
+        self.response_delay = (
+            2.1  # Default value (minimum 2 seconds due to firmware delay)
+        )
         if config is not None:
             meshtastic_config = config.get("meshtastic", {})
 
@@ -159,7 +161,7 @@ class BasePlugin(ABC):
     def start(self):
         """
         Starts the plugin and configures scheduled background tasks based on plugin settings.
-        
+
         If scheduling options are present in the plugin configuration, sets up periodic execution of the `background_job` method using the specified schedule. Runs scheduled jobs in a separate daemon thread. If no scheduling is configured, the plugin starts without background tasks.
         """
         if "schedule" not in self.config or (
@@ -235,9 +237,9 @@ class BasePlugin(ABC):
     def get_response_delay(self):
         """
         Return the configured delay in seconds before sending Meshtastic responses.
-        
+
         The delay is set via the `meshtastic.message_delay` configuration option, with a default of 2.1 seconds and a minimum enforced value of 2.0 seconds due to firmware requirements. The deprecated `meshtastic.plugin_response_delay` option is still supported but will be removed in a future version.
-        
+
         Returns:
             float: The response delay in seconds.
         """

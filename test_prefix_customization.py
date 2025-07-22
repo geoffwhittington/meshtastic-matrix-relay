@@ -4,20 +4,21 @@ Test script for prefix customization functionality.
 Demonstrates the new configurable prefix formats for both directions.
 """
 
-import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+import sys
 
-from mmrelay.matrix_utils import get_meshtastic_prefix, get_matrix_prefix
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+
+from mmrelay.matrix_utils import get_matrix_prefix, get_meshtastic_prefix
 
 
 def test_matrix_to_meshtastic_prefixes():
     """Test Matrix to Meshtastic prefix customization."""
     print("=== Matrix → Meshtastic Prefix Tests ===\n")
-    
+
     # Test data
     full_name = "Alice Smith"
-    
+
     # Test 1: Default configuration (enabled)
     config1 = {"meshtastic": {"prefix_enabled": True}}
     prefix1 = get_meshtastic_prefix(config1, full_name)
@@ -27,7 +28,7 @@ def test_matrix_to_meshtastic_prefixes():
     config2 = {"meshtastic": {"prefix_enabled": False}}
     prefix2 = get_meshtastic_prefix(config2, full_name)
     print(f"Disabled: '{prefix2}Hello world'")
-    
+
     # Test 3: Variable length truncation
     config3 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{name3}[M]: "}}
     prefix3 = get_meshtastic_prefix(config3, full_name)
@@ -42,12 +43,12 @@ def test_matrix_to_meshtastic_prefixes():
     config5 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{name8}> "}}
     prefix5 = get_meshtastic_prefix(config5, full_name, "@alice:matrix.org")
     print(f"8-char prompt: '{prefix5}Hello world'")
-    
+
     # Test 6: Invalid format (should fallback)
     config6 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{invalid}: "}}
     prefix6 = get_meshtastic_prefix(config6, full_name)
     print(f"Invalid format (fallback): '{prefix6}Hello world'")
-    
+
     print()
 
 
@@ -76,7 +77,9 @@ def test_meshtastic_to_matrix_prefixes():
     print(f"4-char longname: '{prefix3}Hello from mesh'")
 
     # Test 4: Custom format with truncated mesh
-    config4 = {"matrix": {"prefix_enabled": True, "prefix_format": "[{mesh6}] {short}: "}}
+    config4 = {
+        "matrix": {"prefix_enabled": True, "prefix_format": "[{mesh6}] {short}: "}
+    }
     prefix4 = get_matrix_prefix(config4, longname, shortname, meshnet)
     print(f"6-char mesh: '{prefix4}Hello from mesh'")
 
@@ -91,11 +94,11 @@ def test_meshtastic_to_matrix_prefixes():
 def test_prefix_symmetry():
     """Test prefix symmetry scenarios."""
     print("=== Prefix Symmetry Tests ===\n")
-    
+
     # Test scenario: Both directions disabled
     config_both_off = {
         "meshtastic": {"prefix_enabled": False},
-        "matrix": {"prefix_enabled": False}
+        "matrix": {"prefix_enabled": False},
     }
 
     m2m_prefix = get_meshtastic_prefix(config_both_off, "Alice Smith")
@@ -109,7 +112,7 @@ def test_prefix_symmetry():
     # Test scenario: Minimal custom formats
     config_minimal = {
         "meshtastic": {"prefix_enabled": True, "prefix_format": "{name4}: "},
-        "matrix": {"prefix_enabled": True, "prefix_format": "{short}: "}
+        "matrix": {"prefix_enabled": True, "prefix_format": "{short}: "},
     }
 
     m2m_prefix = get_meshtastic_prefix(config_minimal, "Alice Smith")
@@ -124,9 +127,12 @@ def test_prefix_symmetry():
 def test_edge_cases():
     """Test edge cases and error handling."""
     print("=== Edge Case Tests ===\n")
-    
+
     # Test with empty/None values
-    config = {"meshtastic": {"prefix_enabled": True}, "matrix": {"prefix_enabled": True}}
+    config = {
+        "meshtastic": {"prefix_enabled": True},
+        "matrix": {"prefix_enabled": True},
+    }
 
     # Empty names
     prefix1 = get_meshtastic_prefix(config, "")
@@ -139,7 +145,9 @@ def test_edge_cases():
     # Very long names
     long_name = "VeryLongUserNameThatExceedsNormalLimits"
     prefix3 = get_meshtastic_prefix(config, long_name)
-    prefix4 = get_matrix_prefix(config, long_name, long_name[:3], "VeryLongMeshNetworkName")
+    prefix4 = get_matrix_prefix(
+        config, long_name, long_name[:3], "VeryLongMeshNetworkName"
+    )
     print("Long names:")
     print(f"  Matrix→Mesh: '{prefix3}message'")
     print(f"  Mesh→Matrix: '{prefix4}message'")
@@ -148,10 +156,10 @@ def test_edge_cases():
 
 if __name__ == "__main__":
     print("Testing Prefix Customization System\n")
-    
+
     test_matrix_to_meshtastic_prefixes()
     test_meshtastic_to_matrix_prefixes()
     test_prefix_symmetry()
     test_edge_cases()
-    
+
     print("All tests completed!")
