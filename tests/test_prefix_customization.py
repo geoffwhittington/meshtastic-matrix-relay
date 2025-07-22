@@ -55,16 +55,10 @@ def test_matrix_to_meshtastic_prefixes():
     assert prefix6 == "alice@matrix.org: ", f"Username/server format failed: got '{prefix6}'"
     print("✓ Username/server format")
 
-    # Test 7: Legacy name variable (backward compatibility)
-    config7 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{name3}[M]: "}}
+    # Test 7: Invalid format (should fallback)
+    config7 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{invalid}: "}}
     prefix7 = get_meshtastic_prefix(config7, full_name)
-    assert prefix7 == "Ali[M]: ", f"Legacy name variable failed: got '{prefix7}'"
-    print("✓ Legacy name variable")
-
-    # Test 8: Invalid format (should fallback)
-    config8 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{invalid}: "}}
-    prefix8 = get_meshtastic_prefix(config8, full_name)
-    assert prefix8 == "Alice[M]: ", f"Invalid format (fallback) failed: got '{prefix8}'"
+    assert prefix7 == "Alice[M]: ", f"Invalid format (fallback) failed: got '{prefix7}'"
     print("✓ Invalid format (fallback)")
 
     print()

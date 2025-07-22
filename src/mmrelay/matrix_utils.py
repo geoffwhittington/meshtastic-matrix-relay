@@ -116,7 +116,7 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
     """
     Generate a Meshtastic message prefix using the configured format, supporting variable-length truncation and user-specific variables.
 
-    If prefix formatting is enabled in the configuration, returns a formatted prefix string for Meshtastic messages using the user's display name and optional Matrix user ID. Supports custom format strings with placeholders for the full name, truncated name segments (e.g., `{name5}`), user ID, and a platform indicator. Falls back to a default format if the custom format is invalid or missing. Returns an empty string if prefixing is disabled.
+    If prefix formatting is enabled in the configuration, returns a formatted prefix string for Meshtastic messages using the user's display name and optional Matrix user ID. Supports custom format strings with placeholders for the display name, truncated display name segments (e.g., `{display5}`), user ID, and a platform indicator. Falls back to a default format if the custom format is invalid or missing. Returns an empty string if prefixing is disabled.
 
     Args:
         config (dict): The application configuration dictionary.
@@ -162,14 +162,10 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
         "username": username,
         "server": server,
         "M": "M",  # Platform indicator
-        # Legacy support - keep "name" for backward compatibility
-        "name": display_name or "",
     }
 
     # Add variable length display name truncation (display1, display2, display3, etc.)
     _add_truncated_vars(format_vars, "display", display_name)
-    # Legacy support - keep "name" truncations for backward compatibility
-    _add_truncated_vars(format_vars, "name", display_name)
 
     try:
         return prefix_format.format(**format_vars)
