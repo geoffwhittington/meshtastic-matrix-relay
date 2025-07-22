@@ -81,20 +81,92 @@ def message_storage_enabled(interactions):
     return interactions["reactions"] or interactions["replies"]
 
 
-def get_meshtastic_prefix(config, short_display_name):
+def get_meshtastic_prefix(config, display_name, user_id=None):
     """
     Returns the Meshtastic prefix for messages based on the configuration.
 
     Args:
         config (dict): The application configuration dictionary.
-        short_display_name (str): The truncated display name to include in the prefix.
+        display_name (str): The user's display name (room-specific or global).
+        user_id (str, optional): The user's Matrix ID (@user:server.com).
 
     Returns:
         str: The formatted prefix string if enabled, empty string otherwise.
     """
-    if config.get("meshtastic", {}).get("prefix_enabled", True):
-        return f"{short_display_name}[M]: "
-    return ""
+    meshtastic_config = config.get("meshtastic", {})
+
+    # Check if prefixes are enabled
+    if not meshtastic_config.get("prefix_enabled", True):
+        return ""
+
+    # Get custom format or use default
+    prefix_format = meshtastic_config.get("prefix_format", "{name5}[M]: ")
+
+    # Available variables for formatting with variable length support
+    format_vars = {
+        "name": display_name,
+        "user": user_id or "",
+        "M": "M",  # Platform indicator
+    }
+
+    # Add variable length name truncation (name1, name2, name3, etc.)
+    if display_name:
+        for i in range(1, min(len(display_name) + 1, 21)):  # Support up to 20 chars
+            format_vars[f"name{i}"] = display_name[:i]
+
+    try:
+        return prefix_format.format(**format_vars)
+    except (KeyError, ValueError) as e:
+        # Fallback to default format if custom format is invalid
+        logger.warning(f"Invalid prefix_format '{prefix_format}': {e}. Using default format.")
+        return f"{display_name[:5]}[M]: " if display_name else "[M]: "
+
+
+def get_matrix_prefix(config, longname, shortname, meshnet_name):
+    """
+    Returns the Matrix prefix for Meshtastic messages based on configuration.
+
+    Args:
+        config (dict): The application configuration dictionary.
+        longname (str): The long name of the Meshtastic sender.
+        shortname (str): The short name of the Meshtastic sender.
+        meshnet_name (str): The name of the mesh network.
+
+    Returns:
+        str: The formatted prefix string if enabled, empty string otherwise.
+    """
+    matrix_config = config.get("matrix", {})
+
+    # Check if prefixes are enabled for Matrix direction
+    if not matrix_config.get("prefix_enabled", True):
+        return ""
+
+    # Get custom format or use default
+    matrix_prefix_format = matrix_config.get("prefix_format", "[{long}/{mesh}]: ")
+
+    # Available variables for formatting with variable length support
+    format_vars = {
+        "long": longname,
+        "short": shortname,
+        "mesh": meshnet_name,
+    }
+
+    # Add variable length truncation for longname (long1, long2, long3, etc.)
+    if longname:
+        for i in range(1, min(len(longname) + 1, 21)):  # Support up to 20 chars
+            format_vars[f"long{i}"] = longname[:i]
+
+    # Add variable length truncation for mesh name (mesh1, mesh2, mesh3, etc.)
+    if meshnet_name:
+        for i in range(1, min(len(meshnet_name) + 1, 21)):  # Support up to 20 chars
+            format_vars[f"mesh{i}"] = meshnet_name[:i]
+
+    try:
+        return matrix_prefix_format.format(**format_vars)
+    except (KeyError, ValueError) as e:
+        # Fallback to default format if custom format is invalid
+        logger.warning(f"Invalid matrix prefix_format '{matrix_prefix_format}': {e}. Using default format.")
+        return f"[{longname}/{meshnet_name}]: "
 
 
 # Global config variable that will be set from config.py
@@ -488,8 +560,7 @@ def format_reply_message(config, full_display_name, text):
     Returns:
         str: The formatted and truncated reply message.
     """
-    short_display_name = full_display_name[:5]
-    prefix = get_meshtastic_prefix(config, short_display_name)
+    prefix = get_meshtastic_prefix(config, full_display_name)
 
     # Strip quoted content from the reply text
     clean_text = strip_quoted_lines(text)
@@ -841,8 +912,7 @@ async def on_room_message(
                 full_display_name = display_name_response.displayname or event.sender
 
             # If not from a remote meshnet, proceed as normal to relay back to the originating meshnet
-            short_display_name = full_display_name[:5]
-            prefix = get_meshtastic_prefix(config, short_display_name)
+            prefix = get_meshtastic_prefix(config, full_display_name)
 
             # Remove quoted lines so we don't bring in the original '>' lines from replies
             meshtastic_text_db = strip_quoted_lines(meshtastic_text_db)
@@ -928,8 +998,7 @@ async def on_room_message(
             # Fallback to global display name if room-specific name is not available
             display_name_response = await matrix_client.get_displayname(event.sender)
             full_display_name = display_name_response.displayname or event.sender
-        short_display_name = full_display_name[:5]
-        prefix = get_meshtastic_prefix(config, short_display_name)
+        prefix = get_meshtastic_prefix(config, full_display_name, event.sender)
         logger.debug(f"Processing matrix message from [{full_display_name}]: {text}")
         full_message = f"{prefix}{text}"
         text = truncate_message(text)

@@ -3,6 +3,10 @@ matrix:
   access_token: reaalllllyloooooongsecretttttcodeeeeeeforrrrbot # See: https://t2bot.io/docs/access_tokens/
   bot_user_id: "@botuser:example.matrix.org"
 
+  # Message prefix customization (Meshtastic → Matrix direction)
+  #prefix_enabled: true # Enable prefixes on messages from mesh (e.g., "[Alice/MyMesh]: message")
+  #prefix_format: "[{long}/{mesh}]: " # Default format. Variables: {long1-20}, {long}, {short}, {mesh1-20}, {mesh}
+
 matrix_rooms: # Needs at least 1 room & channel, but supports all Meshtastic channels
   - id: "#someroomalias:example.matrix.org" # Matrix room aliases & IDs supported
     meshtastic_channel: 0
@@ -30,8 +34,10 @@ meshtastic:
   #broadcast_enabled: true # Must be set to true to enable Matrix to Meshtastic messages
   #detection_sensor: true # Must be set to true to forward messages of Meshtastic's detection sensor module
   #message_delay: 2.2 # Delay in seconds before sending messages to mesh (minimum: 2.0 due to firmware)
-  #prefix_enabled: true # Add username prefix (e.g., "Alice[M]: ") to Matrix->Meshtastic messages
-  #plugin_response_delay: 2.1 # DEPRECATED: Use message_delay instead. Will be removed in future version.
+
+  # Message prefix customization (Matrix → Meshtastic direction)
+  #prefix_enabled: true # Enable username prefixes on messages sent to mesh (e.g., "Alice[M]: message")
+  #prefix_format: "{name5}[M]: " # Default format (10 chars total). Variables: {name1-20}, {name}, {user}, {M}
 
 logging:
   level: info

@@ -562,7 +562,12 @@ def on_meshtastic_message(packet, interface):
         if not shortname:
             shortname = str(sender)
 
-        formatted_message = f"[{longname}/{meshnet_name}]: {text}"
+        # Import the matrix prefix function
+        from mmrelay.matrix_utils import get_matrix_prefix
+
+        # Get the formatted prefix
+        prefix = get_matrix_prefix(config, longname, shortname, meshnet_name)
+        formatted_message = f"{prefix}{text}"
 
         # Plugin functionality - Check if any plugin handles this message before relaying
         from mmrelay.plugin_loader import load_plugins
