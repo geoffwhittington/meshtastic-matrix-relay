@@ -132,7 +132,7 @@ def test_prefix_symmetry():
 
     # Test scenario: Minimal custom formats
     config_minimal = {
-        "meshtastic": {"prefix_enabled": True, "prefix_format": "{name4}: "},
+        "meshtastic": {"prefix_enabled": True, "prefix_format": "{display4}: "},
         "matrix": {"prefix_enabled": True, "prefix_format": "{short}: "},
     }
 
