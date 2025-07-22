@@ -16,17 +16,16 @@ def test_matrix_to_meshtastic_prefixes():
     print("=== Matrix → Meshtastic Prefix Tests ===\n")
     
     # Test data
-    short_name = "Alice"
     full_name = "Alice Smith"
     
     # Test 1: Default configuration (enabled)
     config1 = {"meshtastic": {"prefix_enabled": True}}
-    prefix1 = get_meshtastic_prefix(config1, short_name, full_name)
+    prefix1 = get_meshtastic_prefix(config1, full_name)
     print(f"Default format: '{prefix1}Hello world'")
-    
+
     # Test 2: Disabled prefixes
     config2 = {"meshtastic": {"prefix_enabled": False}}
-    prefix2 = get_meshtastic_prefix(config2, short_name, full_name)
+    prefix2 = get_meshtastic_prefix(config2, full_name)
     print(f"Disabled: '{prefix2}Hello world'")
     
     # Test 3: Variable length truncation
@@ -99,7 +98,7 @@ def test_prefix_symmetry():
         "matrix": {"prefix_enabled": False}
     }
 
-    m2m_prefix = get_meshtastic_prefix(config_both_off, "Alice", "Alice Smith")
+    m2m_prefix = get_meshtastic_prefix(config_both_off, "Alice Smith")
     mesh2m_prefix = get_matrix_prefix(config_both_off, "Bob", "Bob", "TestMesh")
 
     print("Both disabled:")

@@ -78,6 +78,13 @@ def message_storage_enabled(interactions):
     return interactions["reactions"] or interactions["replies"]
 
 
+def _add_truncated_vars(format_vars, prefix, text):
+    """Helper function to add variable length truncation variables to format_vars dict."""
+    if text:
+        for i in range(1, min(len(text) + 1, 21)):  # Support up to 20 chars
+            format_vars[f"{prefix}{i}"] = text[:i]
+
+
 def get_meshtastic_prefix(config, display_name, user_id=None):
     """
     Generate a Meshtastic message prefix using the configured format, supporting variable-length truncation and user-specific variables.
@@ -100,9 +107,7 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
     }
 
     # Add variable length name truncation (name1, name2, name3, etc.)
-    if display_name:
-        for i in range(1, min(len(display_name) + 1, 21)):  # Support up to 20 chars
-            format_vars[f"name{i}"] = display_name[:i]
+    _add_truncated_vars(format_vars, "name", display_name)
 
     try:
         return prefix_format.format(**format_vars)
@@ -115,14 +120,16 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
 def get_matrix_prefix(config, longname, shortname, meshnet_name):
     """
     Generate a formatted prefix for Meshtastic messages relayed to Matrix, using configurable templates and variable-length truncation for sender and mesh network names.
-    
+
     Parameters:
+        config (dict): The application configuration dictionary.
         longname (str): Full Meshtastic sender name.
         shortname (str): Short Meshtastic sender name.
         meshnet_name (str): Name of the mesh network.
-    
+
     Returns:
         str: The formatted prefix string if prefixing is enabled; otherwise, an empty string.
+    """
     """
     matrix_config = config.get("matrix", {})
 
@@ -140,15 +147,9 @@ def get_matrix_prefix(config, longname, shortname, meshnet_name):
         "mesh": meshnet_name,
     }
 
-    # Add variable length truncation for longname (long1, long2, long3, etc.)
-    if longname:
-        for i in range(1, min(len(longname) + 1, 21)):  # Support up to 20 chars
-            format_vars[f"long{i}"] = longname[:i]
-
-    # Add variable length truncation for mesh name (mesh1, mesh2, mesh3, etc.)
-    if meshnet_name:
-        for i in range(1, min(len(meshnet_name) + 1, 21)):  # Support up to 20 chars
-            format_vars[f"mesh{i}"] = meshnet_name[:i]
+    # Add variable length truncation for longname and mesh name
+    _add_truncated_vars(format_vars, "long", longname)
+    _add_truncated_vars(format_vars, "mesh", meshnet_name)
 
     try:
         return matrix_prefix_format.format(**format_vars)
