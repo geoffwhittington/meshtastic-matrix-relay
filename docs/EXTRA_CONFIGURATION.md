@@ -9,6 +9,7 @@ MMRelay allows you to customize how sender names appear in relayed messages betw
 ### Default Behavior
 
 By default, MMRelay adds prefixes to identify message sources:
+
 - **Matrix → Meshtastic**: `Alice[M]: Hello world` (sender name + platform indicator)
 - **Meshtastic → Matrix**: `[Alice/MyMesh]: Hello world` (sender name + mesh network)
 
@@ -19,24 +20,26 @@ You can customize these prefixes by adding configuration options to your `config
 ```yaml
 # Matrix → Meshtastic direction
 meshtastic:
-  prefix_enabled: true                    # Enable/disable prefixes (default: true)
-  prefix_format: "{name5}[M]: "          # Custom format (default shown)
+  prefix_enabled: true # Enable/disable prefixes (default: true)
+  prefix_format: "{name5}[M]: " # Custom format (default shown)
 
-# Meshtastic → Matrix direction  
+# Meshtastic → Matrix direction
 matrix:
-  prefix_enabled: true                    # Enable/disable prefixes (default: true)
-  prefix_format: "[{long}/{mesh}]: "     # Custom format (default shown)
+  prefix_enabled: true # Enable/disable prefixes (default: true)
+  prefix_format: "[{long}/{mesh}]: " # Custom format (default shown)
 ```
 
 ### Available Variables
 
 **For Matrix → Meshtastic messages:**
+
 - `{name}` - Full display name (e.g., "Alice Smith")
 - `{name5}`, `{name10}`, etc. - Truncated names (e.g., "Alice", "Alice Smit")
 - `{user}` - Matrix user ID (e.g., "@alice:matrix.org")
 - `{M}` - Platform indicator ("M")
 
 **For Meshtastic → Matrix messages:**
+
 - `{long}` - Full long name from Meshtastic device
 - `{long4}`, `{long8}`, etc. - Truncated long names
 - `{short}` - Short name from Meshtastic device (usually 2-4 characters)
@@ -46,30 +49,33 @@ matrix:
 ### Example Customizations
 
 **Shorter prefixes to save message space:**
+
 ```yaml
 meshtastic:
-  prefix_format: "{name3}> "              # "Ali> Hello world" (5 chars)
-  
+  prefix_format: "{name3}> " # "Ali> Hello world" (5 chars)
+
 matrix:
-  prefix_format: "({long4}): "            # "(Alic): Hello world" (8 chars)
+  prefix_format: "({long4}): " # "(Alic): Hello world" (8 chars)
 ```
 
 **Different styles:**
+
 ```yaml
 meshtastic:
-  prefix_format: "{name}→ "               # "Alice Smith→ Hello world"
-  
+  prefix_format: "{name}→ " # "Alice Smith→ Hello world"
+
 matrix:
-  prefix_format: "[{mesh6}] {short}: "    # "[MyMesh] Ali: Hello world"
+  prefix_format: "[{mesh6}] {short}: " # "[MyMesh] Ali: Hello world"
 ```
 
 **Disable prefixes entirely:**
+
 ```yaml
 meshtastic:
-  prefix_enabled: false                   # No prefixes on messages to mesh
+  prefix_enabled: false # No prefixes on messages to mesh
 
 matrix:
-  prefix_enabled: false                   # No prefixes on messages to Matrix
+  prefix_enabled: false # No prefixes on messages to Matrix
 ```
 
 ### Character Efficiency Tips
@@ -82,6 +88,7 @@ matrix:
 ### Error Handling
 
 If you specify an invalid format (like `{invalid_variable}`), MMRelay will:
+
 1. Log a warning message
 2. Fall back to the default format
 3. Continue operating normally
@@ -102,9 +109,9 @@ Add to your `config.yaml`:
 logging:
   level: info
   debug:
-    matrix_nio: true     # Enable matrix-nio debug logging
-    bleak: true          # Enable BLE debug logging
-    meshtastic: true     # Enable meshtastic library debug logging
+    matrix_nio: true # Enable matrix-nio debug logging
+    bleak: true # Enable BLE debug logging
+    meshtastic: true # Enable meshtastic library debug logging
 ```
 
 ### What it does
@@ -112,16 +119,19 @@ logging:
 When enabled, this will set the following loggers to DEBUG level:
 
 **matrix_nio: true**
+
 - `nio` - Main matrix-nio logger
 - `nio.client` - Matrix client operations
 - `nio.http` - HTTP requests/responses
 - `nio.crypto` - Encryption/decryption operations
 
 **bleak: true**
+
 - `bleak` - Main BLE library logger
 - `bleak.backends` - Platform-specific BLE backends
 
 **meshtastic: true**
+
 - `meshtastic` - Main meshtastic library logger
 - `meshtastic.serial_interface` - Serial connection debugging
 - `meshtastic.tcp_interface` - TCP connection debugging
@@ -137,18 +147,21 @@ When enabled, this will set the following loggers to DEBUG level:
 ### Example Output
 
 **With `matrix_nio: true`, you'll see detailed logs like:**
+
 ```log
 DEBUG:nio.http:Sending POST request to https://matrix.org/_matrix/client/r0/sync
 DEBUG:nio.client:Received sync response with 5 rooms
 ```
 
 **With `bleak: true`, you'll see BLE operations:**
+
 ```log
 DEBUG:bleak:Scanning for BLE devices...
 DEBUG:bleak.backends:Found device: AA:BB:CC:DD:EE:FF
 ```
 
 **With `meshtastic: true`, you'll see device communication:**
+
 ```log
 DEBUG:meshtastic:Sending packet to device
 DEBUG:meshtastic.ble_interface:BLE characteristic write completed

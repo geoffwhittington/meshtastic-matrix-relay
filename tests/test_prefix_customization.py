@@ -70,7 +70,9 @@ def test_meshtastic_to_matrix_prefixes():
     # Test 1: Default configuration (enabled)
     config1 = {"matrix": {"prefix_enabled": True}}
     prefix1 = get_matrix_prefix(config1, longname, shortname, meshnet)
-    assert prefix1 == "[Alice/MyMeshNetwork]: ", f"Default format failed: got '{prefix1}'"
+    assert (
+        prefix1 == "[Alice/MyMeshNetwork]: "
+    ), f"Default format failed: got '{prefix1}'"
     print("✓ Default format")
 
     # Test 2: Disabled prefixes
@@ -96,7 +98,9 @@ def test_meshtastic_to_matrix_prefixes():
     # Test 5: Invalid format (should fallback)
     config5 = {"matrix": {"prefix_enabled": True, "prefix_format": "{invalid}: "}}
     prefix5 = get_matrix_prefix(config5, longname, shortname, meshnet)
-    assert prefix5 == "[Alice/MyMeshNetwork]: ", f"Invalid format (fallback) failed: got '{prefix5}'"
+    assert (
+        prefix5 == "[Alice/MyMeshNetwork]: "
+    ), f"Invalid format (fallback) failed: got '{prefix5}'"
     print("✓ Invalid format (fallback)")
 
     print()

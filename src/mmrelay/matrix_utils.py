@@ -163,7 +163,9 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
             f"Invalid prefix_format '{prefix_format}': {e}. Using default format."
         )
         # The default format only uses 'name5' and 'M', which are safe to format
-        return DEFAULT_MESHTASTIC_PREFIX.format(name5=display_name[:5] if display_name else "", M="M")
+        return DEFAULT_MESHTASTIC_PREFIX.format(
+            name5=display_name[:5] if display_name else "", M="M"
+        )
 
 
 def get_matrix_prefix(config, longname, shortname, meshnet_name):
@@ -192,7 +194,9 @@ def get_matrix_prefix(config, longname, shortname, meshnet_name):
     matrix_config = config.get("matrix", {})
 
     # Enhanced debug logging for configuration troubleshooting
-    logger.debug(f"get_matrix_prefix called with longname='{longname}', shortname='{shortname}', meshnet_name='{meshnet_name}'")
+    logger.debug(
+        f"get_matrix_prefix called with longname='{longname}', shortname='{shortname}', meshnet_name='{meshnet_name}'"
+    )
     logger.debug(f"Matrix config section: {matrix_config}")
 
     # Check if prefixes are enabled for Matrix direction
@@ -202,7 +206,9 @@ def get_matrix_prefix(config, longname, shortname, meshnet_name):
 
     # Get custom format or use default
     matrix_prefix_format = matrix_config.get("prefix_format", DEFAULT_MATRIX_PREFIX)
-    logger.debug(f"Using matrix prefix format: '{matrix_prefix_format}' (default: '{DEFAULT_MATRIX_PREFIX}')")
+    logger.debug(
+        f"Using matrix prefix format: '{matrix_prefix_format}' (default: '{DEFAULT_MATRIX_PREFIX}')"
+    )
 
     # Available variables for formatting with variable length support
     format_vars = {
@@ -217,10 +223,14 @@ def get_matrix_prefix(config, longname, shortname, meshnet_name):
 
     try:
         result = matrix_prefix_format.format(**format_vars)
-        logger.debug(f"Matrix prefix generated: '{result}' using format '{matrix_prefix_format}' with vars {format_vars}")
+        logger.debug(
+            f"Matrix prefix generated: '{result}' using format '{matrix_prefix_format}' with vars {format_vars}"
+        )
         # Additional debug to help identify the issue
         if result == f"[{longname}/{meshnet_name}]: ":
-            logger.warning(f"Generated prefix matches default format - check if custom configuration is being loaded correctly")
+            logger.warning(
+                "Generated prefix matches default format - check if custom configuration is being loaded correctly"
+            )
         return result
     except (KeyError, ValueError) as e:
         # Fallback to default format if custom format is invalid
@@ -228,7 +238,9 @@ def get_matrix_prefix(config, longname, shortname, meshnet_name):
             f"Invalid matrix prefix_format '{matrix_prefix_format}': {e}. Using default format."
         )
         # The default format only uses 'long' and 'mesh', which are safe
-        return DEFAULT_MATRIX_PREFIX.format(long=longname or "", mesh=meshnet_name or "")
+        return DEFAULT_MATRIX_PREFIX.format(
+            long=longname or "", mesh=meshnet_name or ""
+        )
 
 
 # Global config variable that will be set from config.py
@@ -1045,10 +1057,14 @@ async def on_room_message(
                 shortname = longname[:3] if longname else "???"
             # Remove the original prefix to avoid double-tagging
             # Get the prefix that would have been used for this message
-            original_prefix = get_matrix_prefix(config, longname, shortname, meshnet_name)
+            original_prefix = get_matrix_prefix(
+                config, longname, shortname, meshnet_name
+            )
             if original_prefix and text.startswith(original_prefix):
-                text = text[len(original_prefix):]
-                logger.debug(f"Removed original prefix '{original_prefix}' from remote meshnet message")
+                text = text[len(original_prefix) :]
+                logger.debug(
+                    f"Removed original prefix '{original_prefix}' from remote meshnet message"
+                )
             text = truncate_message(text)
             # Use the configured prefix format for remote meshnet messages
             prefix = get_matrix_prefix(config, longname, shortname, short_meshnet_name)

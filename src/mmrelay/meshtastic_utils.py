@@ -439,7 +439,9 @@ def on_meshtastic_message(packet, interface):
             prefix = get_matrix_prefix(config, longname, shortname, meshnet_name)
 
             reaction_symbol = text.strip() if (text and text.strip()) else "⚠️"
-            reaction_message = f'\n {prefix}reacted {reaction_symbol} to "{abbreviated_text}"'
+            reaction_message = (
+                f'\n {prefix}reacted {reaction_symbol} to "{abbreviated_text}"'
+            )
 
             # Relay the reaction as emote to Matrix, preserving the original meshnet name
             asyncio.run_coroutine_threadsafe(
