@@ -88,7 +88,7 @@ def _add_truncated_vars(format_vars, prefix, text):
     text = text or ""  # Convert None to empty string
     logger.debug(f"Adding truncated vars for prefix='{prefix}', text='{text}'")
     for i in range(1, 21):  # Support up to 20 chars, always add all variants
-        truncated_value = text[:i] if len(text) >= i else text
+        truncated_value = text[:i]
         format_vars[f"{prefix}{i}"] = truncated_value
         if i <= 6:  # Only log first few to avoid spam
             logger.debug(f"  {prefix}{i} = '{truncated_value}'")
@@ -244,7 +244,7 @@ def get_matrix_prefix(config, longname, shortname, meshnet_name):
         )
         # Additional debug to help identify the issue
         if result == f"[{longname}/{meshnet_name}]: ":
-            logger.warning(
+            logger.debug(
                 "Generated prefix matches default format - check if custom configuration is being loaded correctly"
             )
         return result

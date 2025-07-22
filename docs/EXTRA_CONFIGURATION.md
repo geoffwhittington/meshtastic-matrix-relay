@@ -21,7 +21,7 @@ You can customize these prefixes by adding configuration options to your `config
 # Matrix → Meshtastic direction
 meshtastic:
   prefix_enabled: true # Enable/disable prefixes (default: true)
-  prefix_format: "{name5}[M]: " # Custom format (default shown)
+  prefix_format: "{display5}[M]: " # Custom format (default shown)
 
 # Meshtastic → Matrix direction
 matrix:
