@@ -186,12 +186,18 @@ def get_matrix_prefix(config, longname, shortname, meshnet_name):
     """
     matrix_config = config.get("matrix", {})
 
+    # Enhanced debug logging for configuration troubleshooting
+    logger.debug(f"get_matrix_prefix called with longname='{longname}', shortname='{shortname}', meshnet_name='{meshnet_name}'")
+    logger.debug(f"Matrix config section: {matrix_config}")
+
     # Check if prefixes are enabled for Matrix direction
     if not matrix_config.get("prefix_enabled", True):
+        logger.debug("Matrix prefixes are disabled, returning empty string")
         return ""
 
     # Get custom format or use default
     matrix_prefix_format = matrix_config.get("prefix_format", DEFAULT_MATRIX_PREFIX)
+    logger.debug(f"Using matrix prefix format: '{matrix_prefix_format}' (default: '{DEFAULT_MATRIX_PREFIX}')")
 
     # Available variables for formatting with variable length support
     format_vars = {
@@ -207,6 +213,9 @@ def get_matrix_prefix(config, longname, shortname, meshnet_name):
     try:
         result = matrix_prefix_format.format(**format_vars)
         logger.debug(f"Matrix prefix generated: '{result}' using format '{matrix_prefix_format}' with vars {format_vars}")
+        # Additional debug to help identify the issue
+        if result == f"[{longname}/{meshnet_name}]: ":
+            logger.warning(f"Generated prefix matches default format - check if custom configuration is being loaded correctly")
         return result
     except (KeyError, ValueError) as e:
         # Fallback to default format if custom format is invalid
