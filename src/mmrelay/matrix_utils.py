@@ -78,6 +78,31 @@ def message_storage_enabled(interactions):
     return interactions["reactions"] or interactions["replies"]
 
 
+def _add_truncated_vars(format_vars, prefix, text):
+    """Helper function to add variable length truncation variables to format_vars dict."""
+    if text:
+        for i in range(1, min(len(text) + 1, 21)):  # Support up to 20 chars
+            format_vars[f"{prefix}{i}"] = text[:i]
+
+
+def validate_prefix_format(format_string, available_vars):
+    """Validate prefix format string against available variables.
+
+    Args:
+        format_string (str): The format string to validate.
+        available_vars (dict): Dictionary of available variables with test values.
+
+    Returns:
+        tuple: (is_valid: bool, error_message: str or None)
+    """
+    try:
+        # Test format with dummy data
+        format_string.format(**available_vars)
+        return True, None
+    except (KeyError, ValueError) as e:
+        return False, str(e)
+
+
 def get_meshtastic_prefix(config, display_name, user_id=None):
     """
     Generate a Meshtastic message prefix using the configured format, supporting variable-length truncation and user-specific variables.
@@ -91,6 +116,16 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
 
     Returns:
         str: The formatted prefix string if enabled, empty string otherwise.
+
+    Examples:
+        Basic usage:
+            get_meshtastic_prefix(config, "Alice Smith")
+            # Returns: "Alice[M]: " (with default format)
+
+        Custom format:
+            config = {"meshtastic": {"prefix_format": "{name8}> "}}
+            get_meshtastic_prefix(config, "Alice Smith")
+            # Returns: "Alice Sm> "
     """
     meshtastic_config = config.get("meshtastic", {})
 
@@ -109,9 +144,7 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
     }
 
     # Add variable length name truncation (name1, name2, name3, etc.)
-    if display_name:
-        for i in range(1, min(len(display_name) + 1, 21)):  # Support up to 20 chars
-            format_vars[f"name{i}"] = display_name[:i]
+    _add_truncated_vars(format_vars, "name", display_name)
 
     try:
         return prefix_format.format(**format_vars)
@@ -135,6 +168,16 @@ def get_matrix_prefix(config, longname, shortname, meshnet_name):
 
     Returns:
         str: The formatted prefix string if prefixing is enabled; otherwise, an empty string.
+
+    Examples:
+        Basic usage:
+            get_matrix_prefix(config, "Alice", "Ali", "MyMesh")
+            # Returns: "[Alice/MyMesh]: " (with default format)
+
+        Custom format:
+            config = {"matrix": {"prefix_format": "({long4}): "}}
+            get_matrix_prefix(config, "Alice", "Ali", "MyMesh")
+            # Returns: "(Alic): "
     """
     matrix_config = config.get("matrix", {})
 
@@ -152,15 +195,9 @@ def get_matrix_prefix(config, longname, shortname, meshnet_name):
         "mesh": meshnet_name,
     }
 
-    # Add variable length truncation for longname (long1, long2, long3, etc.)
-    if longname:
-        for i in range(1, min(len(longname) + 1, 21)):  # Support up to 20 chars
-            format_vars[f"long{i}"] = longname[:i]
-
-    # Add variable length truncation for mesh name (mesh1, mesh2, mesh3, etc.)
-    if meshnet_name:
-        for i in range(1, min(len(meshnet_name) + 1, 21)):  # Support up to 20 chars
-            format_vars[f"mesh{i}"] = meshnet_name[:i]
+    # Add variable length truncation for longname and mesh name
+    _add_truncated_vars(format_vars, "long", longname)
+    _add_truncated_vars(format_vars, "mesh", meshnet_name)
 
     try:
         return matrix_prefix_format.format(**format_vars)

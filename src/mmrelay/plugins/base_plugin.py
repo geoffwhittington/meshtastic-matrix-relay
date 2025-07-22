@@ -135,26 +135,26 @@ class BasePlugin(ABC):
         if config is not None:
             meshtastic_config = config.get("meshtastic", {})
 
-            # Check for new message_delay option first
+            # Check for new message_delay option first, with fallback to deprecated option
+            delay = None
+            delay_key = None
             if "message_delay" in meshtastic_config:
-                self.response_delay = meshtastic_config["message_delay"]
-                # Enforce minimum delay of 2 seconds due to firmware constraints
-                if self.response_delay < 2.0:
-                    self.logger.warning(
-                        f"message_delay of {self.response_delay}s is below minimum of 2.0s (firmware constraint). Using 2.0s."
-                    )
-                    self.response_delay = 2.0
-            # Check for deprecated plugin_response_delay option
+                delay = meshtastic_config["message_delay"]
+                delay_key = "message_delay"
             elif "plugin_response_delay" in meshtastic_config:
-                self.response_delay = meshtastic_config["plugin_response_delay"]
+                delay = meshtastic_config["plugin_response_delay"]
+                delay_key = "plugin_response_delay"
                 self.logger.warning(
                     "Configuration option 'plugin_response_delay' is deprecated. "
                     "Please use 'message_delay' instead. Support for 'plugin_response_delay' will be removed in a future version."
                 )
+
+            if delay is not None:
+                self.response_delay = delay
                 # Enforce minimum delay of 2 seconds due to firmware constraints
                 if self.response_delay < 2.0:
                     self.logger.warning(
-                        f"plugin_response_delay of {self.response_delay}s is below minimum of 2.0s (firmware constraint). Using 2.0s."
+                        f"{delay_key} of {self.response_delay}s is below minimum of 2.0s (firmware constraint). Using 2.0s."
                     )
                     self.response_delay = 2.0
 
