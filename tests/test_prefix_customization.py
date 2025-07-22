@@ -32,27 +32,39 @@ def test_matrix_to_meshtastic_prefixes():
     print("✓ Disabled prefixes")
 
     # Test 3: Variable length truncation
-    config3 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{name3}[M]: "}}
+    config3 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{display3}[M]: "}}
     prefix3 = get_meshtastic_prefix(config3, full_name)
-    assert prefix3 == "Ali[M]: ", f"3-char name failed: got '{prefix3}'"
-    print("✓ 3-char name")
+    assert prefix3 == "Ali[M]: ", f"3-char display name failed: got '{prefix3}'"
+    print("✓ 3-char display name")
 
-    # Test 4: Custom format with full name
-    config4 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "[{name}]: "}}
+    # Test 4: Custom format with full display name
+    config4 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "[{display}]: "}}
     prefix4 = get_meshtastic_prefix(config4, full_name)
-    assert prefix4 == "[Alice Smith]: ", f"Full name brackets failed: got '{prefix4}'"
-    print("✓ Full name brackets")
+    assert prefix4 == "[Alice Smith]: ", f"Full display name brackets failed: got '{prefix4}'"
+    print("✓ Full display name brackets")
 
     # Test 5: Custom format with user ID
-    config5 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{name8}> "}}
+    config5 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{display8}> "}}
     prefix5 = get_meshtastic_prefix(config5, full_name, "@alice:matrix.org")
     assert prefix5 == "Alice Sm> ", f"8-char prompt failed: got '{prefix5}'"
     print("✓ 8-char prompt")
 
-    # Test 6: Invalid format (should fallback)
-    config6 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{invalid}: "}}
-    prefix6 = get_meshtastic_prefix(config6, full_name)
-    assert prefix6 == "Alice[M]: ", f"Invalid format (fallback) failed: got '{prefix6}'"
+    # Test 6: Username and server variables
+    config6 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{username}@{server}: "}}
+    prefix6 = get_meshtastic_prefix(config6, full_name, "@alice:matrix.org")
+    assert prefix6 == "alice@matrix.org: ", f"Username/server format failed: got '{prefix6}'"
+    print("✓ Username/server format")
+
+    # Test 7: Legacy name variable (backward compatibility)
+    config7 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{name3}[M]: "}}
+    prefix7 = get_meshtastic_prefix(config7, full_name)
+    assert prefix7 == "Ali[M]: ", f"Legacy name variable failed: got '{prefix7}'"
+    print("✓ Legacy name variable")
+
+    # Test 8: Invalid format (should fallback)
+    config8 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{invalid}: "}}
+    prefix8 = get_meshtastic_prefix(config8, full_name)
+    assert prefix8 == "Alice[M]: ", f"Invalid format (fallback) failed: got '{prefix8}'"
     print("✓ Invalid format (fallback)")
 
     print()

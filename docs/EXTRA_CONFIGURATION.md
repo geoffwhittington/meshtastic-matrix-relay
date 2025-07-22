@@ -33,9 +33,11 @@ matrix:
 
 **For Matrix → Meshtastic messages:**
 
-- `{name}` - Full display name (e.g., "Alice Smith")
-- `{name5}`, `{name10}`, etc. - Truncated names (e.g., "Alice", "Alice Smit")
-- `{user}` - Matrix user ID (e.g., "@alice:matrix.org")
+- `{display}` - Display name (room-specific if set, otherwise global display name)
+- `{display5}`, `{display10}`, etc. - Truncated display names (e.g., "Alice", "Alice Smit")
+- `{user}` - Full Matrix user ID (e.g., "@alice:matrix.org")
+- `{username}` - Username part only (e.g., "alice" from "@alice:matrix.org")
+- `{server}` - Server part only (e.g., "matrix.org" from "@alice:matrix.org")
 - `{M}` - Platform indicator ("M")
 
 **For Meshtastic → Matrix messages:**
@@ -52,7 +54,7 @@ matrix:
 
 ```yaml
 meshtastic:
-  prefix_format: "{name3}> " # "Ali> Hello world" (5 chars)
+  prefix_format: "{display3}> " # "Ali> Hello world" (5 chars)
 
 matrix:
   prefix_format: "({long4}): " # "(Alic): Hello world" (8 chars)
@@ -62,7 +64,7 @@ matrix:
 
 ```yaml
 meshtastic:
-  prefix_format: "{name}→ " # "Alice Smith→ Hello world"
+  prefix_format: "{display}→ " # "Alice Smith→ Hello world"
 
 matrix:
   prefix_format: "[{mesh6}] {short}: " # "[MyMesh] Ali: Hello world"
@@ -81,7 +83,7 @@ matrix:
 ### Character Efficiency Tips
 
 - **Default formats use 10 characters** (`Alice[M]: `) leaving ~200 characters for message content
-- **Use shorter truncations** like `{name3}` or `{long4}` to save space
+- **Use shorter truncations** like `{display3}` or `{long4}` to save space
 - **Consider your mesh network's message limits** when choosing prefix lengths
 - **Test your formats** with typical usernames in your community
 

@@ -32,7 +32,7 @@ from mmrelay.log_utils import get_logger
 from mmrelay.meshtastic_utils import connect_meshtastic
 
 # Default prefix format constants
-DEFAULT_MESHTASTIC_PREFIX = "{name5}[M]: "
+DEFAULT_MESHTASTIC_PREFIX = "{display5}[M]: "
 DEFAULT_MATRIX_PREFIX = "[{long}/{mesh}]: "
 
 
@@ -132,7 +132,7 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
             # Returns: "Alice[M]: " (with default format)
 
         Custom format:
-            config = {"meshtastic": {"prefix_format": "{name8}> "}}
+            config = {"meshtastic": {"prefix_format": "{display8}> "}}
             get_meshtastic_prefix(config, "Alice Smith")
             # Returns: "Alice Sm> "
     """
@@ -145,14 +145,30 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
     # Get custom format or use default
     prefix_format = meshtastic_config.get("prefix_format", DEFAULT_MESHTASTIC_PREFIX)
 
+    # Parse username and server from user_id if available
+    username = ""
+    server = ""
+    if user_id:
+        # Extract username and server from @username:server.com format
+        if user_id.startswith("@") and ":" in user_id:
+            parts = user_id[1:].split(":", 1)  # Remove @ and split on first :
+            username = parts[0]
+            server = parts[1] if len(parts) > 1 else ""
+
     # Available variables for formatting with variable length support
     format_vars = {
-        "name": display_name,
+        "display": display_name or "",
         "user": user_id or "",
+        "username": username,
+        "server": server,
         "M": "M",  # Platform indicator
+        # Legacy support - keep "name" for backward compatibility
+        "name": display_name or "",
     }
 
-    # Add variable length name truncation (name1, name2, name3, etc.)
+    # Add variable length display name truncation (display1, display2, display3, etc.)
+    _add_truncated_vars(format_vars, "display", display_name)
+    # Legacy support - keep "name" truncations for backward compatibility
     _add_truncated_vars(format_vars, "name", display_name)
 
     try:
@@ -162,9 +178,9 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
         logger.warning(
             f"Invalid prefix_format '{prefix_format}': {e}. Using default format."
         )
-        # The default format only uses 'name5' and 'M', which are safe to format
+        # The default format only uses 'display5' and 'M', which are safe to format
         return DEFAULT_MESHTASTIC_PREFIX.format(
-            name5=display_name[:5] if display_name else "", M="M"
+            display5=display_name[:5] if display_name else "", M="M"
         )
 
 
