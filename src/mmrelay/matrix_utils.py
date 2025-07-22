@@ -205,7 +205,9 @@ def get_matrix_prefix(config, longname, shortname, meshnet_name):
     _add_truncated_vars(format_vars, "mesh", meshnet_name)
 
     try:
-        return matrix_prefix_format.format(**format_vars)
+        result = matrix_prefix_format.format(**format_vars)
+        logger.debug(f"Matrix prefix generated: '{result}' using format '{matrix_prefix_format}' with vars {format_vars}")
+        return result
     except (KeyError, ValueError) as e:
         # Fallback to default format if custom format is invalid
         logger.warning(
@@ -1027,8 +1029,12 @@ async def on_room_message(
             # If shortname is not available, derive it from the longname
             if shortname is None:
                 shortname = longname[:3] if longname else "???"
-            # Remove the original prefix "[longname/meshnet]: " to avoid double-tagging
-            text = re.sub(rf"^\[{full_display_name}\]: ", "", text)
+            # Remove the original prefix to avoid double-tagging
+            # Get the prefix that would have been used for this message
+            original_prefix = get_matrix_prefix(config, longname, shortname, meshnet_name)
+            if original_prefix and text.startswith(original_prefix):
+                text = text[len(original_prefix):]
+                logger.debug(f"Removed original prefix '{original_prefix}' from remote meshnet message")
             text = truncate_message(text)
             full_message = f"{shortname}/{short_meshnet_name}: {text}"
         else:
