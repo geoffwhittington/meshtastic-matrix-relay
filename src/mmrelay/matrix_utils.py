@@ -1036,7 +1036,9 @@ async def on_room_message(
                 text = text[len(original_prefix):]
                 logger.debug(f"Removed original prefix '{original_prefix}' from remote meshnet message")
             text = truncate_message(text)
-            full_message = f"{shortname}/{short_meshnet_name}: {text}"
+            # Use the configured prefix format for remote meshnet messages
+            prefix = get_matrix_prefix(config, longname, shortname, short_meshnet_name)
+            full_message = f"{prefix}{text}"
         else:
             # If this message is from our local meshnet (loopback), we ignore it
             return
