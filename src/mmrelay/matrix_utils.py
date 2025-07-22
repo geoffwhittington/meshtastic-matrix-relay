@@ -70,20 +70,19 @@ def get_interaction_settings(config):
 
 def message_storage_enabled(interactions):
     """
-    Return True if message storage is required for enabled message interactions.
-
-    Parameters:
-        interactions (dict): Dictionary with 'reactions' and 'replies' boolean flags.
+    Determine if message storage is needed based on enabled message interactions.
 
     Returns:
-        bool: True if reactions or replies are enabled; otherwise, False.
+        True if either reactions or replies are enabled in the interactions dictionary; otherwise, False.
     """
     return interactions["reactions"] or interactions["replies"]
 
 
 def get_meshtastic_prefix(config, display_name, user_id=None):
     """
-    Returns the Meshtastic prefix for messages based on the configuration.
+    Generate a Meshtastic message prefix using the configured format, supporting variable-length truncation and user-specific variables.
+
+    If prefix formatting is enabled in the configuration, returns a formatted prefix string for Meshtastic messages using the user's display name and optional Matrix user ID. Supports custom format strings with placeholders for the full name, truncated name segments (e.g., `{name5}`), user ID, and a platform indicator. Falls back to a default format if the custom format is invalid or missing. Returns an empty string if prefixing is disabled.
 
     Args:
         config (dict): The application configuration dictionary.
@@ -126,16 +125,16 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
 
 def get_matrix_prefix(config, longname, shortname, meshnet_name):
     """
-    Returns the Matrix prefix for Meshtastic messages based on configuration.
+    Generate a formatted prefix for Meshtastic messages relayed to Matrix, using configurable templates and variable-length truncation for sender and mesh network names.
 
-    Args:
+    Parameters:
         config (dict): The application configuration dictionary.
-        longname (str): The long name of the Meshtastic sender.
-        shortname (str): The short name of the Meshtastic sender.
-        meshnet_name (str): The name of the mesh network.
+        longname (str): Full Meshtastic sender name.
+        shortname (str): Short Meshtastic sender name.
+        meshnet_name (str): Name of the mesh network.
 
     Returns:
-        str: The formatted prefix string if enabled, empty string otherwise.
+        str: The formatted prefix string if prefixing is enabled; otherwise, an empty string.
     """
     matrix_config = config.get("matrix", {})
 
