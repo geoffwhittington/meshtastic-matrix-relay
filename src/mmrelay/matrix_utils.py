@@ -84,9 +84,14 @@ def message_storage_enabled(interactions):
 
 def _add_truncated_vars(format_vars, prefix, text):
     """Helper function to add variable length truncation variables to format_vars dict."""
-    if text:
-        for i in range(1, min(len(text) + 1, 21)):  # Support up to 20 chars
-            format_vars[f"{prefix}{i}"] = text[:i]
+    # Always add truncated variables, even for empty text (to prevent KeyError)
+    text = text or ""  # Convert None to empty string
+    logger.debug(f"Adding truncated vars for prefix='{prefix}', text='{text}'")
+    for i in range(1, 21):  # Support up to 20 chars, always add all variants
+        truncated_value = text[:i] if len(text) >= i else text
+        format_vars[f"{prefix}{i}"] = truncated_value
+        if i <= 6:  # Only log first few to avoid spam
+            logger.debug(f"  {prefix}{i} = '{truncated_value}'")
 
 
 def validate_prefix_format(format_string, available_vars):
