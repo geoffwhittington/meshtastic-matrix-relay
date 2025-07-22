@@ -22,32 +22,38 @@ def test_matrix_to_meshtastic_prefixes():
     # Test 1: Default configuration (enabled)
     config1 = {"meshtastic": {"prefix_enabled": True}}
     prefix1 = get_meshtastic_prefix(config1, full_name)
-    print(f"Default format: '{prefix1}Hello world'")
+    assert prefix1 == "Alice[M]: ", f"Default format failed: got '{prefix1}'"
+    print("✓ Default format")
 
     # Test 2: Disabled prefixes
     config2 = {"meshtastic": {"prefix_enabled": False}}
     prefix2 = get_meshtastic_prefix(config2, full_name)
-    print(f"Disabled: '{prefix2}Hello world'")
+    assert prefix2 == "", f"Disabled prefixes failed: got '{prefix2}'"
+    print("✓ Disabled prefixes")
 
     # Test 3: Variable length truncation
     config3 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{name3}[M]: "}}
     prefix3 = get_meshtastic_prefix(config3, full_name)
-    print(f"3-char name: '{prefix3}Hello world'")
+    assert prefix3 == "Ali[M]: ", f"3-char name failed: got '{prefix3}'"
+    print("✓ 3-char name")
 
     # Test 4: Custom format with full name
     config4 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "[{name}]: "}}
     prefix4 = get_meshtastic_prefix(config4, full_name)
-    print(f"Full name brackets: '{prefix4}Hello world'")
+    assert prefix4 == "[Alice Smith]: ", f"Full name brackets failed: got '{prefix4}'"
+    print("✓ Full name brackets")
 
     # Test 5: Custom format with user ID
     config5 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{name8}> "}}
     prefix5 = get_meshtastic_prefix(config5, full_name, "@alice:matrix.org")
-    print(f"8-char prompt: '{prefix5}Hello world'")
+    assert prefix5 == "Alice Sm> ", f"8-char prompt failed: got '{prefix5}'"
+    print("✓ 8-char prompt")
 
     # Test 6: Invalid format (should fallback)
     config6 = {"meshtastic": {"prefix_enabled": True, "prefix_format": "{invalid}: "}}
     prefix6 = get_meshtastic_prefix(config6, full_name)
-    print(f"Invalid format (fallback): '{prefix6}Hello world'")
+    assert prefix6 == "Alice[M]: ", f"Invalid format (fallback) failed: got '{prefix6}'"
+    print("✓ Invalid format (fallback)")
 
     print()
 
@@ -64,29 +70,34 @@ def test_meshtastic_to_matrix_prefixes():
     # Test 1: Default configuration (enabled)
     config1 = {"matrix": {"prefix_enabled": True}}
     prefix1 = get_matrix_prefix(config1, longname, shortname, meshnet)
-    print(f"Default format: '{prefix1}Hello from mesh'")
+    assert prefix1 == "[Alice/MyMeshNetwork]: ", f"Default format failed: got '{prefix1}'"
+    print("✓ Default format")
 
     # Test 2: Disabled prefixes
     config2 = {"matrix": {"prefix_enabled": False}}
     prefix2 = get_matrix_prefix(config2, longname, shortname, meshnet)
-    print(f"Disabled: '{prefix2}Hello from mesh'")
+    assert prefix2 == "", f"Disabled prefixes failed: got '{prefix2}'"
+    print("✓ Disabled prefixes")
 
     # Test 3: Variable length truncation
     config3 = {"matrix": {"prefix_enabled": True, "prefix_format": "({long4}): "}}
     prefix3 = get_matrix_prefix(config3, longname, shortname, meshnet)
-    print(f"4-char longname: '{prefix3}Hello from mesh'")
+    assert prefix3 == "(Alic): ", f"4-char longname failed: got '{prefix3}'"
+    print("✓ 4-char longname")
 
     # Test 4: Custom format with truncated mesh
     config4 = {
         "matrix": {"prefix_enabled": True, "prefix_format": "[{mesh6}] {short}: "}
     }
     prefix4 = get_matrix_prefix(config4, longname, shortname, meshnet)
-    print(f"6-char mesh: '{prefix4}Hello from mesh'")
+    assert prefix4 == "[MyMesh] Ali: ", f"6-char mesh failed: got '{prefix4}'"
+    print("✓ 6-char mesh")
 
     # Test 5: Invalid format (should fallback)
     config5 = {"matrix": {"prefix_enabled": True, "prefix_format": "{invalid}: "}}
     prefix5 = get_matrix_prefix(config5, longname, shortname, meshnet)
-    print(f"Invalid format (fallback): '{prefix5}Hello from mesh'")
+    assert prefix5 == "[Alice/MyMeshNetwork]: ", f"Invalid format (fallback) failed: got '{prefix5}'"
+    print("✓ Invalid format (fallback)")
 
     print()
 

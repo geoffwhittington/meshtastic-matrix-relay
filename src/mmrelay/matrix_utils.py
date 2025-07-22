@@ -31,6 +31,10 @@ from mmrelay.log_utils import get_logger
 # Do not import plugin_loader here to avoid circular imports
 from mmrelay.meshtastic_utils import connect_meshtastic
 
+# Default prefix format constants
+DEFAULT_MESHTASTIC_PREFIX = "{name5}[M]: "
+DEFAULT_MATRIX_PREFIX = "[{long}/{mesh}]: "
+
 
 def get_interaction_settings(config):
     """
@@ -134,7 +138,7 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
         return ""
 
     # Get custom format or use default
-    prefix_format = meshtastic_config.get("prefix_format", "{name5}[M]: ")
+    prefix_format = meshtastic_config.get("prefix_format", DEFAULT_MESHTASTIC_PREFIX)
 
     # Available variables for formatting with variable length support
     format_vars = {
@@ -153,7 +157,8 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
         logger.warning(
             f"Invalid prefix_format '{prefix_format}': {e}. Using default format."
         )
-        return f"{display_name[:5]}[M]: " if display_name else "[M]: "
+        # The default format only uses 'name5' and 'M', which are safe to format
+        return DEFAULT_MESHTASTIC_PREFIX.format(name5=display_name[:5] if display_name else "", M="M")
 
 
 def get_matrix_prefix(config, longname, shortname, meshnet_name):
@@ -186,7 +191,7 @@ def get_matrix_prefix(config, longname, shortname, meshnet_name):
         return ""
 
     # Get custom format or use default
-    matrix_prefix_format = matrix_config.get("prefix_format", "[{long}/{mesh}]: ")
+    matrix_prefix_format = matrix_config.get("prefix_format", DEFAULT_MATRIX_PREFIX)
 
     # Available variables for formatting with variable length support
     format_vars = {
@@ -206,7 +211,8 @@ def get_matrix_prefix(config, longname, shortname, meshnet_name):
         logger.warning(
             f"Invalid matrix prefix_format '{matrix_prefix_format}': {e}. Using default format."
         )
-        return f"[{longname}/{meshnet_name}]: "
+        # The default format only uses 'long' and 'mesh', which are safe
+        return DEFAULT_MATRIX_PREFIX.format(long=longname or "", mesh=meshnet_name or "")
 
 
 # Global config variable that will be set from config.py
