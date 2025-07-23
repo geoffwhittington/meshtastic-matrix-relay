@@ -48,7 +48,7 @@ class TestMessageQueue(unittest.TestCase):
         # Use asyncio to properly test the async queue
         async def async_test():
             # Start queue with fast rate for testing
-            self.queue.start(rate_limit=0.1)
+            self.queue.start(message_delay=0.1)
 
             # Ensure processor starts
             self.queue.ensure_processor_started()
@@ -63,8 +63,8 @@ class TestMessageQueue(unittest.TestCase):
                 )
                 self.assertTrue(success)
 
-            # Wait for processing (need enough time for all 3 messages with 2.0s rate limiting)
-            await asyncio.sleep(7.0)  # 3 messages * 2.0s + buffer
+            # Wait for processing (need enough time for all 3 messages with 0.1s rate limiting)
+            await asyncio.sleep(0.5)  # 3 messages * 0.1s + buffer
 
             # Check that messages were sent in order
             self.assertEqual(len(self.sent_messages), len(messages))
@@ -78,8 +78,8 @@ class TestMessageQueue(unittest.TestCase):
         """Test that rate limiting is enforced."""
 
         async def async_test():
-            rate_limit = 2.1  # Use minimum rate limit for testing
-            self.queue.start(rate_limit=rate_limit)
+            message_delay = 2.1  # Use minimum message delay for testing
+            self.queue.start(message_delay=message_delay)
             self.queue.ensure_processor_started()
 
             # Queue two messages
@@ -132,7 +132,7 @@ class TestMessageQueue(unittest.TestCase):
             original_should_send = self.queue._should_send_message
             self.queue._should_send_message = lambda: False
 
-            self.queue.start(rate_limit=0.1)
+            self.queue.start(message_delay=0.1)
             self.queue.ensure_processor_started()
 
             # Queue a message
@@ -155,7 +155,7 @@ class TestMessageQueue(unittest.TestCase):
             def failing_send_function(text, **kwargs):
                 raise Exception("Send failed")
 
-            self.queue.start(rate_limit=0.1)
+            self.queue.start(message_delay=0.1)
             self.queue.ensure_processor_started()
 
             # Queue a message that will fail

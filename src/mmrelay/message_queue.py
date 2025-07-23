@@ -10,7 +10,7 @@ import asyncio
 import threading
 import time
 from dataclasses import dataclass
-from queue import Queue
+from queue import Empty, Queue
 from typing import Callable
 
 from mmrelay.log_utils import get_logger
@@ -29,7 +29,9 @@ class QueuedMessage:
     send_function: Callable
     args: tuple
     kwargs: dict
-    description: str = ""
+    description: str
+    # Optional message mapping information for replies/reactions
+    mapping_info: dict = None = ""
 
 
 class MessageQueue:
@@ -97,7 +99,7 @@ class MessageQueue:
             logger.info("Message queue stopped")
 
     def enqueue(
-        self, send_function: Callable, *args, description: str = "", **kwargs
+        self, send_function: Callable, *args, description: str = "", mapping_info: dict = None, **kwargs
     ) -> bool:
         """
         Enqueue a message for sending.
@@ -106,6 +108,7 @@ class MessageQueue:
             send_function: Function to call to send the message
             *args: Arguments to pass to send_function
             description: Human-readable description for logging
+            mapping_info: Optional dict with message mapping info for replies/reactions
             **kwargs: Keyword arguments to pass to send_function
 
         Returns:
@@ -136,6 +139,7 @@ class MessageQueue:
             args=args,
             kwargs=kwargs,
             description=description,
+            mapping_info=mapping_info,
         )
 
         self._queue.put(message)
@@ -190,7 +194,7 @@ class MessageQueue:
                 # Get next message (non-blocking)
                 try:
                     message = self._queue.get_nowait()
-                except Exception:
+                except Empty:
                     # No messages, wait a bit and continue
                     await asyncio.sleep(0.1)
                     continue
@@ -217,6 +221,10 @@ class MessageQueue:
                         )
                     else:
                         logger.info(f"Successfully sent queued message: {message.description}")
+
+                        # Handle message mapping if provided
+                        if message.mapping_info and hasattr(result, "id"):
+                            self._handle_message_mapping(result, message.mapping_info)
 
                 except Exception as e:
                     logger.error(
@@ -270,6 +278,44 @@ class MessageQueue:
             logger.debug("Cannot check connection state - assuming OK")
             return True
 
+    def _handle_message_mapping(self, result, mapping_info):
+        """
+        Handle message mapping after successful send.
+
+        Args:
+            result: The result from the send function (should have .id attribute)
+            mapping_info: Dict containing mapping information
+        """
+        try:
+            # Import here to avoid circular imports
+            from mmrelay.db_utils import store_message_map, prune_message_map
+            from mmrelay.config import config
+
+            # Extract mapping information
+            matrix_event_id = mapping_info.get("matrix_event_id")
+            room_id = mapping_info.get("room_id")
+            text = mapping_info.get("text")
+            meshnet = mapping_info.get("meshnet")
+
+            if matrix_event_id and room_id and text:
+                # Store the message mapping
+                store_message_map(
+                    result.id,
+                    matrix_event_id,
+                    room_id,
+                    text,
+                    meshtastic_meshnet=meshnet,
+                )
+                logger.debug(f"Stored message map for meshtastic_id: {result.id}")
+
+                # Handle pruning if configured
+                msgs_to_keep = mapping_info.get("msgs_to_keep", 500)
+                if msgs_to_keep > 0:
+                    prune_message_map(msgs_to_keep)
+
+        except Exception as e:
+            logger.error(f"Error handling message mapping: {e}")
+
 
 # Global message queue instance
 _message_queue = MessageQueue()
@@ -291,7 +337,7 @@ def stop_message_queue():
 
 
 def queue_message(
-    send_function: Callable, *args, description: str = "", **kwargs
+    send_function: Callable, *args, description: str = "", mapping_info: dict = None, **kwargs
 ) -> bool:
     """
     Queue a message for sending through the global message queue.
@@ -300,13 +346,14 @@ def queue_message(
         send_function: Function to call to send the message
         *args: Arguments to pass to send_function
         description: Human-readable description for logging
+        mapping_info: Optional dict with message mapping info for replies/reactions
         **kwargs: Keyword arguments to pass to send_function
 
     Returns:
         bool: True if message was queued, False if failed
     """
     return _message_queue.enqueue(
-        send_function, *args, description=description, **kwargs
+        send_function, *args, description=description, mapping_info=mapping_info, **kwargs
     )
 
 

@@ -31,6 +31,33 @@ from mmrelay.log_utils import get_logger
 # Do not import plugin_loader here to avoid circular imports
 from mmrelay.meshtastic_utils import connect_meshtastic, sendTextReply
 from mmrelay.message_queue import queue_message
+from mmrelay.db_utils import strip_quoted_lines
+
+
+def _create_mapping_info(matrix_event_id, room_id, text, meshnet=None, msgs_to_keep=500):
+    """
+    Create mapping info dict for message queue.
+
+    Args:
+        matrix_event_id: Matrix event ID
+        room_id: Matrix room ID
+        text: Message text (will be cleaned of quoted lines)
+        meshnet: Meshnet name
+        msgs_to_keep: Number of messages to keep in database
+
+    Returns:
+        dict: Mapping info for queue_message
+    """
+    if not matrix_event_id or not room_id or not text:
+        return None
+
+    return {
+        "matrix_event_id": matrix_event_id,
+        "room_id": room_id,
+        "text": strip_quoted_lines(text),
+        "meshnet": meshnet,
+        "msgs_to_keep": msgs_to_keep,
+    }
 
 # Default prefix format constants
 DEFAULT_MESHTASTIC_PREFIX = "{display5}[M]: "
@@ -682,6 +709,27 @@ async def send_reply_to_meshtastic(
         try:
             if reply_id is not None:
                 # Send as a structured reply using our custom function
+                # Create mapping info if storage is enabled
+                mapping_info = None
+                if storage_enabled:
+                    # Get message map configuration
+                    database_config = config.get("database", {})
+                    msg_map_config = database_config.get("msg_map", {})
+                    if not msg_map_config:
+                        db_config = config.get("db", {})
+                        legacy_msg_map_config = db_config.get("msg_map", {})
+                        if legacy_msg_map_config:
+                            msg_map_config = legacy_msg_map_config
+                    msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)
+
+                    mapping_info = _create_mapping_info(
+                        event.event_id,
+                        room.room_id,
+                        text,
+                        local_meshnet_name,
+                        msgs_to_keep
+                    )
+
                 # Queue the reply message
                 success = queue_message(
                     sendTextReply,
@@ -690,14 +738,13 @@ async def send_reply_to_meshtastic(
                     reply_id=reply_id,
                     channelIndex=meshtastic_channel,
                     description=f"Reply from {full_display_name} to message {reply_id}",
+                    mapping_info=mapping_info,
                 )
 
                 if success:
                     meshtastic_logger.info(
                         f"Queued Matrix reply from {full_display_name} to radio broadcast as structured reply to message {reply_id}"
                     )
-                    # We'll get the sent_packet when the message is actually sent
-                    sent_packet = True  # Indicate success for message mapping
                 else:
                     meshtastic_logger.error(
                         "Failed to queue structured reply to Meshtastic"
@@ -705,46 +752,46 @@ async def send_reply_to_meshtastic(
                     return
             else:
                 # Send as regular message (fallback for when no reply_id is available)
+                # Create mapping info if storage is enabled
+                mapping_info = None
+                if storage_enabled:
+                    # Get message map configuration
+                    database_config = config.get("database", {})
+                    msg_map_config = database_config.get("msg_map", {})
+                    if not msg_map_config:
+                        db_config = config.get("db", {})
+                        legacy_msg_map_config = db_config.get("msg_map", {})
+                        if legacy_msg_map_config:
+                            msg_map_config = legacy_msg_map_config
+                    msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)
+
+                    mapping_info = _create_mapping_info(
+                        event.event_id,
+                        room.room_id,
+                        text,
+                        local_meshnet_name,
+                        msgs_to_keep
+                    )
+
                 success = queue_message(
                     meshtastic_interface.sendText,
                     text=reply_message,
                     channelIndex=meshtastic_channel,
                     description=f"Reply from {full_display_name} (fallback to regular message)",
+                    mapping_info=mapping_info,
                 )
 
                 if success:
                     meshtastic_logger.info(
                         f"Queued Matrix reply from {full_display_name} to radio broadcast as regular message"
                     )
-                    sent_packet = True  # Indicate success for message mapping
                 else:
                     meshtastic_logger.error(
                         "Failed to queue reply message to Meshtastic"
                     )
                     return
 
-            # Store the reply in message map if storage is enabled
-            if storage_enabled and sent_packet and hasattr(sent_packet, "id"):
-                # Strip quoted lines from text before storing to prevent issues with reactions to replies
-                cleaned_text = strip_quoted_lines(text)
-                store_message_map(
-                    sent_packet.id,
-                    event.event_id,
-                    room.room_id,
-                    cleaned_text,
-                    meshtastic_meshnet=local_meshnet_name,
-                )
-                # Prune old messages if configured
-                database_config = config.get("database", {})
-                msg_map_config = database_config.get("msg_map", {})
-                if not msg_map_config:
-                    db_config = config.get("db", {})
-                    legacy_msg_map_config = db_config.get("msg_map", {})
-                    if legacy_msg_map_config:
-                        msg_map_config = legacy_msg_map_config
-                msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)
-                if msgs_to_keep > 0:
-                    prune_message_map(msgs_to_keep)
+            # Message mapping is now handled automatically by the queue system
 
         except Exception as e:
             meshtastic_logger.error(f"Error sending Matrix reply to Meshtastic: {e}")
@@ -1193,33 +1240,9 @@ async def on_room_message(
                     f"Relaying message from {full_display_name} to radio broadcast"
                 )
 
-                success = queue_message(
-                    meshtastic_interface.sendText,
-                    text=full_message,
-                    channelIndex=meshtastic_channel,
-                    description=f"Message from {full_display_name}",
-                )
-
-                if success:
-                    meshtastic_logger.info(
-                        f"Queued message from {full_display_name} to radio broadcast"
-                    )
-                    sent_packet = True  # Indicate success for message mapping
-                else:
-                    meshtastic_logger.error("Failed to queue message to Meshtastic")
-                    return
-                # Store message_map only if storage is enabled and only for TEXT_MESSAGE_APP
-                # (these are the only messages that can be replied to and thus need reaction handling)
-                if storage_enabled and sent_packet and hasattr(sent_packet, "id"):
-                    # Strip quoted lines from text before storing to prevent issues with reactions to replies
-                    cleaned_text = strip_quoted_lines(text)
-                    store_message_map(
-                        sent_packet.id,
-                        event.event_id,
-                        room.room_id,
-                        cleaned_text,
-                        meshtastic_meshnet=local_meshnet_name,
-                    )
+                # Create mapping info if storage is enabled
+                mapping_info = None
+                if storage_enabled:
                     # Check database config for message map settings (preferred format)
                     database_config = config.get("database", {})
                     msg_map_config = database_config.get("msg_map", {})
@@ -1235,8 +1258,31 @@ async def on_room_message(
                                 "Using 'db.msg_map' configuration (legacy). 'database.msg_map' is now the preferred format and 'db.msg_map' will be deprecated in a future version."
                             )
                     msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)
-                    if msgs_to_keep > 0:
-                        prune_message_map(msgs_to_keep)
+
+                    mapping_info = _create_mapping_info(
+                        event.event_id,
+                        room.room_id,
+                        text,
+                        local_meshnet_name,
+                        msgs_to_keep
+                    )
+
+                success = queue_message(
+                    meshtastic_interface.sendText,
+                    text=full_message,
+                    channelIndex=meshtastic_channel,
+                    description=f"Message from {full_display_name}",
+                    mapping_info=mapping_info,
+                )
+
+                if success:
+                    meshtastic_logger.info(
+                        f"Queued message from {full_display_name} to radio broadcast"
+                    )
+                else:
+                    meshtastic_logger.error("Failed to queue message to Meshtastic")
+                    return
+                # Message mapping is now handled automatically by the queue system
         else:
             logger.debug(
                 f"Broadcast not supported: Message from {full_display_name} dropped."
