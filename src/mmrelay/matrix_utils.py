@@ -159,7 +159,6 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
     # Available variables for formatting with variable length support
     format_vars = {
         "display": display_name or "",
-        "name": display_name or "",  # Alias for display for backward compatibility
         "user": user_id or "",
         "username": username,
         "server": server,
@@ -167,8 +166,6 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
 
     # Add variable length display name truncation (display1, display2, display3, etc.)
     _add_truncated_vars(format_vars, "display", display_name)
-    # Also add name truncation for backward compatibility
-    _add_truncated_vars(format_vars, "name", display_name)
 
     try:
         return prefix_format.format(**format_vars)
