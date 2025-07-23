@@ -44,14 +44,14 @@ class MessageQueue:
         self._running = False
         self._lock = threading.Lock()
         self._last_send_time = 0.0
-        self._rate_limit = 2.5  # Default rate limit in seconds
+        self._rate_limit = 2.2  # Default rate limit in seconds
 
-    def start(self, rate_limit: float = 2.5):
+    def start(self, rate_limit: float = 2.2):
         """
         Start the message queue processor.
 
         Args:
-            rate_limit: Minimum seconds between messages (default: 2.5)
+            rate_limit: Minimum seconds between messages (default: 2.2)
         """
         with self._lock:
             if self._running:
@@ -277,7 +277,7 @@ def get_message_queue() -> MessageQueue:
     return _message_queue
 
 
-def start_message_queue(rate_limit: float = 2.5):
+def start_message_queue(rate_limit: float = 2.2):
     """Start the global message queue with the specified rate limit."""
     _message_queue.start(rate_limit)
 

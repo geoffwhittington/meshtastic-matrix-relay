@@ -96,7 +96,7 @@ async def main(config):
     load_plugins(passed_config=config)
 
     # Start message queue with configured rate limit
-    message_delay = config.get("meshtastic", {}).get("message_delay", 2.5)
+    message_delay = config.get("meshtastic", {}).get("message_delay", 2.2)
     start_message_queue(rate_limit=message_delay)
 
     # Connect to Meshtastic

@@ -131,7 +131,7 @@ class BasePlugin(ABC):
 
         # Get the response delay from the meshtastic config
         self.response_delay = (
-            2.1  # Default value (minimum 2 seconds due to firmware delay)
+            2.2  # Default value (minimum 2 seconds due to firmware delay)
         )
         if config is not None:
             meshtastic_config = config.get("meshtastic", {})
@@ -239,7 +239,7 @@ class BasePlugin(ABC):
         """
         Return the configured delay in seconds before sending Meshtastic responses.
 
-        The delay is set via the `meshtastic.message_delay` configuration option, with a default of 2.1 seconds and a minimum enforced value of 2.0 seconds due to firmware requirements. The deprecated `meshtastic.plugin_response_delay` option is still supported but will be removed in a future version.
+        The delay is set via the `meshtastic.message_delay` configuration option, with a default of 2.2 seconds and a minimum enforced value of 2.0 seconds due to firmware requirements. The deprecated `meshtastic.plugin_response_delay` option is still supported but will be removed in a future version.
 
         Returns:
             float: The response delay in seconds.
