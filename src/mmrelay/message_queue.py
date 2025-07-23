@@ -110,9 +110,11 @@ class MessageQueue:
         """
         if not self._running:
             # Queue not started, send immediately as fallback
-            logger.debug("Queue not running, sending message immediately")
+            logger.warning(f"Queue not running, sending message immediately: {description}")
             try:
-                return send_function(*args, **kwargs) is not None
+                result = send_function(*args, **kwargs)
+                logger.info(f"Immediate send {'successful' if result else 'failed'}: {description}")
+                return result is not None
             except Exception as e:
                 logger.error(f"Error sending message immediately: {e}")
                 return False
@@ -121,8 +123,8 @@ class MessageQueue:
         self.ensure_processor_started()
 
         # Check queue size to prevent memory issues
-        if self._queue.qsize() >= 100:  # Reasonable limit
-            logger.warning("Message queue full, dropping message")
+        if self._queue.qsize() >= 500:  # Increased limit for better throughput
+            logger.warning(f"Message queue full ({self._queue.qsize()}/500), dropping message: {description}")
             return False
 
         message = QueuedMessage(
@@ -134,7 +136,7 @@ class MessageQueue:
         )
 
         self._queue.put(message)
-        logger.debug(f"Queued message: {description}")
+        logger.info(f"Queued message ({self._queue.qsize()}/500): {description}")
         return True
 
     def get_queue_size(self) -> int:
@@ -144,6 +146,17 @@ class MessageQueue:
     def is_running(self) -> bool:
         """Check if queue processor is running."""
         return self._running
+
+    def get_status(self) -> dict:
+        """Get detailed queue status for debugging."""
+        return {
+            "running": self._running,
+            "queue_size": self._queue.qsize(),
+            "rate_limit": self._rate_limit,
+            "processor_task_active": self._processor_task is not None and not self._processor_task.done() if self._processor_task else False,
+            "last_send_time": self._last_send_time,
+            "time_since_last_send": time.time() - self._last_send_time if self._last_send_time > 0 else None
+        }
 
     def ensure_processor_started(self):
         """Ensure the processor task is started if the queue is running."""
@@ -182,13 +195,14 @@ class MessageQueue:
                 # Check if we should send (connection state, etc.)
                 if not self._should_send_message():
                     # Put message back and wait
+                    logger.debug(f"Connection not ready, requeueing message: {message.description}")
                     self._queue.put(message)
                     await asyncio.sleep(1.0)
                     continue
 
                 # Send the message
                 try:
-                    logger.debug(f"Sending queued message: {message.description}")
+                    logger.info(f"Sending queued message: {message.description}")
                     result = message.send_function(*message.args, **message.kwargs)
 
                     # Update last send time
@@ -198,6 +212,8 @@ class MessageQueue:
                         logger.warning(
                             f"Message send returned None: {message.description}"
                         )
+                    else:
+                        logger.info(f"Successfully sent queued message: {message.description}")
 
                 except Exception as e:
                     logger.error(
@@ -284,3 +300,8 @@ def queue_message(
     return _message_queue.enqueue(
         send_function, *args, description=description, **kwargs
     )
+
+
+def get_queue_status() -> dict:
+    """Get detailed status of the global message queue for debugging."""
+    return _message_queue.get_status()

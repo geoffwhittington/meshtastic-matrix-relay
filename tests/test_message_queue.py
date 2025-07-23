@@ -106,7 +106,7 @@ class TestMessageQueue(unittest.TestCase):
         self.queue._running = True  # Manually set running to prevent immediate sending
 
         # Fill queue to limit
-        for i in range(100):  # Queue limit is 100
+        for i in range(500):  # Queue limit is 500
             success = self.queue.enqueue(self.mock_send_function, text=f"Message {i}")
             self.assertTrue(success)
 
