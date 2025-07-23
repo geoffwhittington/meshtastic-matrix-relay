@@ -28,6 +28,7 @@ from mmrelay.matrix_utils import on_room_member, on_room_message
 from mmrelay.meshtastic_utils import connect_meshtastic
 from mmrelay.meshtastic_utils import logger as meshtastic_logger
 from mmrelay.message_queue import (
+    DEFAULT_MESSAGE_DELAY,
     get_message_queue,
     start_message_queue,
     stop_message_queue,
@@ -95,9 +96,9 @@ async def main(config):
     # Load plugins early
     load_plugins(passed_config=config)
 
-    # Start message queue with configured rate limit
-    message_delay = config.get("meshtastic", {}).get("message_delay", 2.2)
-    start_message_queue(rate_limit=message_delay)
+    # Start message queue with configured message delay
+    message_delay = config.get("meshtastic", {}).get("message_delay", DEFAULT_MESSAGE_DELAY)
+    start_message_queue(message_delay=message_delay)
 
     # Connect to Meshtastic
     meshtastic_utils.meshtastic_client = connect_meshtastic(passed_config=config)

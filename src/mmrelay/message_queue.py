@@ -17,6 +17,9 @@ from mmrelay.log_utils import get_logger
 
 logger = get_logger(name="MessageQueue")
 
+# Default message delay in seconds (minimum 2.0 due to firmware constraints)
+DEFAULT_MESSAGE_DELAY = 2.2
+
 
 @dataclass
 class QueuedMessage:
@@ -44,20 +47,20 @@ class MessageQueue:
         self._running = False
         self._lock = threading.Lock()
         self._last_send_time = 0.0
-        self._rate_limit = 2.2  # Default rate limit in seconds
+        self._message_delay = DEFAULT_MESSAGE_DELAY
 
-    def start(self, rate_limit: float = 2.2):
+    def start(self, message_delay: float = DEFAULT_MESSAGE_DELAY):
         """
         Start the message queue processor.
 
         Args:
-            rate_limit: Minimum seconds between messages (default: 2.2)
+            message_delay: Minimum seconds between messages (default: 2.2)
         """
         with self._lock:
             if self._running:
                 return
 
-            self._rate_limit = max(rate_limit, 2.0)  # Enforce firmware minimum
+            self._message_delay = max(message_delay, 2.0)  # Enforce firmware minimum
             self._running = True
 
             # Start the processor in the event loop
@@ -66,7 +69,7 @@ class MessageQueue:
                 if loop.is_running():
                     self._processor_task = loop.create_task(self._process_queue())
                     logger.info(
-                        f"Message queue started with {self._rate_limit}s rate limit"
+                        f"Message queue started with {self._message_delay}s message delay"
                     )
                 else:
                     # Event loop exists but not running yet, defer startup
@@ -152,7 +155,7 @@ class MessageQueue:
         return {
             "running": self._running,
             "queue_size": self._queue.qsize(),
-            "rate_limit": self._rate_limit,
+            "message_delay": self._message_delay,
             "processor_task_active": self._processor_task is not None and not self._processor_task.done() if self._processor_task else False,
             "last_send_time": self._last_send_time,
             "time_since_last_send": time.time() - self._last_send_time if self._last_send_time > 0 else None
@@ -166,7 +169,7 @@ class MessageQueue:
                 if loop.is_running():
                     self._processor_task = loop.create_task(self._process_queue())
                     logger.info(
-                        f"Message queue processor started with {self._rate_limit}s rate limit"
+                        f"Message queue processor started with {self._message_delay}s message delay"
                     )
             except RuntimeError:
                 # Still no event loop available
@@ -178,10 +181,10 @@ class MessageQueue:
 
         while self._running:
             try:
-                # Check if we need to wait for rate limiting
+                # Check if we need to wait for message delay
                 time_since_last = time.time() - self._last_send_time
-                if time_since_last < self._rate_limit:
-                    wait_time = self._rate_limit - time_since_last
+                if time_since_last < self._message_delay:
+                    wait_time = self._message_delay - time_since_last
                     await asyncio.sleep(wait_time)
 
                 # Get next message (non-blocking)
@@ -277,9 +280,9 @@ def get_message_queue() -> MessageQueue:
     return _message_queue
 
 
-def start_message_queue(rate_limit: float = 2.2):
-    """Start the global message queue with the specified rate limit."""
-    _message_queue.start(rate_limit)
+def start_message_queue(message_delay: float = DEFAULT_MESSAGE_DELAY):
+    """Start the global message queue with the specified message delay."""
+    _message_queue.start(message_delay)
 
 
 def stop_message_queue():

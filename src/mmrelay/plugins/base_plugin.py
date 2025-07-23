@@ -14,7 +14,7 @@ from mmrelay.db_utils import (
     store_plugin_data,
 )
 from mmrelay.log_utils import get_logger
-from mmrelay.message_queue import queue_message
+from mmrelay.message_queue import queue_message, DEFAULT_MESSAGE_DELAY
 
 # Global config variable that will be set from main.py
 config = None
@@ -130,9 +130,7 @@ class BasePlugin(ABC):
             )
 
         # Get the response delay from the meshtastic config
-        self.response_delay = (
-            2.2  # Default value (minimum 2 seconds due to firmware delay)
-        )
+        self.response_delay = DEFAULT_MESSAGE_DELAY
         if config is not None:
             meshtastic_config = config.get("meshtastic", {})
 
