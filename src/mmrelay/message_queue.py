@@ -243,10 +243,12 @@ class MessageQueue:
 
             # Don't send during reconnection
             if reconnecting:
+                logger.debug("Not sending - reconnecting is True")
                 return False
 
             # Don't send if no client
             if meshtastic_client is None:
+                logger.debug("Not sending - meshtastic_client is None")
                 return False
 
             # Check if client is connected
@@ -254,12 +256,15 @@ class MessageQueue:
                 hasattr(meshtastic_client, "isConnected")
                 and not meshtastic_client.isConnected.is_set()
             ):
+                logger.debug("Not sending - client not connected")
                 return False
 
+            logger.debug("Connection check passed - ready to send")
             return True
 
         except ImportError:
             # If we can't check connection state, assume it's okay
+            logger.debug("Cannot check connection state - assuming OK")
             return True
 
 
