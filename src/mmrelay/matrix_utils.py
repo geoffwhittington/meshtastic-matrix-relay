@@ -707,29 +707,29 @@ async def send_reply_to_meshtastic(
 
     if config["meshtastic"]["broadcast_enabled"]:
         try:
+            # Create mapping info once if storage is enabled
+            mapping_info = None
+            if storage_enabled:
+                # Get message map configuration
+                database_config = config.get("database", {})
+                msg_map_config = database_config.get("msg_map", {})
+                if not msg_map_config:
+                    db_config = config.get("db", {})
+                    legacy_msg_map_config = db_config.get("msg_map", {})
+                    if legacy_msg_map_config:
+                        msg_map_config = legacy_msg_map_config
+                msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)
+
+                mapping_info = _create_mapping_info(
+                    event.event_id,
+                    room.room_id,
+                    text,
+                    local_meshnet_name,
+                    msgs_to_keep
+                )
+
             if reply_id is not None:
                 # Send as a structured reply using our custom function
-                # Create mapping info if storage is enabled
-                mapping_info = None
-                if storage_enabled:
-                    # Get message map configuration
-                    database_config = config.get("database", {})
-                    msg_map_config = database_config.get("msg_map", {})
-                    if not msg_map_config:
-                        db_config = config.get("db", {})
-                        legacy_msg_map_config = db_config.get("msg_map", {})
-                        if legacy_msg_map_config:
-                            msg_map_config = legacy_msg_map_config
-                    msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)
-
-                    mapping_info = _create_mapping_info(
-                        event.event_id,
-                        room.room_id,
-                        text,
-                        local_meshnet_name,
-                        msgs_to_keep
-                    )
-
                 # Queue the reply message
                 success = queue_message(
                     sendTextReply,
@@ -752,27 +752,6 @@ async def send_reply_to_meshtastic(
                     return
             else:
                 # Send as regular message (fallback for when no reply_id is available)
-                # Create mapping info if storage is enabled
-                mapping_info = None
-                if storage_enabled:
-                    # Get message map configuration
-                    database_config = config.get("database", {})
-                    msg_map_config = database_config.get("msg_map", {})
-                    if not msg_map_config:
-                        db_config = config.get("db", {})
-                        legacy_msg_map_config = db_config.get("msg_map", {})
-                        if legacy_msg_map_config:
-                            msg_map_config = legacy_msg_map_config
-                    msgs_to_keep = msg_map_config.get("msgs_to_keep", 500)
-
-                    mapping_info = _create_mapping_info(
-                        event.event_id,
-                        room.room_id,
-                        text,
-                        local_meshnet_name,
-                        msgs_to_keep
-                    )
-
                 success = queue_message(
                     meshtastic_interface.sendText,
                     text=reply_message,

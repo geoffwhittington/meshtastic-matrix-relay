@@ -11,7 +11,7 @@ import threading
 import time
 from dataclasses import dataclass
 from queue import Empty, Queue
-from typing import Callable
+from typing import Callable, Optional
 
 from mmrelay.log_utils import get_logger
 
@@ -31,7 +31,7 @@ class QueuedMessage:
     kwargs: dict
     description: str
     # Optional message mapping information for replies/reactions
-    mapping_info: dict = None = ""
+    mapping_info: Optional[dict] = None
 
 
 class MessageQueue:
@@ -62,7 +62,12 @@ class MessageQueue:
             if self._running:
                 return
 
-            self._message_delay = max(message_delay, 2.0)  # Enforce firmware minimum
+            # Validate and enforce firmware minimum
+            if message_delay < 2.0:
+                logger.warning(f"Message delay {message_delay}s below firmware minimum (2.0s), using 2.0s")
+                self._message_delay = 2.0
+            else:
+                self._message_delay = message_delay
             self._running = True
 
             # Start the processor in the event loop
@@ -191,6 +196,13 @@ class MessageQueue:
                     wait_time = self._message_delay - time_since_last
                     await asyncio.sleep(wait_time)
 
+                # Monitor queue depth for operational awareness
+                queue_size = self._queue.qsize()
+                if queue_size > 100:  # High queue depth threshold
+                    logger.warning(f"Queue depth high: {queue_size} messages pending")
+                elif queue_size > 50:  # Medium queue depth threshold
+                    logger.info(f"Queue depth moderate: {queue_size} messages pending")
+
                 # Get next message (non-blocking)
                 try:
                     message = self._queue.get_nowait()
@@ -289,7 +301,6 @@ class MessageQueue:
         try:
             # Import here to avoid circular imports
             from mmrelay.db_utils import store_message_map, prune_message_map
-            from mmrelay.config import config
 
             # Extract mapping information
             matrix_event_id = mapping_info.get("matrix_event_id")
