@@ -13,6 +13,7 @@ permissions:
 jobs:
   build-armv7-pyz:
     runs-on: ubuntu-latest
+    if: github.repository == 'jeremiah-k/meshtastic-matrix-relay'
 
     steps:
       - name: Checkout code
