@@ -42,6 +42,7 @@ jobs:
           echo "Extracted version: $VERSION"
           GIT_SHA=$(git rev-parse --short HEAD)
           echo "git_sha=$GIT_SHA" >> $GITHUB_OUTPUT
+          echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
 
           # Set DOCKER_TAG based on event type
           if [ "${{ github.event_name }}" == "release" ]; then
@@ -116,6 +117,9 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             BUILDKIT_INLINE_CACHE=1
+            BUILD_DATE=${{ steps.get_version.outputs.build_date }}
+            VCS_REF=${{ steps.get_version.outputs.git_sha }}
+            VERSION=${{ steps.get_version.outputs.version }}
 
       - name: Output build information
         run: |

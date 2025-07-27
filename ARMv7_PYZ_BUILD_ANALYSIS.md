@@ -168,11 +168,12 @@ This prevents `rpds-py` from being required but limits functionality and creates
 
 - name: Build or use cached rpds-py
   run: |
-    if [ ! -f ~/rpds-py-wheels/rpds_py-*.whl ]; then
-      # Build wheel with proper cross-compilation
+    if find ~/rpds-py-wheels -name "rpds_py-*.whl" -print -quit | grep -q .; then
+      pip install ~/rpds-py-wheels/rpds_py-*.whl
+    else
       pip wheel rpds-py --wheel-dir ~/rpds-py-wheels --no-binary=rpds-py
+      pip install ~/rpds-py-wheels/rpds_py-*.whl
     fi
-    pip install $(ls ~/rpds-py-wheels/rpds_py-*.whl | head -1)
 ```
 
 **Pros**:
@@ -257,7 +258,9 @@ docker run --platform linux/arm/v7 -it arm32v7/python:3.11 bash
 
 # Inside container:
 apt-get update && apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+# Download and verify rustup installer (more secure than direct pipe)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh
+sh rustup-init.sh -y --default-toolchain stable
 source ~/.cargo/env
 rustup target add armv7-unknown-linux-gnueabihf
 
