@@ -49,6 +49,14 @@ COPY --from=builder /usr/local/bin/mmrelay /usr/local/bin/mmrelay
 # Create app directory and set ownership
 RUN mkdir -p /app && chown -R mmrelay:mmrelay /app
 
+# Add container metadata labels
+LABEL org.opencontainers.image.title="Meshtastic Matrix Relay" \
+      org.opencontainers.image.description="A bridge between Meshtastic mesh networks and Matrix chat rooms, enabling seamless communication across different platforms with support for encryption, plugins, and real-time message relay." \
+      org.opencontainers.image.url="https://github.com/jeremiah-k/meshtastic-matrix-relay" \
+      org.opencontainers.image.source="https://github.com/jeremiah-k/meshtastic-matrix-relay" \
+      org.opencontainers.image.documentation="https://github.com/jeremiah-k/meshtastic-matrix-relay/blob/main/README.md" \
+      org.opencontainers.image.licenses="MIT"
+
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV MPLCONFIGDIR=/tmp/matplotlib
