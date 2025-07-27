@@ -1,16 +1,16 @@
 # Build stage
 FROM python:3.11-slim AS builder
 
-# Install build dependencies with pinned versions
+# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential=12.9 \
-    git=1:2.39.5-0+deb12u2 \
+    build-essential \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install Python build tools with pinned versions
-RUN pip install --no-cache-dir --upgrade pip==25.1.1 setuptools==80.9.0 wheel==0.45.1
+# Install Python build tools
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Copy source files
 COPY requirements.txt setup.py ./
@@ -28,11 +28,11 @@ FROM python:3.11-slim
 RUN groupadd --gid 1000 mmrelay && \
     useradd --uid 1000 --gid mmrelay --shell /bin/bash --create-home mmrelay
 
-# Install only runtime dependencies with pinned versions
+# Install only runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git=1:2.39.5-0+deb12u2 \
-    procps=2:4.0.2-3 \
-    && (apt-get install -y --no-install-recommends bluez=5.66-1+deb12u2 || echo "Warning: bluez package not found for this architecture. BLE support will be unavailable.") \
+    git \
+    procps \
+    && (apt-get install -y --no-install-recommends bluez || echo "Warning: bluez package not found for this architecture. BLE support will be unavailable.") \
     && rm -rf /var/lib/apt/lists/*
 
 # Note: User will be set via docker-compose user directive
