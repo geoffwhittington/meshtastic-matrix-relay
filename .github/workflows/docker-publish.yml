@@ -83,7 +83,7 @@ jobs:
         run: |
           echo "Testing Docker build locally first..."
           docker buildx build --platform linux/amd64,linux/arm64 \
-            --load -t test-build .
+            -t test-build .
           echo "Local Docker build successful!"
 
       - name: Extract metadata
