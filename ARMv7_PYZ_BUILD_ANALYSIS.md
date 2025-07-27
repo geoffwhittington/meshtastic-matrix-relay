@@ -263,6 +263,9 @@ rustup target add armv7-unknown-linux-gnueabihf
 
 # Test rpds-py compilation
 export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
+export CC_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
+export CXX_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++
+export PKG_CONFIG_ALLOW_CROSS=1
 pip install rpds-py --no-binary=rpds-py -v
 ```
 
