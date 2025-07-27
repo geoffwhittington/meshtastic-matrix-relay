@@ -1,7 +1,7 @@
 # Build stage
 FROM python:3.11-slim AS builder
 
-# Install build dependencies
+# Install build dependencies with pinned versions
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential=12.9 \
     git=1:2.39.5-0+deb12u2 \
@@ -28,7 +28,7 @@ FROM python:3.11-slim
 RUN groupadd --gid 1000 mmrelay && \
     useradd --uid 1000 --gid mmrelay --shell /bin/bash --create-home mmrelay
 
-# Install only runtime dependencies
+# Install only runtime dependencies with pinned versions
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git=1:2.39.5-0+deb12u2 \
     procps=2:4.0.2-3 \

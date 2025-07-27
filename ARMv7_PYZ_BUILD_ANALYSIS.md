@@ -172,7 +172,7 @@ This prevents `rpds-py` from being required but limits functionality and creates
       # Build wheel with proper cross-compilation
       pip wheel rpds-py --wheel-dir ~/rpds-py-wheels --no-binary=rpds-py
     fi
-    pip install ~/rpds-py-wheels/rpds_py-*.whl
+    pip install $(ls ~/rpds-py-wheels/rpds_py-*.whl | head -1)
 ```
 
 **Pros**:
@@ -193,7 +193,7 @@ This prevents `rpds-py` from being required but limits functionality and creates
 ```yaml
 runs-on: [self-hosted, linux, arm64]
 # OR
-runs-on: ubuntu-latest-arm
+runs-on: ubuntu-latest-arm64
 ```
 
 **Pros**:
@@ -334,7 +334,7 @@ pip install rpds-py --no-binary=rpds-py -v
   - No pull rate limits for public images
   - Automatic cleanup policies available
   - Better integration with GitHub Actions
-- **Format**: `ghcr.io/jeremiah-k/mmrelay:tag`
+- **Format**: `ghcr.io/<owner>/mmrelay:tag`
 
 #### 2. Quay.io (Red Hat)
 - **Free tier**: Unlimited public repositories
