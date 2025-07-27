@@ -55,6 +55,9 @@ COPY --from=builder /usr/local/bin/mmrelay /usr/local/bin/mmrelay
 RUN mkdir -p /app && chown -R mmrelay:mmrelay /app
 
 # Add container metadata labels
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
 LABEL org.opencontainers.image.title="Meshtastic Matrix Relay" \
       org.opencontainers.image.description="A bridge between Meshtastic mesh networks and Matrix chat rooms, enabling seamless communication across different platforms with support for encryption, plugins, and real-time message relay." \
       org.opencontainers.image.url="https://github.com/geoffwhittington/meshtastic-matrix-relay" \

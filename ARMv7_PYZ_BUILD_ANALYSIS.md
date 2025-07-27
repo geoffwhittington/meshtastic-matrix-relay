@@ -298,7 +298,7 @@ pip install rpds-py --no-binary=rpds-py -v
 - [rpds-py GitHub repository](https://github.com/crate-ci/rpds-py)
 
 ### Related Issues
-- [Yocto rpds-py recipe](https://layers.openembedded.org/)
+- [Yocto rpds-py recipe](https://layers.openembedded.org/layerindex/recipe/198922/)
 - [Cross-compilation discussions](https://github.com/PyO3/maturin/issues)
 
 ### Build Environment
