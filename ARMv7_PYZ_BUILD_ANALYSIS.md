@@ -306,6 +306,61 @@ pip install rpds-py --no-binary=rpds-py -v
 
 ---
 
-**Last Updated**: July 27, 2025  
-**Next Review**: After Strategy 1 implementation  
+## 🐳 Docker Registry Options Analysis
+
+### Current Setup
+- **Registry**: Docker Hub (docker.io)
+- **Username**: tadchilly
+- **Repository**: tadchilly/mmrelay
+- **Status**: Working, but manual triggers only
+
+### Docker Hub Free Tier Limits
+- **Public repositories**: Unlimited
+- **Private repositories**: 1 free
+- **Pull rate limits**: 100 pulls/hour for authenticated users, 10 pulls/hour for anonymous
+- **Push limits**: No specific limits on pushes for free accounts
+- **Storage**: No specific limits for public repositories
+
+### Free Alternative Registries
+
+#### 1. GitHub Container Registry (GHCR) - **RECOMMENDED**
+- **URL**: ghcr.io
+- **Free tier**: Unlimited for public packages
+- **Benefits**:
+  - Integrated with GitHub (same authentication)
+  - No pull rate limits for public images
+  - Automatic cleanup policies available
+  - Better integration with GitHub Actions
+- **Format**: `ghcr.io/jeremiah-k/mmrelay:tag`
+
+#### 2. Quay.io (Red Hat)
+- **Free tier**: Unlimited public repositories
+- **Benefits**: Advanced security scanning, build triggers
+- **Considerations**: Requires separate account management
+
+#### 3. GitLab Container Registry
+- **Free tier**: 10GB storage for public projects
+- **Benefits**: Integrated CI/CD, automatic cleanup
+
+### Automation Solutions
+
+#### Option 1: Repository Dispatch (Current Setup)
+- **Status**: Partially implemented in `check-upstream-releases.yml`
+- **Limitation**: Requires manual trigger or scheduled runs
+- **Benefit**: Works across different repository owners
+
+#### Option 2: GitHub App/Webhook
+- **Complexity**: High
+- **Benefit**: True automation on release events
+- **Limitation**: Requires app installation on main repo
+
+#### Option 3: Scheduled Monitoring (Recommended)
+- **Implementation**: Cron-based workflow that checks for new releases
+- **Frequency**: Every 30 minutes or hourly
+- **Benefit**: Fully automated, no main repo changes needed
+
+---
+
+**Last Updated**: July 27, 2025
+**Next Review**: After Strategy 1 implementation
 **Assigned**: Development Team

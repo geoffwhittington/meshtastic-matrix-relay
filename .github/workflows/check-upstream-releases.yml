@@ -1,7 +1,10 @@
-name: Check for Upstream Releases
+name: Auto-Build Docker Images on Upstream Releases
 
 on:
-  workflow_dispatch:
+  schedule:
+    # Check every 30 minutes for new releases
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # Keep manual trigger for testing
 
 permissions:
   contents: read
@@ -19,31 +22,35 @@ jobs:
         id: check
         # checkov:skip=CKV_GHA_3:Public API calls are safe
         run: |
+          echo "🔍 Checking for new releases in geoffwhittington/meshtastic-matrix-relay..."
+
           # Get latest release from main repo
           LATEST_RELEASE=$(curl -s https://api.github.com/repos/geoffwhittington/meshtastic-matrix-relay/releases/latest | jq -r '.tag_name')
-          echo "Latest upstream release: $LATEST_RELEASE"
+          echo "📋 Latest upstream release: $LATEST_RELEASE"
 
           if [ "$LATEST_RELEASE" = "null" ] || [ -z "$LATEST_RELEASE" ]; then
-            echo "No releases found in upstream repo"
+            echo "❌ No releases found in upstream repo"
             echo "should_build=false" >> $GITHUB_OUTPUT
             exit 0
           fi
 
           # Remove 'v' prefix for Docker tag comparison
           DOCKER_TAG=${LATEST_RELEASE#v}
-          echo "Checking for Docker tag: $DOCKER_TAG"
+          echo "🐳 Checking for Docker tag: $DOCKER_TAG"
 
           # Check if we have a Docker image for this release
           # Use Docker Hub API v2 to check if tag exists
           DOCKER_CHECK=$(curl -s "https://hub.docker.com/v2/repositories/tadchilly/mmrelay/tags/${DOCKER_TAG}" | jq -r '.name // "null"')
 
           if [ "$DOCKER_CHECK" = "null" ]; then
-            echo "No Docker image found for release $LATEST_RELEASE (tag: $DOCKER_TAG)"
+            echo "🚀 New release found: $LATEST_RELEASE (Docker tag: $DOCKER_TAG)"
+            echo "📦 No Docker image exists yet - triggering build..."
             echo "should_build=true" >> $GITHUB_OUTPUT
             echo "release_tag=$LATEST_RELEASE" >> $GITHUB_OUTPUT
             echo "docker_tag=$DOCKER_TAG" >> $GITHUB_OUTPUT
           else
-            echo "Docker image already exists for release $LATEST_RELEASE (tag: $DOCKER_TAG)"
+            echo "✅ Docker image already exists for release $LATEST_RELEASE (tag: $DOCKER_TAG)"
+            echo "⏭️  Skipping build..."
             echo "should_build=false" >> $GITHUB_OUTPUT
           fi
 
@@ -70,6 +77,20 @@ jobs:
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Build completion notification
+        if: steps.check.outputs.should_build == 'true'
+        run: |
+          echo "✅ Docker image built and pushed successfully!"
+          echo "🐳 Release: ${{ steps.check.outputs.release_tag }}"
+          echo "📦 Docker tag: ${{ steps.check.outputs.docker_tag }}"
+          echo "🔗 Available at: https://hub.docker.com/r/${{ secrets.DOCKER_USERNAME }}/mmrelay/tags"
+
+      - name: No build needed notification
+        if: steps.check.outputs.should_build == 'false'
+        run: |
+          echo "ℹ️  No new releases found or Docker images already exist"
+          echo "🔄 Will check again in 30 minutes"
 
       - name: Update Docker Hub description
         if: steps.check.outputs.should_build == 'true'
