@@ -2,16 +2,16 @@
 """
 Version bumping script for MMRelay.
 
-This script updates version numbers in all relevant locations throughout the codebase.
+This script updates the version number in the single source of truth location.
+All other systems (setup.py, Docker workflows, etc.) automatically reference this version.
 
-NOTE: This is a temporary solution. When connection issues are resolved, we should
-reduce the number of locations where version numbers need to be maintained.
+Single source of truth:
+- src/mmrelay/__init__.py (__version__ variable)
 
-Current version locations:
-- setup.py (line 9)
-- src/mmrelay/__init__.py (line 17, fallback)
-- .github/workflows/build-pyz-armv7.yml (fallback)
-- .github/workflows/docker-publish.yml (fallback)
+All other locations automatically reference this:
+- setup.py imports __version__ from mmrelay module
+- GitHub workflows extract version from mmrelay module
+- CLI and runtime use imported __version__
 
 Usage:
     python scripts/bump_version.py <new_version>
@@ -45,7 +45,7 @@ def update_file(file_path: Path, pattern: str, replacement: str, description: st
 
 
 def bump_version(new_version: str):
-    """Update version in all relevant files."""
+    """Update version in the single source of truth location."""
     print(f"🚀 Bumping version to {new_version}")
 
     # Validate version format (basic semver check)
@@ -56,71 +56,39 @@ def bump_version(new_version: str):
     root_dir = Path(__file__).parent.parent
     updates_made = 0
 
-    # Update setup.py
-    setup_py = root_dir / "setup.py"
-    if update_file(
-        setup_py, r'version="[^"]*"', f'version="{new_version}"', "setup.py version"
-    ):
-        updates_made += 1
-
-    # Update __init__.py fallback version
+    # Update the single source of truth: __init__.py
     init_py = root_dir / "src/mmrelay/__init__.py"
     if update_file(
         init_py,
         r'__version__ = "[^"]*"',
         f'__version__ = "{new_version}"',
-        "__init__.py fallback version",
+        "mmrelay module version (single source of truth)",
     ):
         updates_made += 1
 
-    # Update GitHub workflow fallbacks
-    armv7_workflow = root_dir / ".github/workflows/build-pyz-armv7.yml"
-    if update_file(
-        armv7_workflow,
-        r'echo "1\.[0-9]+\.[0-9]+"',
-        f'echo "{new_version}"',
-        "ARMv7 workflow fallback version",
-    ):
-        updates_made += 1
-
-    if update_file(
-        armv7_workflow,
-        r'VERSION="1\.[0-9]+\.[0-9]+"',
-        f'VERSION="{new_version}"',
-        "ARMv7 workflow default version",
-    ):
-        updates_made += 1
-
-    docker_workflow = root_dir / ".github/workflows/docker-publish.yml"
-    if update_file(
-        docker_workflow,
-        r'echo "1\.[0-9]+\.[0-9]+"',
-        f'echo "{new_version}"',
-        "Docker workflow fallback version",
-    ):
-        updates_made += 1
-
-    if update_file(
-        docker_workflow,
-        r'VERSION="1\.[0-9]+\.[0-9]+"',
-        f'VERSION="{new_version}"',
-        "Docker workflow default version",
-    ):
-        updates_made += 1
+    # Verify that all other systems will pick up the change
+    print("\n📋 Version will be automatically used by:")
+    print("  • setup.py (imports __version__ from mmrelay)")
+    print("  • Docker workflows (extract from mmrelay module)")
+    print("  • ARMv7 PYZ workflow (extract from mmrelay module)")
+    print("  • Windows packaging (extract from mmrelay module)")
+    print("  • CLI --version command (imports __version__)")
+    print("  • Runtime version checks (imports __version__)")
 
     print(f"\n🎉 Version bump complete! Made {updates_made} updates.")
 
     if updates_made > 0:
         print("\n📝 Next steps:")
         print("1. Review the changes with: git diff")
-        print("2. Test the build: make build")
+        print("2. Test the version: python -c \"import sys; sys.path.insert(0, 'src'); from mmrelay import __version__; print(__version__)\"")
+        print("3. Test the build: python setup.py --version")
         print(
-            "3. Commit the changes: git add . && git commit -m 'Bump version to {}'".format(
+            "4. Commit the changes: git add . && git commit -m 'Bump version to {}'".format(
                 new_version
             )
         )
-        print("4. Create a tag: git tag v{}".format(new_version))
-        print("5. Push changes: git push && git push --tags")
+        print("5. Create a tag: git tag v{}".format(new_version))
+        print("6. Push changes: git push && git push --tags")
 
     return updates_made > 0
 
