@@ -35,7 +35,7 @@ setup(
         "schedule==1.2.2",
         "platformdirs==4.3.8",
         "py-staticmaps>=0.4.0",
-        "rich==14.0.0",
+        "rich==14.1.0",
         "setuptools==80.9.0",
     ],
     packages=find_packages(where="src"),
