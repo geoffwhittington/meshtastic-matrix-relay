@@ -1,9 +1,13 @@
-from setuptools import find_packages, setup
 import os
 import re
 
+from setuptools import find_packages, setup
+
 # Read version from __init__.py without importing the package
-with open(os.path.join(os.path.dirname(__file__), "src", "mmrelay", "__init__.py"), encoding="utf-8") as f:
+with open(
+    os.path.join(os.path.dirname(__file__), "src", "mmrelay", "__init__.py"),
+    encoding="utf-8",
+) as f:
     __version__ = re.search(r'__version__\s*=\s*["\']([^"\']*)["\']', f.read()).group(1)
 
 # Read README file with proper resource management
