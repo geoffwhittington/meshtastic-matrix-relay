@@ -60,10 +60,10 @@ ARG VCS_REF
 ARG VERSION
 LABEL org.opencontainers.image.title="Meshtastic Matrix Relay" \
       org.opencontainers.image.description="A bridge between Meshtastic mesh networks and Matrix chat rooms, enabling seamless communication across different platforms with support for encryption, plugins, and real-time message relay." \
-      org.opencontainers.image.url="https://github.com/geoffwhittington/meshtastic-matrix-relay" \
-      org.opencontainers.image.source="https://github.com/geoffwhittington/meshtastic-matrix-relay" \
-      org.opencontainers.image.documentation="https://github.com/geoffwhittington/meshtastic-matrix-relay/blob/main/README.md" \
-      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.url="https://github.com/jeremiah-k/meshtastic-matrix-relay" \
+      org.opencontainers.image.source="https://github.com/jeremiah-k/meshtastic-matrix-relay" \
+      org.opencontainers.image.documentation="https://github.com/jeremiah-k/meshtastic-matrix-relay/blob/main/README.md" \
+      org.opencontainers.image.licenses="GPL-3.0-or-later" \
       org.opencontainers.image.version="${VERSION:-dev}" \
       org.opencontainers.image.revision="${VCS_REF:-unknown}" \
       org.opencontainers.image.created="${BUILD_DATE:-unknown}"

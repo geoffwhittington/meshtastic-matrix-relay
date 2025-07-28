@@ -129,7 +129,7 @@ jobs:
           LABEL org.opencontainers.image.title="MMRelay ARMv7 Builder" \
                 org.opencontainers.image.description="Pre-configured build environment for MMRelay ARMv7 PYZ builds with Rust cross-compilation support" \
                 org.opencontainers.image.source="https://github.com/jeremiah-k/meshtastic-matrix-relay" \
-                org.opencontainers.image.licenses="MIT"
+                org.opencontainers.image.licenses="GPL-3.0-or-later"
           
           # Default command
           CMD ["/bin/bash"]

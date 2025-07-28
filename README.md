@@ -18,11 +18,11 @@ A powerful and easy-to-use relay between Meshtastic devices and Matrix chat room
 - ✨️ _Bidirectional replies and reactions support_ ✨️ **NEW!!**
 - ✨️ _Native Docker support_ ✨️ **NEW!!**
 
-_We would love to support [Matrix E2EE rooms](https://github.com/geoffwhittington/meshtastic-matrix-relay/issues/33), but this is currently not implemented._
+_We would love to support [Matrix E2EE rooms](https://github.com/jeremiah-k/meshtastic-matrix-relay/issues/33), but this is currently not implemented._
 
 ## Documentation
 
-Visit our [Wiki](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki) for comprehensive guides and information.
+Visit our [Wiki](https://github.com/jeremiah-k/meshtastic-matrix-relay/wiki) for comprehensive guides and information.
 
 - [Installation Instructions](docs/INSTRUCTIONS.md) - Setup and configuration guide
 
@@ -69,7 +69,7 @@ For detailed Docker setup instructions, see the [Docker Guide](docs/DOCKER.md).
 
 ![Windows Installer Screenshot](https://user-images.githubusercontent.com/1770544/235249050-8c79107a-50cc-4803-b989-39e58100342d.png)
 
-The latest installer is available in the [releases section](https://github.com/geoffwhittington/meshtastic-matrix-relay/releases).
+The latest installer is available in the [releases section](https://github.com/jeremiah-k/meshtastic-matrix-relay/releases).
 
 ---
 
@@ -87,7 +87,7 @@ Produce high-level details about your mesh:
 
 ![Mesh Details Screenshot](https://user-images.githubusercontent.com/1770544/235245873-1ddc773b-a4cd-4c67-b0a5-b55a29504b73.png)
 
-See the full list of [core plugins](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Core-Plugins).
+See the full list of [core plugins](https://github.com/jeremiah-k/meshtastic-matrix-relay/wiki/Core-Plugins).
 
 ### Community & Custom Plugins
 
@@ -96,9 +96,9 @@ MMRelay's plugin system allows you to extend functionality in two ways:
 - **Custom Plugins**: Create personal plugins for your own use, stored in `~/.mmrelay/plugins/custom/`
 - **Community Plugins**: Share your creations with others or use plugins developed by the community
 
-Check the [Community Plugins Development Guide](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Community-Plugin-Development-Guide) in our wiki to get started.
+Check the [Community Plugins Development Guide](https://github.com/jeremiah-k/meshtastic-matrix-relay/wiki/Community-Plugin-Development-Guide) in our wiki to get started.
 
-✨️ Visit the [Community Plugins List](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Community-Plugin-List)!
+✨️ Visit the [Community Plugins List](https://github.com/jeremiah-k/meshtastic-matrix-relay/wiki/Community-Plugin-List)!
 
 #### Install a Community Plugin
 
@@ -124,7 +124,7 @@ Plugins make it easy to extend functionality without modifying the core program.
 
 ## Getting Started with Matrix
 
-See our Wiki page [Getting Started With Matrix & MM Relay](https://github.com/geoffwhittington/meshtastic-matrix-relay/wiki/Getting-Started-With-Matrix-&-MM-Relay).
+See our Wiki page [Getting Started With Matrix & MM Relay](https://github.com/jeremiah-k/meshtastic-matrix-relay/wiki/Getting-Started-With-Matrix-&-MM-Relay).
 
 ---
 
