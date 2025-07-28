@@ -1,11 +1,6 @@
 # Build stage
 FROM python:3.11-slim AS builder
 
-# Build arguments for metadata
-ARG BUILD_DATE
-ARG VCS_REF
-ARG VERSION
-
 # Install build dependencies with pinned versions
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential=12.9 \

@@ -253,25 +253,15 @@ runs-on: ubuntu-latest-arm64
 ### Local Testing Environment
 
 ```bash
-# Setup local ARMv7 cross-compilation
+# Setup local ARMv7 NATIVE compilation (emulated environment)
 docker run --platform linux/arm/v7 -it arm32v7/python:3.11 bash
 
 # Inside container:
-apt-get update && apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
-# Download rustup installer
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh
-# Note: For production use, verify checksum with:
-# curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs.sha256 -o rustup-init.sh.sha256
-# sha256sum -c rustup-init.sh.sha256
-sh rustup-init.sh -y --default-toolchain stable
-source ~/.cargo/env
-rustup target add armv7-unknown-linux-gnueabihf
+apt-get update && apt-get install -y build-essential pkg-config libssl-dev
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+source "$HOME/.cargo/env"
 
-# Test rpds-py compilation
-export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
-export CC_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
-export CXX_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++
-export PKG_CONFIG_ALLOW_CROSS=1
+# Test rpds-py compilation (natively within emulated ARMv7)
 pip install rpds-py --no-binary=rpds-py -v
 ```
 
