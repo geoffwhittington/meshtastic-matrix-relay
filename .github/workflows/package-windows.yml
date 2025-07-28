@@ -1,6 +1,7 @@
 name: Package Windows Installer
 
 on:
+  pull_request:
   workflow_dispatch:
   release:
     types: [published]

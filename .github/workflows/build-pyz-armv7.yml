@@ -1,6 +1,7 @@
 name: Build PYZ (armv7)
 
 on:
+  pull_request:
   workflow_dispatch:
   release:
     types: [published]
