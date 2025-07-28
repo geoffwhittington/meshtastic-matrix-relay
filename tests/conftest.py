@@ -34,6 +34,13 @@ def ensure_builtins_not_mocked():
             # Restore the original module if it was mocked
             sys.modules[name] = module
 
+    # Extra protection for logging system
+    import logging
+    if hasattr(logging, '_mock_name'):
+        # If logging itself got mocked, restore it
+        import importlib
+        importlib.reload(logging)
+
 # Mock Meshtastic modules comprehensively
 meshtastic_mock = MagicMock()
 sys.modules['meshtastic'] = meshtastic_mock
@@ -90,16 +97,14 @@ sys.modules['schedule'] = MagicMock()
 sys.modules['platformdirs'] = MagicMock()
 sys.modules['py_staticmaps'] = MagicMock()
 
-# Mock Rich modules with more specific behavior
+# Mock Rich modules but avoid interfering with logging system
 rich_mock = MagicMock()
 sys.modules['rich'] = rich_mock
 sys.modules['rich.console'] = MagicMock()
-sys.modules['rich.logging'] = MagicMock()
 
-# Set up Rich console mock to avoid logging issues
+# Don't mock rich.logging at all - let it use the real logging system
+# This prevents interference with Python's logging handlers
 rich_mock.Console = MagicMock
-rich_mock.logging = MagicMock()
-rich_mock.logging.RichHandler = MagicMock
 
 # Ensure built-in modules are not accidentally mocked
 ensure_builtins_not_mocked()
