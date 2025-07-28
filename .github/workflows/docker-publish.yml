@@ -1,4 +1,4 @@
-name: Docker Multi-Platform Build
+name: Docker Build
 
 on:
   workflow_dispatch:
@@ -12,78 +12,40 @@ env:
 permissions:
   contents: read
   packages: write
-  id-token: write
-  attestations: write
 
 jobs:
-  docker-multiplatform-build:
+  docker-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract version and git SHA
+      - name: Extract version
         id: get_version
         run: |
-          # Debug information
-          echo "Event name: ${{ github.event_name }}"
-          echo "Repository: ${{ github.repository }}"
-
-          # Extract version from mmrelay module
           VERSION=$(python3 -c "import sys; sys.path.insert(0, 'src'); from mmrelay import __version__; print(__version__)")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Extracted version: $VERSION"
-          GIT_SHA=$(git rev-parse --short HEAD)
-          echo "git_sha=$GIT_SHA" >> $GITHUB_OUTPUT
-          echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
 
-          # Set DOCKER_TAG based on event type
           if [ "${{ github.event_name }}" == "release" ]; then
             echo "docker_tag=$VERSION" >> $GITHUB_OUTPUT
             echo "is_release=true" >> $GITHUB_OUTPUT
-            echo "Building release version: $VERSION"
           else
-            # Manual workflow_dispatch - dev build
+            GIT_SHA=$(git rev-parse --short HEAD)
             echo "docker_tag=$VERSION-dev-$GIT_SHA" >> $GITHUB_OUTPUT
             echo "is_release=false" >> $GITHUB_OUTPUT
-            echo "Building dev version: $VERSION-dev-$GIT_SHA"
           fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Debug authentication info
-        run: |
-          echo "GitHub actor: ${{ github.actor }}"
-          echo "Registry: ${{ env.REGISTRY }}"
-          echo "Image name: ${{ env.IMAGE_NAME }}"
-          echo "Repository: ${{ github.repository }}"
-          echo "Event name: ${{ github.event_name }}"
-
       - name: Log in to GitHub Container Registry
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}
-
-      - name: Verify registry access
-        if: github.event_name != 'pull_request'
-        run: |
-          echo "Testing registry access..."
-          # Test if we can access the registry
-          docker pull hello-world || echo "Docker pull test failed, but continuing..."
-          echo "Registry login successful for ${{ github.actor }}"
-
-      - name: Test Docker build
-        run: |
-          echo "Testing Docker build locally first..."
-          docker buildx build --platform linux/amd64,linux/arm64 \
-            -t test-build .
-          echo "Local Docker build successful!"
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
         id: meta
@@ -91,24 +53,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # For releases: create version tag and latest
-            type=raw,value=${{ steps.get_version.outputs.docker_tag }},enable=true
+            type=raw,value=${{ steps.get_version.outputs.docker_tag }}
             type=raw,value=latest,enable=${{ steps.get_version.outputs.is_release == 'true' }}
-          labels: |
-            org.opencontainers.image.title=Meshtastic Matrix Relay
-            org.opencontainers.image.description=Bridge between Meshtastic mesh networks and Matrix chat rooms
-            org.opencontainers.image.version=${{ steps.get_version.outputs.version }}
-            org.opencontainers.image.revision=${{ steps.get_version.outputs.git_sha }}
-            mmrelay.build.type=${{ github.event_name == 'release' && 'release' || 'dev' }}
-            mmrelay.build.version=${{ steps.get_version.outputs.version }}
-            mmrelay.build.commit=${{ steps.get_version.outputs.git_sha }}
-
-      - name: Debug build metadata
-        run: |
-          echo "Tags that will be used:"
-          echo "${{ steps.meta.outputs.tags }}"
-          echo "Labels that will be used:"
-          echo "${{ steps.meta.outputs.labels }}"
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -120,31 +66,3 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          provenance: mode=max
-          sbom: true
-
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
-            BUILD_DATE=${{ steps.get_version.outputs.build_date }}
-            VCS_REF=${{ steps.get_version.outputs.git_sha }}
-            VERSION=${{ steps.get_version.outputs.version }}
-
-      - name: Output build information
-        run: |
-          echo "🐳 Docker image built and pushed!"
-          echo "📦 Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          echo "🏷️  Tag: ${{ steps.get_version.outputs.docker_tag }}"
-          if [ "${{ steps.get_version.outputs.is_release }}" == "true" ]; then
-            echo "🚀 Release build - also tagged as 'latest'"
-          else
-            echo "🧪 Development build - tagged as '${{ steps.get_version.outputs.docker_tag }}'"
-          fi
-
-      - name: Update Docker Hub description
-        if: github.event_name == 'release'
-        uses: peter-evans/dockerhub-description@v4
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
-          repository: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
-          readme-filepath: ./docs/DOCKER.md
