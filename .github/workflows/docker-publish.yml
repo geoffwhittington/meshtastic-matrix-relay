@@ -1,11 +1,9 @@
 name: Build and Push Docker Image
 
 on:
+  workflow_dispatch:
   release:
     types: [published]
-  workflow_dispatch:
-  repository_dispatch:
-    types: [release-published]
 
 env:
   REGISTRY: ghcr.io
@@ -48,19 +46,6 @@ jobs:
             echo "docker_tag=$VERSION" >> $GITHUB_OUTPUT
             echo "is_release=true" >> $GITHUB_OUTPUT
             echo "Building release version: $VERSION"
-          elif [ "${{ github.event_name }}" == "repository_dispatch" ]; then
-            # For repository_dispatch, use the release tag from payload if available
-            if [ -n "${{ github.event.client_payload.release_tag }}" ]; then
-              RELEASE_VERSION="${{ github.event.client_payload.release_tag }}"
-              # Remove 'v' prefix if present
-              RELEASE_VERSION=${RELEASE_VERSION#v}
-              echo "docker_tag=$RELEASE_VERSION" >> $GITHUB_OUTPUT
-              echo "Building triggered release version: $RELEASE_VERSION"
-            else
-              echo "docker_tag=$VERSION" >> $GITHUB_OUTPUT
-              echo "Building release version: $VERSION"
-            fi
-            echo "is_release=true" >> $GITHUB_OUTPUT
           else
             # Manual workflow_dispatch - dev build
             echo "docker_tag=$VERSION-dev-$GIT_SHA" >> $GITHUB_OUTPUT
