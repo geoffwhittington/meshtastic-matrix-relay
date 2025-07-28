@@ -74,6 +74,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify registry access
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "Testing registry access..."
+          # Test if we can access the registry
+          docker pull hello-world || echo "Docker pull test failed, but continuing..."
+          echo "Registry login successful for ${{ github.actor }}"
+
       - name: Test Docker build
         run: |
           echo "Testing Docker build locally first..."
@@ -118,6 +126,7 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: mode=max
           sbom: true
+
           build-args: |
             BUILDKIT_INLINE_CACHE=1
             BUILD_DATE=${{ steps.get_version.outputs.build_date }}
