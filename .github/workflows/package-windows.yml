@@ -28,11 +28,7 @@ jobs:
         shell: bash
         run: |
           # Extract version from mmrelay module
-          if [ -f src/mmrelay/__init__.py ]; then
-            VERSION=$(python3 -c "import sys; sys.path.insert(0, 'src'); from mmrelay import __version__; print(__version__)")
-          else
-            VERSION="1.1.2"
-          fi
+          VERSION=$(python3 -c "import sys; sys.path.insert(0, 'src'); from mmrelay import __version__; print(__version__)")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Extracted version: $VERSION"
           GIT_SHA=$(git rev-parse --short HEAD)
