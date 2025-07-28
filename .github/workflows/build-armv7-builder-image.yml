@@ -60,20 +60,20 @@ jobs:
           
           # Install system dependencies and cross-compilation toolchain
           RUN apt-get update && apt-get install -y --no-install-recommends \
-              gcc=4:12.2.0-3 \
-              libffi-dev=3.4.4-1 \
-              libssl-dev=3.0.14-1~deb12u2 \
-              git=1:2.39.5-0+deb12u2 \
-              libbluetooth-dev=5.66-1+deb12u2 \
-              curl=7.88.1-10+deb12u8 \
-              pkg-config=1.8.1-1 \
-              build-essential=12.9 \
-              libatlas-base-dev=3.10.3-12 \
-              libolm-dev=3.2.14+dfsg-1+deb12u1 \
-              python3-dev=3.11.2-1+b1 \
-              python3.11-dev=3.11.2-6+deb12u4 \
-              gcc-arm-linux-gnueabihf=4:12.2.0-3 \
-              g++-arm-linux-gnueabihf=4:12.2.0-3 \
+              gcc \
+              libffi-dev \
+              libssl-dev \
+              git \
+              libbluetooth-dev \
+              curl \
+              pkg-config \
+              build-essential \
+              libatlas-base-dev \
+              libolm-dev \
+              python3-dev \
+              python3.11-dev \
+              gcc-arm-linux-gnueabihf \
+              g++-arm-linux-gnueabihf \
               && rm -rf /var/lib/apt/lists/*
           
           # Install Rust with ARMv7 target
