@@ -15,18 +15,7 @@ from unittest.mock import MagicMock
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-# Mock all external dependencies
-sys.modules["meshtastic"] = MagicMock()
-sys.modules["meshtastic.protobuf"] = MagicMock()
-sys.modules["meshtastic.protobuf.portnums_pb2"] = MagicMock()
-sys.modules["meshtastic.protobuf.portnums_pb2"].PortNum = MagicMock()
-sys.modules["meshtastic.protobuf.portnums_pb2"].PortNum.DETECTION_SENSOR_APP = 1
-sys.modules["nio"] = MagicMock()
-sys.modules["nio.MatrixRoom"] = MagicMock()
-sys.modules["nio.RoomMessageText"] = MagicMock()
-sys.modules["nio.RoomMessageNotice"] = MagicMock()
-sys.modules["nio.ReactionEvent"] = MagicMock()
-sys.modules["nio.RoomMessageEmote"] = MagicMock()
+# External dependencies are mocked in conftest.py
 
 # Import after mocking
 from mmrelay.message_queue import MessageQueue  # noqa: E402
