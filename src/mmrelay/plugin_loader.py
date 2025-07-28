@@ -896,8 +896,8 @@ def load_plugins(passed_config=None):
             getattr(plugin, "plugin_name", plugin.__class__.__name__)
             for plugin in sorted_active_plugins
         ]
-        logger.info(f"Plugins loaded: {', '.join(plugin_names)}")
+        logger.info(f"Loaded: {', '.join(plugin_names)}")
     else:
-        logger.info("Plugins loaded: none")
+        logger.info("Loaded: none")
 
     plugins_loaded = True  # Set the flag to indicate that plugins have been load
