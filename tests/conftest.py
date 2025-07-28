@@ -6,10 +6,33 @@ to ensure tests can run without requiring actual hardware or network connections
 """
 
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
 # Mock all external dependencies before any imports
 # This prevents ImportError and allows tests to run in isolation
+
+# Preserve references to built-in modules that should NOT be mocked
+import queue
+import logging
+import asyncio
+import threading
+import time
+
+# Store references to prevent accidental mocking
+_BUILTIN_MODULES = {
+    'queue': queue,
+    'logging': logging,
+    'asyncio': asyncio,
+    'threading': threading,
+    'time': time,
+}
+
+def ensure_builtins_not_mocked():
+    """Ensure that Python built-in modules are not accidentally mocked."""
+    for name, module in _BUILTIN_MODULES.items():
+        if name in sys.modules and hasattr(sys.modules[name], '_mock_name'):
+            # Restore the original module if it was mocked
+            sys.modules[name] = module
 
 # Mock Meshtastic modules comprehensively
 meshtastic_mock = MagicMock()
@@ -50,7 +73,7 @@ sys.modules['nio.events.room_events'].RoomMemberEvent = MagicMock()
 sys.modules['PIL'] = MagicMock()
 sys.modules['PIL.Image'] = MagicMock()
 
-# Mock other external dependencies
+# Mock other external dependencies (but avoid Python built-ins)
 sys.modules['certifi'] = MagicMock()
 sys.modules['serial'] = MagicMock()
 sys.modules['serial.tools'] = MagicMock()
@@ -66,6 +89,17 @@ sys.modules['haversine'] = MagicMock()
 sys.modules['schedule'] = MagicMock()
 sys.modules['platformdirs'] = MagicMock()
 sys.modules['py_staticmaps'] = MagicMock()
-sys.modules['rich'] = MagicMock()
+
+# Mock Rich modules with more specific behavior
+rich_mock = MagicMock()
+sys.modules['rich'] = rich_mock
 sys.modules['rich.console'] = MagicMock()
 sys.modules['rich.logging'] = MagicMock()
+
+# Set up Rich console mock to avoid logging issues
+rich_mock.Console = MagicMock
+rich_mock.logging = MagicMock()
+rich_mock.logging.RichHandler = MagicMock
+
+# Ensure built-in modules are not accidentally mocked
+ensure_builtins_not_mocked()
