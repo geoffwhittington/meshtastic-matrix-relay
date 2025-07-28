@@ -1,15 +1,13 @@
 name: Build and Push Docker Image
 
 on:
+  workflow_dispatch:
   release:
     types: [published]
-  workflow_dispatch:
-  repository_dispatch:
-    types: [release-published]
 
 env:
-  REGISTRY: docker.io
-  IMAGE_NAME: mmrelay
+  REGISTRY: ghcr.io
+  IMAGE_NAME: jeremiah-k/mmrelay
 
 permissions:
   contents: read
@@ -18,7 +16,7 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    if: github.repository == 'jeremiah-k/meshtastic-matrix-relay'
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -27,6 +25,10 @@ jobs:
       - name: Extract version and git SHA
         id: get_version
         run: |
+          # Debug information
+          echo "Event name: ${{ github.event_name }}"
+          echo "Repository: ${{ github.repository }}"
+
           # Extract version from setup.py
           if [ -f setup.py ]; then
             VERSION=$(grep -E "^\s*version\s*=" setup.py | sed -E 's/.*version\s*=\s*["\x27]([^"\x27]+)["\x27].*/\1/' || echo "1.1.2")
@@ -37,25 +39,13 @@ jobs:
           echo "Extracted version: $VERSION"
           GIT_SHA=$(git rev-parse --short HEAD)
           echo "git_sha=$GIT_SHA" >> $GITHUB_OUTPUT
+          echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
 
           # Set DOCKER_TAG based on event type
           if [ "${{ github.event_name }}" == "release" ]; then
             echo "docker_tag=$VERSION" >> $GITHUB_OUTPUT
             echo "is_release=true" >> $GITHUB_OUTPUT
             echo "Building release version: $VERSION"
-          elif [ "${{ github.event_name }}" == "repository_dispatch" ]; then
-            # For repository_dispatch, use the release tag from payload if available
-            if [ -n "${{ github.event.client_payload.release_tag }}" ]; then
-              RELEASE_VERSION="${{ github.event.client_payload.release_tag }}"
-              # Remove 'v' prefix if present
-              RELEASE_VERSION=${RELEASE_VERSION#v}
-              echo "docker_tag=$RELEASE_VERSION" >> $GITHUB_OUTPUT
-              echo "Building triggered release version: $RELEASE_VERSION"
-            else
-              echo "docker_tag=$VERSION" >> $GITHUB_OUTPUT
-              echo "Building release version: $VERSION"
-            fi
-            echo "is_release=true" >> $GITHUB_OUTPUT
           else
             # Manual workflow_dispatch - dev build
             echo "docker_tag=$VERSION-dev-$GIT_SHA" >> $GITHUB_OUTPUT
@@ -66,19 +56,26 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
+      - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test Docker build
+        run: |
+          echo "Testing Docker build locally first..."
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t test-build .
+          echo "Local Docker build successful!"
 
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             # For releases: create version tag and latest
             type=raw,value=${{ steps.get_version.outputs.docker_tag }},enable=true
@@ -96,22 +93,27 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+            BUILD_DATE=${{ steps.get_version.outputs.build_date }}
+            VCS_REF=${{ steps.get_version.outputs.git_sha }}
+            VERSION=${{ steps.get_version.outputs.version }}
 
       - name: Output build information
         run: |
           echo "🐳 Docker image built and pushed!"
-          echo "📦 Image: ${{ env.REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}"
-          echo "🏷️  Tag: ${{ env.DOCKER_TAG }}"
-          if [ "${{ env.IS_RELEASE }}" == "true" ]; then
+          echo "📦 Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          echo "🏷️  Tag: ${{ steps.get_version.outputs.docker_tag }}"
+          if [ "${{ steps.get_version.outputs.is_release }}" == "true" ]; then
             echo "🚀 Release build - also tagged as 'latest'"
           else
-            echo "🧪 Development build - tagged as '${{ env.DOCKER_TAG }}'"
+            echo "🧪 Development build - tagged as '${{ steps.get_version.outputs.docker_tag }}'"
           fi
 
       - name: Update Docker Hub description

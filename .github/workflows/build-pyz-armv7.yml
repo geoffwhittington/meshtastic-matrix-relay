@@ -43,29 +43,46 @@ jobs:
             echo "FILE_VERSION=$VERSION-dev-$GIT_SHA" >> $GITHUB_ENV
           fi
 
-      - name: Build inside ARMv7 Docker (shiv, rustup, fixed cargo config)
+      - name: Build inside ARMv7 Docker (using pre-built builder)
         uses: addnab/docker-run-action@v3
         with:
-          image: arm32v7/python:3.11
+          image: ghcr.io/jeremiah-k/mmrelay-builder-armv7:latest
           options: --platform linux/arm/v7 -v ${{ github.workspace }}:/github/workspace -w /github/workspace
           run: |
-            apt-get update
-            apt-get install -y --no-install-recommends \
-              gcc libffi-dev libssl-dev git libbluetooth-dev curl pkg-config \
-              build-essential libatlas-base-dev libolm-dev python3-dev python3.11-dev
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-            . "$HOME/.cargo/env"
-            pip install --upgrade pip setuptools wheel maturin
+            echo "=== Using pre-built ARMv7 environment ==="
+            echo "Rust version: $(rustc --version)"
+            echo "Cross-compilation target: $(rustup target list --installed | grep armv7)"
+            echo "GCC version: $(arm-linux-gnueabihf-gcc --version | head -1)"
+            echo "Python version: $(python --version)"
+            echo "Build tools ready!"
 
-            # Install jsonschema with a version that doesn't require rpds-py
-            pip install "jsonschema<4.0.0" "referencing<0.30.0"
+            echo "=== Attempting to use pre-built rpds-py or build from source ==="
+            # Check if rpds-py is already available from pre-build
+            if python -c "import rpds" 2>/dev/null; then
+              echo "✅ rpds-py already available from pre-built environment"
+            else
+              echo "Building rpds-py from source..."
+              pip install rpds-py --no-binary=rpds-py -v || {
+                echo "WARNING: rpds-py build failed, falling back to version pinning"
+                pip install "jsonschema<4.0.0" "referencing<0.30.0"
+              }
+            fi
 
-            # Install the rest of the requirements
+            echo "=== Installing remaining requirements ==="
             pip install -r requirements.txt
-            pip install shiv
             mkdir -p dist
 
-            # Build the PYZ file with the correct entry point
+            echo "=== Verifying rpds-py installation ==="
+            python -c "
+            try:
+                from rpds import HashTrieMap
+                print('✅ rpds-py imported successfully')
+            except ImportError as e:
+                print(f'⚠️  rpds-py import failed: {e}')
+                print('Continuing with fallback versions...')
+            "
+
+            echo "=== Building PYZ file ==="
             python -m shiv --compressed \
               --compile-pyc \
               --reproducible \
@@ -73,10 +90,13 @@ jobs:
               --output-file dist/mmrelay-${{ env.FILE_VERSION }}-armv7.pyz \
               .
 
-            # Test the PYZ file
-            echo "--- Testing PYZ file ---"
+            echo "=== Testing PYZ file ==="
             chmod +x dist/mmrelay-${{ env.FILE_VERSION }}-armv7.pyz
-            dist/mmrelay-${{ env.FILE_VERSION }}-armv7.pyz --version || echo "PYZ test failed"
+            if ! dist/mmrelay-${{ env.FILE_VERSION }}-armv7.pyz --version; then
+              echo "❌ PYZ test failed - the built file cannot execute properly"
+              exit 1
+            fi
+            echo "✅ PYZ test passed"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
