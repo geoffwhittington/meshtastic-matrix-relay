@@ -62,18 +62,19 @@ class TestMessageQueue(unittest.TestCase):
         # Mock the _should_send_message method to always return True for tests
         self.queue._should_send_message = lambda: True
 
-        # Mock asyncio.get_running_loop to make executor run synchronously
-        self.loop_patcher = patch("asyncio.get_running_loop")
-        mock_get_loop = self.loop_patcher.start()
+        # Use a real event loop but patch run_in_executor to run synchronously
+        real_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(real_loop)
 
-        # Create a mock loop that runs executor functions synchronously
-        mock_loop = MagicMock()
+        # Store original run_in_executor for restoration
+        self.original_run_in_executor = real_loop.run_in_executor
 
-        async def sync_executor(executor, func, *args, **kwargs):
+        def sync_run_in_executor(executor, func, *args, **kwargs):
             """
             Executes a function synchronously, bypassing the executor.
 
             Parameters:
+                executor: The executor (ignored in sync mode).
                 func (callable): The function to execute.
                 *args: Positional arguments to pass to the function.
                 **kwargs: Keyword arguments to pass to the function.
@@ -83,8 +84,7 @@ class TestMessageQueue(unittest.TestCase):
             """
             return func(*args, **kwargs)
 
-        mock_loop.run_in_executor = sync_executor
-        mock_get_loop.return_value = mock_loop
+        real_loop.run_in_executor = sync_run_in_executor
 
     def tearDown(self):
         """
@@ -96,7 +96,12 @@ class TestMessageQueue(unittest.TestCase):
 
             time.sleep(0.1)
             self.queue.stop()
-        self.loop_patcher.stop()
+
+        # Restore original run_in_executor and clean up event loop
+        current_loop = asyncio.get_event_loop()
+        if hasattr(self, 'original_run_in_executor'):
+            current_loop.run_in_executor = self.original_run_in_executor
+        asyncio.set_event_loop(None)
 
     @property
     def sent_messages(self):

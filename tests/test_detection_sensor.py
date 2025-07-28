@@ -26,6 +26,20 @@ class TestDetectionSensor(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
+        # Set up a real event loop for asyncio operations
+        import asyncio
+        real_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(real_loop)
+
+        # Store original run_in_executor for restoration
+        self.original_run_in_executor = real_loop.run_in_executor
+
+        def sync_run_in_executor(executor, func, *args, **kwargs):
+            """Execute function synchronously for testing."""
+            return func(*args, **kwargs)
+
+        real_loop.run_in_executor = sync_run_in_executor
+
         # Mock message queue
         self.queue = MessageQueue()
         self.sent_messages = []
@@ -41,6 +55,13 @@ class TestDetectionSensor(unittest.TestCase):
         """Clean up after tests."""
         if self.queue.is_running():
             self.queue.stop()
+
+        # Restore original run_in_executor and clean up event loop
+        import asyncio
+        current_loop = asyncio.get_event_loop()
+        if hasattr(self, 'original_run_in_executor'):
+            current_loop.run_in_executor = self.original_run_in_executor
+        asyncio.set_event_loop(None)
 
     def test_detection_sensor_config_enabled(self):
         """Test detection sensor configuration parsing when enabled."""
