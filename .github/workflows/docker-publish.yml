@@ -19,7 +19,6 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    if: github.repository == 'jeremiah-k/meshtastic-matrix-relay'
 
     steps:
       - name: Checkout repository

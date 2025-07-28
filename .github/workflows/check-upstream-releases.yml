@@ -12,7 +12,6 @@ permissions:
 jobs:
   check-and-build:
     runs-on: ubuntu-latest
-    if: github.repository == 'jeremiah-k/meshtastic-matrix-relay'
 
     steps:
       - name: Checkout repository

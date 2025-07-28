@@ -19,7 +19,6 @@ env:
 jobs:
   build-armv7-builder:
     runs-on: ubuntu-latest
-    if: github.repository == 'jeremiah-k/meshtastic-matrix-relay'
     
     permissions:
       contents: read
