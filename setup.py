@@ -1,10 +1,10 @@
 from setuptools import find_packages, setup
-import sys
 import os
+import re
 
-# Add src to path to import version
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
-from mmrelay import __version__
+# Read version from __init__.py without importing the package
+with open(os.path.join(os.path.dirname(__file__), "src", "mmrelay", "__init__.py"), encoding="utf-8") as f:
+    __version__ = re.search(r'__version__\s*=\s*["\']([^"\']*)["\']', f.read()).group(1)
 
 # Read README file with proper resource management
 with open("README.md", encoding="utf-8") as f:

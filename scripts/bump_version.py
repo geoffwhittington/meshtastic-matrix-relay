@@ -60,7 +60,7 @@ def bump_version(new_version: str):
     init_py = root_dir / "src/mmrelay/__init__.py"
     if update_file(
         init_py,
-        r'__version__ = "[^"]*"',
+        r'__version__\s*=\s*["\'].*?["\']',
         f'__version__ = "{new_version}"',
         "mmrelay module version",
     ):
