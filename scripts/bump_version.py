@@ -2,13 +2,13 @@
 """
 Version bumping script for MMRelay.
 
-This script updates the version number in the single source of truth location.
-All other systems (setup.py, Docker workflows, etc.) automatically reference this version.
+This script updates the version number in src/mmrelay/__init__.py.
+All other systems automatically reference this version.
 
-Single source of truth:
+Version location:
 - src/mmrelay/__init__.py (__version__ variable)
 
-All other locations automatically reference this:
+Systems that automatically use this version:
 - setup.py imports __version__ from mmrelay module
 - GitHub workflows extract version from mmrelay module
 - CLI and runtime use imported __version__
@@ -45,7 +45,7 @@ def update_file(file_path: Path, pattern: str, replacement: str, description: st
 
 
 def bump_version(new_version: str):
-    """Update version in the single source of truth location."""
+    """Update version in the mmrelay module."""
     print(f"🚀 Bumping version to {new_version}")
 
     # Validate version format (basic semver check)
@@ -56,13 +56,13 @@ def bump_version(new_version: str):
     root_dir = Path(__file__).parent.parent
     updates_made = 0
 
-    # Update the single source of truth: __init__.py
+    # Update the version in __init__.py
     init_py = root_dir / "src/mmrelay/__init__.py"
     if update_file(
         init_py,
         r'__version__ = "[^"]*"',
         f'__version__ = "{new_version}"',
-        "mmrelay module version (single source of truth)",
+        "mmrelay module version",
     ):
         updates_made += 1
 

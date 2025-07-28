@@ -26,7 +26,7 @@ jobs:
       - name: Extract version and git SHA
         id: get_version
         run: |
-          # Extract version from mmrelay module (single source of truth)
+          # Extract version from mmrelay module
           if [ -f src/mmrelay/__init__.py ]; then
             VERSION=$(python3 -c "import sys; sys.path.insert(0, 'src'); from mmrelay import __version__; print(__version__)")
           else
