@@ -86,12 +86,6 @@ jobs:
               cat > ~/.cargo/config.toml << 'CARGO_EOF'
           [target.armv7-unknown-linux-gnueabihf]
           linker = "arm-linux-gnueabihf-gcc"
-          
-          [source.crates-io]
-          replace-with = "sparse-index"
-          
-          [source.sparse-index]
-          registry = "sparse+https://index.crates.io/"
           CARGO_EOF
           
           # Set up cross-compilation environment variables
