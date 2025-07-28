@@ -58,6 +58,10 @@ jobs:
           # Set platform for cross-compilation
           ENV DEBIAN_FRONTEND=noninteractive
           
+          # Cache bust to force rebuild when needed
+          ARG CACHE_BUST
+          ENV CACHE_BUST=${CACHE_BUST}
+
           # Install system dependencies for native ARMv7 compilation
           RUN apt-get update && apt-get install -y --no-install-recommends \
               gcc \
@@ -131,6 +135,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            CACHE_BUST=${{ github.run_number }}-${{ github.run_attempt }}
 
       - name: Output build information
         run: |
