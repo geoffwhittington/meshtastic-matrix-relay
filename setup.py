@@ -8,7 +8,12 @@ with open(
     os.path.join(os.path.dirname(__file__), "src", "mmrelay", "__init__.py"),
     encoding="utf-8",
 ) as f:
-    __version__ = re.search(r'__version__\s*=\s*["\']([^"\']*)["\']', f.read()).group(1)
+    content = f.read()
+    match = re.search(r'__version__\s*=\s*["\']([^"\']*)["\']', content)
+    if match:
+        __version__ = match.group(1)
+    else:
+        raise RuntimeError("Version string not found in src/mmrelay/__init__.py")
 
 # Read README file with proper resource management
 with open("README.md", encoding="utf-8") as f:
