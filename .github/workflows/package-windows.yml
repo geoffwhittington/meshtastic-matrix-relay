@@ -27,12 +27,8 @@ jobs:
         id: get_version
         shell: bash
         run: |
-          # Extract version from setup.py
-          if [ -f setup.py ]; then
-            VERSION=$(grep -E "^\s*version\s*=" setup.py | sed -E 's/.*version\s*=\s*["\x27]([^"\x27]+)["\x27].*/\1/' || echo "1.1.0")
-          else
-            VERSION="1.1.0"
-          fi
+          # Extract version from mmrelay module
+          VERSION=$(python3 -c "import sys; sys.path.insert(0, 'src'); from mmrelay import __version__; print(__version__)")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Extracted version: $VERSION"
           GIT_SHA=$(git rev-parse --short HEAD)

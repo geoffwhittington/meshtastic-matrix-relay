@@ -1,7 +1,6 @@
 name: Build PYZ (armv7)
 
 on:
-  pull_request:
   workflow_dispatch:
   release:
     types: [published]
@@ -26,12 +25,8 @@ jobs:
       - name: Extract version and git SHA
         id: get_version
         run: |
-          # Extract version from setup.py
-          if [ -f setup.py ]; then
-            VERSION=$(grep -E "^\s*version\s*=" setup.py | sed -E 's/.*version\s*=\s*["\x27]([^"\x27]+)["\x27].*/\1/' || echo "1.1.2")
-          else
-            VERSION="1.1.2"
-          fi
+          # Extract version from mmrelay module
+          VERSION=$(python3 -c "import sys; sys.path.insert(0, 'src'); from mmrelay import __version__; print(__version__)")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Extracted version: $VERSION"
           GIT_SHA=$(git rev-parse --short HEAD)

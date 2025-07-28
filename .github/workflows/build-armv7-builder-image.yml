@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       push_image:
-        description: 'Push image to registry'
+        description: "Push image to registry"
         required: false
         default: true
         type: boolean
   schedule:
     # Rebuild monthly to keep dependencies fresh
-    - cron: '0 2 1 * *'
+    - cron: "0 2 1 * *"
 
 env:
   REGISTRY: ghcr.io
@@ -19,7 +19,7 @@ env:
 jobs:
   build-armv7-builder:
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: read
       packages: write
@@ -54,10 +54,10 @@ jobs:
           cat > Dockerfile.armv7-builder << 'EOF'
           # ARMv7 Builder Image for MMRelay PYZ builds
           FROM arm32v7/python:3.11
-          
+
           # Set platform for cross-compilation
           ENV DEBIAN_FRONTEND=noninteractive
-          
+
           # Cache bust to force rebuild when needed
           ARG CACHE_BUST
           ENV CACHE_BUST=${CACHE_BUST}
@@ -77,11 +77,11 @@ jobs:
               python3-dev \
               python3.11-dev \
               && rm -rf /var/lib/apt/lists/*
-          
+
           # Install Rust for native ARMv7 compilation (within emulated environment)
           RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
           ENV PATH="/root/.cargo/bin:${PATH}"
-          
+
           # Install Python build tools with pinned versions
           RUN pip install --no-cache-dir --upgrade \
               pip==25.1.1 \
@@ -89,7 +89,7 @@ jobs:
               wheel==0.45.1 \
               maturin==1.7.4 \
               shiv==1.0.6
-          
+
           # Pre-build rpds-py with enhanced error handling and validation
           RUN echo "=== Pre-building rpds-py for faster future builds ===" && \
               echo "Environment: Native ARMv7 compilation within emulated container" && \
@@ -101,7 +101,7 @@ jobs:
               python -c "from rpds import HashTrieMap; print('rpds-py validation successful')" && \
               echo "✅ rpds-py pre-build completed successfully" || \
               (echo "❌ rpds-py pre-build failed - builds will compile during runtime" && exit 0)
-          
+
           # Verify the build environment
           RUN echo "=== Build Environment Verification ===" && \
               rustc --version && \
@@ -110,16 +110,16 @@ jobs:
               python --version && \
               pip --version && \
               echo "=== Environment Ready ==="
-          
+
           # Set working directory
           WORKDIR /workspace
-          
+
           # Add container metadata
           LABEL org.opencontainers.image.title="MMRelay ARMv7 Builder" \
                 org.opencontainers.image.description="Pre-configured build environment for MMRelay ARMv7 PYZ builds with Rust cross-compilation support" \
                 org.opencontainers.image.source="https://github.com/jeremiah-k/meshtastic-matrix-relay" \
                 org.opencontainers.image.licenses="GPL-3.0-or-later"
-          
+
           # Default command
           CMD ["/bin/bash"]
           EOF

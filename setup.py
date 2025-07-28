@@ -1,4 +1,19 @@
+import os
+import re
+
 from setuptools import find_packages, setup
+
+# Read version from __init__.py without importing the package
+with open(
+    os.path.join(os.path.dirname(__file__), "src", "mmrelay", "__init__.py"),
+    encoding="utf-8",
+) as f:
+    content = f.read()
+    match = re.search(r'__version__\s*=\s*["\']([^"\']*)["\']', content)
+    if match:
+        __version__ = match.group(1)
+    else:
+        raise RuntimeError("Version string not found in src/mmrelay/__init__.py")
 
 # Read README file with proper resource management
 with open("README.md", encoding="utf-8") as f:
@@ -6,7 +21,7 @@ with open("README.md", encoding="utf-8") as f:
 
 setup(
     name="mmrelay",
-    version="1.1.2",
+    version=__version__,
     author="Geoff Whittington, Jeremiah K., and contributors",
     author_email="jeremiahk@gmx.com",
     description="Bridge between Meshtastic mesh networks and Matrix chat rooms",

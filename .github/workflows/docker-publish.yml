@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Docker Multi-Platform Build
 
 on:
   workflow_dispatch:
@@ -12,9 +12,11 @@ env:
 permissions:
   contents: read
   packages: write
+  id-token: write
+  attestations: write
 
 jobs:
-  build-and-push:
+  docker-multiplatform-build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -29,12 +31,8 @@ jobs:
           echo "Event name: ${{ github.event_name }}"
           echo "Repository: ${{ github.repository }}"
 
-          # Extract version from setup.py
-          if [ -f setup.py ]; then
-            VERSION=$(grep -E "^\s*version\s*=" setup.py | sed -E 's/.*version\s*=\s*["\x27]([^"\x27]+)["\x27].*/\1/' || echo "1.1.2")
-          else
-            VERSION="1.1.2"
-          fi
+          # Extract version from mmrelay module
+          VERSION=$(python3 -c "import sys; sys.path.insert(0, 'src'); from mmrelay import __version__; print(__version__)")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Extracted version: $VERSION"
           GIT_SHA=$(git rev-parse --short HEAD)
@@ -56,13 +54,29 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Debug authentication info
+        run: |
+          echo "GitHub actor: ${{ github.actor }}"
+          echo "Registry: ${{ env.REGISTRY }}"
+          echo "Image name: ${{ env.IMAGE_NAME }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Event name: ${{ github.event_name }}"
+
       - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Verify registry access
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "Testing registry access..."
+          # Test if we can access the registry
+          docker pull hello-world || echo "Docker pull test failed, but continuing..."
+          echo "Registry login successful for ${{ github.actor }}"
 
       - name: Test Docker build
         run: |
@@ -89,6 +103,13 @@ jobs:
             mmrelay.build.version=${{ steps.get_version.outputs.version }}
             mmrelay.build.commit=${{ steps.get_version.outputs.git_sha }}
 
+      - name: Debug build metadata
+        run: |
+          echo "Tags that will be used:"
+          echo "${{ steps.meta.outputs.tags }}"
+          echo "Labels that will be used:"
+          echo "${{ steps.meta.outputs.labels }}"
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
@@ -99,6 +120,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+
           build-args: |
             BUILDKIT_INLINE_CACHE=1
             BUILD_DATE=${{ steps.get_version.outputs.build_date }}

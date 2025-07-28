@@ -7,28 +7,29 @@ Tests the core detection sensor logic:
 3. Portnum handling and data encoding
 """
 
-import unittest
-from unittest.mock import MagicMock, patch
-import sys
 import os
+import sys
+import unittest
+from unittest.mock import MagicMock
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Mock all external dependencies
-sys.modules['meshtastic'] = MagicMock()
-sys.modules['meshtastic.protobuf'] = MagicMock()
-sys.modules['meshtastic.protobuf.portnums_pb2'] = MagicMock()
-sys.modules['meshtastic.protobuf.portnums_pb2'].PortNum = MagicMock()
-sys.modules['meshtastic.protobuf.portnums_pb2'].PortNum.DETECTION_SENSOR_APP = 1
-sys.modules['nio'] = MagicMock()
-sys.modules['nio.MatrixRoom'] = MagicMock()
-sys.modules['nio.RoomMessageText'] = MagicMock()
-sys.modules['nio.RoomMessageNotice'] = MagicMock()
-sys.modules['nio.ReactionEvent'] = MagicMock()
-sys.modules['nio.RoomMessageEmote'] = MagicMock()
+sys.modules["meshtastic"] = MagicMock()
+sys.modules["meshtastic.protobuf"] = MagicMock()
+sys.modules["meshtastic.protobuf.portnums_pb2"] = MagicMock()
+sys.modules["meshtastic.protobuf.portnums_pb2"].PortNum = MagicMock()
+sys.modules["meshtastic.protobuf.portnums_pb2"].PortNum.DETECTION_SENSOR_APP = 1
+sys.modules["nio"] = MagicMock()
+sys.modules["nio.MatrixRoom"] = MagicMock()
+sys.modules["nio.RoomMessageText"] = MagicMock()
+sys.modules["nio.RoomMessageNotice"] = MagicMock()
+sys.modules["nio.ReactionEvent"] = MagicMock()
+sys.modules["nio.RoomMessageEmote"] = MagicMock()
 
-from mmrelay.message_queue import MessageQueue
+# Import after mocking
+from mmrelay.message_queue import MessageQueue  # noqa: E402
 
 
 class TestDetectionSensor(unittest.TestCase):
@@ -89,11 +90,7 @@ class TestDetectionSensor(unittest.TestCase):
         """Test detection sensor portnum identification."""
         # Mock event with detection sensor portnum
         mock_event = {
-            "source": {
-                "content": {
-                    "meshtastic_portnum": "DETECTION_SENSOR_APP"
-                }
-            }
+            "source": {"content": {"meshtastic_portnum": "DETECTION_SENSOR_APP"}}
         }
 
         portnum = mock_event["source"]["content"].get("meshtastic_portnum")

@@ -30,7 +30,7 @@ from mmrelay.log_utils import get_logger
 
 # Do not import plugin_loader here to avoid circular imports
 from mmrelay.meshtastic_utils import connect_meshtastic, sendTextReply
-from mmrelay.message_queue import queue_message
+from mmrelay.message_queue import get_message_queue, queue_message
 
 logger = get_logger(name="matrix_utils")
 
@@ -882,6 +882,7 @@ async def on_room_message(
     # Importing here to avoid circular imports and to keep logic consistent
     # Note: We do not call store_message_map directly here for inbound matrix->mesh messages.
     from mmrelay.message_queue import get_message_queue
+
     # That logic occurs inside matrix_relay if needed.
     full_display_name = "Unknown user"
     message_timestamp = event.server_timestamp
