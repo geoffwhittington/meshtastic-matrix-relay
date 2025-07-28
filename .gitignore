@@ -12,10 +12,3 @@ src/mmrelay.egg-info
 # Docker files (use samples from src/mmrelay/tools/)
 docker-compose.yaml
 .env
-
-# Coverage files
-.coverage
-.coverage.*
-htmlcov/
-coverage.xml
-.pytest_cache/
