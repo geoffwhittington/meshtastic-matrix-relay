@@ -31,9 +31,9 @@ jobs:
           echo "Event name: ${{ github.event_name }}"
           echo "Repository: ${{ github.repository }}"
 
-          # Extract version from setup.py
-          if [ -f setup.py ]; then
-            VERSION=$(grep -E "^\s*version\s*=" setup.py | sed -E 's/.*version\s*=\s*["\x27]([^"\x27]+)["\x27].*/\1/' || echo "1.1.2")
+          # Extract version from mmrelay module (single source of truth)
+          if [ -f src/mmrelay/__init__.py ]; then
+            VERSION=$(python3 -c "import sys; sys.path.insert(0, 'src'); from mmrelay import __version__; print(__version__)")
           else
             VERSION="1.1.2"
           fi
@@ -72,7 +72,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}
 
       - name: Verify registry access
         if: github.event_name != 'pull_request'

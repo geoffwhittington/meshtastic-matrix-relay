@@ -1,4 +1,10 @@
 from setuptools import find_packages, setup
+import sys
+import os
+
+# Add src to path to import version
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+from mmrelay import __version__
 
 # Read README file with proper resource management
 with open("README.md", encoding="utf-8") as f:
@@ -6,7 +12,7 @@ with open("README.md", encoding="utf-8") as f:
 
 setup(
     name="mmrelay",
-    version="1.1.2",
+    version=__version__,
     author="Geoff Whittington, Jeremiah K., and contributors",
     author_email="jeremiahk@gmx.com",
     description="Bridge between Meshtastic mesh networks and Matrix chat rooms",
