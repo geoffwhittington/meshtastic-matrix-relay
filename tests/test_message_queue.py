@@ -54,7 +54,7 @@ class TestMessageQueue(unittest.TestCase):
 
     def setUp(self):
         """
-        Initializes the test environment for each test case by setting up a fresh MessageQueue instance, clearing mock send function calls, and patching asyncio to run executor functions synchronously.
+        Prepare the test environment by initializing a new MessageQueue, clearing previous mock send function calls, and configuring the asyncio event loop to execute executor functions synchronously for deterministic testing.
         """
         self.queue = MessageQueue()
         # Clear mock function calls for each test
@@ -71,16 +71,15 @@ class TestMessageQueue(unittest.TestCase):
 
         def sync_run_in_executor(executor, func, *args, **kwargs):
             """
-            Executes a function synchronously, bypassing the executor.
-
+            Execute a function synchronously, ignoring the provided executor.
+            
             Parameters:
-                executor: The executor (ignored in sync mode).
                 func (callable): The function to execute.
-                *args: Positional arguments to pass to the function.
-                **kwargs: Keyword arguments to pass to the function.
-
+                *args: Positional arguments for the function.
+                **kwargs: Keyword arguments for the function.
+            
             Returns:
-                The result of the executed function.
+                The result returned by the executed function.
             """
             return func(*args, **kwargs)
 
@@ -88,7 +87,7 @@ class TestMessageQueue(unittest.TestCase):
 
     def tearDown(self):
         """
-        Stops the message queue and restores the original asyncio event loop behavior after each test.
+        Clean up after each test by stopping the message queue and restoring the original event loop executor behavior.
         """
         if self.queue.is_running():
             # Wait a bit for any in-flight messages to complete
@@ -110,7 +109,7 @@ class TestMessageQueue(unittest.TestCase):
     @property
     def sent_messages(self):
         """
-        Returns the list of messages sent via the mock send function during testing.
+        Returns the list of messages sent by the mock send function during the test run.
         """
         return mock_send_function.calls
 
