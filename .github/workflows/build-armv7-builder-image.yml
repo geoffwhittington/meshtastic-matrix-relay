@@ -4,17 +4,20 @@ on:
   workflow_dispatch:
     inputs:
       push_image:
-        description: "Push image to registry"
+        description: Push image to registry
         required: false
         default: true
         type: boolean
   schedule:
     # Rebuild monthly to keep dependencies fresh
-    - cron: "0 2 1 * *"
+    - cron: 0 2 1 * *
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: jeremiah-k/mmrelay-builder-armv7
+
+permissions:
+  contents: read
 
 jobs:
   build-armv7-builder:

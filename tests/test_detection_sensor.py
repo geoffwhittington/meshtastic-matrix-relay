@@ -30,6 +30,7 @@ class TestDetectionSensor(unittest.TestCase):
         """
         # Set up a real event loop for asyncio operations
         import asyncio
+
         real_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(real_loop)
 
@@ -39,14 +40,14 @@ class TestDetectionSensor(unittest.TestCase):
         def sync_run_in_executor(executor, func, *args, **kwargs):
             """
             Synchronously executes a function, bypassing the executor, for use in testing environments.
-            
+
             Parameters:
-            	func (callable): The function to execute.
-            	*args: Positional arguments to pass to the function.
-            	**kwargs: Keyword arguments to pass to the function.
-            
+                func (callable): The function to execute.
+                *args: Positional arguments to pass to the function.
+                **kwargs: Keyword arguments to pass to the function.
+
             Returns:
-            	The result of the executed function.
+                The result of the executed function.
             """
             return func(*args, **kwargs)
 
@@ -72,9 +73,10 @@ class TestDetectionSensor(unittest.TestCase):
 
         # Restore original run_in_executor and clean up event loop
         import asyncio
+
         try:
             current_loop = asyncio.get_event_loop()
-            if hasattr(self, 'original_run_in_executor'):
+            if hasattr(self, "original_run_in_executor"):
                 current_loop.run_in_executor = self.original_run_in_executor
         except RuntimeError:
             # No current event loop, which is fine

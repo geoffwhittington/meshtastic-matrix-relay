@@ -15,7 +15,6 @@ import os
 import sys
 import time
 import unittest
-from unittest.mock import MagicMock, patch
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -72,12 +71,12 @@ class TestMessageQueue(unittest.TestCase):
         def sync_run_in_executor(executor, func, *args, **kwargs):
             """
             Execute a function synchronously, ignoring the provided executor.
-            
+
             Parameters:
                 func (callable): The function to execute.
                 *args: Positional arguments for the function.
                 **kwargs: Keyword arguments for the function.
-            
+
             Returns:
                 The result returned by the executed function.
             """
@@ -99,7 +98,7 @@ class TestMessageQueue(unittest.TestCase):
         # Restore original run_in_executor and clean up event loop
         try:
             current_loop = asyncio.get_event_loop()
-            if hasattr(self, 'original_run_in_executor'):
+            if hasattr(self, "original_run_in_executor"):
                 current_loop.run_in_executor = self.original_run_in_executor
         except RuntimeError:
             # No current event loop, which is fine
