@@ -40,7 +40,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          python -m pytest tests/ -v --junitxml=junit.xml
+          python -m pytest tests/ -v --cov --junitxml=junit.xml -o junit_family=legacy
 
       - name: Upload coverage reports to Codecov
         if: matrix.python-version == '3.11'
