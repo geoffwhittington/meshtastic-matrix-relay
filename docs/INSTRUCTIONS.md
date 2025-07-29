@@ -22,7 +22,7 @@ If you want to contribute or modify the code:
 
 ```bash
 # Clone the repository
-git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
+git clone https://github.com/jeremiah-k/meshtastic-matrix-relay.git
 cd meshtastic-matrix-relay
 
 # Install in development mode using pipx (recommended)
@@ -165,7 +165,7 @@ MMRelay includes official Docker support for easy deployment and management. Doc
 
 ```bash
 # Clone the repository (if you haven't already)
-git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
+git clone https://github.com/jeremiah-k/meshtastic-matrix-relay.git
 cd meshtastic-matrix-relay
 
 # Set up configuration and start

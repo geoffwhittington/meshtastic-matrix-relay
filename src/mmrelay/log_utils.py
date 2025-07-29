@@ -1,11 +1,10 @@
 import logging
-import os
 from logging.handlers import RotatingFileHandler
 
 from rich.console import Console
 from rich.logging import RichHandler
 
-from mmrelay.cli import parse_arguments
+# Import parse_arguments only when needed to avoid conflicts with pytest
 from mmrelay.config import get_log_dir
 
 # Initialize Rich console
@@ -70,7 +69,7 @@ def get_logger(name):
     """
     Create and configure a logger with console and optional rotating file output, using global configuration and command-line arguments.
 
-    The logger supports colorized console output via Rich if enabled, and writes logs to a rotating file if configured or requested via command-line arguments. Log file location and rotation parameters are determined by priority: command-line argument, configuration file, or a default directory. The function ensures the log directory exists and stores the log file path globally if the logger name is "M<>M Relay".
+    The logger supports colorized console output if enabled, and writes logs to a rotating file if configured or requested via command-line arguments. Log file location and rotation parameters are determined by priority: command-line argument, configuration file, or a default directory. The log directory is created if it does not exist, and the log file path is stored globally if the logger name is "M<>M Relay".
 
     Parameters:
         name (str): The name of the logger to create and configure.
@@ -121,17 +120,26 @@ def get_logger(name):
         )
     logger.addHandler(console_handler)
 
-    # Check command line arguments for log file path
-    args = parse_arguments()
+    # Check command line arguments for log file path (only if not in test environment)
+    args = None
+    try:
+        # Only parse arguments if we're not in a test environment
+        import os
+        if not os.environ.get("MMRELAY_TESTING"):
+            from mmrelay.cli import parse_arguments
+            args = parse_arguments()
+    except (SystemExit, ImportError):
+        # If argument parsing fails (e.g., in tests), continue without CLI arguments
+        pass
 
     # Check if file logging is enabled (default to True for better user experience)
     if (
         config is not None
         and config.get("logging", {}).get("log_to_file", True)
-        or args.logfile
+        or (args and args.logfile)
     ):
-        # Priority: 1. Command line arg, 2. Config file, 3. Default location (~/.mmrelay/logs)
-        if args.logfile:
+        # Priority: 1. Command line argument, 2. Config file, 3. Default location (~/.mmrelay/logs)
+        if args and args.logfile:
             log_file = args.logfile
         else:
             config_log_file = (

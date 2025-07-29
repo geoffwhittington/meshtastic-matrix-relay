@@ -15,7 +15,6 @@ import os
 import sys
 import time
 import unittest
-from unittest.mock import MagicMock, patch
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -54,7 +53,7 @@ class TestMessageQueue(unittest.TestCase):
 
     def setUp(self):
         """
-        Initializes the test environment for each test case by setting up a fresh MessageQueue instance, clearing mock send function calls, and patching asyncio to run executor functions synchronously.
+        Prepare the test environment by initializing a new MessageQueue, clearing previous mock send function calls, and configuring the asyncio event loop to execute executor functions synchronously for deterministic testing.
         """
         self.queue = MessageQueue()
         # Clear mock function calls for each test
@@ -62,33 +61,32 @@ class TestMessageQueue(unittest.TestCase):
         # Mock the _should_send_message method to always return True for tests
         self.queue._should_send_message = lambda: True
 
-        # Mock asyncio.get_running_loop to make executor run synchronously
-        self.loop_patcher = patch("asyncio.get_running_loop")
-        mock_get_loop = self.loop_patcher.start()
+        # Use a real event loop but patch run_in_executor to run synchronously
+        real_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(real_loop)
 
-        # Create a mock loop that runs executor functions synchronously
-        mock_loop = MagicMock()
+        # Store original run_in_executor for restoration
+        self.original_run_in_executor = real_loop.run_in_executor
 
-        async def sync_executor(executor, func, *args, **kwargs):
+        def sync_run_in_executor(executor, func, *args, **kwargs):
             """
-            Executes a function synchronously, bypassing the executor.
+            Execute a function synchronously, ignoring the provided executor.
 
             Parameters:
                 func (callable): The function to execute.
-                *args: Positional arguments to pass to the function.
-                **kwargs: Keyword arguments to pass to the function.
+                *args: Positional arguments for the function.
+                **kwargs: Keyword arguments for the function.
 
             Returns:
-                The result of the executed function.
+                The result returned by the executed function.
             """
             return func(*args, **kwargs)
 
-        mock_loop.run_in_executor = sync_executor
-        mock_get_loop.return_value = mock_loop
+        real_loop.run_in_executor = sync_run_in_executor
 
     def tearDown(self):
         """
-        Stops the message queue and restores the original asyncio event loop behavior after each test.
+        Clean up after each test by stopping the message queue and restoring the original event loop executor behavior.
         """
         if self.queue.is_running():
             # Wait a bit for any in-flight messages to complete
@@ -96,12 +94,21 @@ class TestMessageQueue(unittest.TestCase):
 
             time.sleep(0.1)
             self.queue.stop()
-        self.loop_patcher.stop()
+
+        # Restore original run_in_executor and clean up event loop
+        try:
+            current_loop = asyncio.get_event_loop()
+            if hasattr(self, "original_run_in_executor"):
+                current_loop.run_in_executor = self.original_run_in_executor
+        except RuntimeError:
+            # No current event loop, which is fine
+            pass
+        asyncio.set_event_loop(None)
 
     @property
     def sent_messages(self):
         """
-        Returns the list of messages sent via the mock send function during testing.
+        Returns the list of messages sent by the mock send function during the test run.
         """
         return mock_send_function.calls
 

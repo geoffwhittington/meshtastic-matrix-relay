@@ -15,18 +15,7 @@ from unittest.mock import MagicMock
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-# Mock all external dependencies
-sys.modules["meshtastic"] = MagicMock()
-sys.modules["meshtastic.protobuf"] = MagicMock()
-sys.modules["meshtastic.protobuf.portnums_pb2"] = MagicMock()
-sys.modules["meshtastic.protobuf.portnums_pb2"].PortNum = MagicMock()
-sys.modules["meshtastic.protobuf.portnums_pb2"].PortNum.DETECTION_SENSOR_APP = 1
-sys.modules["nio"] = MagicMock()
-sys.modules["nio.MatrixRoom"] = MagicMock()
-sys.modules["nio.RoomMessageText"] = MagicMock()
-sys.modules["nio.RoomMessageNotice"] = MagicMock()
-sys.modules["nio.ReactionEvent"] = MagicMock()
-sys.modules["nio.RoomMessageEmote"] = MagicMock()
+# External dependencies are mocked in conftest.py
 
 # Import after mocking
 from mmrelay.message_queue import MessageQueue  # noqa: E402
@@ -36,7 +25,34 @@ class TestDetectionSensor(unittest.TestCase):
     """Test detection sensor functionality."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """
+        Prepare the test environment by creating a real asyncio event loop with synchronous executor behavior, initializing a mock message queue, and setting up a mock sendData function to record message calls.
+        """
+        # Set up a real event loop for asyncio operations
+        import asyncio
+
+        real_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(real_loop)
+
+        # Store original run_in_executor for restoration
+        self.original_run_in_executor = real_loop.run_in_executor
+
+        def sync_run_in_executor(executor, func, *args, **kwargs):
+            """
+            Synchronously executes a function, bypassing the executor, for use in testing environments.
+
+            Parameters:
+                func (callable): The function to execute.
+                *args: Positional arguments to pass to the function.
+                **kwargs: Keyword arguments to pass to the function.
+
+            Returns:
+                The result of the executed function.
+            """
+            return func(*args, **kwargs)
+
+        real_loop.run_in_executor = sync_run_in_executor
+
         # Mock message queue
         self.queue = MessageQueue()
         self.sent_messages = []
@@ -49,12 +65,28 @@ class TestDetectionSensor(unittest.TestCase):
         self.mock_send_data = mock_send_data
 
     def tearDown(self):
-        """Clean up after tests."""
+        """
+        Cleans up test resources by stopping the message queue, restoring the original event loop executor, and resetting the asyncio event loop.
+        """
         if self.queue.is_running():
             self.queue.stop()
 
+        # Restore original run_in_executor and clean up event loop
+        import asyncio
+
+        try:
+            current_loop = asyncio.get_event_loop()
+            if hasattr(self, "original_run_in_executor"):
+                current_loop.run_in_executor = self.original_run_in_executor
+        except RuntimeError:
+            # No current event loop, which is fine
+            pass
+        asyncio.set_event_loop(None)
+
     def test_detection_sensor_config_enabled(self):
-        """Test detection sensor configuration parsing when enabled."""
+        """
+        Test that the detection sensor configuration flag is correctly parsed as enabled when set to True in the configuration dictionary.
+        """
         config_enabled = {
             "meshtastic": {
                 "detection_sensor": True,

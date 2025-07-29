@@ -56,7 +56,7 @@ If you want to contribute or modify the code:
 
 ```bash
 # Clone the repository (or pull latest changes)
-git clone https://github.com/geoffwhittington/meshtastic-matrix-relay.git
+git clone https://github.com/jeremiah-k/meshtastic-matrix-relay.git
 cd meshtastic-matrix-relay
 
 # Install in editable mode for development
@@ -210,5 +210,5 @@ Your existing configuration will continue to work without changes. The applicati
 ### Getting Help
 
 - Join our Matrix room: [#mmrelay:meshnet.club](https://matrix.to/#/#mmrelay:meshnet.club)
-- Open an issue on GitHub: [meshtastic-matrix-relay](https://github.com/geoffwhittington/meshtastic-matrix-relay/issues)
+- Open an issue on GitHub: [meshtastic-matrix-relay](https://github.com/jeremiah-k/meshtastic-matrix-relay/issues)
 - Check the wiki for additional documentation
