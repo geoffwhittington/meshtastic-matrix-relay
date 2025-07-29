@@ -27,9 +27,9 @@ setup(
     description="Bridge between Meshtastic mesh networks and Matrix chat rooms",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/geoffwhittington/meshtastic-matrix-relay",
+    url="https://github.com/jeremiah-k/meshtastic-matrix-relay",
     project_urls={
-        "Bug Tracker": "https://github.com/geoffwhittington/meshtastic-matrix-relay/issues"
+        "Bug Tracker": "https://github.com/jeremiah-k/meshtastic-matrix-relay/issues"
     },
     classifiers=[
         "Programming Language :: Python :: 3",
