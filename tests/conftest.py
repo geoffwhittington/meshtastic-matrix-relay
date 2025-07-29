@@ -28,7 +28,11 @@ _BUILTIN_MODULES = {
 }
 
 def ensure_builtins_not_mocked():
-    """Ensure that Python built-in modules are not accidentally mocked."""
+    """
+    Restores original Python built-in modules if they have been accidentally mocked during testing.
+    
+    This function checks for mocked versions of critical built-in modules and replaces them with their original references. It also reloads the logging module if it was mocked to ensure proper logging functionality is maintained.
+    """
     for name, module in _BUILTIN_MODULES.items():
         if name in sys.modules and hasattr(sys.modules[name], '_mock_name'):
             # Restore the original module if it was mocked

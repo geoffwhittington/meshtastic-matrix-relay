@@ -25,7 +25,9 @@ class TestDetectionSensor(unittest.TestCase):
     """Test detection sensor functionality."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """
+        Prepare the test environment by creating a real asyncio event loop with synchronous executor behavior, initializing a mock message queue, and setting up a mock sendData function to record message calls.
+        """
         # Set up a real event loop for asyncio operations
         import asyncio
         real_loop = asyncio.new_event_loop()
@@ -35,7 +37,17 @@ class TestDetectionSensor(unittest.TestCase):
         self.original_run_in_executor = real_loop.run_in_executor
 
         def sync_run_in_executor(executor, func, *args, **kwargs):
-            """Execute function synchronously for testing."""
+            """
+            Synchronously executes a function, bypassing the executor, for use in testing environments.
+            
+            Parameters:
+            	func (callable): The function to execute.
+            	*args: Positional arguments to pass to the function.
+            	**kwargs: Keyword arguments to pass to the function.
+            
+            Returns:
+            	The result of the executed function.
+            """
             return func(*args, **kwargs)
 
         real_loop.run_in_executor = sync_run_in_executor
@@ -52,7 +64,9 @@ class TestDetectionSensor(unittest.TestCase):
         self.mock_send_data = mock_send_data
 
     def tearDown(self):
-        """Clean up after tests."""
+        """
+        Cleans up test resources by stopping the message queue, restoring the original event loop executor, and resetting the asyncio event loop.
+        """
         if self.queue.is_running():
             self.queue.stop()
 
@@ -68,7 +82,9 @@ class TestDetectionSensor(unittest.TestCase):
         asyncio.set_event_loop(None)
 
     def test_detection_sensor_config_enabled(self):
-        """Test detection sensor configuration parsing when enabled."""
+        """
+        Test that the detection sensor configuration flag is correctly parsed as enabled when set to True in the configuration dictionary.
+        """
         config_enabled = {
             "meshtastic": {
                 "detection_sensor": True,

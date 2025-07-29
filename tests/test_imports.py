@@ -13,7 +13,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 
 def test_basic_imports():
-    """Test that basic modules can be imported without errors."""
+    """
+    Verify that core project modules and functions can be imported and are accessible under the mocking setup.
+    """
     # These should work with the mocking setup
     from mmrelay.message_queue import MessageQueue
     from mmrelay.matrix_utils import get_matrix_prefix, get_meshtastic_prefix
@@ -25,7 +27,11 @@ def test_basic_imports():
 
 
 def test_external_dependencies_mocked():
-    """Test that external dependencies are properly mocked."""
+    """
+    Verify that external dependencies are mocked and expose expected attributes.
+    
+    Asserts that the `meshtastic` and `nio` modules provide specific attributes and that `PIL.Image` is available, confirming the mocking setup is effective.
+    """
     import meshtastic
     import nio
     from PIL import Image
@@ -37,7 +43,9 @@ def test_external_dependencies_mocked():
 
 
 def test_prefix_functions():
-    """Test the prefix functions with basic inputs."""
+    """
+    Verify that the prefix-generating functions return strings when called with sample configuration dictionaries and user identifiers.
+    """
     from mmrelay.matrix_utils import get_matrix_prefix, get_meshtastic_prefix
     
     # Test meshtastic prefix
