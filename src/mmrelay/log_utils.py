@@ -126,7 +126,8 @@ def get_logger(name):
     try:
         # Only parse arguments if we're not in a test environment
         import sys
-        if 'pytest' not in sys.modules and 'unittest' not in sys.modules:
+        import os
+        if not os.environ.get("MMRELAY_TESTING"):
             from mmrelay.cli import parse_arguments
             args = parse_arguments()
     except (SystemExit, ImportError):

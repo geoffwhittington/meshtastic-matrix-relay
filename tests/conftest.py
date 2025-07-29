@@ -6,7 +6,7 @@ to ensure tests can run without requiring actual hardware or network connections
 """
 
 import sys
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock
 
 # Mock all external dependencies before any imports
 # This prevents ImportError and allows tests to run in isolation
@@ -97,14 +97,25 @@ sys.modules['schedule'] = MagicMock()
 sys.modules['platformdirs'] = MagicMock()
 sys.modules['py_staticmaps'] = MagicMock()
 
-# Mock Rich modules but avoid interfering with logging system
-rich_mock = MagicMock()
-sys.modules['rich'] = rich_mock
-sys.modules['rich.console'] = MagicMock()
-
-# Don't mock rich.logging at all - let it use the real logging system
-# This prevents interference with Python's logging handlers
-rich_mock.Console = MagicMock
+# Mock Rich modules but preserve rich.logging for proper logging functionality
+# Import the real rich module first to preserve its structure
+try:
+    import rich
+    import rich.logging
+    import rich.console
+    # Keep the real rich module but mock specific components
+    rich_mock = rich
+    rich_mock.Console = MagicMock
+    sys.modules['rich.console'] = MagicMock()
+except ImportError:
+    # If rich is not available, create a minimal mock that won't interfere with logging
+    rich_mock = MagicMock()
+    sys.modules['rich'] = rich_mock
+    sys.modules['rich.console'] = MagicMock()
+    # Create a minimal rich.logging mock that won't break the logging system
+    rich_logging_mock = MagicMock()
+    rich_logging_mock.RichHandler = MagicMock
+    sys.modules['rich.logging'] = rich_logging_mock
 
 # Ensure built-in modules are not accidentally mocked
 ensure_builtins_not_mocked()

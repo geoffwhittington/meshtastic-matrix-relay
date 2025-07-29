@@ -98,9 +98,13 @@ class TestMessageQueue(unittest.TestCase):
             self.queue.stop()
 
         # Restore original run_in_executor and clean up event loop
-        current_loop = asyncio.get_event_loop()
-        if hasattr(self, 'original_run_in_executor'):
-            current_loop.run_in_executor = self.original_run_in_executor
+        try:
+            current_loop = asyncio.get_event_loop()
+            if hasattr(self, 'original_run_in_executor'):
+                current_loop.run_in_executor = self.original_run_in_executor
+        except RuntimeError:
+            # No current event loop, which is fine
+            pass
         asyncio.set_event_loop(None)
 
     @property
