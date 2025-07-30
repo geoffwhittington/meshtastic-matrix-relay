@@ -48,7 +48,9 @@ class TestDbUtils(unittest.TestCase):
     """Test cases for database utilities."""
 
     def setUp(self):
-        """Set up test environment with temporary database."""
+        """
+        Prepare a temporary test environment by creating a unique directory and database file, clearing cached database paths, and patching the configuration to use the test database.
+        """
         # Create a temporary directory for test database
         self.test_dir = tempfile.mkdtemp()
         self.test_db_path = os.path.join(self.test_dir, "test_meshtastic.sqlite")
@@ -68,7 +70,9 @@ class TestDbUtils(unittest.TestCase):
         mmrelay.db_utils.config = self.mock_config
 
     def tearDown(self):
-        """Clean up test environment."""
+        """
+        Cleans up the test environment by clearing the database path cache and removing temporary files and directories created during the test.
+        """
         # Clear cache after each test
         clear_db_path_cache()
         
@@ -78,12 +82,18 @@ class TestDbUtils(unittest.TestCase):
         os.rmdir(self.test_dir)
 
     def test_get_db_path_with_config(self):
-        """Test database path resolution with configuration."""
+        """
+        Test that get_db_path() returns the database path specified in the configuration.
+        """
         path = get_db_path()
         self.assertEqual(path, self.test_db_path)
 
     def test_get_db_path_caching(self):
-        """Test that database path is cached properly."""
+        """
+        Test that the database path returned by get_db_path() is cached after the first retrieval.
+        
+        Verifies that repeated calls to get_db_path() return the same path and match the expected test database path.
+        """
         # First call should resolve and cache
         path1 = get_db_path()
         path2 = get_db_path()
@@ -92,7 +102,11 @@ class TestDbUtils(unittest.TestCase):
 
     @patch('mmrelay.db_utils.get_data_dir')
     def test_get_db_path_default(self, mock_get_data_dir):
-        """Test database path resolution without configuration."""
+        """
+        Test that the database path defaults to the data directory when no configuration is set.
+        
+        Verifies that `get_db_path()` returns the expected default path using a mocked data directory when configuration is absent.
+        """
         # Clear config to test default behavior
         import mmrelay.db_utils
         mmrelay.db_utils.config = None
@@ -103,7 +117,9 @@ class TestDbUtils(unittest.TestCase):
         self.assertEqual(path, "/test/data/meshtastic.sqlite")
 
     def test_get_db_path_legacy_config(self):
-        """Test database path resolution with legacy configuration format."""
+        """
+        Test that the database path is correctly resolved when using a legacy configuration format with the 'db.path' key.
+        """
         # Use legacy db.path format
         legacy_config = {
             "db": {
@@ -119,7 +135,11 @@ class TestDbUtils(unittest.TestCase):
         self.assertEqual(path, self.test_db_path)
 
     def test_initialize_database(self):
-        """Test database initialization and schema creation."""
+        """
+        Verify that the database is initialized with the correct schema and required tables.
+        
+        Ensures that the database file is created, all expected tables exist, and the `message_map` table includes the `meshtastic_meshnet` column.
+        """
         initialize_database()
         
         # Verify database file was created
@@ -151,7 +171,9 @@ class TestDbUtils(unittest.TestCase):
             self.assertIn('meshtastic_meshnet', columns)
 
     def test_longname_operations(self):
-        """Test longname storage and retrieval."""
+        """
+        Tests saving and retrieving longnames by Meshtastic ID, including handling of non-existent entries.
+        """
         initialize_database()
         
         # Test saving and retrieving longname
@@ -168,7 +190,9 @@ class TestDbUtils(unittest.TestCase):
         self.assertIsNone(non_existent)
 
     def test_shortname_operations(self):
-        """Test shortname storage and retrieval."""
+        """
+        Test saving and retrieving shortnames by Meshtastic ID, including handling of non-existent entries.
+        """
         initialize_database()
         
         # Test saving and retrieving shortname
@@ -185,7 +209,9 @@ class TestDbUtils(unittest.TestCase):
         self.assertIsNone(non_existent)
 
     def test_update_longnames(self):
-        """Test bulk longname updates from nodes."""
+        """
+        Tests that bulk updating of longnames from a dictionary of nodes correctly stores the longnames for each Meshtastic ID.
+        """
         initialize_database()
         
         # Mock nodes data
@@ -211,7 +237,9 @@ class TestDbUtils(unittest.TestCase):
         self.assertEqual(get_longname("!87654321"), "Bob Jones")
 
     def test_update_shortnames(self):
-        """Test bulk shortname updates from nodes."""
+        """
+        Test that bulk updating of shortnames from a nodes dictionary correctly stores shortnames for each Meshtastic ID.
+        """
         initialize_database()
         
         # Mock nodes data
@@ -237,7 +265,11 @@ class TestDbUtils(unittest.TestCase):
         self.assertEqual(get_shortname("!87654321"), "BJ")
 
     def test_plugin_data_operations(self):
-        """Test plugin data storage and retrieval."""
+        """
+        Test storing, retrieving, and deleting plugin data for specific nodes and plugins in the database.
+        
+        Verifies that plugin data can be saved for a given plugin and node, retrieved individually or in bulk, and deleted, ensuring correct data persistence and removal.
+        """
         initialize_database()
         
         plugin_name = "test_plugin"
@@ -262,7 +294,9 @@ class TestDbUtils(unittest.TestCase):
         self.assertEqual(retrieved_after_delete, [])
 
     def test_message_map_operations(self):
-        """Test message mapping storage and retrieval."""
+        """
+        Verifies storing and retrieving message map entries by Meshtastic ID and Matrix event ID, ensuring all fields are correctly persisted and retrieved.
+        """
         initialize_database()
         
         # Test data
@@ -295,7 +329,11 @@ class TestDbUtils(unittest.TestCase):
         self.assertEqual(result[3], meshtastic_meshnet)
 
     def test_wipe_message_map(self):
-        """Test wiping all message map entries."""
+        """
+        Verifies that wiping the message map removes all entries from the database.
+        
+        This test initializes the database, inserts sample message map entries, confirms their existence, performs a wipe operation, and asserts that all entries have been deleted.
+        """
         initialize_database()
         
         # Add some test data
@@ -314,7 +352,11 @@ class TestDbUtils(unittest.TestCase):
         self.assertIsNone(get_message_map_by_meshtastic_id(2))
 
     def test_prune_message_map(self):
-        """Test pruning old message map entries."""
+        """
+        Verify that pruning the message map retains only the specified number of most recent entries.
+        
+        This test inserts multiple message map entries, prunes the table to keep only the latest five, and asserts that only those entries remain.
+        """
         initialize_database()
         
         # Add multiple entries

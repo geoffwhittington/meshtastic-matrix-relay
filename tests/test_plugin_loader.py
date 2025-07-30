@@ -32,20 +32,35 @@ class MockPlugin:
     """Mock plugin class for testing."""
 
     def __init__(self, name="test_plugin", priority=10):
+        """
+        Initialize a mock plugin with a specified name and priority.
+        
+        Parameters:
+            name (str): The name of the plugin.
+            priority (int): The plugin's priority for loading and activation.
+        """
         self.plugin_name = name
         self.priority = priority
         self.started = False
 
     def start(self):
-        """Mock start method."""
+        """
+        Marks the mock plugin as started by setting the `started` flag to True.
+        """
         self.started = True
 
     async def handle_meshtastic_message(self, packet, interface, longname, shortname, meshnet_name):
-        """Mock async method to prevent warnings."""
+        """
+        Asynchronously handles a Meshtastic message; implemented as a mock to suppress warnings during testing.
+        """
         pass
 
     async def handle_room_message(self, room, event, full_message):
-        """Mock async method to prevent warnings."""
+        """
+        Asynchronously handles a room message event for testing purposes.
+        
+        This mock method is implemented to satisfy interface requirements and prevent warnings during tests.
+        """
         pass
 
 
@@ -53,7 +68,9 @@ class TestPluginLoader(unittest.TestCase):
     """Test cases for plugin loading functionality."""
 
     def setUp(self):
-        """Set up test environment."""
+        """
+        Prepares a temporary test environment with isolated plugin directories and resets plugin loader state before each test.
+        """
         # Create temporary directories for testing
         self.test_dir = tempfile.mkdtemp()
         self.custom_dir = os.path.join(self.test_dir, "plugins", "custom")
@@ -68,7 +85,9 @@ class TestPluginLoader(unittest.TestCase):
         mmrelay.plugin_loader.sorted_active_plugins = []
 
     def tearDown(self):
-        """Clean up test environment."""
+        """
+        Remove temporary directories and clean up resources after each test.
+        """
         # Clean up temporary directories
         import shutil
         shutil.rmtree(self.test_dir, ignore_errors=True)
@@ -77,7 +96,11 @@ class TestPluginLoader(unittest.TestCase):
     @patch('mmrelay.plugin_loader.get_app_path')
     @patch('os.makedirs')
     def test_get_custom_plugin_dirs(self, mock_makedirs, mock_get_app_path, mock_get_base_dir):
-        """Test custom plugin directory discovery."""
+        """
+        Test that custom plugin directories are correctly discovered and created.
+        
+        Verifies that `get_custom_plugin_dirs()` returns the expected list of custom plugin directories and that the directory creation function is called.
+        """
         mock_get_base_dir.return_value = self.test_dir
         mock_get_app_path.return_value = "/app"
 
@@ -94,7 +117,9 @@ class TestPluginLoader(unittest.TestCase):
     @patch('mmrelay.plugin_loader.get_app_path')
     @patch('os.makedirs')
     def test_get_community_plugin_dirs(self, mock_makedirs, mock_get_app_path, mock_get_base_dir):
-        """Test community plugin directory discovery."""
+        """
+        Test that the community plugin directory discovery function returns the correct directories and creates them if necessary.
+        """
         mock_get_base_dir.return_value = self.test_dir
         mock_get_app_path.return_value = "/app"
 
@@ -108,18 +133,24 @@ class TestPluginLoader(unittest.TestCase):
         mock_makedirs.assert_called_once()
 
     def test_load_plugins_from_directory_empty(self):
-        """Test loading plugins from empty directory."""
+        """
+        Test that loading plugins from an empty directory returns an empty list.
+        """
         plugins = load_plugins_from_directory(self.custom_dir)
         self.assertEqual(plugins, [])
 
     def test_load_plugins_from_directory_nonexistent(self):
-        """Test loading plugins from non-existent directory."""
+        """
+        Test that loading plugins from a non-existent directory returns an empty list.
+        """
         nonexistent_dir = os.path.join(self.test_dir, "nonexistent")
         plugins = load_plugins_from_directory(nonexistent_dir)
         self.assertEqual(plugins, [])
 
     def test_load_plugins_from_directory_with_plugin(self):
-        """Test loading a valid plugin from directory."""
+        """
+        Verifies that loading plugins from a directory containing a valid plugin file returns the plugin with correct attributes.
+        """
         # Create a test plugin file
         plugin_content = '''
 class Plugin:
@@ -141,7 +172,9 @@ class Plugin:
         self.assertEqual(plugins[0].priority, 10)
 
     def test_load_plugins_from_directory_no_plugin_class(self):
-        """Test loading from directory with Python file but no Plugin class."""
+        """
+        Verify that loading plugins from a directory containing a Python file without a Plugin class returns an empty list.
+        """
         # Create a Python file without Plugin class
         plugin_content = '''
 def some_function():
@@ -155,7 +188,9 @@ def some_function():
         self.assertEqual(plugins, [])
 
     def test_load_plugins_from_directory_syntax_error(self):
-        """Test loading from directory with Python file containing syntax error."""
+        """
+        Verify that loading plugins from a directory containing a Python file with a syntax error returns an empty list without raising exceptions.
+        """
         # Create a Python file with syntax error
         plugin_content = '''
 class Plugin:
@@ -179,7 +214,11 @@ class Plugin:
     @patch('mmrelay.plugins.drop_plugin.Plugin')
     @patch('mmrelay.plugins.debug_plugin.Plugin')
     def test_load_plugins_core_only(self, *mock_plugins):
-        """Test loading core plugins only."""
+        """
+        Test that only core plugins are loaded, sorted by priority, and started when activated in the configuration.
+        
+        Verifies that all core plugins specified as active in the configuration are instantiated, sorted by their priority attribute, and their start methods are called.
+        """
         # Mock all core plugins
         for i, mock_plugin_class in enumerate(mock_plugins):
             mock_plugin = MockPlugin(f"core_plugin_{i}", priority=i)
@@ -216,7 +255,9 @@ class Plugin:
     @patch('mmrelay.plugins.drop_plugin.Plugin')
     @patch('mmrelay.plugins.debug_plugin.Plugin')
     def test_load_plugins_inactive_plugins(self, *mock_plugins):
-        """Test that inactive plugins are not loaded."""
+        """
+        Verify that only active plugins specified in the configuration are loaded, and inactive plugins are excluded.
+        """
         # Mock core plugins
         for i, mock_plugin_class in enumerate(mock_plugins):
             mock_plugin = MockPlugin(f"core_plugin_{i}", priority=i)
@@ -250,7 +291,11 @@ class Plugin:
     @patch('mmrelay.plugins.health_plugin.Plugin')
     @patch('mmrelay.plugin_loader.get_custom_plugin_dirs')
     def test_load_plugins_with_custom(self, mock_get_custom_plugin_dirs, *mock_plugins):
-        """Test loading plugins with custom plugins."""
+        """
+        Tests that both core and custom plugins are loaded and activated when specified in the configuration.
+        
+        Verifies that the plugin loader correctly discovers and instantiates core plugins (via mocks) and a custom plugin defined in a temporary directory, ensuring both are present in the loaded plugin list when marked active in the config.
+        """
         
         # Mock core plugins
         for i, mock_plugin_class in enumerate(mock_plugins):
@@ -299,7 +344,9 @@ class Plugin:
 
     @patch('mmrelay.plugin_loader.logger')
     def test_load_plugins_caching(self, mock_logger):
-        """Test that plugins are cached after first load."""
+        """
+        Test that the plugin loader caches loaded plugins and returns the cached list on subsequent calls with the same configuration.
+        """
         config = {"plugins": {}}
 
         import mmrelay.plugin_loader
@@ -318,7 +365,11 @@ class Plugin:
 
     @patch('mmrelay.plugins.health_plugin.Plugin')
     def test_load_plugins_start_error(self, mock_health_plugin):
-        """Test handling of plugin start() method errors."""
+        """
+        Test that plugin start() method exceptions are handled gracefully during loading.
+        
+        Verifies that if a plugin's start() method raises an exception, the error is logged but the plugin is still included in the loaded plugin list.
+        """
         # Create a plugin that raises an error on start
         mock_plugin = MockPlugin("error_plugin")
         mock_plugin.start = MagicMock(side_effect=Exception("Start failed"))

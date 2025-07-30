@@ -12,6 +12,11 @@ from mmrelay.cli import check_config, parse_arguments
 class TestCLI(unittest.TestCase):
     def test_parse_arguments(self):
         # Test with no arguments
+        """
+        Test the parse_arguments function for correct parsing of CLI arguments.
+        
+        Verifies that parse_arguments returns default values when no arguments are provided and correctly parses all supported command-line options when specified.
+        """
         with patch("sys.argv", ["mmrelay"]):
             args = parse_arguments()
             self.assertIsNone(args.config)
@@ -57,6 +62,11 @@ class TestCLI(unittest.TestCase):
     @patch("mmrelay.cli.yaml.load")
     def test_check_config_valid(self, mock_yaml_load, mock_open, mock_isfile):
         # Mock a valid config
+        """
+        Test that check_config returns True for a valid configuration file.
+        
+        Mocks a configuration containing all required sections and valid values, simulates the presence of the config file, and verifies that check_config() recognizes it as valid.
+        """
         mock_yaml_load.return_value = {
             "matrix": {
                 "homeserver": "https://matrix.org",
@@ -78,6 +88,9 @@ class TestCLI(unittest.TestCase):
         self, mock_yaml_load, mock_open, mock_isfile
     ):
         # Mock an invalid config (missing matrix section)
+        """
+        Test that check_config returns False when the configuration is missing the 'matrix' section.
+        """
         mock_yaml_load.return_value = {
             "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}],
             "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"},
@@ -94,6 +107,9 @@ class TestCLI(unittest.TestCase):
         self, mock_yaml_load, mock_open, mock_isfile
     ):
         # Mock an invalid config (missing meshtastic section)
+        """
+        Test that check_config returns False when the configuration is missing the 'meshtastic' section.
+        """
         mock_yaml_load.return_value = {
             "matrix": {
                 "homeserver": "https://matrix.org",
@@ -114,6 +130,9 @@ class TestCLI(unittest.TestCase):
         self, mock_yaml_load, mock_open, mock_isfile
     ):
         # Mock an invalid config (invalid connection type)
+        """
+        Test that check_config returns False when the configuration contains an invalid meshtastic connection type.
+        """
         mock_yaml_load.return_value = {
             "matrix": {
                 "homeserver": "https://matrix.org",
