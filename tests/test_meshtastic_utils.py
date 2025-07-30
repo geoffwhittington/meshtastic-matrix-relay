@@ -250,22 +250,36 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         self.assertIsNone(result)
 
-    def test_on_meshtastic_message_broadcast_disabled(self):
-        """Test message processing when broadcast is disabled."""
+    def test_on_meshtastic_message_with_broadcast_config(self):
+        """Test message processing with broadcast config (broadcast_enabled affects Matrix->Meshtastic, not Meshtastic->Matrix)."""
         config_no_broadcast = self.mock_config.copy()
         config_no_broadcast["meshtastic"]["broadcast_enabled"] = False
 
         with patch('mmrelay.meshtastic_utils.config', config_no_broadcast), \
              patch('mmrelay.meshtastic_utils.matrix_rooms', config_no_broadcast["matrix_rooms"]), \
-             patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe') as mock_run_coro:
+             patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe') as mock_run_coro, \
+             patch('mmrelay.meshtastic_utils.get_longname') as mock_get_longname, \
+             patch('mmrelay.meshtastic_utils.get_shortname') as mock_get_shortname, \
+             patch('mmrelay.matrix_utils.get_interaction_settings') as mock_get_interactions, \
+             patch('mmrelay.matrix_utils.message_storage_enabled') as mock_storage:
+
+            mock_get_longname.return_value = "Test User"
+            mock_get_shortname.return_value = "TU"
+            mock_get_interactions.return_value = {"reactions": False, "replies": False}
+            mock_storage.return_value = True
 
             mock_interface = MagicMock()
+
+            # Set up event loop mock
+            import mmrelay.meshtastic_utils
+            mmrelay.meshtastic_utils.event_loop = MagicMock()
 
             # Call the function
             on_meshtastic_message(self.mock_packet, mock_interface)
 
-            # Verify asyncio.run_coroutine_threadsafe was not called when broadcast is disabled
-            mock_run_coro.assert_not_called()
+            # Meshtastic->Matrix messages are still relayed regardless of broadcast_enabled
+            # (broadcast_enabled only affects Matrix->Meshtastic direction)
+            mock_run_coro.assert_called_once()
 
 
 if __name__ == "__main__":

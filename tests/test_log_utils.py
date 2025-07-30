@@ -134,7 +134,12 @@ class TestLogUtils(unittest.TestCase):
         import mmrelay.log_utils
         mmrelay.log_utils.config = config
 
-        logger = get_logger("test_logger")
+        # Use unique logger name and clear any existing handlers
+        logger_name = "test_logger_file_logging"
+        existing_logger = logging.getLogger(logger_name)
+        existing_logger.handlers.clear()
+
+        logger = get_logger(logger_name)
 
         # Should have handlers (exact count may vary)
         self.assertGreater(len(logger.handlers), 0)
@@ -237,12 +242,16 @@ class TestLogUtils(unittest.TestCase):
                 "filename": self.test_log_file
             }
         }
-        
+
         import mmrelay.log_utils
         mmrelay.log_utils.config = config
-        
+
+        # Clear any existing handlers for the main logger
+        main_logger = logging.getLogger("M<>M Relay")
+        main_logger.handlers.clear()
+
         logger = get_logger("M<>M Relay")
-        
+
         # Should store log file path globally
         self.assertEqual(mmrelay.log_utils.log_file_path, self.test_log_file)
 
