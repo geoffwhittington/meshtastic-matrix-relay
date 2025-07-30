@@ -57,6 +57,11 @@ class TestPerformanceStress(unittest.TestCase):
 
         # Set up minimal config
         import mmrelay.meshtastic_utils
+        import asyncio
+
+        # Set up event loop
+        loop = asyncio.new_event_loop()
+        mmrelay.meshtastic_utils.event_loop = loop
 
         mmrelay.meshtastic_utils.config = {
             "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}]

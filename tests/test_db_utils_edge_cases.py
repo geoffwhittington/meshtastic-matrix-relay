@@ -191,8 +191,8 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_cursor = mock_conn.cursor.return_value
-            # Simulate large dataset by making rowcount very high
-            mock_cursor.rowcount = 1000000
+            # Simulate large dataset by making count very high
+            mock_cursor.fetchone.return_value = (1000000,)
             mock_connect.return_value.__enter__.return_value = mock_conn
 
             # Should handle large datasets

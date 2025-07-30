@@ -741,11 +741,15 @@ def load_plugins(passed_config=None):
             plugin_path = os.path.join(custom_dir, plugin_name)
             if os.path.exists(plugin_path):
                 logger.debug(f"Loading custom plugin from: {plugin_path}")
-                plugins.extend(
-                    load_plugins_from_directory(plugin_path, recursive=False)
-                )
-                plugin_found = True
-                break
+                try:
+                    plugins.extend(
+                        load_plugins_from_directory(plugin_path, recursive=False)
+                    )
+                    plugin_found = True
+                    break
+                except BaseException as e:
+                    logger.error(f"Failed to load custom plugin {plugin_name}: {e}")
+                    continue
 
         if not plugin_found:
             logger.warning(

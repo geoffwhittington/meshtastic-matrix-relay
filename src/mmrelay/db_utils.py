@@ -295,25 +295,37 @@ def get_message_map_by_meshtastic_id(meshtastic_id):
             f"Retrieved message map by meshtastic_id={meshtastic_id}: {result}"
         )
         if result:
-            # result = (matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
-            return result[0], result[1], result[2], result[3]
+            try:
+                # result = (matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
+                return result[0], result[1], result[2], result[3]
+            except (IndexError, TypeError) as e:
+                logger.error(f"Malformed data in message_map for meshtastic_id {meshtastic_id}: {e}")
+                return None
         return None
 
 
 def get_message_map_by_matrix_event_id(matrix_event_id):
-    with sqlite3.connect(get_db_path()) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet FROM message_map WHERE matrix_event_id=?",
-            (matrix_event_id,),
-        )
-        result = cursor.fetchone()
-        logger.debug(
-            f"Retrieved message map by matrix_event_id={matrix_event_id}: {result}"
-        )
-        if result:
-            # result = (meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
-            return result[0], result[1], result[2], result[3]
+    try:
+        with sqlite3.connect(get_db_path()) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet FROM message_map WHERE matrix_event_id=?",
+                (matrix_event_id,),
+            )
+            result = cursor.fetchone()
+            logger.debug(
+                f"Retrieved message map by matrix_event_id={matrix_event_id}: {result}"
+            )
+            if result:
+                try:
+                    # result = (meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
+                    return result[0], result[1], result[2], result[3]
+                except (IndexError, TypeError) as e:
+                    logger.error(f"Malformed data in message_map for matrix_event_id {matrix_event_id}: {e}")
+                    return None
+            return None
+    except (UnicodeDecodeError, sqlite3.Error) as e:
+        logger.error(f"Database error retrieving message map for matrix_event_id {matrix_event_id}: {e}")
         return None
 
 

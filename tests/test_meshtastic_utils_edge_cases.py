@@ -79,7 +79,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.serial_port_exists", return_value=True):
             with patch(
-                "meshtastic.serial_interface.SerialInterface",
+                "mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface",
                 side_effect=TimeoutError("Connection timeout"),
             ):
                 with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
@@ -96,7 +96,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         from bleak.exc import BleakError
 
         with patch(
-            "meshtastic.ble_interface.BLEInterface",
+            "mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface",
             side_effect=BleakError("Device not found"),
         ):
             with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
@@ -109,7 +109,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         config = {"meshtastic": {"connection_type": "tcp", "host": "192.168.1.100"}}
 
         with patch(
-            "meshtastic.tcp_interface.TCPInterface",
+            "mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface",
             side_effect=ConnectionRefusedError("Connection refused"),
         ):
             with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
@@ -265,7 +265,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         mmrelay.meshtastic_utils.meshtastic_client = None
 
         with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
-            result = sendTextReply("test message", "!12345678", 0)
+            result = sendTextReply(None, "test message", 12345)
             self.assertIsNone(result)
             mock_logger.error.assert_called()
 
@@ -279,7 +279,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         mmrelay.meshtastic_utils.meshtastic_client = mock_client
 
         with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
-            result = sendTextReply("test message", "!12345678", 0)
+            result = sendTextReply(mock_client, "test message", 12345)
             self.assertIsNone(result)
             mock_logger.error.assert_called()
 
@@ -315,7 +315,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.serial_port_exists", return_value=True):
             with patch(
-                "meshtastic.serial_interface.SerialInterface",
+                "mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface",
                 side_effect=MemoryError("Out of memory"),
             ):
                 with patch("mmrelay.meshtastic_utils.logger") as mock_logger:

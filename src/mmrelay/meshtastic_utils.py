@@ -219,6 +219,10 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                     subscribed_to_connection_lost = True
                     logger.debug("Subscribed to meshtastic.connection.lost")
 
+            except (TimeoutError, ConnectionRefusedError, MemoryError) as e:
+                # Handle critical errors that should not be retried
+                logger.error(f"Critical connection error: {e}")
+                return None
             except (serial.SerialException, BleakDBusError, BleakError) as e:
                 # Handle specific connection errors
                 if shutting_down:
@@ -783,6 +787,11 @@ def sendTextReply(
     """
     logger.debug(f"Sending text reply: '{text}' replying to message ID {reply_id}")
 
+    # Check if interface is available
+    if interface is None:
+        logger.error("No Meshtastic interface available for sending reply")
+        return None
+
     # Create the Data protobuf message with reply_id set
     data_msg = mesh_pb2.Data()
     data_msg.portnum = portnums_pb2.PortNum.TEXT_MESSAGE_APP
@@ -796,9 +805,13 @@ def sendTextReply(
     mesh_packet.id = interface._generatePacketId()
 
     # Send the packet using the existing infrastructure
-    return interface._sendPacket(
-        mesh_packet, destinationId=destinationId, wantAck=wantAck
-    )
+    try:
+        return interface._sendPacket(
+            mesh_packet, destinationId=destinationId, wantAck=wantAck
+        )
+    except Exception as e:
+        logger.error(f"Failed to send text reply: {e}")
+        return None
 
 
 if __name__ == "__main__":
