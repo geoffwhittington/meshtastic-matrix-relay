@@ -221,7 +221,7 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             mock_connect.return_value.__enter__.return_value = mock_conn
 
             # Should handle concurrent access gracefully
-            store_plugin_data("test_plugin", "test_node", "key", "value")
+            store_plugin_data("test_plugin", "test_node", {"key": "value"})
 
     def test_get_plugin_data_json_decode_error(self):
         """Test get_plugin_data when JSON decoding fails."""
@@ -232,8 +232,8 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             mock_cursor.fetchone.return_value = ("invalid json {",)
             mock_connect.return_value.__enter__.return_value = mock_conn
 
-            result = get_plugin_data("test_plugin", "test_node", "key")
-            self.assertIsNone(result)
+            result = get_plugin_data("test_plugin")
+            self.assertEqual(result, [])
 
     def test_get_plugin_data_for_node_memory_error(self):
         """Test get_plugin_data_for_node when memory is exhausted."""
@@ -257,7 +257,7 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             mock_connect.return_value.__enter__.return_value = mock_conn
 
             # Should handle foreign key constraint gracefully
-            delete_plugin_data("test_plugin", "test_node", "key")
+            delete_plugin_data("test_plugin", "test_node")
 
     def test_update_longnames_empty_nodes(self):
         """Test update_longnames with empty or None nodes."""

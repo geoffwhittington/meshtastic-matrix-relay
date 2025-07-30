@@ -649,7 +649,7 @@ def load_plugins_from_directory(directory, recursive=False):
                             logger.error(
                                 f"Plugin directory: {os.path.dirname(plugin_path)}"
                             )
-                    except Exception as e:
+                    except BaseException as e:
                         logger.error(f"Error loading plugin {plugin_path}: {e}")
             if not recursive:
                 break
@@ -876,7 +876,7 @@ def load_plugins(passed_config=None):
             active_plugins.append(plugin)
             try:
                 plugin.start()
-            except Exception as e:
+            except BaseException as e:
                 logger.error(f"Error starting plugin {plugin_name}: {e}")
 
     sorted_active_plugins = sorted(active_plugins, key=lambda plugin: plugin.priority)
