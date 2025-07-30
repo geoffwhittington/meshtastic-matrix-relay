@@ -14,7 +14,7 @@ import asyncio
 import os
 import sys
 import unittest
-from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -42,12 +42,12 @@ class TestMeshtasticUtils(unittest.TestCase):
                 "connection_type": "serial",
                 "serial_port": "/dev/ttyUSB0",
                 "broadcast_enabled": True,
-                "meshnet_name": "test_mesh"
+                "meshnet_name": "test_mesh",
             },
             "matrix_rooms": [
                 {"id": "!room1:matrix.org", "meshtastic_channel": 0},
-                {"id": "!room2:matrix.org", "meshtastic_channel": 1}
-            ]
+                {"id": "!room2:matrix.org", "meshtastic_channel": 1},
+            ],
         }
 
         # Mock packet data
@@ -56,15 +56,16 @@ class TestMeshtasticUtils(unittest.TestCase):
             "to": 987654321,
             "decoded": {
                 "text": "Hello from mesh",
-                "portnum": "TEXT_MESSAGE_APP"  # Use string constant
+                "portnum": "TEXT_MESSAGE_APP",  # Use string constant
             },
             "channel": 0,
             "id": 12345,
-            "rxTime": 1234567890
+            "rxTime": 1234567890,
         }
 
         # Reset global state to avoid test interference
         import mmrelay.meshtastic_utils
+
         mmrelay.meshtastic_utils.meshtastic_client = None
         mmrelay.meshtastic_utils.config = None
         mmrelay.meshtastic_utils.matrix_rooms = []
@@ -72,18 +73,23 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_on_meshtastic_message_basic(self):
         """
         Test that a basic Meshtastic message is processed and relayed to Matrix.
-        
+
         Verifies that when a valid text message is received on a mapped channel, the message is relayed to Matrix by ensuring the appropriate coroutine is scheduled.
         """
         # Mock the required functions
         import mmrelay.meshtastic_utils
 
-        with patch('mmrelay.meshtastic_utils.get_longname') as mock_get_longname, \
-             patch('mmrelay.meshtastic_utils.get_shortname') as mock_get_shortname, \
-             patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe') as mock_run_coro, \
-             patch('mmrelay.matrix_utils.matrix_relay') as mock_matrix_relay, \
-             patch('mmrelay.matrix_utils.get_interaction_settings') as mock_get_interactions, \
-             patch('mmrelay.matrix_utils.message_storage_enabled') as mock_storage:
+        with patch("mmrelay.meshtastic_utils.get_longname") as mock_get_longname, patch(
+            "mmrelay.meshtastic_utils.get_shortname"
+        ) as mock_get_shortname, patch(
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
+        ) as mock_run_coro, patch(
+            "mmrelay.matrix_utils.matrix_relay"
+        ), patch(
+            "mmrelay.matrix_utils.get_interaction_settings"
+        ) as mock_get_interactions, patch(
+            "mmrelay.matrix_utils.message_storage_enabled"
+        ) as mock_storage:
 
             mock_get_longname.return_value = "Test User"
             mock_get_shortname.return_value = "TU"
@@ -107,16 +113,18 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_on_meshtastic_message_unmapped_channel(self):
         """
         Test that messages received on unmapped channels do not trigger Matrix relay.
-        
+
         Verifies that when a Meshtastic packet is received on a channel not present in the configured Matrix room mapping, no coroutine is scheduled for relaying the message to Matrix.
         """
         # Modify packet to use unmapped channel
         packet_unmapped = self.mock_packet.copy()
         packet_unmapped["channel"] = 99  # Not in matrix_rooms config
 
-        with patch('mmrelay.meshtastic_utils.config', self.mock_config), \
-             patch('mmrelay.meshtastic_utils.matrix_rooms', self.mock_config["matrix_rooms"]), \
-             patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe') as mock_run_coro:
+        with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
+            "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
+        ), patch(
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
+        ) as mock_run_coro:
 
             mock_interface = MagicMock()
 
@@ -129,17 +137,20 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_on_meshtastic_message_no_text(self):
         """
         Verify that non-text Meshtastic packets do not trigger message relay to Matrix.
-        
+
         This test ensures that when a packet does not contain a text message (i.e., its port number is not `TEXT_MESSAGE_APP`), the message processing function does not schedule a coroutine for relaying the message to Matrix.
         """
         # Modify packet to have no text
         packet_no_text = self.mock_packet.copy()
         packet_no_text["decoded"] = {"portnum": 2}  # Not TEXT_MESSAGE_APP
 
-        with patch('mmrelay.meshtastic_utils.config', self.mock_config), \
-             patch('mmrelay.meshtastic_utils.matrix_rooms', self.mock_config["matrix_rooms"]), \
-             patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe') as mock_run_coro, \
-             patch('mmrelay.plugin_loader.load_plugins') as mock_load_plugins:
+        with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
+            "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
+        ), patch(
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
+        ) as mock_run_coro, patch(
+            "mmrelay.plugin_loader.load_plugins"
+        ) as mock_load_plugins:
 
             mock_load_plugins.return_value = []
             mock_interface = MagicMock()
@@ -150,14 +161,16 @@ class TestMeshtasticUtils(unittest.TestCase):
             # Verify asyncio.run_coroutine_threadsafe was not called for non-text message
             mock_run_coro.assert_not_called()
 
-    @patch('mmrelay.meshtastic_utils.serial_port_exists')
-    @patch('mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface')
-    @patch('mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface')
-    @patch('mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface')
-    def test_connect_meshtastic_serial(self, mock_tcp, mock_ble, mock_serial, mock_port_exists):
+    @patch("mmrelay.meshtastic_utils.serial_port_exists")
+    @patch("mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface")
+    @patch("mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface")
+    @patch("mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface")
+    def test_connect_meshtastic_serial(
+        self, mock_tcp, mock_ble, mock_serial, mock_port_exists
+    ):
         """
         Test that the Meshtastic client connects successfully using a serial interface when the serial port exists.
-        
+
         Verifies that the serial interface is instantiated with the configured port and that the returned client matches the mock.
         """
         mock_client = MagicMock()
@@ -166,10 +179,7 @@ class TestMeshtasticUtils(unittest.TestCase):
         mock_port_exists.return_value = True
 
         config = {
-            "meshtastic": {
-                "connection_type": "serial",
-                "serial_port": "/dev/ttyUSB0"
-            }
+            "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"}
         }
 
         result = connect_meshtastic(passed_config=config)
@@ -177,13 +187,13 @@ class TestMeshtasticUtils(unittest.TestCase):
         self.assertEqual(result, mock_client)
         mock_serial.assert_called_once_with("/dev/ttyUSB0")
 
-    @patch('mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface')
-    @patch('mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface')
-    @patch('mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface')
+    @patch("mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface")
+    @patch("mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface")
+    @patch("mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface")
     def test_connect_meshtastic_tcp(self, mock_tcp, mock_ble, mock_serial):
         """
         Test that the Meshtastic client connects using the TCP interface with the specified host.
-        
+
         Verifies that the TCP interface is instantiated with the correct hostname and that the returned client matches the mocked instance.
         """
         mock_client = MagicMock()
@@ -193,7 +203,7 @@ class TestMeshtasticUtils(unittest.TestCase):
         config = {
             "meshtastic": {
                 "connection_type": "tcp",
-                "host": "192.168.1.100"  # Use 'host' not 'tcp_host'
+                "host": "192.168.1.100",  # Use 'host' not 'tcp_host'
             }
         }
 
@@ -202,13 +212,13 @@ class TestMeshtasticUtils(unittest.TestCase):
         self.assertEqual(result, mock_client)
         mock_tcp.assert_called_once_with(hostname="192.168.1.100")
 
-    @patch('mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface')
-    @patch('mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface')
-    @patch('mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface')
+    @patch("mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface")
+    @patch("mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface")
+    @patch("mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface")
     def test_connect_meshtastic_ble(self, mock_tcp, mock_ble, mock_serial):
         """
         Test that the Meshtastic client connects via BLE using the configured BLE address.
-        
+
         Verifies that the BLE interface is instantiated with the correct parameters and that the returned client matches the mocked BLE client.
         """
         mock_client = MagicMock()
@@ -216,10 +226,7 @@ class TestMeshtasticUtils(unittest.TestCase):
         mock_ble.return_value = mock_client
 
         config = {
-            "meshtastic": {
-                "connection_type": "ble",
-                "ble_address": "AA:BB:CC:DD:EE:FF"
-            }
+            "meshtastic": {"connection_type": "ble", "ble_address": "AA:BB:CC:DD:EE:FF"}
         }
 
         result = connect_meshtastic(passed_config=config)
@@ -227,24 +234,17 @@ class TestMeshtasticUtils(unittest.TestCase):
         self.assertEqual(result, mock_client)
         # Check the actual call parameters
         mock_ble.assert_called_once_with(
-            address="AA:BB:CC:DD:EE:FF",
-            noProto=False,
-            debugOut=None,
-            noNodes=False
+            address="AA:BB:CC:DD:EE:FF", noProto=False, debugOut=None, noNodes=False
         )
 
-    @patch('mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface')
-    @patch('mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface')
-    @patch('mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface')
+    @patch("mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface")
+    @patch("mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface")
+    @patch("mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface")
     def test_connect_meshtastic_invalid_type(self, mock_tcp, mock_ble, mock_serial):
         """
         Test that attempting to connect with an invalid Meshtastic connection type returns None and does not instantiate any interface.
         """
-        config = {
-            "meshtastic": {
-                "connection_type": "invalid"
-            }
-        }
+        config = {"meshtastic": {"connection_type": "invalid"}}
 
         result = connect_meshtastic(passed_config=config)
 
@@ -257,7 +257,7 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_sendTextReply_success(self):
         """
         Test that sendTextReply returns the expected result when sending a text reply succeeds.
-        
+
         Verifies that the function correctly calls the interface methods and returns the response from _sendPacket.
         """
         # Create a mock interface
@@ -290,19 +290,25 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_on_meshtastic_message_with_broadcast_config(self):
         """
         Test that Meshtastic-to-Matrix message relaying occurs even when broadcast is disabled in the configuration.
-        
+
         Ensures that disabling `broadcast_enabled` in the configuration does not prevent Meshtastic messages from being relayed to Matrix, confirming that this setting only affects Matrix-to-Meshtastic message direction.
         """
         config_no_broadcast = self.mock_config.copy()
         config_no_broadcast["meshtastic"]["broadcast_enabled"] = False
 
-        with patch('mmrelay.meshtastic_utils.config', config_no_broadcast), \
-             patch('mmrelay.meshtastic_utils.matrix_rooms', config_no_broadcast["matrix_rooms"]), \
-             patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe') as mock_run_coro, \
-             patch('mmrelay.meshtastic_utils.get_longname') as mock_get_longname, \
-             patch('mmrelay.meshtastic_utils.get_shortname') as mock_get_shortname, \
-             patch('mmrelay.matrix_utils.get_interaction_settings') as mock_get_interactions, \
-             patch('mmrelay.matrix_utils.message_storage_enabled') as mock_storage:
+        with patch("mmrelay.meshtastic_utils.config", config_no_broadcast), patch(
+            "mmrelay.meshtastic_utils.matrix_rooms", config_no_broadcast["matrix_rooms"]
+        ), patch(
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
+        ) as mock_run_coro, patch(
+            "mmrelay.meshtastic_utils.get_longname"
+        ) as mock_get_longname, patch(
+            "mmrelay.meshtastic_utils.get_shortname"
+        ) as mock_get_shortname, patch(
+            "mmrelay.matrix_utils.get_interaction_settings"
+        ) as mock_get_interactions, patch(
+            "mmrelay.matrix_utils.message_storage_enabled"
+        ) as mock_storage:
 
             mock_get_longname.return_value = "Test User"
             mock_get_shortname.return_value = "TU"
@@ -313,6 +319,7 @@ class TestMeshtasticUtils(unittest.TestCase):
 
             # Set up event loop mock
             import mmrelay.meshtastic_utils
+
             mmrelay.meshtastic_utils.event_loop = MagicMock()
 
             # Call the function
@@ -326,7 +333,7 @@ class TestMeshtasticUtils(unittest.TestCase):
 class TestServiceDetection(unittest.TestCase):
     """Test cases for service detection functionality."""
 
-    @patch.dict(os.environ, {'INVOCATION_ID': 'test-service-id'})
+    @patch.dict(os.environ, {"INVOCATION_ID": "test-service-id"})
     def test_is_running_as_service_with_invocation_id(self):
         """Test service detection when INVOCATION_ID environment variable is set."""
         result = is_running_as_service()
@@ -343,15 +350,15 @@ class TestServiceDetection(unittest.TestCase):
         def mock_open_func(filename, *args, **kwargs):
             """
             Mock file open function for simulating reads from specific `/proc` files during testing.
-            
+
             Returns a mock file object with predefined content for `/proc/self/status` and `/proc/[pid]/comm`. Raises `FileNotFoundError` for any other file paths.
-            
+
             Parameters:
                 filename (str): The path of the file to open.
-            
+
             Returns:
                 file object: A mock file object with the specified content.
-            
+
             Raises:
                 FileNotFoundError: If the filename does not match the supported `/proc` paths.
             """
@@ -362,7 +369,7 @@ class TestServiceDetection(unittest.TestCase):
             else:
                 raise FileNotFoundError()
 
-        with patch('builtins.open', side_effect=mock_open_func):
+        with patch("builtins.open", side_effect=mock_open_func):
             result = is_running_as_service()
             self.assertTrue(result)
 
@@ -377,15 +384,15 @@ class TestServiceDetection(unittest.TestCase):
         def mock_open_func(filename, *args, **kwargs):
             """
             Mock file open function for simulating reads from specific `/proc` files during testing.
-            
+
             Returns a mock file object with predefined content for `/proc/self/status` and `/proc/[pid]/comm`. Raises `FileNotFoundError` for any other file paths.
-            
+
             Parameters:
                 filename (str): The path of the file to open.
-            
+
             Returns:
                 file object: A mock file object with the specified content.
-            
+
             Raises:
                 FileNotFoundError: If the filename does not match the supported `/proc` paths.
             """
@@ -396,12 +403,12 @@ class TestServiceDetection(unittest.TestCase):
             else:
                 raise FileNotFoundError()
 
-        with patch('builtins.open', side_effect=mock_open_func):
+        with patch("builtins.open", side_effect=mock_open_func):
             result = is_running_as_service()
             self.assertFalse(result)
 
     @patch.dict(os.environ, {}, clear=True)
-    @patch('builtins.open', side_effect=FileNotFoundError())
+    @patch("builtins.open", side_effect=FileNotFoundError())
     def test_is_running_as_service_file_not_found(self, mock_open_func):
         """
         Test that service detection returns False when required process files cannot be read.
@@ -413,38 +420,38 @@ class TestServiceDetection(unittest.TestCase):
 class TestSerialPortDetection(unittest.TestCase):
     """Test cases for serial port detection functionality."""
 
-    @patch('mmrelay.meshtastic_utils.serial.tools.list_ports.comports')
+    @patch("mmrelay.meshtastic_utils.serial.tools.list_ports.comports")
     def test_serial_port_exists_found(self, mock_comports):
         """
         Test that serial_port_exists returns True when the specified serial port is present among available system ports.
         """
         mock_port = MagicMock()
-        mock_port.device = '/dev/ttyUSB0'
+        mock_port.device = "/dev/ttyUSB0"
         mock_comports.return_value = [mock_port]
 
-        result = serial_port_exists('/dev/ttyUSB0')
+        result = serial_port_exists("/dev/ttyUSB0")
         self.assertTrue(result)
 
-    @patch('mmrelay.meshtastic_utils.serial.tools.list_ports.comports')
+    @patch("mmrelay.meshtastic_utils.serial.tools.list_ports.comports")
     def test_serial_port_exists_not_found(self, mock_comports):
         """
         Tests that serial_port_exists returns False when the specified serial port is not found among available ports.
         """
         mock_port = MagicMock()
-        mock_port.device = '/dev/ttyUSB1'
+        mock_port.device = "/dev/ttyUSB1"
         mock_comports.return_value = [mock_port]
 
-        result = serial_port_exists('/dev/ttyUSB0')
+        result = serial_port_exists("/dev/ttyUSB0")
         self.assertFalse(result)
 
-    @patch('mmrelay.meshtastic_utils.serial.tools.list_ports.comports')
+    @patch("mmrelay.meshtastic_utils.serial.tools.list_ports.comports")
     def test_serial_port_exists_no_ports(self, mock_comports):
         """
         Test that serial port detection returns False when no serial ports are available.
         """
         mock_comports.return_value = []
 
-        result = serial_port_exists('/dev/ttyUSB0')
+        result = serial_port_exists("/dev/ttyUSB0")
         self.assertFalse(result)
 
 
@@ -457,16 +464,18 @@ class TestConnectionLossHandling(unittest.TestCase):
         """
         # Reset global state
         import mmrelay.meshtastic_utils
+
         mmrelay.meshtastic_utils.reconnecting = False
         mmrelay.meshtastic_utils.shutting_down = False
         mmrelay.meshtastic_utils.reconnect_task = None
 
-    @patch('mmrelay.meshtastic_utils.logger')
-    @patch('mmrelay.meshtastic_utils.event_loop', MagicMock())
-    @patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe')
+    @patch("mmrelay.meshtastic_utils.logger")
+    @patch("mmrelay.meshtastic_utils.event_loop", MagicMock())
+    @patch("mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe")
     def test_on_lost_meshtastic_connection_normal(self, mock_run_coro, mock_logger):
         """Test normal connection loss handling."""
         import mmrelay.meshtastic_utils
+
         mmrelay.meshtastic_utils.reconnecting = False
         mmrelay.meshtastic_utils.shutting_down = False
 
@@ -480,14 +489,15 @@ class TestConnectionLossHandling(unittest.TestCase):
         self.assertIn("Lost connection", error_call)
         self.assertIn("test_source", error_call)
 
-    @patch('mmrelay.meshtastic_utils.logger')
+    @patch("mmrelay.meshtastic_utils.logger")
     def test_on_lost_meshtastic_connection_already_reconnecting(self, mock_logger):
         """
         Test that connection loss handling skips reconnection if already reconnecting.
-        
+
         Verifies that when the reconnecting flag is set, the function logs a debug message and does not attempt another reconnection.
         """
         import mmrelay.meshtastic_utils
+
         mmrelay.meshtastic_utils.reconnecting = True
         mmrelay.meshtastic_utils.shutting_down = False
 
@@ -496,14 +506,17 @@ class TestConnectionLossHandling(unittest.TestCase):
         on_lost_meshtastic_connection(mock_interface, "test_source")
 
         # Should log that reconnection is already in progress
-        mock_logger.debug.assert_called_with("Reconnection already in progress. Skipping additional reconnection attempt.")
+        mock_logger.debug.assert_called_with(
+            "Reconnection already in progress. Skipping additional reconnection attempt."
+        )
 
-    @patch('mmrelay.meshtastic_utils.logger')
+    @patch("mmrelay.meshtastic_utils.logger")
     def test_on_lost_meshtastic_connection_shutting_down(self, mock_logger):
         """
         Tests that connection loss handling does not attempt reconnection and logs the correct message when the system is shutting down.
         """
         import mmrelay.meshtastic_utils
+
         mmrelay.meshtastic_utils.reconnecting = False
         mmrelay.meshtastic_utils.shutting_down = True
 
@@ -512,25 +525,26 @@ class TestConnectionLossHandling(unittest.TestCase):
         on_lost_meshtastic_connection(mock_interface, "test_source")
 
         # Should log that system is shutting down
-        mock_logger.debug.assert_called_with("Shutdown in progress. Not attempting to reconnect.")
+        mock_logger.debug.assert_called_with(
+            "Shutdown in progress. Not attempting to reconnect."
+        )
 
 
 class TestConnectMeshtasticEdgeCases(unittest.TestCase):
     """Test cases for edge cases in Meshtastic connection."""
 
-    @patch('mmrelay.meshtastic_utils.serial_port_exists')
-    @patch('mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface')
-    def test_connect_meshtastic_serial_port_not_exists(self, mock_serial, mock_port_exists):
+    @patch("mmrelay.meshtastic_utils.serial_port_exists")
+    @patch("mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface")
+    def test_connect_meshtastic_serial_port_not_exists(
+        self, mock_serial, mock_port_exists
+    ):
         """
         Test that connect_meshtastic returns None and does not instantiate the serial interface when the specified serial port does not exist.
         """
         mock_port_exists.return_value = False
 
         config = {
-            "meshtastic": {
-                "connection_type": "serial",
-                "serial_port": "/dev/ttyUSB0"
-            }
+            "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"}
         }
 
         result = connect_meshtastic(passed_config=config)
@@ -538,7 +552,7 @@ class TestConnectMeshtasticEdgeCases(unittest.TestCase):
         self.assertIsNone(result)
         mock_serial.assert_not_called()
 
-    @patch('mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface')
+    @patch("mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface")
     def test_connect_meshtastic_serial_exception(self, mock_serial):
         """
         Test that connect_meshtastic returns None when the serial interface raises an exception during connection.
@@ -546,36 +560,28 @@ class TestConnectMeshtasticEdgeCases(unittest.TestCase):
         mock_serial.side_effect = Exception("Serial connection failed")
 
         config = {
-            "meshtastic": {
-                "connection_type": "serial",
-                "serial_port": "/dev/ttyUSB0"
-            }
+            "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"}
         }
 
-        with patch('mmrelay.meshtastic_utils.serial_port_exists', return_value=True):
+        with patch("mmrelay.meshtastic_utils.serial_port_exists", return_value=True):
             result = connect_meshtastic(passed_config=config)
 
         self.assertIsNone(result)
 
-    @patch('mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface')
+    @patch("mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface")
     def test_connect_meshtastic_tcp_exception(self, mock_tcp):
         """
         Tests that connect_meshtastic returns None when an exception is raised during TCP interface instantiation.
         """
         mock_tcp.side_effect = Exception("TCP connection failed")
 
-        config = {
-            "meshtastic": {
-                "connection_type": "tcp",
-                "host": "192.168.1.100"
-            }
-        }
+        config = {"meshtastic": {"connection_type": "tcp", "host": "192.168.1.100"}}
 
         result = connect_meshtastic(passed_config=config)
 
         self.assertIsNone(result)
 
-    @patch('mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface')
+    @patch("mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface")
     def test_connect_meshtastic_ble_exception(self, mock_ble):
         """
         Test that connect_meshtastic returns None when the BLE interface raises an exception during connection.
@@ -583,10 +589,7 @@ class TestConnectMeshtasticEdgeCases(unittest.TestCase):
         mock_ble.side_effect = Exception("BLE connection failed")
 
         config = {
-            "meshtastic": {
-                "connection_type": "ble",
-                "ble_address": "AA:BB:CC:DD:EE:FF"
-            }
+            "meshtastic": {"connection_type": "ble", "ble_address": "AA:BB:CC:DD:EE:FF"}
         }
 
         result = connect_meshtastic(passed_config=config)
@@ -604,12 +607,6 @@ class TestConnectMeshtasticEdgeCases(unittest.TestCase):
         """
         Tests that connect_meshtastic returns None gracefully when called with no configuration.
         """
-        config = {
-            "meshtastic": {
-                "connection_type": "serial",
-                "serial_port": "/dev/ttyUSB0"
-            }
-        }
 
         # Test with no config
         result = connect_meshtastic(passed_config=None)
@@ -629,11 +626,9 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
                 "connection_type": "serial",
                 "serial_port": "/dev/ttyUSB0",
                 "broadcast_enabled": True,
-                "meshnet_name": "test_mesh"
+                "meshnet_name": "test_mesh",
             },
-            "matrix_rooms": [
-                {"id": "!room1:matrix.org", "meshtastic_channel": 0}
-            ]
+            "matrix_rooms": [{"id": "!room1:matrix.org", "meshtastic_channel": 0}],
         }
 
     def test_on_meshtastic_message_no_decoded(self):
@@ -645,13 +640,15 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
             "to": 987654321,
             "channel": 0,
             "id": 12345,
-            "rxTime": 1234567890
+            "rxTime": 1234567890,
             # No 'decoded' field
         }
 
-        with patch('mmrelay.meshtastic_utils.config', self.mock_config), \
-             patch('mmrelay.meshtastic_utils.matrix_rooms', self.mock_config["matrix_rooms"]), \
-             patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe') as mock_run_coro:
+        with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
+            "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
+        ), patch(
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
+        ) as mock_run_coro:
 
             mock_interface = MagicMock()
 
@@ -667,18 +664,17 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
         packet = {
             "from": 123456789,
             "to": 987654321,
-            "decoded": {
-                "text": "",  # Empty text
-                "portnum": "TEXT_MESSAGE_APP"
-            },
+            "decoded": {"text": "", "portnum": "TEXT_MESSAGE_APP"},  # Empty text
             "channel": 0,
             "id": 12345,
-            "rxTime": 1234567890
+            "rxTime": 1234567890,
         }
 
-        with patch('mmrelay.meshtastic_utils.config', self.mock_config), \
-             patch('mmrelay.meshtastic_utils.matrix_rooms', self.mock_config["matrix_rooms"]), \
-             patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe') as mock_run_coro:
+        with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
+            "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
+        ), patch(
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
+        ) as mock_run_coro:
 
             mock_interface = MagicMock()
 
@@ -698,18 +694,18 @@ class TestMeshtasticUtilsAsync(unittest.TestCase):
     def test_async_message_processing_setup(self):
         """
         Verify that async message processing components and functions can be imported and exist.
-        
+
         This test ensures that key async functions and infrastructure are present and importable without executing any asynchronous code.
         """
         # This test just verifies that the async components exist and can be imported
         # without actually running async code that could cause warnings
 
         # Test that we can import the async functions
+        # Test that asyncio functions are available
+
         from mmrelay.matrix_utils import matrix_relay
         from mmrelay.meshtastic_utils import on_meshtastic_message
 
-        # Test that asyncio functions are available
-        import asyncio
         self.assertIsNotNone(asyncio.run_coroutine_threadsafe)
 
         # Test that the functions exist

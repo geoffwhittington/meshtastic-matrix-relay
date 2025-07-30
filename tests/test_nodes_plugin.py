@@ -31,9 +31,9 @@ class TestGetRelativeTime(unittest.TestCase):
         """
         now = datetime.now()
         timestamp = now.timestamp()
-        
+
         result = get_relative_time(timestamp)
-        
+
         self.assertEqual(result, "Just now")
 
     def test_get_relative_time_minutes_ago(self):
@@ -43,9 +43,9 @@ class TestGetRelativeTime(unittest.TestCase):
         now = datetime.now()
         five_minutes_ago = now - timedelta(minutes=5)
         timestamp = five_minutes_ago.timestamp()
-        
+
         result = get_relative_time(timestamp)
-        
+
         self.assertEqual(result, "5 minutes ago")
 
     def test_get_relative_time_one_minute_ago(self):
@@ -53,9 +53,9 @@ class TestGetRelativeTime(unittest.TestCase):
         now = datetime.now()
         one_minute_ago = now - timedelta(minutes=1)
         timestamp = one_minute_ago.timestamp()
-        
+
         result = get_relative_time(timestamp)
-        
+
         self.assertEqual(result, "1 minutes ago")
 
     def test_get_relative_time_hours_ago(self):
@@ -65,9 +65,9 @@ class TestGetRelativeTime(unittest.TestCase):
         now = datetime.now()
         three_hours_ago = now - timedelta(hours=3)
         timestamp = three_hours_ago.timestamp()
-        
+
         result = get_relative_time(timestamp)
-        
+
         self.assertEqual(result, "3 hours ago")
 
     def test_get_relative_time_one_hour_ago(self):
@@ -75,9 +75,9 @@ class TestGetRelativeTime(unittest.TestCase):
         now = datetime.now()
         one_hour_ago = now - timedelta(hours=1)
         timestamp = one_hour_ago.timestamp()
-        
+
         result = get_relative_time(timestamp)
-        
+
         self.assertEqual(result, "1 hours ago")
 
     def test_get_relative_time_days_ago(self):
@@ -87,9 +87,9 @@ class TestGetRelativeTime(unittest.TestCase):
         now = datetime.now()
         three_days_ago = now - timedelta(days=3)
         timestamp = three_days_ago.timestamp()
-        
+
         result = get_relative_time(timestamp)
-        
+
         self.assertEqual(result, "3 days ago")
 
     def test_get_relative_time_one_day_ago(self):
@@ -97,9 +97,9 @@ class TestGetRelativeTime(unittest.TestCase):
         now = datetime.now()
         one_day_ago = now - timedelta(days=1)
         timestamp = one_day_ago.timestamp()
-        
+
         result = get_relative_time(timestamp)
-        
+
         self.assertEqual(result, "1 days ago")
 
     def test_get_relative_time_old_date(self):
@@ -109,9 +109,9 @@ class TestGetRelativeTime(unittest.TestCase):
         now = datetime.now()
         ten_days_ago = now - timedelta(days=10)
         timestamp = ten_days_ago.timestamp()
-        
+
         result = get_relative_time(timestamp)
-        
+
         # Should return formatted date like "Jan 15, 2024"
         expected_format = ten_days_ago.strftime("%b %d, %Y")
         self.assertEqual(result, expected_format)
@@ -123,9 +123,9 @@ class TestGetRelativeTime(unittest.TestCase):
         now = datetime.now()
         seven_days_ago = now - timedelta(days=7)
         timestamp = seven_days_ago.timestamp()
-        
+
         result = get_relative_time(timestamp)
-        
+
         self.assertEqual(result, "7 days ago")
 
     def test_get_relative_time_exactly_eight_days(self):
@@ -135,9 +135,9 @@ class TestGetRelativeTime(unittest.TestCase):
         now = datetime.now()
         eight_days_ago = now - timedelta(days=8)
         timestamp = eight_days_ago.timestamp()
-        
+
         result = get_relative_time(timestamp)
-        
+
         # Should return formatted date
         expected_format = eight_days_ago.strftime("%b %d, %Y")
         self.assertEqual(result, expected_format)
@@ -149,15 +149,15 @@ class TestNodesPlugin(unittest.TestCase):
     def setUp(self):
         """
         Initialize the test environment with a mocked Plugin instance and a Meshtastic client containing sample node data for testing.
-        
+
         Creates a Plugin object with mocked logger and asynchronous message sending. Sets up a mock Meshtastic client with three nodes, each having varying completeness of user, SNR, lastHeard, and deviceMetrics data.
         """
         self.plugin = Plugin()
         self.plugin.logger = MagicMock()
-        
+
         # Mock Matrix client methods
         self.plugin.send_matrix_message = AsyncMock()
-        
+
         # Mock meshtastic client with sample node data
         self.mock_meshtastic_client = MagicMock()
         self.mock_meshtastic_client.nodes = {
@@ -165,36 +165,26 @@ class TestNodesPlugin(unittest.TestCase):
                 "user": {
                     "shortName": "N1",
                     "longName": "Node One",
-                    "hwModel": "HELTEC_V3"
+                    "hwModel": "HELTEC_V3",
                 },
                 "snr": 12.5,
                 "lastHeard": (datetime.now() - timedelta(minutes=5)).timestamp(),
-                "deviceMetrics": {
-                    "voltage": 4.2,
-                    "batteryLevel": 85
-                }
+                "deviceMetrics": {"voltage": 4.2, "batteryLevel": 85},
             },
             "node2": {
-                "user": {
-                    "shortName": "N2", 
-                    "longName": "Node Two",
-                    "hwModel": "TBEAM"
-                },
+                "user": {"shortName": "N2", "longName": "Node Two", "hwModel": "TBEAM"},
                 "snr": -8.0,
                 "lastHeard": (datetime.now() - timedelta(hours=2)).timestamp(),
-                "deviceMetrics": {
-                    "voltage": 3.8,
-                    "batteryLevel": 45
-                }
+                "deviceMetrics": {"voltage": 3.8, "batteryLevel": 45},
             },
             "node3": {
                 "user": {
                     "shortName": "N3",
-                    "longName": "Node Three", 
-                    "hwModel": "LORA32_V2_1"
+                    "longName": "Node Three",
+                    "hwModel": "LORA32_V2_1",
                 }
                 # No SNR, lastHeard, or deviceMetrics data
-            }
+            },
         }
 
     def test_plugin_name(self):
@@ -216,11 +206,11 @@ class TestNodesPlugin(unittest.TestCase):
         self.assertIn("$snr", description)
         self.assertIn("$lastseen", description)
 
-    @patch('mmrelay.meshtastic_utils.connect_meshtastic')
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
     def test_generate_response_with_full_data(self, mock_connect):
         """
         Test that `generate_response` produces correct output when all node data fields are present.
-        
+
         Verifies that the response includes node count, names, hardware models, battery and voltage information, SNR values, and relative time phrases for nodes with complete data.
         """
         mock_connect.return_value = self.mock_meshtastic_client
@@ -252,11 +242,11 @@ class TestNodesPlugin(unittest.TestCase):
         self.assertIn("minutes ago", response)
         self.assertIn("hours ago", response)
 
-    @patch('mmrelay.meshtastic_utils.connect_meshtastic')
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
     def test_generate_response_with_missing_data(self, mock_connect):
         """
         Test that the response generated by the plugin correctly handles nodes with missing data fields.
-        
+
         Verifies that the output includes appropriate placeholders for missing battery, voltage, and last heard time, and still displays available node information.
         """
         # Create a client with minimal node data
@@ -266,7 +256,7 @@ class TestNodesPlugin(unittest.TestCase):
                 "user": {
                     "shortName": "MIN",
                     "longName": "Minimal Node",
-                    "hwModel": "UNKNOWN"
+                    "hwModel": "UNKNOWN",
                 }
                 # No SNR, lastHeard, or deviceMetrics
             }
@@ -282,7 +272,7 @@ class TestNodesPlugin(unittest.TestCase):
         self.assertIn("?% ?V", response)  # Default values for missing battery/voltage
         self.assertIn("None", response)  # No last heard time
 
-    @patch('mmrelay.meshtastic_utils.connect_meshtastic')
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
     def test_generate_response_with_null_values(self, mock_connect):
         """
         Test that the response generated by the plugin correctly handles nodes with null values for SNR, lastHeard, voltage, and batteryLevel, using default placeholders where appropriate.
@@ -293,14 +283,11 @@ class TestNodesPlugin(unittest.TestCase):
                 "user": {
                     "shortName": "NULL",
                     "longName": "Null Node",
-                    "hwModel": "TEST"
+                    "hwModel": "TEST",
                 },
                 "snr": None,
                 "lastHeard": None,
-                "deviceMetrics": {
-                    "voltage": None,
-                    "batteryLevel": None
-                }
+                "deviceMetrics": {"voltage": None, "batteryLevel": None},
             }
         }
         mock_connect.return_value = null_client
@@ -317,6 +304,7 @@ class TestNodesPlugin(unittest.TestCase):
         """
         Test that handle_meshtastic_message always returns False regardless of input.
         """
+
         async def run_test():
             """
             Asynchronously tests that handle_meshtastic_message always returns False.
@@ -327,6 +315,7 @@ class TestNodesPlugin(unittest.TestCase):
             self.assertFalse(result)
 
         import asyncio
+
         asyncio.run(run_test())
 
     def test_handle_room_message_no_match(self):
@@ -341,7 +330,7 @@ class TestNodesPlugin(unittest.TestCase):
         async def run_test():
             """
             Asynchronously tests that handle_room_message returns False and does not send a Matrix message when the event does not match.
-            
+
             Verifies that the matches method is called once with the event and send_matrix_message is not called.
             """
             result = await self.plugin.handle_room_message(room, event, "full_message")
@@ -350,9 +339,10 @@ class TestNodesPlugin(unittest.TestCase):
             self.plugin.send_matrix_message.assert_not_called()
 
         import asyncio
+
         asyncio.run(run_test())
 
-    @patch('mmrelay.meshtastic_utils.connect_meshtastic')
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
     def test_handle_room_message_with_match(self, mock_connect):
         """
         Tests that handle_room_message sends a Matrix message and returns True when the event matches, verifying correct message content and parameters.
@@ -367,7 +357,7 @@ class TestNodesPlugin(unittest.TestCase):
         async def run_test():
             """
             Asynchronously tests that a room message matching the plugin's criteria triggers a Matrix message with correct node information.
-            
+
             Returns:
                 bool: True if the plugin handled the room message and sent a Matrix message.
             """
@@ -379,11 +369,12 @@ class TestNodesPlugin(unittest.TestCase):
 
             # Check the call arguments
             call_args = self.plugin.send_matrix_message.call_args
-            self.assertEqual(call_args.kwargs['room_id'], "!test:matrix.org")
-            self.assertIn("Nodes: 3", call_args.kwargs['message'])
-            self.assertEqual(call_args.kwargs['formatted'], False)
+            self.assertEqual(call_args.kwargs["room_id"], "!test:matrix.org")
+            self.assertIn("Nodes: 3", call_args.kwargs["message"])
+            self.assertEqual(call_args.kwargs["formatted"], False)
 
         import asyncio
+
         asyncio.run(run_test())
 
 

@@ -28,7 +28,7 @@ class TestMatrixUtils(unittest.TestCase):
     def setUp(self):
         """
         Set up common test fixtures for Matrix room message handling tests.
-        
+
         Initializes mocked Matrix room and event objects, and prepares a configuration dictionary for Meshtastic and Matrix settings to be used across test cases.
         """
         self.mock_room = MagicMock()
@@ -65,14 +65,16 @@ class TestMatrixUtils(unittest.TestCase):
     ):
         """
         Test that a simple text message event is correctly processed and queued for Meshtastic relay.
-        
+
         Verifies that when a non-reaction text message is received from a user, the message is queued with the expected content.
         """
         mock_isinstance.return_value = False
         mock_get_user_display_name.return_value = "user"
         with patch("mmrelay.matrix_utils.config", self.config), patch(
             "mmrelay.matrix_utils.matrix_rooms", self.config["matrix_rooms"]
-        ), patch("mmrelay.matrix_utils.bot_user_id", self.config["matrix"]["bot_user_id"]):
+        ), patch(
+            "mmrelay.matrix_utils.bot_user_id", self.config["matrix"]["bot_user_id"]
+        ):
             # Mock the matrix client
             mock_matrix_client = AsyncMock()
             with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
@@ -87,14 +89,18 @@ class TestMatrixUtils(unittest.TestCase):
     @patch("mmrelay.matrix_utils.connect_meshtastic")
     @patch("mmrelay.matrix_utils.queue_message")
     @patch("mmrelay.matrix_utils.bot_start_time", 1234567880)
-    def test_on_room_message_ignore_bot(self, mock_queue_message, mock_connect_meshtastic):
+    def test_on_room_message_ignore_bot(
+        self, mock_queue_message, mock_connect_meshtastic
+    ):
         """
         Test that messages sent by the bot user are ignored and not queued for Meshtastic relay.
         """
         self.mock_event.sender = self.config["matrix"]["bot_user_id"]
         with patch("mmrelay.matrix_utils.config", self.config), patch(
             "mmrelay.matrix_utils.matrix_rooms", self.config["matrix_rooms"]
-        ), patch("mmrelay.matrix_utils.bot_user_id", self.config["matrix"]["bot_user_id"]):
+        ), patch(
+            "mmrelay.matrix_utils.bot_user_id", self.config["matrix"]["bot_user_id"]
+        ):
             # Mock the matrix client
             mock_matrix_client = AsyncMock()
             with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
@@ -120,7 +126,7 @@ class TestMatrixUtils(unittest.TestCase):
     ):
         """
         Test that a reply message is correctly processed and queued when reply interactions are enabled.
-        
+
         Ensures that when a Matrix event is a reply and reply interactions are enabled in the configuration, the reply text is extracted and passed to the message queue for Meshtastic relay.
         """
         mock_isinstance.return_value = False
@@ -131,7 +137,9 @@ class TestMatrixUtils(unittest.TestCase):
                 "m.relates_to": {"m.in_reply_to": {"event_id": "original_event_id"}}
             }
         }
-        self.mock_event.body = "> <@original_user:matrix.org> original message\n\nThis is a reply"
+        self.mock_event.body = (
+            "> <@original_user:matrix.org> original message\n\nThis is a reply"
+        )
         mock_get_message_map.return_value = (
             "meshtastic_id",
             "!room:matrix.org",
@@ -141,7 +149,9 @@ class TestMatrixUtils(unittest.TestCase):
 
         with patch("mmrelay.matrix_utils.config", self.config), patch(
             "mmrelay.matrix_utils.matrix_rooms", self.config["matrix_rooms"]
-        ), patch("mmrelay.matrix_utils.bot_user_id", self.config["matrix"]["bot_user_id"]):
+        ), patch(
+            "mmrelay.matrix_utils.bot_user_id", self.config["matrix"]["bot_user_id"]
+        ):
             # Mock the matrix client
             mock_matrix_client = AsyncMock()
             with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
@@ -167,7 +177,7 @@ class TestMatrixUtils(unittest.TestCase):
     ):
         """
         Test that a reply message is handled correctly when reply interactions are disabled.
-        
+
         Verifies that when replies are disabled in the configuration, the full event body (including quoted original message) is queued for Meshtastic relay.
         """
         mock_isinstance.return_value = False
@@ -178,11 +188,15 @@ class TestMatrixUtils(unittest.TestCase):
                 "m.relates_to": {"m.in_reply_to": {"event_id": "original_event_id"}}
             }
         }
-        self.mock_event.body = "> <@original_user:matrix.org> original message\n\nThis is a reply"
+        self.mock_event.body = (
+            "> <@original_user:matrix.org> original message\n\nThis is a reply"
+        )
 
         with patch("mmrelay.matrix_utils.config", self.config), patch(
             "mmrelay.matrix_utils.matrix_rooms", self.config["matrix_rooms"]
-        ), patch("mmrelay.matrix_utils.bot_user_id", self.config["matrix"]["bot_user_id"]):
+        ), patch(
+            "mmrelay.matrix_utils.bot_user_id", self.config["matrix"]["bot_user_id"]
+        ):
             # Mock the matrix client
             mock_matrix_client = AsyncMock()
             with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
@@ -211,12 +225,14 @@ class TestMatrixUtils(unittest.TestCase):
         # This is a reaction event
         """
         Test that a reaction event is processed and queued when reaction interactions are enabled.
-        
+
         Verifies that when a Matrix reaction event occurs and reaction interactions are enabled in the configuration, the corresponding reaction message is correctly queued for Meshtastic relay with the appropriate text.
         """
         from nio import ReactionEvent
 
-        mock_isinstance.side_effect = lambda event, event_type: event_type == ReactionEvent
+        mock_isinstance.side_effect = (
+            lambda event, event_type: event_type == ReactionEvent
+        )
 
         self.config["meshtastic"]["message_interactions"]["reactions"] = True
         self.mock_event.source = {
@@ -238,7 +254,9 @@ class TestMatrixUtils(unittest.TestCase):
 
         with patch("mmrelay.matrix_utils.config", self.config), patch(
             "mmrelay.matrix_utils.matrix_rooms", self.config["matrix_rooms"]
-        ), patch("mmrelay.matrix_utils.bot_user_id", self.config["matrix"]["bot_user_id"]):
+        ), patch(
+            "mmrelay.matrix_utils.bot_user_id", self.config["matrix"]["bot_user_id"]
+        ):
             # Mock the matrix client
             mock_matrix_client = AsyncMock()
             with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
@@ -263,7 +281,9 @@ class TestMatrixUtils(unittest.TestCase):
         """
         from nio import ReactionEvent
 
-        mock_isinstance.side_effect = lambda event, event_type: event_type == ReactionEvent
+        mock_isinstance.side_effect = (
+            lambda event, event_type: event_type == ReactionEvent
+        )
 
         self.config["meshtastic"]["message_interactions"]["reactions"] = False
         self.mock_event.source = {
@@ -278,7 +298,9 @@ class TestMatrixUtils(unittest.TestCase):
 
         with patch("mmrelay.matrix_utils.config", self.config), patch(
             "mmrelay.matrix_utils.matrix_rooms", self.config["matrix_rooms"]
-        ), patch("mmrelay.matrix_utils.bot_user_id", self.config["matrix"]["bot_user_id"]):
+        ), patch(
+            "mmrelay.matrix_utils.bot_user_id", self.config["matrix"]["bot_user_id"]
+        ):
             # Mock the matrix client
             mock_matrix_client = AsyncMock()
             with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
@@ -296,13 +318,15 @@ class TestMatrixUtils(unittest.TestCase):
     ):
         """
         Test that messages from Matrix rooms not in the configured list are ignored.
-        
+
         Ensures that when a message event originates from an unsupported Matrix room, it is not queued for Meshtastic relay.
         """
         self.mock_room.room_id = "!unsupported:matrix.org"
         with patch("mmrelay.matrix_utils.config", self.config), patch(
             "mmrelay.matrix_utils.matrix_rooms", self.config["matrix_rooms"]
-        ), patch("mmrelay.matrix_utils.bot_user_id", self.config["matrix"]["bot_user_id"]):
+        ), patch(
+            "mmrelay.matrix_utils.bot_user_id", self.config["matrix"]["bot_user_id"]
+        ):
             # Mock the matrix client
             mock_matrix_client = AsyncMock()
             with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
@@ -321,6 +345,7 @@ class TestUtilityFunctions(unittest.TestCase):
         Test that the default message retention value is returned when no configuration is set.
         """
         import mmrelay.matrix_utils
+
         original_config = mmrelay.matrix_utils.config
         try:
             mmrelay.matrix_utils.config = {}
@@ -334,6 +359,7 @@ class TestUtilityFunctions(unittest.TestCase):
         Test that the legacy configuration format correctly sets the message retention value.
         """
         import mmrelay.matrix_utils
+
         original_config = mmrelay.matrix_utils.config
         try:
             mmrelay.matrix_utils.config = {"db": {"msg_map": {"msgs_to_keep": 100}}}
@@ -345,13 +371,16 @@ class TestUtilityFunctions(unittest.TestCase):
     def test_get_msgs_to_keep_config_new_format(self):
         """
         Test that the new configuration format correctly sets the message retention value.
-        
+
         Verifies that `_get_msgs_to_keep_config()` returns the expected value when the configuration uses the new nested format for message retention.
         """
         import mmrelay.matrix_utils
+
         original_config = mmrelay.matrix_utils.config
         try:
-            mmrelay.matrix_utils.config = {"database": {"msg_map": {"msgs_to_keep": 200}}}
+            mmrelay.matrix_utils.config = {
+                "database": {"msg_map": {"msgs_to_keep": 200}}
+            }
             result = _get_msgs_to_keep_config()
             self.assertEqual(result, 200)
         finally:
@@ -366,7 +395,7 @@ class TestUtilityFunctions(unittest.TestCase):
             room_id="!room:matrix.org",
             text="Hello world",
             meshnet="test_mesh",
-            msgs_to_keep=100
+            msgs_to_keep=100,
         )
 
         expected = {
@@ -374,7 +403,7 @@ class TestUtilityFunctions(unittest.TestCase):
             "room_id": "!room:matrix.org",
             "text": "Hello world",
             "meshnet": "test_mesh",
-            "msgs_to_keep": 100
+            "msgs_to_keep": 100,
         }
         self.assertEqual(result, expected)
 
@@ -382,11 +411,11 @@ class TestUtilityFunctions(unittest.TestCase):
         """
         Test that _create_mapping_info returns a mapping dictionary with default values when optional parameters are not provided.
         """
-        with patch('mmrelay.matrix_utils._get_msgs_to_keep_config', return_value=500):
+        with patch("mmrelay.matrix_utils._get_msgs_to_keep_config", return_value=500):
             result = _create_mapping_info(
                 matrix_event_id="$event123",
                 room_id="!room:matrix.org",
-                text="Hello world"
+                text="Hello world",
             )
 
             self.assertEqual(result["msgs_to_keep"], 500)
@@ -398,10 +427,7 @@ class TestUtilityFunctions(unittest.TestCase):
         """
         config = {
             "meshtastic": {
-                "message_interactions": {
-                    "reactions": True,
-                    "replies": False
-                }
+                "message_interactions": {"reactions": True, "replies": False}
             }
         }
 
@@ -412,14 +438,10 @@ class TestUtilityFunctions(unittest.TestCase):
     def test_get_interaction_settings_legacy_format(self):
         """
         Test that interaction settings are correctly parsed from a legacy configuration format.
-        
+
         Verifies that the function returns the expected dictionary when only legacy keys are present in the configuration.
         """
-        config = {
-            "meshtastic": {
-                "relay_reactions": True
-            }
-        }
+        config = {"meshtastic": {"relay_reactions": True}}
 
         result = get_interaction_settings(config)
         expected = {"reactions": True, "replies": False}
@@ -508,7 +530,7 @@ class TestPrefixFormatting(unittest.TestCase):
     def test_validate_prefix_format_invalid_key(self):
         """
         Tests that validate_prefix_format correctly identifies an invalid prefix format string containing a missing key.
-        
+
         Verifies that the function returns False and provides an error message when the format string references a key not present in the available variables.
         """
         format_string = "{invalid_key}: "
@@ -523,10 +545,7 @@ class TestPrefixFormatting(unittest.TestCase):
         Tests that the Meshtastic prefix is generated using the specified format when prefixing is enabled in the configuration.
         """
         config = {
-            "meshtastic": {
-                "prefix_enabled": True,
-                "prefix_format": "{display5}[M]: "
-            }
+            "meshtastic": {"prefix_enabled": True, "prefix_format": "{display5}[M]: "}
         }
 
         result = get_meshtastic_prefix(config, "Alice", "@alice:matrix.org")
@@ -536,11 +555,7 @@ class TestPrefixFormatting(unittest.TestCase):
         """
         Tests that no Meshtastic prefix is generated when prefixing is disabled in the configuration.
         """
-        config = {
-            "meshtastic": {
-                "prefix_enabled": False
-            }
-        }
+        config = {"meshtastic": {"prefix_enabled": False}}
 
         result = get_meshtastic_prefix(config, "Alice")
         self.assertEqual(result, "")
@@ -550,10 +565,7 @@ class TestPrefixFormatting(unittest.TestCase):
         Tests that a custom Meshtastic prefix format is applied correctly using the truncated display name.
         """
         config = {
-            "meshtastic": {
-                "prefix_enabled": True,
-                "prefix_format": "[{display3}]: "
-            }
+            "meshtastic": {"prefix_enabled": True, "prefix_format": "[{display3}]: "}
         }
 
         result = get_meshtastic_prefix(config, "Alice")
@@ -564,10 +576,7 @@ class TestPrefixFormatting(unittest.TestCase):
         Test that get_meshtastic_prefix falls back to the default format when given an invalid prefix format string.
         """
         config = {
-            "meshtastic": {
-                "prefix_enabled": True,
-                "prefix_format": "{invalid_var}: "
-            }
+            "meshtastic": {"prefix_enabled": True, "prefix_format": "{invalid_var}: "}
         }
 
         result = get_meshtastic_prefix(config, "Alice")
@@ -578,10 +587,7 @@ class TestPrefixFormatting(unittest.TestCase):
         Tests that the Matrix prefix is generated correctly when prefixing is enabled and a custom format is provided.
         """
         config = {
-            "matrix": {
-                "prefix_enabled": True,
-                "prefix_format": "[{long3}/{mesh}]: "
-            }
+            "matrix": {"prefix_enabled": True, "prefix_format": "[{long3}/{mesh}]: "}
         }
 
         result = get_matrix_prefix(config, "Alice", "A", "TestMesh")
@@ -591,11 +597,7 @@ class TestPrefixFormatting(unittest.TestCase):
         """
         Test that no Matrix prefix is generated when prefixing is disabled in the configuration.
         """
-        config = {
-            "matrix": {
-                "prefix_enabled": False
-            }
-        }
+        config = {"matrix": {"prefix_enabled": False}}
 
         result = get_matrix_prefix(config, "Alice", "A", "TestMesh")
         self.assertEqual(result, "")
@@ -632,7 +634,7 @@ class TestTextProcessing(unittest.TestCase):
         """
         text = "This is a very long message that exceeds the byte limit"
         result = truncate_message(text, max_bytes=20)
-        self.assertTrue(len(result.encode('utf-8')) <= 20)
+        self.assertTrue(len(result.encode("utf-8")) <= 20)
         self.assertTrue(result.startswith("This is"))
 
     def test_truncate_message_unicode(self):
@@ -642,7 +644,7 @@ class TestTextProcessing(unittest.TestCase):
         text = "Hello 🌍 world"
         result = truncate_message(text, max_bytes=10)
         # Should handle Unicode properly without breaking characters
-        self.assertTrue(len(result.encode('utf-8')) <= 10)
+        self.assertTrue(len(result.encode("utf-8")) <= 10)
 
     def test_strip_quoted_lines_with_quotes(self):
         """
@@ -673,7 +675,9 @@ class TestTextProcessing(unittest.TestCase):
         Tests that reply messages are formatted with a truncated display name and quoted lines are removed from the message body.
         """
         config = {}  # Using defaults
-        result = format_reply_message(config, "Alice Smith", "This is a reply\n> Original message")
+        result = format_reply_message(
+            config, "Alice Smith", "This is a reply\n> Original message"
+        )
 
         # Should include truncated display name and strip quoted lines
         self.assertTrue(result.startswith("Alice[M]: "))
@@ -684,8 +688,8 @@ class TestTextProcessing(unittest.TestCase):
 class TestBotCommand(unittest.TestCase):
     """Test cases for bot command detection."""
 
-    @patch('mmrelay.matrix_utils.bot_user_id', '@bot:matrix.org')
-    @patch('mmrelay.matrix_utils.bot_user_name', 'Bot')
+    @patch("mmrelay.matrix_utils.bot_user_id", "@bot:matrix.org")
+    @patch("mmrelay.matrix_utils.bot_user_name", "Bot")
     def test_bot_command_direct_mention(self):
         """
         Tests that a message starting with the bot command triggers correct command detection.
@@ -697,8 +701,8 @@ class TestBotCommand(unittest.TestCase):
         result = bot_command("help", mock_event)
         self.assertTrue(result)
 
-    @patch('mmrelay.matrix_utils.bot_user_id', '@bot:matrix.org')
-    @patch('mmrelay.matrix_utils.bot_user_name', 'Bot')
+    @patch("mmrelay.matrix_utils.bot_user_id", "@bot:matrix.org")
+    @patch("mmrelay.matrix_utils.bot_user_name", "Bot")
     def test_bot_command_no_match(self):
         """
         Test that a non-command message does not trigger bot command detection.
@@ -710,8 +714,8 @@ class TestBotCommand(unittest.TestCase):
         result = bot_command("help", mock_event)
         self.assertFalse(result)
 
-    @patch('mmrelay.matrix_utils.bot_user_id', '@bot:matrix.org')
-    @patch('mmrelay.matrix_utils.bot_user_name', 'Bot')
+    @patch("mmrelay.matrix_utils.bot_user_id", "@bot:matrix.org")
+    @patch("mmrelay.matrix_utils.bot_user_name", "Bot")
     def test_bot_command_case_insensitive(self):
         """
         Test that bot command detection is case-insensitive by verifying a command matches regardless of letter case.
@@ -723,8 +727,8 @@ class TestBotCommand(unittest.TestCase):
         result = bot_command("HELP", mock_event)  # Command should match case
         self.assertTrue(result)
 
-    @patch('mmrelay.matrix_utils.bot_user_id', '@bot:matrix.org')
-    @patch('mmrelay.matrix_utils.bot_user_name', 'Bot')
+    @patch("mmrelay.matrix_utils.bot_user_id", "@bot:matrix.org")
+    @patch("mmrelay.matrix_utils.bot_user_name", "Bot")
     def test_bot_command_with_args(self):
         """
         Test that the bot command is correctly detected when followed by additional arguments.

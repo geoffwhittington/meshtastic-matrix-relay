@@ -68,12 +68,12 @@ def configure_component_debug_logging():
 def get_logger(name):
     """
     Create and configure a logger with console output (optionally colorized) and optional rotating file logging, based on global configuration and command-line arguments.
-    
+
     The logger's log level, colorization, and file logging behavior are determined by configuration settings and command-line options. Log files are rotated by size, and the log directory is created if necessary. If the logger name is "M<>M Relay", the log file path is stored globally.
-    
+
     Parameters:
         name (str): The name of the logger to create.
-    
+
     Returns:
         logging.Logger: The configured logger instance.
     """
@@ -133,8 +133,10 @@ def get_logger(name):
     try:
         # Only parse arguments if we're not in a test environment
         import os
+
         if not os.environ.get("MMRELAY_TESTING"):
             from mmrelay.cli import parse_arguments
+
             args = parse_arguments()
     except (SystemExit, ImportError):
         # If argument parsing fails (e.g., in tests), continue without CLI arguments

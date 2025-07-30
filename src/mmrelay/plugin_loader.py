@@ -662,12 +662,12 @@ def load_plugins_from_directory(directory, recursive=False):
 def load_plugins(passed_config=None):
     """
     Load and initialize all active plugins according to the configuration.
-    
+
     This function discovers, loads, and starts core, custom, and community plugins based on the provided or global configuration. It ensures only plugins marked as active are loaded, handles cloning and updating of community plugin repositories, installs dependencies as needed, and sorts active plugins by priority.
-    
+
     Parameters:
         passed_config (dict, optional): Configuration dictionary to use instead of the global config.
-    
+
     Returns:
         list: Active plugin instances sorted by priority.
     """

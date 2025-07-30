@@ -26,12 +26,15 @@ from mmrelay.plugins.base_plugin import BasePlugin
 
 class MockPlugin(BasePlugin):
     """Mock plugin implementation for testing BasePlugin functionality."""
+
     plugin_name = "test_plugin"
 
-    async def handle_meshtastic_message(self, packet, formatted_message, longname, meshnet_name):
+    async def handle_meshtastic_message(
+        self, packet, formatted_message, longname, meshnet_name
+    ):
         """
         Handle an incoming Meshtastic message.
-        
+
         Returns:
             bool: Always returns False, indicating the message was not handled.
         """
@@ -40,12 +43,12 @@ class MockPlugin(BasePlugin):
     async def handle_room_message(self, room, event, full_message):
         """
         Handle a Matrix room message event.
-        
+
         Parameters:
             room: The Matrix room where the event occurred.
             event: The Matrix event object.
             full_message: The full message content.
-        
+
         Returns:
             bool: Always returns False, indicating the message was not handled.
         """
@@ -61,34 +64,35 @@ class TestBasePlugin(unittest.TestCase):
         """
         # Mock the global config
         self.mock_config = {
-            "plugins": {
-                "test_plugin": {
-                    "active": True,
-                    "channels": [0, 1]
-                }
-            },
-            "meshtastic": {
-                "message_delay": 3.0
-            },
+            "plugins": {"test_plugin": {"active": True, "channels": [0, 1]}},
+            "meshtastic": {"message_delay": 3.0},
             "matrix": {
                 "rooms": [
                     {"id": "!room1:matrix.org", "meshtastic_channel": 0},
-                    {"id": "!room2:matrix.org", "meshtastic_channel": 1}
+                    {"id": "!room2:matrix.org", "meshtastic_channel": 1},
                 ]
-            }
+            },
         }
-        
+
         # Patch the global config
-        patcher = patch('mmrelay.plugins.base_plugin.config', self.mock_config)
+        patcher = patch("mmrelay.plugins.base_plugin.config", self.mock_config)
         patcher.start()
         self.addCleanup(patcher.stop)
-        
+
         # Mock database functions
-        self.mock_store_plugin_data = patch('mmrelay.plugins.base_plugin.store_plugin_data').start()
-        self.mock_get_plugin_data = patch('mmrelay.plugins.base_plugin.get_plugin_data').start()
-        self.mock_get_plugin_data_for_node = patch('mmrelay.plugins.base_plugin.get_plugin_data_for_node').start()
-        self.mock_delete_plugin_data = patch('mmrelay.plugins.base_plugin.delete_plugin_data').start()
-        
+        self.mock_store_plugin_data = patch(
+            "mmrelay.plugins.base_plugin.store_plugin_data"
+        ).start()
+        self.mock_get_plugin_data = patch(
+            "mmrelay.plugins.base_plugin.get_plugin_data"
+        ).start()
+        self.mock_get_plugin_data_for_node = patch(
+            "mmrelay.plugins.base_plugin.get_plugin_data_for_node"
+        ).start()
+        self.mock_delete_plugin_data = patch(
+            "mmrelay.plugins.base_plugin.delete_plugin_data"
+        ).start()
+
         self.addCleanup(patch.stopall)
 
     def test_plugin_initialization_with_class_name(self):
@@ -103,7 +107,7 @@ class TestBasePlugin(unittest.TestCase):
     def test_plugin_initialization_with_parameter_name(self):
         """
         Test that a plugin can be initialized with a custom plugin_name parameter.
-        
+
         Verifies that the plugin_name attribute is set to the provided value during initialization.
         """
         plugin = MockPlugin(plugin_name="custom_name")
@@ -113,35 +117,39 @@ class TestBasePlugin(unittest.TestCase):
     def test_plugin_initialization_no_name_raises_error(self):
         """
         Test that initializing a plugin without a plugin name raises a ValueError.
-        
+
         Ensures that a subclass of BasePlugin without a defined plugin_name triggers a ValueError during instantiation.
         """
+
         class NoNamePlugin(BasePlugin):
-            async def handle_meshtastic_message(self, packet, formatted_message, longname, meshnet_name):
+            async def handle_meshtastic_message(
+                self, packet, formatted_message, longname, meshnet_name
+            ):
                 """
                 Handle an incoming Meshtastic message.
-                
+
                 Returns:
                     bool: Always returns False, indicating the message was not handled.
                 """
                 return False
+
             async def handle_room_message(self, room, event, full_message):
                 """
                 Handle a Matrix room message event.
-                
+
                 Parameters:
-                	room: The Matrix room where the event occurred.
-                	event: The Matrix event object.
-                	full_message: The full message content.
-                
+                        room: The Matrix room where the event occurred.
+                        event: The Matrix event object.
+                        full_message: The full message content.
+
                 Returns:
-                	bool: Always returns False, indicating the message was not handled.
+                        bool: Always returns False, indicating the message was not handled.
                 """
                 return False
-        
+
         with self.assertRaises(ValueError) as context:
             NoNamePlugin()
-        
+
         self.assertIn("missing plugin_name definition", str(context.exception))
 
     def test_description_property_default(self):
@@ -152,7 +160,7 @@ class TestBasePlugin(unittest.TestCase):
     def test_config_loading_with_plugin_config(self):
         """
         Test that the plugin loads configuration values correctly when a plugin config is present.
-        
+
         Verifies that the plugin is active, the response delay is set to 3.0 seconds, and the enabled channels are [0, 1] when these values are provided in the configuration.
         """
         plugin = MockPlugin()
@@ -164,13 +172,13 @@ class TestBasePlugin(unittest.TestCase):
     def test_config_loading_without_plugin_config(self):
         """
         Test that the plugin loads default configuration values when no plugin-specific config is present.
-        
+
         Verifies that the plugin is inactive, uses the default response delay, and has no enabled channels if its configuration is missing.
         """
         # Remove plugin config
         config_without_plugin = {"plugins": {}}
 
-        with patch('mmrelay.plugins.base_plugin.config', config_without_plugin):
+        with patch("mmrelay.plugins.base_plugin.config", config_without_plugin):
             plugin = MockPlugin()
 
             self.assertFalse(plugin.config["active"])
@@ -182,19 +190,15 @@ class TestBasePlugin(unittest.TestCase):
         Test that the plugin enforces a minimum response delay of 2.0 seconds when configured with a lower value.
         """
         config_low_delay = {
-            "plugins": {
-                "test_plugin": {
-                    "active": True
-                }
-            },
-            "meshtastic": {
-                "message_delay": 0.5  # Below minimum
-            }
+            "plugins": {"test_plugin": {"active": True}},
+            "meshtastic": {"message_delay": 0.5},  # Below minimum
         }
 
-        with patch('mmrelay.plugins.base_plugin.config', config_low_delay):
+        with patch("mmrelay.plugins.base_plugin.config", config_low_delay):
             plugin = MockPlugin()
-            self.assertEqual(plugin.response_delay, 2.0)  # Should be enforced to minimum
+            self.assertEqual(
+                plugin.response_delay, 2.0
+            )  # Should be enforced to minimum
 
     def test_get_response_delay(self):
         """
@@ -213,7 +217,9 @@ class TestBasePlugin(unittest.TestCase):
         plugin.store_node_data("!node123", test_data)
 
         # store_node_data appends to existing data, so it calls get first
-        self.mock_get_plugin_data_for_node.assert_called_once_with("test_plugin", "!node123")
+        self.mock_get_plugin_data_for_node.assert_called_once_with(
+            "test_plugin", "!node123"
+        )
 
     def test_get_node_data(self):
         """
@@ -226,12 +232,14 @@ class TestBasePlugin(unittest.TestCase):
         result = plugin.get_node_data("!node123")
 
         self.assertEqual(result, expected_data)
-        self.mock_get_plugin_data_for_node.assert_called_once_with("test_plugin", "!node123")
+        self.mock_get_plugin_data_for_node.assert_called_once_with(
+            "test_plugin", "!node123"
+        )
 
     def test_set_node_data(self):
         """
         Test that set_node_data correctly replaces the data for a specific node.
-        
+
         Verifies that calling set_node_data stores the provided data for the given node, replacing any existing data.
         """
         plugin = MockPlugin()
@@ -307,7 +315,7 @@ class TestBasePlugin(unittest.TestCase):
             }
         }
 
-        with patch('mmrelay.plugins.base_plugin.config', config_no_channels):
+        with patch("mmrelay.plugins.base_plugin.config", config_no_channels):
             plugin = MockPlugin()
 
             # Should return False for any channel when none configured
@@ -318,11 +326,11 @@ class TestBasePlugin(unittest.TestCase):
             result = plugin.is_channel_enabled(0, is_direct_message=True)
             self.assertTrue(result)
 
-    @patch('mmrelay.matrix_utils.bot_command')
+    @patch("mmrelay.matrix_utils.bot_command")
     def test_matches_method(self, mock_bot_command):
         """
         Test that the plugin's matches method correctly identifies Matrix events as matching or not based on the bot_command utility.
-        
+
         Verifies that the matches method returns True when the event matches a command and False otherwise.
         """
         plugin = MockPlugin()
@@ -336,11 +344,11 @@ class TestBasePlugin(unittest.TestCase):
         result = plugin.matches(event)
         self.assertFalse(result)
 
-    @patch('mmrelay.matrix_utils.connect_matrix')
+    @patch("mmrelay.matrix_utils.connect_matrix")
     def test_send_matrix_message(self, mock_connect_matrix):
         """
         Test that the send_matrix_message method sends a message to the specified Matrix room using the Matrix client.
-        
+
         Verifies that the Matrix client's room_send method is called with the correct room ID and message type.
         """
         plugin = MockPlugin()
@@ -352,18 +360,17 @@ class TestBasePlugin(unittest.TestCase):
             Asynchronously tests that sending a Matrix message via the plugin calls the Matrix client's room_send method with the correct parameters.
             """
             await plugin.send_matrix_message(
-                "!room:matrix.org",
-                "Test message",
-                formatted=True
+                "!room:matrix.org", "Test message", formatted=True
             )
 
             # Should call room_send on the matrix client
             mock_matrix_client.room_send.assert_called_once()
             call_args = mock_matrix_client.room_send.call_args
-            self.assertEqual(call_args.kwargs['room_id'], "!room:matrix.org")
-            self.assertEqual(call_args.kwargs['message_type'], "m.room.message")
+            self.assertEqual(call_args.kwargs["room_id"], "!room:matrix.org")
+            self.assertEqual(call_args.kwargs["message_type"], "m.room.message")
 
         import asyncio
+
         asyncio.run(run_test())
 
     def test_strip_raw_method(self):
@@ -373,10 +380,7 @@ class TestBasePlugin(unittest.TestCase):
         plugin = MockPlugin()
 
         # Test with packet containing raw data
-        packet_with_raw = {
-            "decoded": {"text": "hello"},
-            "raw": "binary_data_here"
-        }
+        packet_with_raw = {"decoded": {"text": "hello"}, "raw": "binary_data_here"}
 
         result = plugin.strip_raw(packet_with_raw)
 
@@ -395,12 +399,12 @@ class TestBasePlugin(unittest.TestCase):
         # Should return unchanged
         self.assertEqual(result, packet_without_raw)
 
-    @patch('mmrelay.plugins.base_plugin.queue_message')
-    @patch('mmrelay.meshtastic_utils.connect_meshtastic')
+    @patch("mmrelay.plugins.base_plugin.queue_message")
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
     def test_send_message(self, mock_connect_meshtastic, mock_queue_message):
         """
         Test that the plugin's send_message method queues a Meshtastic message with the correct parameters.
-        
+
         Verifies that the message is sent using the mocked Meshtastic client and that the queue_message function is called with the expected arguments.
         """
         plugin = MockPlugin()
@@ -410,12 +414,14 @@ class TestBasePlugin(unittest.TestCase):
         mock_connect_meshtastic.return_value = mock_client
         mock_queue_message.return_value = True
 
-        result = plugin.send_message("Test message", channel=1, destination_id="!node123")
+        plugin.send_message("Test message", channel=1, destination_id="!node123")
 
         # Should queue the message (result depends on queue state, but call should happen)
         mock_queue_message.assert_called_once()
         call_args = mock_queue_message.call_args
-        self.assertEqual(call_args[0][0], mock_client.sendText)  # First arg is the function
+        self.assertEqual(
+            call_args[0][0], mock_client.sendText
+        )  # First arg is the function
         self.assertIn("text", call_args[1])  # kwargs should contain text
         self.assertEqual(call_args[1]["text"], "Test message")
 
@@ -439,7 +445,7 @@ class TestBasePlugin(unittest.TestCase):
         """
         plugin = MockPlugin()
 
-        with patch('mmrelay.plugins.base_plugin.get_plugin_data_dir') as mock_get_dir:
+        with patch("mmrelay.plugins.base_plugin.get_plugin_data_dir") as mock_get_dir:
             mock_get_dir.return_value = "/path/to/plugin/data"
 
             result = plugin.get_plugin_data_dir()

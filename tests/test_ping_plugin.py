@@ -75,13 +75,13 @@ class TestPingPlugin(unittest.TestCase):
         """
         self.plugin = Plugin()
         self.plugin.logger = MagicMock()
-        
+
         # Mock the is_channel_enabled method
         self.plugin.is_channel_enabled = MagicMock(return_value=True)
-        
+
         # Mock the get_response_delay method
         self.plugin.get_response_delay = MagicMock(return_value=1.0)
-        
+
         # Mock Matrix client methods
         self.plugin.send_matrix_message = AsyncMock()
 
@@ -96,7 +96,10 @@ class TestPingPlugin(unittest.TestCase):
         Verify that the plugin's description property returns the expected string.
         """
         description = self.plugin.description
-        self.assertEqual(description, "Check connectivity with the relay or respond to pings over the mesh")
+        self.assertEqual(
+            description,
+            "Check connectivity with the relay or respond to pings over the mesh",
+        )
 
     def test_get_matrix_commands(self):
         """
@@ -112,185 +115,195 @@ class TestPingPlugin(unittest.TestCase):
         commands = self.plugin.get_mesh_commands()
         self.assertEqual(commands, ["ping"])
 
-    @patch('mmrelay.meshtastic_utils.connect_meshtastic')
-    @patch('asyncio.sleep')
-    def test_handle_meshtastic_message_simple_ping_broadcast(self, mock_sleep, mock_connect):
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
+    @patch("asyncio.sleep")
+    def test_handle_meshtastic_message_simple_ping_broadcast(
+        self, mock_sleep, mock_connect
+    ):
         """
         Test that a simple "ping" broadcast message is correctly handled by the plugin.
-        
+
         Verifies that the plugin checks channel enablement, waits for the configured response delay, sends a "pong" broadcast response on the same channel, logs the processing, and returns True to indicate the message was handled.
         """
         # Mock meshtastic client
         mock_client = MagicMock()
         mock_client.myInfo.my_node_num = 123456789
         mock_connect.return_value = mock_client
-        
+
         packet = {
-            "decoded": {
-                "text": "ping"
-            },
+            "decoded": {"text": "ping"},
             "channel": 0,
             "fromId": "!12345678",
-            "to": 4294967295  # BROADCAST_NUM
+            "to": 4294967295,  # BROADCAST_NUM
         }
-        
+
         async def run_test():
             """
             Asynchronously tests that the plugin correctly handles a Meshtastic broadcast ping message.
-            
+
             Verifies that the plugin checks channel enablement, waits for the configured response delay, sends a broadcast "pong" response, and logs the processing. Asserts that the message handling result is True.
             """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "TestNode", "TestMesh"
             )
-            
+
             self.assertTrue(result)
-            
+
             # Should check channel enablement for broadcast
-            self.plugin.is_channel_enabled.assert_called_once_with(0, is_direct_message=False)
-            
+            self.plugin.is_channel_enabled.assert_called_once_with(
+                0, is_direct_message=False
+            )
+
             # Should wait for response delay
             mock_sleep.assert_called_once_with(1.0)
-            
+
             # Should send broadcast response
             mock_client.sendText.assert_called_once_with(text="pong", channelIndex=0)
-            
+
             # Should log processing
             self.plugin.logger.info.assert_called_once()
-        
+
         import asyncio
+
         asyncio.run(run_test())
 
-    @patch('mmrelay.meshtastic_utils.connect_meshtastic')
-    @patch('asyncio.sleep')
-    def test_handle_meshtastic_message_ping_direct_message(self, mock_sleep, mock_connect):
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
+    @patch("asyncio.sleep")
+    def test_handle_meshtastic_message_ping_direct_message(
+        self, mock_sleep, mock_connect
+    ):
         """
         Test that the plugin correctly handles a "ping" message received as a direct Meshtastic message.
-        
+
         Verifies that the plugin checks channel enablement for direct messages, sends a direct "pong" response to the sender, and returns True to indicate the message was handled.
         """
         # Mock meshtastic client
         mock_client = MagicMock()
         mock_client.myInfo.my_node_num = 123456789
         mock_connect.return_value = mock_client
-        
+
         packet = {
-            "decoded": {
-                "text": "ping"
-            },
+            "decoded": {"text": "ping"},
             "channel": 1,
             "fromId": "!12345678",
-            "to": 123456789  # Direct to relay
+            "to": 123456789,  # Direct to relay
         }
-        
+
         async def run_test():
             """
             Asynchronously tests that the plugin correctly handles a direct "ping" Meshtastic message.
-            
+
             Verifies that the plugin checks channel enablement for direct messages, sends a direct "pong" response to the sender, and returns True to indicate the message was handled.
             """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "TestNode", "TestMesh"
             )
-            
+
             self.assertTrue(result)
-            
+
             # Should check channel enablement for direct message
-            self.plugin.is_channel_enabled.assert_called_once_with(1, is_direct_message=True)
-            
+            self.plugin.is_channel_enabled.assert_called_once_with(
+                1, is_direct_message=True
+            )
+
             # Should send direct message response
             mock_client.sendText.assert_called_once_with(
                 text="pong", destinationId="!12345678"
             )
-        
+
         import asyncio
+
         asyncio.run(run_test())
 
-    @patch('mmrelay.meshtastic_utils.connect_meshtastic')
-    @patch('asyncio.sleep')
-    def test_handle_meshtastic_message_ping_with_punctuation(self, mock_sleep, mock_connect):
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
+    @patch("asyncio.sleep")
+    def test_handle_meshtastic_message_ping_with_punctuation(
+        self, mock_sleep, mock_connect
+    ):
         """
         Test that a Meshtastic "ping" message with punctuation receives a "pong" response preserving the original punctuation.
-        
+
         Verifies that the plugin responds to a ping message containing punctuation (e.g., "!ping!") by sending a pong message with matching punctuation (e.g., "!pong!"), and confirms the response is sent on the correct channel.
         """
         # Mock meshtastic client
         mock_client = MagicMock()
         mock_client.myInfo.my_node_num = 123456789
         mock_connect.return_value = mock_client
-        
+
         packet = {
-            "decoded": {
-                "text": "!ping!"
-            },
+            "decoded": {"text": "!ping!"},
             "channel": 0,
             "fromId": "!12345678",
-            "to": 4294967295  # BROADCAST_NUM
+            "to": 4294967295,  # BROADCAST_NUM
         }
-        
+
         async def run_test():
             """
             Runs an asynchronous test to verify that the plugin responds to a Meshtastic ping message with a correctly punctuated pong response.
-            
+
             Returns:
                 bool: True if the plugin handled the message as expected.
             """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "TestNode", "TestMesh"
             )
-            
+
             self.assertTrue(result)
-            
+
             # Should preserve punctuation in response
             mock_client.sendText.assert_called_once_with(text="!pong!", channelIndex=0)
-        
+
         import asyncio
+
         asyncio.run(run_test())
 
-    @patch('mmrelay.meshtastic_utils.connect_meshtastic')
-    @patch('asyncio.sleep')
-    def test_handle_meshtastic_message_ping_excessive_punctuation(self, mock_sleep, mock_connect):
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
+    @patch("asyncio.sleep")
+    def test_handle_meshtastic_message_ping_excessive_punctuation(
+        self, mock_sleep, mock_connect
+    ):
         """
         Test that the plugin responds with "Pong..." when handling a Meshtastic ping message containing excessive punctuation.
-        
+
         Verifies that when a ping message with more than five punctuation characters is received, the plugin sends a "Pong..." response on the same channel.
         """
         # Mock meshtastic client
         mock_client = MagicMock()
         mock_client.myInfo.my_node_num = 123456789
         mock_connect.return_value = mock_client
-        
+
         packet = {
-            "decoded": {
-                "text": "!!!ping!!!"
-            },
+            "decoded": {"text": "!!!ping!!!"},
             "channel": 0,
             "fromId": "!12345678",
-            "to": 4294967295  # BROADCAST_NUM
+            "to": 4294967295,  # BROADCAST_NUM
         }
-        
+
         async def run_test():
             """
             Runs an asynchronous test to verify that the plugin responds with "Pong..." when handling a ping message containing excessive punctuation.
-            
+
             Returns:
                 bool: True if the plugin handled the message as expected.
             """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "TestNode", "TestMesh"
             )
-            
+
             self.assertTrue(result)
-            
+
             # Should use "Pong..." for excessive punctuation (>5 chars)
             mock_client.sendText.assert_called_once_with(text="Pong...", channelIndex=0)
-        
+
         import asyncio
+
         asyncio.run(run_test())
 
-    @patch('mmrelay.meshtastic_utils.connect_meshtastic')
-    @patch('asyncio.sleep')
-    def test_handle_meshtastic_message_ping_case_matching(self, mock_sleep, mock_connect):
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
+    @patch("asyncio.sleep")
+    def test_handle_meshtastic_message_ping_case_matching(
+        self, mock_sleep, mock_connect
+    ):
         """
         Tests that the plugin responds to a Meshtastic "PING" message with a "PONG" reply that matches the original message's case.
         """
@@ -298,116 +311,113 @@ class TestPingPlugin(unittest.TestCase):
         mock_client = MagicMock()
         mock_client.myInfo.my_node_num = 123456789
         mock_connect.return_value = mock_client
-        
+
         packet = {
-            "decoded": {
-                "text": "PING"
-            },
+            "decoded": {"text": "PING"},
             "channel": 0,
             "fromId": "!12345678",
-            "to": 4294967295  # BROADCAST_NUM
+            "to": 4294967295,  # BROADCAST_NUM
         }
-        
+
         async def run_test():
             """
             Runs an asynchronous test to verify that the plugin responds to a Meshtastic "ping" message with a correctly cased "PONG" response.
-            
+
             Returns:
                 bool: True if the plugin handled the message as expected.
             """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "TestNode", "TestMesh"
             )
-            
+
             self.assertTrue(result)
-            
+
             # Should match case of original ping
             mock_client.sendText.assert_called_once_with(text="PONG", channelIndex=0)
-        
+
         import asyncio
+
         asyncio.run(run_test())
 
-    @patch('mmrelay.meshtastic_utils.connect_meshtastic')
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
     def test_handle_meshtastic_message_no_ping(self, mock_connect):
         """
         Test that the plugin does not respond to Meshtastic messages that do not contain a ping command.
-        
+
         Verifies that no message is sent and the handler returns False when the incoming message lacks a ping trigger.
         """
         # Mock meshtastic client
         mock_client = MagicMock()
         mock_client.myInfo.my_node_num = 123456789
         mock_connect.return_value = mock_client
-        
+
         packet = {
-            "decoded": {
-                "text": "Hello world"
-            },
+            "decoded": {"text": "Hello world"},
             "channel": 0,
             "fromId": "!12345678",
-            "to": 4294967295
+            "to": 4294967295,
         }
-        
+
         async def run_test():
             """
             Asynchronously runs a test to verify that no response is sent when handling a Meshtastic message that should not trigger a reply.
-            
+
             Returns:
                 None
             """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "TestNode", "TestMesh"
             )
-            
+
             self.assertFalse(result)
-            
+
             # Should not send any message
             mock_client.sendText.assert_not_called()
-        
+
         import asyncio
+
         asyncio.run(run_test())
 
-    @patch('mmrelay.meshtastic_utils.connect_meshtastic')
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
     def test_handle_meshtastic_message_channel_disabled(self, mock_connect):
         """
         Test that no response is sent when handling a ping message on a disabled channel.
-        
+
         Verifies that the plugin does not respond to a "ping" Meshtastic message if the channel is disabled, and that no message is sent.
         """
         # Mock meshtastic client
         mock_client = MagicMock()
         mock_client.myInfo.my_node_num = 123456789
         mock_connect.return_value = mock_client
-        
+
         # Mock channel as disabled
         self.plugin.is_channel_enabled = MagicMock(return_value=False)
-        
+
         packet = {
-            "decoded": {
-                "text": "ping"
-            },
+            "decoded": {"text": "ping"},
             "channel": 0,
             "fromId": "!12345678",
-            "to": 4294967295
+            "to": 4294967295,
         }
-        
+
         async def run_test():
             """
             Asynchronously runs a test to verify that no response is sent when handling a Meshtastic message that should not trigger a reply.
-            
+
             Returns:
                 None
             """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "TestNode", "TestMesh"
             )
-            
+
             self.assertFalse(result)
-            
+
             # Should not send any message
             mock_client.sendText.assert_not_called()
-        
+
         import asyncio
+
         asyncio.run(run_test())
 
     def test_handle_room_message_no_match(self):
@@ -422,7 +432,7 @@ class TestPingPlugin(unittest.TestCase):
         async def run_test():
             """
             Asynchronously tests that no Matrix message is sent when the event does not match the plugin's criteria.
-            
+
             Returns:
                 bool: False, indicating the message was not handled.
             """
@@ -432,6 +442,7 @@ class TestPingPlugin(unittest.TestCase):
             self.plugin.send_matrix_message.assert_not_called()
 
         import asyncio
+
         asyncio.run(run_test())
 
     def test_handle_room_message_ping_match(self):
@@ -447,34 +458,33 @@ class TestPingPlugin(unittest.TestCase):
         async def run_test():
             """
             Runs an asynchronous test to verify that the plugin responds to a ping command in a Matrix room message.
-            
+
             Asserts that the plugin correctly matches the event, sends a "pong!" response to the specified Matrix room, and returns True.
             """
             result = await self.plugin.handle_room_message(room, event, "bot: !ping")
 
             self.assertTrue(result)
             self.plugin.matches.assert_called_once_with(event)
-            self.plugin.send_matrix_message.assert_called_once_with("!test:matrix.org", "pong!")
+            self.plugin.send_matrix_message.assert_called_once_with(
+                "!test:matrix.org", "pong!"
+            )
 
         import asyncio
+
         asyncio.run(run_test())
 
     def test_handle_meshtastic_message_no_decoded(self):
         """
         Test that the plugin does not handle a Meshtastic packet missing the "decoded" field.
-        
+
         Verifies that when the "decoded" field is absent from the packet, the handler returns False, indicating the message was not processed.
         """
-        packet = {
-            "channel": 0,
-            "fromId": "!12345678",
-            "to": 4294967295
-        }
+        packet = {"channel": 0, "fromId": "!12345678", "to": 4294967295}
 
         async def run_test():
             """
             Runs an asynchronous test to verify that the plugin does not handle a given Meshtastic message.
-            
+
             Returns:
                 bool: False, indicating the message was not handled by the plugin.
             """
@@ -485,27 +495,26 @@ class TestPingPlugin(unittest.TestCase):
             self.assertFalse(result)
 
         import asyncio
+
         asyncio.run(run_test())
 
     def test_handle_meshtastic_message_no_text(self):
         """
         Test that the plugin does not handle a Meshtastic packet missing the "text" field in the "decoded" section.
-        
+
         Verifies that no response is sent and the handler returns False.
         """
         packet = {
-            "decoded": {
-                "portnum": "TEXT_MESSAGE_APP"
-            },
+            "decoded": {"portnum": "TEXT_MESSAGE_APP"},
             "channel": 0,
             "fromId": "!12345678",
-            "to": 4294967295
+            "to": 4294967295,
         }
 
         async def run_test():
             """
             Runs an asynchronous test to verify that the plugin does not handle a given Meshtastic message.
-            
+
             Returns:
                 bool: False, indicating the message was not handled by the plugin.
             """
@@ -516,6 +525,7 @@ class TestPingPlugin(unittest.TestCase):
             self.assertFalse(result)
 
         import asyncio
+
         asyncio.run(run_test())
 
 

@@ -6,6 +6,7 @@ from unittest.mock import patch
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+import mmrelay.config
 from mmrelay.config import (
     get_base_dir,
     get_config_paths,
@@ -14,9 +15,6 @@ from mmrelay.config import (
     get_plugin_data_dir,
     load_config,
 )
-
-
-import mmrelay.config
 
 
 class TestConfig(unittest.TestCase):
@@ -90,7 +88,7 @@ class TestConfig(unittest.TestCase):
         # Test with no args on Windows
         """
         Test that get_config_paths returns the correct config file path on Windows platforms.
-        
+
         Simulates a Windows environment and verifies that the generated config paths include the expected Windows-specific config file location.
         """
         with patch("sys.platform", "win32"), patch("sys.argv", ["mmrelay"]):
@@ -119,7 +117,7 @@ class TestConfig(unittest.TestCase):
     def test_get_plugin_data_dir_linux(self):
         """
         Test that get_plugin_data_dir returns the correct plugin data directory paths on Linux.
-        
+
         Verifies that the default plugins data directory and a plugin-specific data directory are correctly resolved for the Linux platform.
         """
         with patch("sys.platform", "linux"):
