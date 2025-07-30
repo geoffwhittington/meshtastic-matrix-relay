@@ -54,6 +54,7 @@ class TestPerformanceStress(unittest.TestCase):
                 "user": {"id": "!12345678", "longName": "Test Node", "shortName": "TN"}
             }
         }
+        mock_interface.myInfo.my_node_num = 123456789
 
         # Set up minimal config
         import mmrelay.meshtastic_utils
@@ -64,34 +65,38 @@ class TestPerformanceStress(unittest.TestCase):
         mmrelay.meshtastic_utils.event_loop = loop
 
         mmrelay.meshtastic_utils.config = {
-            "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}]
+            "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}],
+            "meshtastic": {"meshnet_name": "TestMesh"}
         }
         mmrelay.meshtastic_utils.matrix_rooms = [
             {"id": "!room:matrix.org", "meshtastic_channel": 0}
         ]
 
         with patch("mmrelay.plugin_loader.load_plugins", return_value=[]):
-            with patch(
-                "mmrelay.matrix_utils.matrix_relay", side_effect=mock_matrix_relay
-            ):
-                start_time = time.time()
+            with patch("mmrelay.matrix_utils.get_matrix_prefix", return_value="[TestMesh/TN] "):
+                with patch("mmrelay.db_utils.get_longname", return_value="Test Node"):
+                    with patch("mmrelay.db_utils.get_shortname", return_value="TN"):
+                        with patch(
+                                    "mmrelay.matrix_utils.matrix_relay", side_effect=mock_matrix_relay
+                                ):
+                            start_time = time.time()
 
-                # Process many messages
-                for i in range(message_count):
-                    packet = {
-                        "decoded": {"text": f"Message {i}", "portnum": 1},
-                        "fromId": "!12345678",
-                        "channel": 0,
-                        "to": 4294967295,
-                        "id": i,
-                    }
-                    on_meshtastic_message(packet, mock_interface)
+                            # Process many messages
+                            for i in range(message_count):
+                                packet = {
+                                    "decoded": {"text": f"Message {i}", "portnum": 1},
+                                    "fromId": "!12345678",
+                                    "channel": 0,
+                                    "to": 4294967295,
+                                    "id": i,
+                                }
+                                on_meshtastic_message(packet, mock_interface)
 
-                end_time = time.time()
-                processing_time = end_time - start_time
+                            end_time = time.time()
+                            processing_time = end_time - start_time
 
-                # Verify all messages were processed
-                self.assertEqual(len(processed_messages), message_count)
+                            # Verify all messages were processed
+                            self.assertEqual(len(processed_messages), message_count)
 
                 # Performance assertion (should process 1000 messages in reasonable time)
                 self.assertLess(

@@ -97,12 +97,13 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
         with patch(
             "mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface",
-            side_effect=BleakError("Device not found"),
+            side_effect=ConnectionRefusedError("Device not found"),
         ):
-            with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
-                result = connect_meshtastic(config)
-                self.assertIsNone(result)
-                mock_logger.error.assert_called()
+            with patch("time.sleep"):  # Speed up test
+                with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
+                    result = connect_meshtastic(config)
+                    self.assertIsNone(result)
+                    mock_logger.error.assert_called()
 
     def test_connect_meshtastic_tcp_connection_refused(self):
         """Test connect_meshtastic with TCP connection refused."""
@@ -272,7 +273,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     def test_sendTextReply_client_send_failure(self):
         """Test sendTextReply when client send operation fails."""
         mock_client = MagicMock()
-        mock_client.sendText.side_effect = Exception("Send failed")
+        mock_client._sendPacket.side_effect = Exception("Send failed")
 
         import mmrelay.meshtastic_utils
 

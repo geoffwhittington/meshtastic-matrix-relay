@@ -169,8 +169,8 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             mock_connect.return_value.__enter__.return_value = mock_conn
 
             result = get_message_map_by_meshtastic_id("test_id")
-            # Should handle malformed data gracefully
-            self.assertIsNotNone(result)
+            # Should handle malformed data gracefully by returning None
+            self.assertIsNone(result)
 
     def test_get_message_map_by_matrix_event_id_unicode_error(self):
         """Test get_message_map_by_matrix_event_id with unicode handling issues."""

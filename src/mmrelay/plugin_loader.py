@@ -837,11 +837,15 @@ def load_plugins(passed_config=None):
                 plugin_path = os.path.join(dir_path, repo_name)
                 if os.path.exists(plugin_path):
                     logger.info(f"Loading community plugin from: {plugin_path}")
-                    plugins.extend(
-                        load_plugins_from_directory(plugin_path, recursive=True)
-                    )
-                    plugin_found = True
-                    break
+                    try:
+                        plugins.extend(
+                            load_plugins_from_directory(plugin_path, recursive=True)
+                        )
+                        plugin_found = True
+                        break
+                    except BaseException as e:
+                        logger.error(f"Failed to load community plugin {repo_name}: {e}")
+                        continue
 
             if not plugin_found:
                 logger.warning(
