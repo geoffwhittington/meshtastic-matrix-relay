@@ -225,11 +225,15 @@ class TestCLIEdgeCases(unittest.TestCase):
                 with patch("os.makedirs"):
                     with patch("mmrelay.tools.get_sample_config_path") as mock_get_sample:
                         mock_get_sample.return_value = "/nonexistent/sample.yaml"
-                        with patch("os.path.exists", return_value=False):
-                            with patch("builtins.print") as mock_print:
-                                result = generate_sample_config()
-                                self.assertFalse(result)
-                                mock_print.assert_called()
+                        with patch("mmrelay.cli.os.path.exists", return_value=False):
+                            with patch("importlib.resources.files") as mock_resources:
+                                mock_file = MagicMock()
+                                mock_file.joinpath.return_value.read_text.side_effect = FileNotFoundError("Resource not found")
+                                mock_resources.return_value = mock_file
+                                with patch("builtins.print") as mock_print:
+                                    result = generate_sample_config()
+                                    self.assertFalse(result)
+                                    mock_print.assert_called()
 
     def test_generate_sample_config_copy_failure(self):
         """Test generate_sample_config when file copy fails."""

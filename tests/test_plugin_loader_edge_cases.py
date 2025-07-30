@@ -147,8 +147,8 @@ class Plugin:
         """Test load_plugins_from_directory when sys.path manipulation fails."""
         with patch("os.path.isdir", return_value=True):
             with patch("os.walk", return_value=[("/test", [], ["plugin.py"])]):
-                with patch(
-                    "sys.path.insert", side_effect=Exception("Path manipulation failed")
+                with patch.object(
+                    sys.path, "insert", side_effect=Exception("Path manipulation failed")
                 ):
                     with patch("mmrelay.plugin_loader.logger"):
                         plugins = load_plugins_from_directory("/test")

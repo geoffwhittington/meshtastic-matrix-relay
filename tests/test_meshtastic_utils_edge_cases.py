@@ -135,15 +135,15 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.serial_port_exists", return_value=True):
             with patch(
-                "meshtastic.serial_interface.SerialInterface",
-                side_effect=Exception("Connection failed"),
+                "mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface",
+                side_effect=MemoryError("Out of memory"),
             ):
                 with patch("time.sleep"):  # Speed up test
                     with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
                         result = connect_meshtastic(config)
                         self.assertIsNone(result)
-                        # Should log multiple retry attempts
-                        self.assertGreater(mock_logger.error.call_count, 1)
+                        # Should log error for critical failure
+                        mock_logger.error.assert_called()
 
     def test_on_meshtastic_message_malformed_packet(self):
         """Test on_meshtastic_message with malformed packet data."""

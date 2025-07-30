@@ -224,7 +224,7 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             store_plugin_data("test_plugin", "test_node", {"key": "value"})
 
     def test_get_plugin_data_json_decode_error(self):
-        """Test get_plugin_data when JSON decoding fails."""
+        """Test get_plugin_data_for_node when JSON decoding fails."""
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_cursor = mock_conn.cursor.return_value
@@ -232,20 +232,20 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             mock_cursor.fetchone.return_value = ("invalid json {",)
             mock_connect.return_value.__enter__.return_value = mock_conn
 
-            result = get_plugin_data("test_plugin")
+            result = get_plugin_data_for_node("test_plugin", "test_node")
             self.assertEqual(result, [])
 
     def test_get_plugin_data_for_node_memory_error(self):
         """Test get_plugin_data_for_node when memory is exhausted."""
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
-            mock_conn.cursor.return_value.fetchall.side_effect = MemoryError(
+            mock_conn.cursor.return_value.fetchone.side_effect = MemoryError(
                 "Out of memory"
             )
             mock_connect.return_value.__enter__.return_value = mock_conn
 
             result = get_plugin_data_for_node("test_plugin", "test_node")
-            self.assertEqual(result, {})
+            self.assertEqual(result, [])
 
     def test_delete_plugin_data_foreign_key_constraint(self):
         """Test delete_plugin_data with foreign key constraint issues."""

@@ -365,10 +365,16 @@ def on_meshtastic_message(packet, interface):
     """
     global config, matrix_rooms
 
+    # Validate packet structure
+    if not packet or not isinstance(packet, dict):
+        logger.error("Received malformed packet: packet is None or not a dict")
+        return
+
     # Log that we received a message (without the full packet details)
-    if packet.get("decoded", {}).get("text"):
+    decoded = packet.get("decoded")
+    if decoded and isinstance(decoded, dict) and decoded.get("text"):
         logger.info(
-            f"Received Meshtastic message: {packet.get('decoded', {}).get('text')}"
+            f"Received Meshtastic message: {decoded.get('text')}"
         )
     else:
         logger.debug("Received non-text Meshtastic message")
