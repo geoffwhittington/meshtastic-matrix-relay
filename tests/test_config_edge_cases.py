@@ -24,8 +24,7 @@ from mmrelay.config import (
     get_app_path,
     get_config_paths,
     load_config,
-    set_data_dir,
-    setup_module_config,
+    set_config,
 )
 
 
@@ -155,12 +154,12 @@ class TestConfigEdgeCases(unittest.TestCase):
                         config = load_config()
                         self.assertEqual(config, {'test': 'value'})
 
-    def test_setup_module_config_matrix_utils(self):
-        """Test setup_module_config with matrix_utils module."""
+    def test_set_config_matrix_utils(self):
+        """Test set_config with matrix_utils module."""
         mock_module = MagicMock()
         mock_module.__name__ = 'mmrelay.matrix_utils'
         mock_module.matrix_homeserver = None
-        
+
         config = {
             'matrix': {
                 'homeserver': 'https://test.matrix.org',
@@ -169,50 +168,50 @@ class TestConfigEdgeCases(unittest.TestCase):
             },
             'matrix_rooms': [{'id': '!test:matrix.org'}]
         }
-        
-        result = setup_module_config(mock_module, config)
-        
+
+        result = set_config(mock_module, config)
+
         self.assertEqual(mock_module.config, config)
         self.assertEqual(mock_module.matrix_homeserver, 'https://test.matrix.org')
         self.assertEqual(result, config)
 
-    def test_setup_module_config_meshtastic_utils(self):
-        """Test setup_module_config with meshtastic_utils module."""
+    def test_set_config_meshtastic_utils(self):
+        """Test set_config with meshtastic_utils module."""
         mock_module = MagicMock()
         mock_module.__name__ = 'mmrelay.meshtastic_utils'
         mock_module.matrix_rooms = None
-        
+
         config = {
             'matrix_rooms': [{'id': '!test:matrix.org', 'meshtastic_channel': 0}]
         }
-        
-        result = setup_module_config(mock_module, config)
-        
+
+        result = set_config(mock_module, config)
+
         self.assertEqual(mock_module.config, config)
         self.assertEqual(mock_module.matrix_rooms, config['matrix_rooms'])
         self.assertEqual(result, config)
 
-    def test_setup_module_config_with_legacy_setup_function(self):
-        """Test setup_module_config with module that has legacy setup_config function."""
+    def test_set_config_with_legacy_setup_function(self):
+        """Test set_config with module that has legacy setup_config function."""
         mock_module = MagicMock()
         mock_module.__name__ = 'test_module'
         mock_module.setup_config = MagicMock()
-        
+
         config = {'test': 'value'}
-        
-        result = setup_module_config(mock_module, config)
-        
+
+        result = set_config(mock_module, config)
+
         self.assertEqual(mock_module.config, config)
         mock_module.setup_config.assert_called_once()
         self.assertEqual(result, config)
 
-    def test_setup_module_config_without_required_attributes(self):
-        """Test setup_module_config with module missing expected attributes."""
+    def test_set_config_without_required_attributes(self):
+        """Test set_config with module missing expected attributes."""
         mock_module = MagicMock()
         mock_module.__name__ = 'mmrelay.matrix_utils'
         # Remove the matrix_homeserver attribute
         del mock_module.matrix_homeserver
-        
+
         config = {
             'matrix': {
                 'homeserver': 'https://test.matrix.org',
@@ -220,28 +219,10 @@ class TestConfigEdgeCases(unittest.TestCase):
                 'bot_user_id': '@test:matrix.org'
             }
         }
-        
+
         # Should not raise an exception
-        result = setup_module_config(mock_module, config)
+        result = set_config(mock_module, config)
         self.assertEqual(result, config)
-
-    def test_set_data_dir_with_valid_path(self):
-        """Test set_data_dir with a valid directory path."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            set_data_dir(temp_dir)
-            
-            import mmrelay.config
-            self.assertEqual(mmrelay.config.custom_data_dir, temp_dir)
-
-    def test_set_data_dir_with_nonexistent_path(self):
-        """Test set_data_dir with a non-existent directory path."""
-        nonexistent_path = '/nonexistent/directory'
-        
-        # Should not raise an exception
-        set_data_dir(nonexistent_path)
-        
-        import mmrelay.config
-        self.assertEqual(mmrelay.config.custom_data_dir, nonexistent_path)
 
     def test_load_config_no_files_found(self):
         """Test load_config when no configuration files are found."""
