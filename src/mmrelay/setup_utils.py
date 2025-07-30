@@ -386,7 +386,8 @@ def check_lingering_enabled():
             text=True,
         )
         return result.returncode == 0 and "Linger=yes" in result.stdout
-    except Exception:
+    except Exception as e:
+        print(f"Error checking lingering status: {e}")
         return False
 
 

@@ -379,12 +379,16 @@ def generate_sample_config():
         # Copy the sample config file to the target path
         import shutil
 
-        shutil.copy2(sample_config_path, target_path)
-        print(f"Generated sample config file at: {target_path}")
-        print(
-            "\nEdit this file with your Matrix and Meshtastic settings before running mmrelay."
-        )
-        return True
+        try:
+            shutil.copy2(sample_config_path, target_path)
+            print(f"Generated sample config file at: {target_path}")
+            print(
+                "\nEdit this file with your Matrix and Meshtastic settings before running mmrelay."
+            )
+            return True
+        except (IOError, OSError) as e:
+            print(f"Error copying sample config file: {e}")
+            return False
 
     # If the helper function failed, try using importlib.resources directly
     try:
@@ -425,12 +429,16 @@ def generate_sample_config():
 
         for path in sample_config_paths:
             if os.path.exists(path):
-                shutil.copy(path, target_path)
-                print(f"Generated sample config file at: {target_path}")
-                print(
-                    "\nEdit this file with your Matrix and Meshtastic settings before running mmrelay."
-                )
-                return True
+                try:
+                    shutil.copy(path, target_path)
+                    print(f"Generated sample config file at: {target_path}")
+                    print(
+                        "\nEdit this file with your Matrix and Meshtastic settings before running mmrelay."
+                    )
+                    return True
+                except (IOError, OSError) as e:
+                    print(f"Error copying sample config file from {path}: {e}")
+                    continue
 
         print("Error: Could not find sample_config.yaml")
         return False

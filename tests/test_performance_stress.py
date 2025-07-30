@@ -396,11 +396,17 @@ class TestPerformanceStress(unittest.TestCase):
 
     def test_rate_limiting_effectiveness(self):
         """Test that rate limiting effectively controls message flow."""
+        import asyncio
+
+        # Set up event loop for MessageQueue
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
         queue = MessageQueue()
-        message_delay = 0.1  # 100ms delay between messages
+        message_delay = 0.1  # 100ms delay between messages (will be enforced to 2.0s minimum)
         queue.start(message_delay=message_delay)
 
-        message_count = 10
+        message_count = 3  # Reduced due to 2.0s minimum delay
         send_times = []
 
         def mock_send_function():
@@ -412,29 +418,30 @@ class TestPerformanceStress(unittest.TestCase):
             for i in range(message_count):
                 queue.enqueue(mock_send_function, description=f"Rate limit test {i}")
 
-            # Wait for all messages to be processed
-            timeout = message_count * message_delay + 5  # Extra buffer
+            # Wait for all messages to be processed (3 messages * 2s = 6s + buffer)
+            timeout = message_count * 2.0 + 5  # Extra buffer for 2s minimum delay
             start_wait = time.time()
             while (
                 len(send_times) < message_count and time.time() - start_wait < timeout
             ):
-                time.sleep(0.01)
+                time.sleep(0.1)
 
             # Verify all messages were sent
             self.assertEqual(len(send_times), message_count)
 
-            # Verify rate limiting was effective
+            # Verify rate limiting was effective (2s minimum delay)
             for i in range(1, len(send_times)):
                 time_diff = send_times[i] - send_times[i - 1]
                 # Allow some tolerance for timing variations
                 self.assertGreaterEqual(
                     time_diff,
-                    message_delay * 0.8,
+                    2.0 * 0.8,  # 80% of 2s minimum delay
                     f"Rate limiting not effective between messages {i-1} and {i}",
                 )
 
         finally:
             queue.stop()
+            loop.close()
 
     def test_resource_cleanup_effectiveness(self):
         """Test that resources are properly cleaned up after operations."""
