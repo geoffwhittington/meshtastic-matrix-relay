@@ -234,17 +234,15 @@ class Plugin:
         self.assertNotIn("core_plugin_1", active_plugin_names)
         self.assertIn("core_plugin_2", active_plugin_names)
 
-    @patch('mmrelay.plugin_loader.get_custom_plugin_dirs')
-    @patch('mmrelay.plugins.health_plugin.Plugin')
-    @patch('mmrelay.plugins.map_plugin.Plugin')
-    @patch('mmrelay.plugins.help_plugin.Plugin')
-    @patch('mmrelay.plugins.nodes_plugin.Plugin')
-    @patch('mmrelay.plugins.drop_plugin.Plugin')
     @patch('mmrelay.plugins.debug_plugin.Plugin')
-    def test_load_plugins_with_custom(self, *args):
+    @patch('mmrelay.plugins.drop_plugin.Plugin')
+    @patch('mmrelay.plugins.nodes_plugin.Plugin')
+    @patch('mmrelay.plugins.help_plugin.Plugin')
+    @patch('mmrelay.plugins.map_plugin.Plugin')
+    @patch('mmrelay.plugins.health_plugin.Plugin')
+    @patch('mmrelay.plugin_loader.get_custom_plugin_dirs')
+    def test_load_plugins_with_custom(self, mock_get_custom_plugin_dirs, *mock_plugins):
         """Test loading plugins with custom plugins."""
-        mock_get_custom_plugin_dirs = args[0]
-        mock_plugins = args[1:]
         
         # Mock core plugins
         for i, mock_plugin_class in enumerate(mock_plugins):

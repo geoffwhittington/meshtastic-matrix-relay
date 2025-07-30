@@ -121,13 +121,16 @@ class TestMeshtasticUtils(unittest.TestCase):
             # Verify matrix_relay was not called for non-text message
             mock_matrix_relay.assert_not_called()
 
+    @patch('mmrelay.meshtastic_utils.serial_port_exists')
     @patch('mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface')
     @patch('mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface')
     @patch('mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface')
-    def test_connect_meshtastic_serial(self, mock_tcp, mock_ble, mock_serial):
+    def test_connect_meshtastic_serial(self, mock_tcp, mock_ble, mock_serial, mock_port_exists):
         """Test connecting to Meshtastic via serial."""
         mock_client = MagicMock()
+        mock_client.getMyNodeInfo.return_value = {"user": {"id": "test"}}
         mock_serial.return_value = mock_client
+        mock_port_exists.return_value = True
 
         config = {
             "meshtastic": {
@@ -147,20 +150,20 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_connect_meshtastic_tcp(self, mock_tcp, mock_ble, mock_serial):
         """Test connecting to Meshtastic via TCP."""
         mock_client = MagicMock()
+        mock_client.getMyNodeInfo.return_value = {"user": {"id": "test"}}
         mock_tcp.return_value = mock_client
 
         config = {
             "meshtastic": {
                 "connection_type": "tcp",
-                "tcp_host": "192.168.1.100",
-                "tcp_port": 4403
+                "host": "192.168.1.100"  # Use 'host' not 'tcp_host'
             }
         }
 
         result = connect_meshtastic(passed_config=config)
 
         self.assertEqual(result, mock_client)
-        mock_tcp.assert_called_once_with("192.168.1.100", 4403)
+        mock_tcp.assert_called_once_with(hostname="192.168.1.100")
 
     @patch('mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface')
     @patch('mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface')
@@ -168,6 +171,7 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_connect_meshtastic_ble(self, mock_tcp, mock_ble, mock_serial):
         """Test connecting to Meshtastic via BLE."""
         mock_client = MagicMock()
+        mock_client.getMyNodeInfo.return_value = {"user": {"id": "test"}}
         mock_ble.return_value = mock_client
 
         config = {
@@ -180,8 +184,13 @@ class TestMeshtasticUtils(unittest.TestCase):
         result = connect_meshtastic(passed_config=config)
 
         self.assertEqual(result, mock_client)
-        # The actual call includes additional parameters
-        mock_ble.assert_called_once()
+        # Check the actual call parameters
+        mock_ble.assert_called_once_with(
+            address="AA:BB:CC:DD:EE:FF",
+            noProto=False,
+            debugOut=None,
+            noNodes=False
+        )
 
     @patch('mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface')
     @patch('mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface')
@@ -204,31 +213,28 @@ class TestMeshtasticUtils(unittest.TestCase):
 
     def test_sendTextReply_success(self):
         """Test sending text reply successfully."""
-        # Mock the global meshtastic_client
-        import mmrelay.meshtastic_utils
-        mock_client = MagicMock()
-        mock_client.sendText.return_value = {"id": 12345}
-        mmrelay.meshtastic_utils.meshtastic_client = mock_client
-
         # Create a mock interface
         mock_interface = MagicMock()
+        mock_interface._generatePacketId.return_value = 12345
+        mock_interface._sendPacket.return_value = {"id": 12345}
 
-        result = sendTextReply(mock_interface, "Hello", 0, destinationId=123456789)
+        result = sendTextReply(mock_interface, "Hello", 999, destinationId=123456789)
 
-        # The function should return None since it doesn't use the mock_client.sendText
-        # Instead it creates and sends a mesh packet directly
-        self.assertIsNone(result)
+        # Should return the result from _sendPacket
+        self.assertEqual(result, {"id": 12345})
+
+        # Verify the interface methods were called
+        mock_interface._generatePacketId.assert_called_once()
+        mock_interface._sendPacket.assert_called_once()
 
     def test_sendTextReply_no_client(self):
-        """Test sending text reply when no client is available."""
-        # Set the global meshtastic_client to None
-        import mmrelay.meshtastic_utils
-        mmrelay.meshtastic_utils.meshtastic_client = None
-
-        # Create a mock interface
+        """Test sending text reply when interface fails."""
+        # Create a mock interface that fails
         mock_interface = MagicMock()
+        mock_interface._generatePacketId.return_value = 12345
+        mock_interface._sendPacket.return_value = None  # Simulate failure
 
-        result = sendTextReply(mock_interface, "Hello", 0, destinationId=123456789)
+        result = sendTextReply(mock_interface, "Hello", 999, destinationId=123456789)
 
         self.assertIsNone(result)
 

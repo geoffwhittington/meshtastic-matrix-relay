@@ -172,7 +172,7 @@ def get_logger(name):
         # Create a file handler for logging
         try:
             # Set up size-based log rotation
-            max_bytes = 10 * 1024 * 1024  # Default 10 MB
+            max_bytes = 5 * 1024 * 1024  # Default 5 MB
             backup_count = 1  # Default to 1 backup
 
             if config is not None and "logging" in config:

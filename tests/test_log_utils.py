@@ -182,7 +182,12 @@ class TestLogUtils(unittest.TestCase):
         import mmrelay.log_utils
         mmrelay.log_utils.config = config
 
-        logger = get_logger("test_logger")
+        # Clear any existing logger to ensure clean test
+        logger_name = "test_logger_disabled"
+        existing_logger = logging.getLogger(logger_name)
+        existing_logger.handlers.clear()
+
+        logger = get_logger(logger_name)
 
         # Should have handlers but no file handlers
         self.assertGreater(len(logger.handlers), 0)
