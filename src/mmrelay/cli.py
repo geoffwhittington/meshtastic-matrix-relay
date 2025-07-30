@@ -18,9 +18,9 @@ from mmrelay.tools import get_sample_config_path
 def parse_arguments():
     """
     Parse and validate command-line arguments for the Meshtastic Matrix Relay CLI.
-    
+
     Handles standard options for configuration, data directory, logging, version display, sample config generation, service installation, and config validation. On Windows, supports a deprecated positional argument for the config file path with a warning. Ignores unknown arguments outside of test environments and prints a warning if any are present.
-    
+
     Returns:
         argparse.Namespace: Parsed command-line arguments.
     """
@@ -71,7 +71,7 @@ def parse_arguments():
     # Use parse_known_args to handle unknown arguments gracefully (e.g., pytest args)
     args, unknown = parser.parse_known_args()
     # If there are unknown arguments and we're not in a test environment, warn about them
-    if unknown and not any('pytest' in arg or 'test' in arg for arg in sys.argv):
+    if unknown and not any("pytest" in arg or "test" in arg for arg in sys.argv):
         print(f"Warning: Unknown arguments ignored: {unknown}")
 
     # If on Windows and a positional config path is provided but --config is not, use the positional one

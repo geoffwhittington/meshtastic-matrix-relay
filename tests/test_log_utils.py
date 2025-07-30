@@ -16,7 +16,7 @@ import os
 import sys
 import tempfile
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -30,19 +30,20 @@ class TestLogUtils(unittest.TestCase):
     def setUp(self):
         """
         Prepares a clean test environment by creating a temporary directory for log files and resetting global logging state.
-        
+
         Resets relevant global variables in `mmrelay.log_utils` and clears existing logging handlers to ensure test isolation.
         """
         # Create temporary directory for test logs
         self.test_dir = tempfile.mkdtemp()
         self.test_log_file = os.path.join(self.test_dir, "test.log")
-        
+
         # Reset global state
         import mmrelay.log_utils
+
         mmrelay.log_utils.config = None
         mmrelay.log_utils.log_file_path = None
         mmrelay.log_utils._component_debug_configured = False
-        
+
         # Clear any existing loggers to avoid interference
         logging.getLogger().handlers.clear()
 
@@ -52,8 +53,9 @@ class TestLogUtils(unittest.TestCase):
         """
         # Clean up temporary files
         import shutil
+
         shutil.rmtree(self.test_dir, ignore_errors=True)
-        
+
         # Reset logging state
         logging.getLogger().handlers.clear()
         logging.getLogger().setLevel(logging.WARNING)
@@ -61,16 +63,16 @@ class TestLogUtils(unittest.TestCase):
     def test_get_logger_basic(self):
         """
         Verifies that a logger is created with default settings when no configuration is provided.
-        
+
         Checks that the logger has the correct name, INFO level, no propagation, and at least one handler.
         """
         logger = get_logger("test_logger")
-        
+
         self.assertIsInstance(logger, logging.Logger)
         self.assertEqual(logger.name, "test_logger")
         self.assertEqual(logger.level, logging.INFO)  # Default level
         self.assertFalse(logger.propagate)
-        
+
         # Should have at least one handler (console)
         self.assertGreater(len(logger.handlers), 0)
 
@@ -78,30 +80,24 @@ class TestLogUtils(unittest.TestCase):
         """
         Test that get_logger sets the logger level to DEBUG when configured with a "debug" log level.
         """
-        config = {
-            "logging": {
-                "level": "debug"
-            }
-        }
-        
+        config = {"logging": {"level": "debug"}}
+
         import mmrelay.log_utils
+
         mmrelay.log_utils.config = config
-        
+
         logger = get_logger("test_logger")
-        
+
         self.assertEqual(logger.level, logging.DEBUG)
 
     def test_get_logger_with_invalid_config_level(self):
         """
         Test that get_logger falls back to INFO level when given an invalid log level in the configuration.
         """
-        config = {
-            "logging": {
-                "level": "invalid_level"
-            }
-        }
+        config = {"logging": {"level": "invalid_level"}}
 
         import mmrelay.log_utils
+
         mmrelay.log_utils.config = config
 
         # Should not raise exception, should fall back to default INFO level
@@ -113,16 +109,13 @@ class TestLogUtils(unittest.TestCase):
     def test_get_logger_color_disabled(self):
         """
         Test that a logger is created with color output disabled in the configuration.
-        
+
         Verifies that the logger has at least one console handler and is a valid Logger instance when color output is turned off.
         """
-        config = {
-            "logging": {
-                "color_enabled": False
-            }
-        }
+        config = {"logging": {"color_enabled": False}}
 
         import mmrelay.log_utils
+
         mmrelay.log_utils.config = config
 
         logger = get_logger("test_logger")
@@ -131,29 +124,30 @@ class TestLogUtils(unittest.TestCase):
         self.assertGreater(len(logger.handlers), 0)
 
         # Check that it's not a RichHandler (would be StreamHandler instead)
-        from rich.logging import RichHandler
-        console_handlers = [h for h in logger.handlers if not isinstance(h, logging.handlers.RotatingFileHandler)]
+
+        console_handlers = [
+            h
+            for h in logger.handlers
+            if not isinstance(h, logging.handlers.RotatingFileHandler)
+        ]
         self.assertGreater(len(console_handlers), 0)
         # When colors are disabled, should use StreamHandler instead of RichHandler
         # Note: The actual implementation may still use RichHandler, so we just check it works
         self.assertIsInstance(logger, logging.Logger)
 
-    @patch('mmrelay.log_utils.get_log_dir')
+    @patch("mmrelay.log_utils.get_log_dir")
     def test_get_logger_with_file_logging(self, mock_get_log_dir):
         """
         Verify that a logger is created with a file handler when file logging is enabled in the configuration.
-        
+
         Ensures the logger has at least one handler and exactly one RotatingFileHandler when file logging is configured.
         """
         mock_get_log_dir.return_value = self.test_dir
 
-        config = {
-            "logging": {
-                "log_to_file": True
-            }
-        }
+        config = {"logging": {"log_to_file": True}}
 
         import mmrelay.log_utils
+
         mmrelay.log_utils.config = config
 
         # Use unique logger name and clear any existing handlers
@@ -167,26 +161,26 @@ class TestLogUtils(unittest.TestCase):
         self.assertGreater(len(logger.handlers), 0)
 
         # Check for file handler
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
+        file_handlers = [
+            h
+            for h in logger.handlers
+            if isinstance(h, logging.handlers.RotatingFileHandler)
+        ]
         self.assertEqual(len(file_handlers), 1)  # Should have exactly one file handler
 
-    @patch('mmrelay.log_utils.get_log_dir')
+    @patch("mmrelay.log_utils.get_log_dir")
     def test_get_logger_with_custom_log_file(self, mock_get_log_dir):
         """
         Verify that a logger is created with a custom log file path when file logging is enabled in the configuration.
-        
+
         Ensures the logger has at least one handler and, if a file handler is present, its path ends with the specified custom filename.
         """
         mock_get_log_dir.return_value = self.test_dir
 
-        config = {
-            "logging": {
-                "log_to_file": True,
-                "filename": self.test_log_file
-            }
-        }
+        config = {"logging": {"log_to_file": True, "filename": self.test_log_file}}
 
         import mmrelay.log_utils
+
         mmrelay.log_utils.config = config
 
         # Use unique logger name and clear any existing handlers
@@ -200,24 +194,28 @@ class TestLogUtils(unittest.TestCase):
         self.assertGreater(len(logger.handlers), 0)
 
         # Check for file handler if it exists
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
+        file_handlers = [
+            h
+            for h in logger.handlers
+            if isinstance(h, logging.handlers.RotatingFileHandler)
+        ]
         if file_handlers:
             # The actual path might be resolved differently, just check it contains our filename
             actual_path = file_handlers[0].baseFilename
-            self.assertTrue(actual_path.endswith("test.log"), f"Expected path to end with 'test.log', got {actual_path}")
+            self.assertTrue(
+                actual_path.endswith("test.log"),
+                f"Expected path to end with 'test.log', got {actual_path}",
+            )
 
-    @patch('mmrelay.log_utils.get_log_dir')
+    @patch("mmrelay.log_utils.get_log_dir")
     def test_get_logger_file_logging_disabled(self, mock_get_log_dir):
         """
         Test that a logger is created with handlers but without file handlers when file logging is disabled in the configuration.
         """
-        config = {
-            "logging": {
-                "log_to_file": False
-            }
-        }
+        config = {"logging": {"log_to_file": False}}
 
         import mmrelay.log_utils
+
         mmrelay.log_utils.config = config
 
         # Clear any existing logger to ensure clean test
@@ -229,10 +227,14 @@ class TestLogUtils(unittest.TestCase):
 
         # Should have handlers but no file handlers
         self.assertGreater(len(logger.handlers), 0)
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
+        file_handlers = [
+            h
+            for h in logger.handlers
+            if isinstance(h, logging.handlers.RotatingFileHandler)
+        ]
         self.assertEqual(len(file_handlers), 0)
 
-    @patch('mmrelay.log_utils.get_log_dir')
+    @patch("mmrelay.log_utils.get_log_dir")
     def test_get_logger_log_rotation_config(self, mock_get_log_dir):
         """
         Test that a logger created with log rotation configuration applies the specified maximum log size and backup count to its file handler.
@@ -243,11 +245,12 @@ class TestLogUtils(unittest.TestCase):
             "logging": {
                 "log_to_file": True,
                 "max_log_size": 5 * 1024 * 1024,  # 5 MB
-                "backup_count": 3
+                "backup_count": 3,
             }
         }
 
         import mmrelay.log_utils
+
         mmrelay.log_utils.config = config
 
         # Use unique logger name to avoid caching issues
@@ -258,7 +261,11 @@ class TestLogUtils(unittest.TestCase):
         logger = get_logger(logger_name)
 
         # Check file handler rotation settings if file handler exists
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
+        file_handlers = [
+            h
+            for h in logger.handlers
+            if isinstance(h, logging.handlers.RotatingFileHandler)
+        ]
         if file_handlers:
             file_handler = file_handlers[0]
             self.assertEqual(file_handler.maxBytes, 5 * 1024 * 1024)
@@ -268,21 +275,17 @@ class TestLogUtils(unittest.TestCase):
         """
         Verify that creating the main relay logger with file logging enabled sets the global log file path variable.
         """
-        config = {
-            "logging": {
-                "log_to_file": True,
-                "filename": self.test_log_file
-            }
-        }
+        config = {"logging": {"log_to_file": True, "filename": self.test_log_file}}
 
         import mmrelay.log_utils
+
         mmrelay.log_utils.config = config
 
         # Clear any existing handlers for the main logger
         main_logger = logging.getLogger("M<>M Relay")
         main_logger.handlers.clear()
 
-        logger = get_logger("M<>M Relay")
+        get_logger("M<>M Relay")
 
         # Should store log file path globally
         self.assertEqual(mmrelay.log_utils.log_file_path, self.test_log_file)
@@ -292,11 +295,12 @@ class TestLogUtils(unittest.TestCase):
         Verify that configuring component debug logging with no config set does not raise an exception and does not enable debug logging.
         """
         import mmrelay.log_utils
+
         mmrelay.log_utils.config = None
-        
+
         # Should not raise exception
         configure_component_debug_logging()
-        
+
         # Should not have configured debug logging
         self.assertFalse(mmrelay.log_utils._component_debug_configured)
 
@@ -306,27 +310,24 @@ class TestLogUtils(unittest.TestCase):
         """
         config = {
             "logging": {
-                "debug": {
-                    "matrix_nio": True,
-                    "bleak": False,
-                    "meshtastic": True
-                }
+                "debug": {"matrix_nio": True, "bleak": False, "meshtastic": True}
             }
         }
-        
+
         import mmrelay.log_utils
+
         mmrelay.log_utils.config = config
-        
+
         configure_component_debug_logging()
-        
+
         # Should have configured debug logging
         self.assertTrue(mmrelay.log_utils._component_debug_configured)
-        
+
         # Check that specific loggers were set to DEBUG
         self.assertEqual(logging.getLogger("nio").level, logging.DEBUG)
         self.assertEqual(logging.getLogger("nio.client").level, logging.DEBUG)
         self.assertEqual(logging.getLogger("meshtastic").level, logging.DEBUG)
-        
+
         # Bleak should not be set to DEBUG (was False in config)
         self.assertNotEqual(logging.getLogger("bleak").level, logging.DEBUG)
 
@@ -334,27 +335,22 @@ class TestLogUtils(unittest.TestCase):
         """
         Verify that component debug logging configuration is applied only once, ensuring subsequent calls do not override existing logger levels.
         """
-        config = {
-            "logging": {
-                "debug": {
-                    "matrix_nio": True
-                }
-            }
-        }
-        
+        config = {"logging": {"debug": {"matrix_nio": True}}}
+
         import mmrelay.log_utils
+
         mmrelay.log_utils.config = config
-        
+
         # First call should configure
         configure_component_debug_logging()
         self.assertTrue(mmrelay.log_utils._component_debug_configured)
-        
+
         # Set a logger to a different level
         logging.getLogger("nio").setLevel(logging.WARNING)
-        
+
         # Second call should not reconfigure
         configure_component_debug_logging()
-        
+
         # Logger should still be at WARNING, not DEBUG
         self.assertEqual(logging.getLogger("nio").level, logging.WARNING)
 
@@ -363,22 +359,20 @@ class TestLogUtils(unittest.TestCase):
         Verify that a logger can be created in a test environment without triggering CLI parsing or errors.
         """
         # Set test environment
-        with patch.dict(os.environ, {'MMRELAY_TESTING': '1'}):
+        with patch.dict(os.environ, {"MMRELAY_TESTING": "1"}):
             logger = get_logger("test_logger")
 
         # Should create logger without issues
         self.assertIsInstance(logger, logging.Logger)
 
-
-
     def test_get_logger_file_creation_error(self):
         """
         Test that `get_logger` handles file creation errors gracefully when given an invalid log file path.
-        
+
         Ensures that enabling file logging with a non-existent directory does not raise unexpected exceptions, and that either a valid `Logger` is returned or a `PermissionError` is raised.
         """
-        import tempfile
         import os
+        import tempfile
 
         # Use a path in a non-existent subdirectory of temp directory
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -387,11 +381,12 @@ class TestLogUtils(unittest.TestCase):
             config = {
                 "logging": {
                     "log_to_file": True,
-                    "filename": invalid_path  # Invalid path (parent dir doesn't exist)
+                    "filename": invalid_path,  # Invalid path (parent dir doesn't exist)
                 }
             }
 
             import mmrelay.log_utils
+
             mmrelay.log_utils.config = config
 
             # Should not raise exception, just return logger
