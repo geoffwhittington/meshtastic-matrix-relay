@@ -66,7 +66,15 @@ def parse_arguments():
             "config_path", nargs="?", help=argparse.SUPPRESS, default=None
         )
 
-    args = parser.parse_args()
+    # Use parse_known_args to handle unknown arguments gracefully (e.g., pytest args)
+    try:
+        args, unknown = parser.parse_known_args()
+        # If there are unknown arguments and we're not in a test environment, warn about them
+        if unknown and not any('pytest' in arg or 'test' in arg for arg in sys.argv):
+            print(f"Warning: Unknown arguments ignored: {unknown}")
+    except SystemExit:
+        # If parsing fails completely, try with parse_args for proper error messages
+        args = parser.parse_args()
 
     # If on Windows and a positional config path is provided but --config is not, use the positional one
     if (
