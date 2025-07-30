@@ -170,7 +170,6 @@ class Plugin:
     @patch('mmrelay.plugins.nodes_plugin.Plugin')
     @patch('mmrelay.plugins.drop_plugin.Plugin')
     @patch('mmrelay.plugins.debug_plugin.Plugin')
-    @patch('mmrelay.plugins.weather_plugin.Plugin')
     def test_load_plugins_core_only(self, *mock_plugins):
         """Test loading core plugins only."""
         # Mock all core plugins
@@ -208,7 +207,6 @@ class Plugin:
     @patch('mmrelay.plugins.nodes_plugin.Plugin')
     @patch('mmrelay.plugins.drop_plugin.Plugin')
     @patch('mmrelay.plugins.debug_plugin.Plugin')
-    @patch('mmrelay.plugins.weather_plugin.Plugin')
     def test_load_plugins_inactive_plugins(self, *mock_plugins):
         """Test that inactive plugins are not loaded."""
         # Mock core plugins
@@ -243,7 +241,6 @@ class Plugin:
     @patch('mmrelay.plugins.nodes_plugin.Plugin')
     @patch('mmrelay.plugins.drop_plugin.Plugin')
     @patch('mmrelay.plugins.debug_plugin.Plugin')
-    @patch('mmrelay.plugins.weather_plugin.Plugin')
     def test_load_plugins_with_custom(self, *args):
         """Test loading plugins with custom plugins."""
         mock_get_custom_plugin_dirs = args[0]

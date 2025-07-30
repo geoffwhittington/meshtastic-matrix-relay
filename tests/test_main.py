@@ -209,7 +209,7 @@ class TestMain(unittest.TestCase):
         """Test run_main function."""
         # Mock arguments
         mock_args = MagicMock()
-        mock_args.log_level = "debug"
+        mock_args.log_level = "DEBUG"
         
         # Mock config loading
         mock_load_config.return_value = self.mock_config
@@ -224,7 +224,7 @@ class TestMain(unittest.TestCase):
         
         # Verify log level was overridden
         expected_config = self.mock_config.copy()
-        expected_config["logging"] = {"level": "debug"}
+        expected_config["logging"] = {"level": "DEBUG"}
         
         # Verify banner was printed
         mock_print_banner.assert_called_once()
