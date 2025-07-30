@@ -132,7 +132,8 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
 
     def test_check_loginctl_available_not_found(self):
         """Test check_loginctl_available when loginctl is not available."""
-        with patch("shutil.which", return_value=None):
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value.returncode = 1
             result = check_loginctl_available()
             self.assertFalse(result)
 

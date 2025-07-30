@@ -12,6 +12,7 @@ from yaml.loader import SafeLoader
 
 # Import version from package
 from mmrelay import __version__
+from mmrelay.config import get_config_paths
 from mmrelay.tools import get_sample_config_path
 
 
