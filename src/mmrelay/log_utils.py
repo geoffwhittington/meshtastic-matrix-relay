@@ -99,6 +99,10 @@ def get_logger(name):
     logger.setLevel(log_level)
     logger.propagate = False
 
+    # Check if logger already has handlers to avoid duplicates
+    if logger.handlers:
+        return logger
+
     # Add handler for console logging (with or without colors)
     if color_enabled:
         # Use Rich handler with colors

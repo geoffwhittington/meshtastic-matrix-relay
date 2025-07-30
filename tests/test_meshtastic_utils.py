@@ -51,7 +51,7 @@ class TestMeshtasticUtils(unittest.TestCase):
             "to": 987654321,
             "decoded": {
                 "text": "Hello from mesh",
-                "portnum": 1  # TEXT_MESSAGE_APP
+                "portnum": "TEXT_MESSAGE_APP"  # Use string constant
             },
             "channel": 0,
             "id": 12345,
@@ -71,10 +71,15 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         with patch('mmrelay.meshtastic_utils.get_longname') as mock_get_longname, \
              patch('mmrelay.meshtastic_utils.get_shortname') as mock_get_shortname, \
-             patch('mmrelay.matrix_utils.matrix_relay') as mock_matrix_relay:
+             patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe') as mock_run_coro, \
+             patch('mmrelay.matrix_utils.matrix_relay') as mock_matrix_relay, \
+             patch('mmrelay.matrix_utils.get_interaction_settings') as mock_get_interactions, \
+             patch('mmrelay.matrix_utils.message_storage_enabled') as mock_storage:
 
             mock_get_longname.return_value = "Test User"
             mock_get_shortname.return_value = "TU"
+            mock_get_interactions.return_value = {"reactions": False, "replies": False}
+            mock_storage.return_value = True
 
             # Mock interface
             mock_interface = MagicMock()
@@ -82,12 +87,13 @@ class TestMeshtasticUtils(unittest.TestCase):
             # Set up the global config and matrix_rooms
             mmrelay.meshtastic_utils.config = self.mock_config
             mmrelay.meshtastic_utils.matrix_rooms = self.mock_config["matrix_rooms"]
+            mmrelay.meshtastic_utils.event_loop = MagicMock()  # Mock the event loop
 
             # Call the function
             on_meshtastic_message(self.mock_packet, mock_interface)
 
-            # Verify matrix_relay was called
-            mock_matrix_relay.assert_called_once()
+            # Verify asyncio.run_coroutine_threadsafe was called (which calls matrix_relay)
+            mock_run_coro.assert_called_once()
 
     def test_on_meshtastic_message_unmapped_channel(self):
         """Test message processing for unmapped channel."""
@@ -97,15 +103,15 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         with patch('mmrelay.meshtastic_utils.config', self.mock_config), \
              patch('mmrelay.meshtastic_utils.matrix_rooms', self.mock_config["matrix_rooms"]), \
-             patch('mmrelay.meshtastic_utils.matrix_relay') as mock_matrix_relay:
+             patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe') as mock_run_coro:
 
             mock_interface = MagicMock()
 
             # Call the function
             on_meshtastic_message(packet_unmapped, mock_interface)
 
-            # Verify matrix_relay was not called
-            mock_matrix_relay.assert_not_called()
+            # Verify asyncio.run_coroutine_threadsafe was not called (no matrix relay)
+            mock_run_coro.assert_not_called()
 
     def test_on_meshtastic_message_no_text(self):
         """Test message processing for packet without text."""
@@ -115,17 +121,17 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         with patch('mmrelay.meshtastic_utils.config', self.mock_config), \
              patch('mmrelay.meshtastic_utils.matrix_rooms', self.mock_config["matrix_rooms"]), \
-             patch('mmrelay.meshtastic_utils.matrix_relay') as mock_matrix_relay, \
-             patch('mmrelay.meshtastic_utils.plugin_loader') as mock_plugin_loader:
+             patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe') as mock_run_coro, \
+             patch('mmrelay.plugin_loader.load_plugins') as mock_load_plugins:
 
-            mock_plugin_loader.sorted_active_plugins = []
+            mock_load_plugins.return_value = []
             mock_interface = MagicMock()
 
             # Call the function
             on_meshtastic_message(packet_no_text, mock_interface)
 
-            # Verify matrix_relay was not called for non-text message
-            mock_matrix_relay.assert_not_called()
+            # Verify asyncio.run_coroutine_threadsafe was not called for non-text message
+            mock_run_coro.assert_not_called()
 
     @patch('mmrelay.meshtastic_utils.serial_port_exists')
     @patch('mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface')
@@ -251,15 +257,15 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         with patch('mmrelay.meshtastic_utils.config', config_no_broadcast), \
              patch('mmrelay.meshtastic_utils.matrix_rooms', config_no_broadcast["matrix_rooms"]), \
-             patch('mmrelay.meshtastic_utils.matrix_relay') as mock_matrix_relay:
+             patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe') as mock_run_coro:
 
             mock_interface = MagicMock()
 
             # Call the function
             on_meshtastic_message(self.mock_packet, mock_interface)
 
-            # Verify matrix_relay was not called when broadcast is disabled
-            mock_matrix_relay.assert_not_called()
+            # Verify asyncio.run_coroutine_threadsafe was not called when broadcast is disabled
+            mock_run_coro.assert_not_called()
 
 
 if __name__ == "__main__":
@@ -329,7 +335,9 @@ class TestMeshtasticUtilsAsync(unittest.TestCase):
             self.loop.run_until_complete(asyncio.sleep(0.1))
             mock_matrix_relay.assert_called_once()
             call_args = mock_matrix_relay.call_args[0]
-            self.assertIn("Hello, world!", call_args["text"])
+            # call_args is a tuple, so access by index
+            # The formatted message should contain the original text
+            self.assertIn("Hello, world!", call_args[1])  # Second argument is the formatted message
 
     @patch("mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock)
     @patch("mmrelay.meshtastic_utils.logger")
