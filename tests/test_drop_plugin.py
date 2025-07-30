@@ -29,6 +29,11 @@ class TestDropPlugin(unittest.TestCase):
         self.plugin = Plugin()
         self.plugin.config = {"radius_km": 5}
         self.plugin.logger = MagicMock()
+
+        # Mock database operations
+        self.plugin.store_node_data = MagicMock()
+        self.plugin.get_node_data = MagicMock(return_value=[])
+        self.plugin.set_node_data = MagicMock()
         
         # Mock meshtastic client
         self.mock_meshtastic_client = MagicMock()
@@ -74,9 +79,6 @@ class TestDropPlugin(unittest.TestCase):
     def test_handle_meshtastic_message_drop_valid(self, mock_connect):
         """Test dropping a message with valid position data."""
         mock_connect.return_value = self.mock_meshtastic_client
-
-        # Mock plugin methods
-        self.plugin.store_node_data = MagicMock()
 
         packet = {
             "fromId": "!12345678",
@@ -189,8 +191,7 @@ class TestDropPlugin(unittest.TestCase):
             }
         ]
 
-        self.plugin.get_node_data = MagicMock(return_value=stored_messages)
-        self.plugin.set_node_data = MagicMock()
+        self.plugin.get_node_data.return_value = stored_messages
 
         packet = {
             "fromId": "!12345678",  # Node1 with position
@@ -232,8 +233,7 @@ class TestDropPlugin(unittest.TestCase):
             }
         ]
 
-        self.plugin.get_node_data = MagicMock(return_value=stored_messages)
-        self.plugin.set_node_data = MagicMock()
+        self.plugin.get_node_data.return_value = stored_messages
 
         packet = {
             "fromId": "!12345678",  # Node1 with position
@@ -273,8 +273,7 @@ class TestDropPlugin(unittest.TestCase):
             }
         ]
 
-        self.plugin.get_node_data = MagicMock(return_value=stored_messages)
-        self.plugin.set_node_data = MagicMock()
+        self.plugin.get_node_data.return_value = stored_messages
 
         packet = {
             "fromId": "!12345678",  # Same as originator
@@ -314,8 +313,7 @@ class TestDropPlugin(unittest.TestCase):
             }
         ]
 
-        self.plugin.get_node_data = MagicMock(return_value=stored_messages)
-        self.plugin.set_node_data = MagicMock()
+        self.plugin.get_node_data.return_value = stored_messages
 
         packet = {
             "fromId": "!12345678",
