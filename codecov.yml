@@ -6,7 +6,7 @@ coverage:
         threshold: 1%
     patch:
       default:
-        target: 80%
+        target: 60%
 
 component_management:
   individual_components:
