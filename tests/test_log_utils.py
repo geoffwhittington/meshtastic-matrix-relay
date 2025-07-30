@@ -140,7 +140,7 @@ class TestLogUtils(unittest.TestCase):
 
         # Check for file handler
         file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
-        self.assertGreaterEqual(len(file_handlers), 0)  # May or may not have file handler depending on implementation
+        self.assertEqual(len(file_handlers), 1)  # Should have exactly one file handler
 
     @patch('mmrelay.log_utils.get_log_dir')
     def test_get_logger_with_custom_log_file(self, mock_get_log_dir):

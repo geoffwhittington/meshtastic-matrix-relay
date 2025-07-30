@@ -231,7 +231,7 @@ if __name__ == "__main__":
     unittest.main()
 
 
-class TestMeshtasticUtils(unittest.TestCase):
+class TestMeshtasticUtilsAsync(unittest.TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
