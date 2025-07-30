@@ -386,7 +386,7 @@ plugins:
         ):
             with patch("mmrelay.setup_utils.create_service_file", return_value=True):
                 with patch(
-                    "mmrelay.setup_utils.reload_systemd_daemon", return_value=True
+                    "mmrelay.setup_utils.reload_daemon", return_value=True
                 ):
                     with patch(
                         "mmrelay.setup_utils.check_loginctl_available",
