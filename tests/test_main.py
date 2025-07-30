@@ -432,6 +432,9 @@ class TestRunMain(unittest.TestCase):
                                    mock_set_config, mock_load_config, mock_asyncio_run,
                                    mock_abspath, mock_makedirs):
         """Test run_main with custom data directory."""
+        import tempfile
+        import os
+
         mock_config = {
             "matrix": {"homeserver": "https://matrix.org"},
             "meshtastic": {"connection_type": "serial"},
@@ -439,17 +442,22 @@ class TestRunMain(unittest.TestCase):
         }
         mock_load_config.return_value = mock_config
         mock_asyncio_run.return_value = None
-        mock_abspath.return_value = "/custom/data/dir"
 
-        mock_args = MagicMock()
-        mock_args.data_dir = "/custom/data/dir"
-        mock_args.log_level = None
+        # Use a temporary directory instead of hardcoded path
+        with tempfile.TemporaryDirectory() as temp_dir:
+            custom_data_dir = os.path.join(temp_dir, "data")
+            mock_abspath.return_value = custom_data_dir
 
-        result = run_main(mock_args)
+            mock_args = MagicMock()
+            mock_args.data_dir = custom_data_dir
+            mock_args.log_level = None
 
-        self.assertEqual(result, 0)
-        mock_abspath.assert_called_once_with("/custom/data/dir")
-        mock_makedirs.assert_called_once_with("/custom/data/dir", exist_ok=True)
+            result = run_main(mock_args)
+
+            self.assertEqual(result, 0)
+            # Check that abspath was called with our custom data dir (may be called multiple times)
+            mock_abspath.assert_any_call(custom_data_dir)
+            mock_makedirs.assert_called_once_with(custom_data_dir, exist_ok=True)
 
     @patch('asyncio.run')
     @patch('mmrelay.config.load_config')

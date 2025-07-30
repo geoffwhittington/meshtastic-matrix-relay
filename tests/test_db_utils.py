@@ -112,9 +112,14 @@ class TestDbUtils(unittest.TestCase):
         mmrelay.db_utils.config = None
         clear_db_path_cache()
         
-        mock_get_data_dir.return_value = "/test/data"
-        path = get_db_path()
-        self.assertEqual(path, "/test/data/meshtastic.sqlite")
+        import tempfile
+        import os
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            mock_get_data_dir.return_value = temp_dir
+            path = get_db_path()
+            expected_path = os.path.join(temp_dir, "meshtastic.sqlite")
+            self.assertEqual(path, expected_path)
 
     def test_get_db_path_legacy_config(self):
         """

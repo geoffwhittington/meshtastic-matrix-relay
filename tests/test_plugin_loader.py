@@ -103,16 +103,21 @@ class TestPluginLoader(unittest.TestCase):
         
         Verifies that `get_custom_plugin_dirs()` returns the expected list of custom plugin directories and that the directory creation function is called.
         """
+        import tempfile
+
         mock_get_base_dir.return_value = self.test_dir
-        mock_get_app_path.return_value = "/app"
 
-        dirs = get_custom_plugin_dirs()
+        # Use a temporary directory instead of hardcoded path
+        with tempfile.TemporaryDirectory() as temp_app_dir:
+            mock_get_app_path.return_value = temp_app_dir
 
-        expected_dirs = [
-            os.path.join(self.test_dir, "plugins", "custom"),
-            "/app/plugins/custom"
-        ]
-        self.assertEqual(dirs, expected_dirs)
+            dirs = get_custom_plugin_dirs()
+
+            expected_dirs = [
+                os.path.join(self.test_dir, "plugins", "custom"),
+                os.path.join(temp_app_dir, "plugins", "custom")
+            ]
+            self.assertEqual(dirs, expected_dirs)
         mock_makedirs.assert_called_once()
 
     @patch('mmrelay.plugin_loader.get_base_dir')
@@ -122,16 +127,21 @@ class TestPluginLoader(unittest.TestCase):
         """
         Test that the community plugin directory discovery function returns the correct directories and creates them if necessary.
         """
+        import tempfile
+
         mock_get_base_dir.return_value = self.test_dir
-        mock_get_app_path.return_value = "/app"
 
-        dirs = get_community_plugin_dirs()
+        # Use a temporary directory instead of hardcoded path
+        with tempfile.TemporaryDirectory() as temp_app_dir:
+            mock_get_app_path.return_value = temp_app_dir
 
-        expected_dirs = [
-            os.path.join(self.test_dir, "plugins", "community"),
-            "/app/plugins/community"
-        ]
-        self.assertEqual(dirs, expected_dirs)
+            dirs = get_community_plugin_dirs()
+
+            expected_dirs = [
+                os.path.join(self.test_dir, "plugins", "community"),
+                os.path.join(temp_app_dir, "plugins", "community")
+            ]
+            self.assertEqual(dirs, expected_dirs)
         mock_makedirs.assert_called_once()
 
     def test_load_plugins_from_directory_empty(self):
