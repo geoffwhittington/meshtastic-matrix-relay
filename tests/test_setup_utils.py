@@ -46,13 +46,17 @@ class TestSetupUtils(unittest.TestCase):
     """Test cases for setup utilities."""
 
     def setUp(self):
-        """Set up test environment."""
+        """
+        Creates a temporary directory and service file path for test isolation.
+        """
         # Create temporary directory for testing
         self.test_dir = tempfile.mkdtemp()
         self.test_service_path = Path(self.test_dir) / "mmrelay.service"
 
     def tearDown(self):
-        """Clean up test environment."""
+        """
+        Remove the temporary directory and its contents after each test to clean up the test environment.
+        """
         # Clean up temporary files
         import shutil
         shutil.rmtree(self.test_dir, ignore_errors=True)
@@ -78,7 +82,9 @@ class TestSetupUtils(unittest.TestCase):
 
     @patch('mmrelay.setup_utils.Path.home')
     def test_get_user_service_path(self, mock_home):
-        """Test getting user service path."""
+        """
+        Test that get_user_service_path returns the correct path to the user's mmrelay systemd service file.
+        """
         mock_home.return_value = Path("/home/user")
         
         service_path = get_user_service_path()
@@ -110,7 +116,9 @@ class TestSetupUtils(unittest.TestCase):
 
     @patch('mmrelay.setup_utils.get_user_service_path')
     def test_read_service_file_exists(self, mock_get_path):
-        """Test reading service file when it exists."""
+        """
+        Test that `read_service_file` returns the service file content when the file exists.
+        """
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = "service content"
@@ -133,7 +141,9 @@ class TestSetupUtils(unittest.TestCase):
 
     @patch('os.path.exists')
     def test_get_template_service_path_found(self, mock_exists):
-        """Test getting template service path when file is found."""
+        """
+        Test that get_template_service_path returns the template path when the service file exists.
+        """
         # Mock the first path to exist
         mock_exists.side_effect = lambda path: "mmrelay.service" in path
         
@@ -154,7 +164,9 @@ class TestSetupUtils(unittest.TestCase):
     @patch('mmrelay.setup_utils.get_service_template_path')
     @patch('os.path.exists')
     def test_get_template_service_content_from_file(self, mock_exists, mock_get_template_path):
-        """Test getting template service content from file."""
+        """
+        Test that the service template content is correctly read from a file when the template file exists.
+        """
         mock_get_template_path.return_value = "/path/to/template"
         mock_exists.return_value = True
         
@@ -166,7 +178,9 @@ class TestSetupUtils(unittest.TestCase):
     @patch('mmrelay.setup_utils.get_service_template_path')
     @patch('importlib.resources.files')
     def test_get_template_service_content_from_resources(self, mock_files, mock_get_template_path):
-        """Test getting template service content from importlib.resources."""
+        """
+        Test that the service template content is retrieved from importlib.resources when the template file is not found.
+        """
         mock_get_template_path.return_value = None
         
         # Mock importlib.resources
@@ -181,7 +195,9 @@ class TestSetupUtils(unittest.TestCase):
     @patch('mmrelay.setup_utils.get_service_template_path')
     @patch('importlib.resources.files')
     def test_get_template_service_content_fallback(self, mock_files, mock_get_template_path):
-        """Test getting template service content with fallback to default."""
+        """
+        Test that get_template_service_content returns the default template when both the template file and resource are unavailable.
+        """
         mock_get_template_path.return_value = None
         mock_files.side_effect = FileNotFoundError()
         
@@ -193,7 +209,9 @@ class TestSetupUtils(unittest.TestCase):
 
     @patch('subprocess.run')
     def test_is_service_active_true(self, mock_run):
-        """Test is_service_active when service is active."""
+        """
+        Test that is_service_active returns True when the service is reported as active.
+        """
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout.strip.return_value = "active"
@@ -222,7 +240,9 @@ class TestSetupUtils(unittest.TestCase):
 
     @patch('subprocess.run')
     def test_is_service_active_exception(self, mock_run):
-        """Test is_service_active when subprocess raises exception."""
+        """
+        Test that is_service_active returns False when a subprocess exception occurs.
+        """
         mock_run.side_effect = OSError("Command not found")
         
         result = is_service_active()
@@ -254,7 +274,9 @@ class TestSetupUtils(unittest.TestCase):
 
     @patch('subprocess.run')
     def test_start_service_success(self, mock_run):
-        """Test starting service successfully."""
+        """
+        Test that the service is started successfully when the systemctl command completes without error.
+        """
         mock_run.return_value.returncode = 0
         
         result = start_service()
@@ -267,7 +289,9 @@ class TestSetupUtils(unittest.TestCase):
 
     @patch('subprocess.run')
     def test_start_service_failure(self, mock_run):
-        """Test starting service with failure."""
+        """
+        Test that starting the service returns False when the systemctl command fails.
+        """
         mock_run.side_effect = subprocess.CalledProcessError(1, "systemctl")
         
         result = start_service()
@@ -276,7 +300,9 @@ class TestSetupUtils(unittest.TestCase):
 
     @patch('subprocess.run')
     def test_reload_daemon_success(self, mock_run):
-        """Test reloading daemon successfully."""
+        """
+        Test that the systemd user daemon reloads successfully and returns True.
+        """
         mock_run.return_value.returncode = 0
         
         result = reload_daemon()
@@ -289,7 +315,9 @@ class TestSetupUtils(unittest.TestCase):
 
     @patch('subprocess.run')
     def test_reload_daemon_failure(self, mock_run):
-        """Test reloading daemon with failure."""
+        """
+        Test that `reload_daemon` returns False when reloading the systemd user daemon fails due to a subprocess error.
+        """
         mock_run.side_effect = subprocess.CalledProcessError(1, "systemctl")
         
         result = reload_daemon()
@@ -298,7 +326,9 @@ class TestSetupUtils(unittest.TestCase):
 
     @patch('subprocess.run')
     def test_check_lingering_enabled_true(self, mock_run):
-        """Test checking lingering when it's enabled."""
+        """
+        Test that check_lingering_enabled returns True when user lingering is enabled.
+        """
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = "Linger=yes"
         
@@ -309,7 +339,9 @@ class TestSetupUtils(unittest.TestCase):
 
     @patch('subprocess.run')
     def test_check_lingering_enabled_false(self, mock_run):
-        """Test checking lingering when it's disabled."""
+        """
+        Test that check_lingering_enabled returns False when user lingering is disabled.
+        """
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = "Linger=no"
         
@@ -320,7 +352,9 @@ class TestSetupUtils(unittest.TestCase):
 
     @patch('subprocess.run')
     def test_enable_lingering_success(self, mock_run):
-        """Test enabling lingering successfully."""
+        """
+        Test that enabling user lingering returns True when the command succeeds.
+        """
         mock_run.return_value.returncode = 0
         
         with patch.dict(os.environ, {'USER': 'testuser'}):
@@ -350,7 +384,9 @@ class TestSetupUtils(unittest.TestCase):
     @patch('mmrelay.setup_utils.get_user_service_path')
     @patch('pathlib.Path.home')
     def test_create_service_file_success(self, mock_home, mock_get_path, mock_get_content, mock_get_executable):
-        """Test creating service file successfully."""
+        """
+        Test that the service file is created successfully when all dependencies return valid values.
+        """
         mock_get_executable.return_value = "/usr/local/bin/mmrelay"
         mock_get_content.return_value = "template content"
 
@@ -372,7 +408,9 @@ class TestSetupUtils(unittest.TestCase):
 
     @patch('mmrelay.setup_utils.get_executable_path')
     def test_create_service_file_no_executable(self, mock_get_executable):
-        """Test creating service file when executable is not found."""
+        """
+        Test that creating a service file returns False when the executable path cannot be determined.
+        """
         mock_get_executable.return_value = None
         
         result = create_service_file()
@@ -382,7 +420,9 @@ class TestSetupUtils(unittest.TestCase):
     @patch('mmrelay.setup_utils.read_service_file')
     @patch('mmrelay.setup_utils.get_executable_path')
     def test_service_needs_update_no_existing(self, mock_get_executable, mock_read_service):
-        """Test service_needs_update when no existing service file."""
+        """
+        Test that service_needs_update returns True with the correct reason when the service file does not exist.
+        """
         mock_read_service.return_value = None
         
         needs_update, reason = service_needs_update()
@@ -394,7 +434,11 @@ class TestSetupUtils(unittest.TestCase):
     @patch('mmrelay.setup_utils.get_executable_path')
     @patch('mmrelay.setup_utils.get_template_service_path')
     def test_service_needs_update_executable_changed(self, mock_get_template, mock_get_executable, mock_read_service):
-        """Test service_needs_update when executable path changed."""
+        """
+        Test that service_needs_update returns True when the executable path in the service file differs from the current executable.
+        
+        Verifies that the function detects when the service file's ExecStart path does not match the current executable and provides an appropriate reason.
+        """
         mock_read_service.return_value = "ExecStart=/old/path/mmrelay"
         mock_get_executable.return_value = "/new/path/mmrelay"
         mock_get_template.return_value = "/path/to/template"
@@ -421,7 +465,9 @@ class TestSetupUtils(unittest.TestCase):
 
     @patch('subprocess.run')
     def test_show_service_status_failure(self, mock_run):
-        """Test showing service status with failure."""
+        """
+        Test that show_service_status returns False when systemctl command fails.
+        """
         mock_run.side_effect = subprocess.CalledProcessError(1, "systemctl")
         
         result = show_service_status()

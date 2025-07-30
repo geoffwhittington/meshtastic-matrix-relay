@@ -28,7 +28,11 @@ class TestLogUtils(unittest.TestCase):
     """Test cases for logging utilities."""
 
     def setUp(self):
-        """Set up test environment."""
+        """
+        Prepares a clean test environment by creating a temporary directory for log files and resetting global logging state.
+        
+        Resets relevant global variables in `mmrelay.log_utils` and clears existing logging handlers to ensure test isolation.
+        """
         # Create temporary directory for test logs
         self.test_dir = tempfile.mkdtemp()
         self.test_log_file = os.path.join(self.test_dir, "test.log")
@@ -43,7 +47,9 @@ class TestLogUtils(unittest.TestCase):
         logging.getLogger().handlers.clear()
 
     def tearDown(self):
-        """Clean up test environment."""
+        """
+        Cleans up the test environment by removing temporary files and resetting logging state after each test.
+        """
         # Clean up temporary files
         import shutil
         shutil.rmtree(self.test_dir, ignore_errors=True)
@@ -53,7 +59,11 @@ class TestLogUtils(unittest.TestCase):
         logging.getLogger().setLevel(logging.WARNING)
 
     def test_get_logger_basic(self):
-        """Test basic logger creation without configuration."""
+        """
+        Verifies that a logger is created with default settings when no configuration is provided.
+        
+        Checks that the logger has the correct name, INFO level, no propagation, and at least one handler.
+        """
         logger = get_logger("test_logger")
         
         self.assertIsInstance(logger, logging.Logger)
@@ -65,7 +75,9 @@ class TestLogUtils(unittest.TestCase):
         self.assertGreater(len(logger.handlers), 0)
 
     def test_get_logger_with_config_level(self):
-        """Test logger creation with configured log level."""
+        """
+        Test that get_logger sets the logger level to DEBUG when configured with a "debug" log level.
+        """
         config = {
             "logging": {
                 "level": "debug"
@@ -80,7 +92,9 @@ class TestLogUtils(unittest.TestCase):
         self.assertEqual(logger.level, logging.DEBUG)
 
     def test_get_logger_with_invalid_config_level(self):
-        """Test logger creation with invalid log level in config."""
+        """
+        Test that get_logger falls back to INFO level when given an invalid log level in the configuration.
+        """
         config = {
             "logging": {
                 "level": "invalid_level"
@@ -97,7 +111,11 @@ class TestLogUtils(unittest.TestCase):
         self.assertEqual(logger.level, logging.INFO)
 
     def test_get_logger_color_disabled(self):
-        """Test logger creation with colors disabled."""
+        """
+        Test that a logger is created with color output disabled in the configuration.
+        
+        Verifies that the logger has at least one console handler and is a valid Logger instance when color output is turned off.
+        """
         config = {
             "logging": {
                 "color_enabled": False
@@ -122,7 +140,11 @@ class TestLogUtils(unittest.TestCase):
 
     @patch('mmrelay.log_utils.get_log_dir')
     def test_get_logger_with_file_logging(self, mock_get_log_dir):
-        """Test logger creation with file logging enabled."""
+        """
+        Verify that a logger is created with a file handler when file logging is enabled in the configuration.
+        
+        Ensures the logger has at least one handler and exactly one RotatingFileHandler when file logging is configured.
+        """
         mock_get_log_dir.return_value = self.test_dir
 
         config = {
@@ -150,7 +172,11 @@ class TestLogUtils(unittest.TestCase):
 
     @patch('mmrelay.log_utils.get_log_dir')
     def test_get_logger_with_custom_log_file(self, mock_get_log_dir):
-        """Test logger creation with custom log file path."""
+        """
+        Verify that a logger is created with a custom log file path when file logging is enabled in the configuration.
+        
+        Ensures the logger has at least one handler and, if a file handler is present, its path ends with the specified custom filename.
+        """
         mock_get_log_dir.return_value = self.test_dir
 
         config = {
@@ -182,7 +208,9 @@ class TestLogUtils(unittest.TestCase):
 
     @patch('mmrelay.log_utils.get_log_dir')
     def test_get_logger_file_logging_disabled(self, mock_get_log_dir):
-        """Test logger creation with file logging disabled."""
+        """
+        Test that a logger is created with handlers but without file handlers when file logging is disabled in the configuration.
+        """
         config = {
             "logging": {
                 "log_to_file": False
@@ -206,7 +234,9 @@ class TestLogUtils(unittest.TestCase):
 
     @patch('mmrelay.log_utils.get_log_dir')
     def test_get_logger_log_rotation_config(self, mock_get_log_dir):
-        """Test logger creation with log rotation configuration."""
+        """
+        Test that a logger created with log rotation configuration applies the specified maximum log size and backup count to its file handler.
+        """
         mock_get_log_dir.return_value = self.test_dir
 
         config = {
@@ -235,7 +265,9 @@ class TestLogUtils(unittest.TestCase):
             self.assertEqual(file_handler.backupCount, 3)
 
     def test_get_logger_main_relay_logger(self):
-        """Test that main relay logger stores log file path globally."""
+        """
+        Verify that creating the main relay logger with file logging enabled sets the global log file path variable.
+        """
         config = {
             "logging": {
                 "log_to_file": True,
@@ -256,7 +288,9 @@ class TestLogUtils(unittest.TestCase):
         self.assertEqual(mmrelay.log_utils.log_file_path, self.test_log_file)
 
     def test_configure_component_debug_logging_no_config(self):
-        """Test component debug logging configuration without config."""
+        """
+        Verify that configuring component debug logging with no config set does not raise an exception and does not enable debug logging.
+        """
         import mmrelay.log_utils
         mmrelay.log_utils.config = None
         
@@ -267,7 +301,9 @@ class TestLogUtils(unittest.TestCase):
         self.assertFalse(mmrelay.log_utils._component_debug_configured)
 
     def test_configure_component_debug_logging_with_config(self):
-        """Test component debug logging configuration with config."""
+        """
+        Verifies that component debug logging is correctly configured based on the provided config, enabling DEBUG level for specified components and leaving others unchanged.
+        """
         config = {
             "logging": {
                 "debug": {
@@ -295,7 +331,9 @@ class TestLogUtils(unittest.TestCase):
         self.assertNotEqual(logging.getLogger("bleak").level, logging.DEBUG)
 
     def test_configure_component_debug_logging_only_once(self):
-        """Test that component debug logging is only configured once."""
+        """
+        Verify that component debug logging configuration is applied only once, ensuring subsequent calls do not override existing logger levels.
+        """
         config = {
             "logging": {
                 "debug": {
@@ -321,7 +359,9 @@ class TestLogUtils(unittest.TestCase):
         self.assertEqual(logging.getLogger("nio").level, logging.WARNING)
 
     def test_get_logger_in_test_environment(self):
-        """Test logger creation in test environment (no CLI parsing)."""
+        """
+        Verify that a logger can be created in a test environment without triggering CLI parsing or errors.
+        """
         # Set test environment
         with patch.dict(os.environ, {'MMRELAY_TESTING': '1'}):
             logger = get_logger("test_logger")
@@ -332,7 +372,11 @@ class TestLogUtils(unittest.TestCase):
 
 
     def test_get_logger_file_creation_error(self):
-        """Test logger creation when file creation fails."""
+        """
+        Test that get_logger handles file creation errors gracefully when an invalid log file path is provided.
+        
+        Verifies that logger creation does not raise unexpected exceptions when file logging is enabled with an invalid path, and that either a valid Logger is returned or a PermissionError is raised.
+        """
         config = {
             "logging": {
                 "log_to_file": True,

@@ -28,7 +28,9 @@ class TestMain(unittest.TestCase):
     """Test cases for main application functionality."""
 
     def setUp(self):
-        """Set up test environment."""
+        """
+        Prepares the test environment by resetting the banner printed state and initializing a mock configuration for use in tests.
+        """
         # Reset banner state
         import mmrelay.main
         mmrelay.main._banner_printed = False
@@ -57,13 +59,17 @@ class TestMain(unittest.TestCase):
         }
 
     def tearDown(self):
-        """Clean up test environment."""
+        """
+        Reset the banner printed state after each test to ensure test isolation.
+        """
         # Reset banner state
         import mmrelay.main
         mmrelay.main._banner_printed = False
 
     def test_print_banner(self):
-        """Test banner printing functionality."""
+        """
+        Tests that the banner is printed exactly once and includes the version information in the log output.
+        """
         with patch('mmrelay.main.logger') as mock_logger:
             print_banner()
             
@@ -96,7 +102,9 @@ class TestMain(unittest.TestCase):
                              mock_connect_matrix, mock_connect_meshtastic,
                              mock_start_queue, mock_load_plugins,
                              mock_init_db):
-        """Test basic main application flow initialization steps."""
+        """
+                             Verify that all main application initialization functions are properly mocked and callable during the basic startup flow test.
+                             """
         # This test just verifies that the initialization functions are called
         # We don't run the full main() function to avoid async complexity
 
@@ -127,7 +135,11 @@ class TestMain(unittest.TestCase):
                                         mock_connect_matrix, mock_connect_meshtastic,
                                         mock_start_queue, mock_load_plugins,
                                         mock_init_db, mock_wipe_map):
-        """Test main application flow with message map wiping enabled."""
+        """
+                                        Test that the main application wipes the message map on restart when configured to do so.
+                                        
+                                        Enables the wipe-on-restart setting, mocks connection attempts to fail early, and verifies that the message map wipe function is called before any connection attempts.
+                                        """
         # Enable message map wiping
         config_with_wipe = self.mock_config.copy()
         config_with_wipe["database"]["msg_map"]["wipe_on_restart"] = True
@@ -156,7 +168,9 @@ class TestMain(unittest.TestCase):
     @patch('mmrelay.main.main')
     def test_run_main(self, mock_main, mock_print_banner, mock_configure_debug,
                       mock_set_config, mock_load_config):
-        """Test run_main function."""
+        """
+                      Verify that run_main loads configuration, sets logging, prints the banner, configures debug logging, calls the main function, and returns 0 on success.
+                      """
         # Mock arguments
         mock_args = MagicMock()
         mock_args.log_level = "debug"
@@ -191,7 +205,9 @@ class TestMain(unittest.TestCase):
     @patch('mmrelay.config.load_config')
     @patch('mmrelay.main.main')
     def test_run_main_exception_handling(self, mock_main, mock_load_config):
-        """Test run_main exception handling."""
+        """
+        Test that run_main returns 1 when an exception is raised during execution.
+        """
         # Mock config loading
         mock_load_config.return_value = self.mock_config
         
@@ -206,7 +222,9 @@ class TestMain(unittest.TestCase):
     @patch('mmrelay.config.load_config')
     @patch('mmrelay.main.main')
     def test_run_main_keyboard_interrupt(self, mock_main, mock_load_config):
-        """Test run_main keyboard interrupt handling."""
+        """
+        Test that run_main returns 0 when a KeyboardInterrupt is raised during execution, indicating a graceful shutdown.
+        """
         # Mock config loading
         mock_load_config.return_value = self.mock_config
         
@@ -229,7 +247,11 @@ class TestMain(unittest.TestCase):
                                                 mock_connect_matrix, mock_start_queue,
                                                 mock_load_plugins, mock_init_db,
                                                 mock_connect_meshtastic):
-        """Test main application flow when Meshtastic connection fails."""
+        """
+                                                Test that the main application attempts Matrix connection even if Meshtastic connection fails.
+                                                
+                                                Simulates a failure to connect to Meshtastic and verifies that the application still proceeds to attempt a Matrix connection during startup.
+                                                """
         # Mock Meshtastic connection to return None (failure)
         mock_connect_meshtastic.return_value = None
 
@@ -254,7 +276,11 @@ class TestMain(unittest.TestCase):
     def test_main_matrix_connection_failure(self, mock_stop_queue, mock_connect_matrix,
                                             mock_connect_meshtastic, mock_start_queue,
                                             mock_load_plugins, mock_init_db):
-        """Test main application flow when Matrix connection fails."""
+        """
+                                            Test that the main application raises an exception when the Matrix connection fails during startup.
+                                            
+                                            This test mocks the Matrix connection to raise an exception and verifies that the exception is propagated when running the main function.
+                                            """
         # Mock Matrix connection to raise an exception
         mock_connect_matrix.side_effect = Exception("Matrix connection failed")
         

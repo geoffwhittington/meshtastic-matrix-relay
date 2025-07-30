@@ -88,16 +88,16 @@ def serial_port_exists(port_name):
 
 def connect_meshtastic(passed_config=None, force_connect=False):
     """
-    Establishes and manages a connection to a Meshtastic device using serial, BLE, or TCP, with automatic retries and event subscriptions.
-
-    If a configuration is provided, updates the global configuration and Matrix room mappings. If already connected and not forced, returns the existing client. Handles reconnection logic with exponential backoff, verifies serial port existence, and subscribes to message and connection lost events upon successful connection.
-
+    Establishes a connection to a Meshtastic device using serial, BLE, or TCP, with automatic retries and event subscriptions.
+    
+    If a configuration is provided, updates the global configuration and Matrix room mappings. If already connected and not forced, returns the existing client. Handles reconnection with exponential backoff, verifies serial port existence, and subscribes to message and connection lost events upon successful connection.
+    
     Parameters:
         passed_config (dict, optional): Configuration dictionary to use for the connection.
         force_connect (bool, optional): If True, forces a new connection even if one already exists.
-
+    
     Returns:
-        meshtastic_client: The connected Meshtastic client instance, or None if connection fails or shutdown is in progress.
+        The connected Meshtastic client instance, or None if connection fails or shutdown is in progress.
     """
     global meshtastic_client, shutting_down, config, matrix_rooms
     if shutting_down:

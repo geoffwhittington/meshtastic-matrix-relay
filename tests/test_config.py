@@ -22,11 +22,17 @@ import mmrelay.config
 class TestConfig(unittest.TestCase):
     def setUp(self):
         # Reset the global config before each test
+        """
+        Reset the global configuration state before each test to ensure test isolation.
+        """
         mmrelay.config.relay_config = {}
         mmrelay.config.config_path = None
 
     def test_get_base_dir_linux(self):
         # Test default base dir on Linux
+        """
+        Tests that get_base_dir returns the default base directory on Linux systems.
+        """
         with patch("sys.platform", "linux"):
             base_dir = get_base_dir()
             self.assertEqual(base_dir, os.path.expanduser("~/.mmrelay"))
@@ -34,6 +40,9 @@ class TestConfig(unittest.TestCase):
     @patch("platformdirs.user_data_dir")
     def test_get_base_dir_windows(self, mock_user_data_dir):
         # Test default base dir on Windows
+        """
+        Tests that get_base_dir returns the correct default base directory on Windows platforms by mocking platform detection and user data directory.
+        """
         with patch("sys.platform", "win32"):
             mock_user_data_dir.return_value = "C:\\Users\\test\\AppData\\Local\\mmrelay"
             base_dir = get_base_dir()
@@ -44,6 +53,9 @@ class TestConfig(unittest.TestCase):
     @patch("mmrelay.config.yaml.load")
     def test_load_config_from_file(self, mock_yaml_load, mock_open, mock_isfile):
         # Mock a config file
+        """
+        Test that `load_config` loads and returns configuration data from a specified YAML file when the file exists.
+        """
         mock_yaml_load.return_value = {"key": "value"}
         mock_isfile.return_value = True
 
@@ -54,6 +66,9 @@ class TestConfig(unittest.TestCase):
     @patch("mmrelay.config.os.path.isfile")
     def test_load_config_not_found(self, mock_isfile):
         # Mock no config file found
+        """
+        Test that `load_config` returns an empty dictionary when no configuration file is found.
+        """
         mock_isfile.return_value = False
 
         # Test that it returns an empty dict
@@ -63,6 +78,9 @@ class TestConfig(unittest.TestCase):
 
     def test_get_config_paths_linux(self):
         # Test with no args on Linux
+        """
+        Test that `get_config_paths` includes the default Linux config path when no arguments are provided.
+        """
         with patch("sys.platform", "linux"), patch("sys.argv", ["mmrelay"]):
             paths = get_config_paths()
             self.assertIn(os.path.expanduser("~/.mmrelay/config.yaml"), paths)
@@ -70,6 +88,11 @@ class TestConfig(unittest.TestCase):
     @patch("platformdirs.user_config_dir")
     def test_get_config_paths_windows(self, mock_user_config_dir):
         # Test with no args on Windows
+        """
+        Test that get_config_paths returns the correct config file path on Windows platforms.
+        
+        Simulates a Windows environment and verifies that the generated config paths include the expected Windows-specific config file location.
+        """
         with patch("sys.platform", "win32"), patch("sys.argv", ["mmrelay"]):
             mock_user_config_dir.return_value = (
                 "C:\\Users\\test\\AppData\\Local\\mmrelay\\config"
@@ -81,6 +104,9 @@ class TestConfig(unittest.TestCase):
             self.assertIn(expected_path, paths)
 
     def test_get_data_dir_linux(self):
+        """
+        Test that get_data_dir returns the correct default data directory on Linux.
+        """
         with patch("sys.platform", "linux"):
             data_dir = get_data_dir()
             self.assertEqual(data_dir, os.path.expanduser("~/.mmrelay/data"))
@@ -91,6 +117,11 @@ class TestConfig(unittest.TestCase):
             self.assertEqual(log_dir, os.path.expanduser("~/.mmrelay/logs"))
 
     def test_get_plugin_data_dir_linux(self):
+        """
+        Test that get_plugin_data_dir returns the correct plugin data directory paths on Linux.
+        
+        Verifies that the default plugins data directory and a plugin-specific data directory are correctly resolved for the Linux platform.
+        """
         with patch("sys.platform", "linux"):
             plugin_data_dir = get_plugin_data_dir()
             self.assertEqual(

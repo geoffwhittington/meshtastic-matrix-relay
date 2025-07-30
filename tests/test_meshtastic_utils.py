@@ -30,7 +30,9 @@ class TestMeshtasticUtils(unittest.TestCase):
     """Test cases for Meshtastic utilities."""
 
     def setUp(self):
-        """Set up test environment."""
+        """
+        Prepare the test environment by initializing mock configuration and packet data, and resetting global state variables to ensure test isolation.
+        """
         # Mock configuration
         self.mock_config = {
             "meshtastic": {
@@ -65,7 +67,11 @@ class TestMeshtasticUtils(unittest.TestCase):
         mmrelay.meshtastic_utils.matrix_rooms = []
 
     def test_on_meshtastic_message_basic(self):
-        """Test basic message processing."""
+        """
+        Test that a basic Meshtastic message is processed and relayed to Matrix.
+        
+        Verifies that when a valid text message is received on a mapped channel, the message is relayed to Matrix by ensuring the appropriate coroutine is scheduled.
+        """
         # Mock the required functions
         import mmrelay.meshtastic_utils
 
@@ -96,7 +102,11 @@ class TestMeshtasticUtils(unittest.TestCase):
             mock_run_coro.assert_called_once()
 
     def test_on_meshtastic_message_unmapped_channel(self):
-        """Test message processing for unmapped channel."""
+        """
+        Test that messages received on unmapped channels do not trigger Matrix relay.
+        
+        Verifies that when a Meshtastic packet is received on a channel not present in the configured Matrix room mapping, no coroutine is scheduled for relaying the message to Matrix.
+        """
         # Modify packet to use unmapped channel
         packet_unmapped = self.mock_packet.copy()
         packet_unmapped["channel"] = 99  # Not in matrix_rooms config
@@ -114,7 +124,11 @@ class TestMeshtasticUtils(unittest.TestCase):
             mock_run_coro.assert_not_called()
 
     def test_on_meshtastic_message_no_text(self):
-        """Test message processing for packet without text."""
+        """
+        Verify that non-text Meshtastic packets do not trigger message relay to Matrix.
+        
+        This test ensures that when a packet does not contain a text message (i.e., its port number is not `TEXT_MESSAGE_APP`), the message processing function does not schedule a coroutine for relaying the message to Matrix.
+        """
         # Modify packet to have no text
         packet_no_text = self.mock_packet.copy()
         packet_no_text["decoded"] = {"portnum": 2}  # Not TEXT_MESSAGE_APP
@@ -138,7 +152,11 @@ class TestMeshtasticUtils(unittest.TestCase):
     @patch('mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface')
     @patch('mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface')
     def test_connect_meshtastic_serial(self, mock_tcp, mock_ble, mock_serial, mock_port_exists):
-        """Test connecting to Meshtastic via serial."""
+        """
+        Test that the Meshtastic client connects successfully using a serial interface when the serial port exists.
+        
+        Verifies that the serial interface is instantiated with the configured port and that the returned client matches the mock.
+        """
         mock_client = MagicMock()
         mock_client.getMyNodeInfo.return_value = {"user": {"id": "test"}}
         mock_serial.return_value = mock_client
@@ -160,7 +178,11 @@ class TestMeshtasticUtils(unittest.TestCase):
     @patch('mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface')
     @patch('mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface')
     def test_connect_meshtastic_tcp(self, mock_tcp, mock_ble, mock_serial):
-        """Test connecting to Meshtastic via TCP."""
+        """
+        Test that the Meshtastic client connects using the TCP interface with the specified host.
+        
+        Verifies that the TCP interface is instantiated with the correct hostname and that the returned client matches the mocked instance.
+        """
         mock_client = MagicMock()
         mock_client.getMyNodeInfo.return_value = {"user": {"id": "test"}}
         mock_tcp.return_value = mock_client
@@ -181,7 +203,11 @@ class TestMeshtasticUtils(unittest.TestCase):
     @patch('mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface')
     @patch('mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface')
     def test_connect_meshtastic_ble(self, mock_tcp, mock_ble, mock_serial):
-        """Test connecting to Meshtastic via BLE."""
+        """
+        Test that the Meshtastic client connects via BLE using the configured BLE address.
+        
+        Verifies that the BLE interface is instantiated with the correct parameters and that the returned client matches the mocked BLE client.
+        """
         mock_client = MagicMock()
         mock_client.getMyNodeInfo.return_value = {"user": {"id": "test"}}
         mock_ble.return_value = mock_client
@@ -208,7 +234,9 @@ class TestMeshtasticUtils(unittest.TestCase):
     @patch('mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface')
     @patch('mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface')
     def test_connect_meshtastic_invalid_type(self, mock_tcp, mock_ble, mock_serial):
-        """Test connecting with invalid connection type."""
+        """
+        Test that attempting to connect with an invalid Meshtastic connection type returns None and does not instantiate any interface.
+        """
         config = {
             "meshtastic": {
                 "connection_type": "invalid"
@@ -224,7 +252,11 @@ class TestMeshtasticUtils(unittest.TestCase):
         mock_ble.assert_not_called()
 
     def test_sendTextReply_success(self):
-        """Test sending text reply successfully."""
+        """
+        Test that sendTextReply returns the expected result when sending a text reply succeeds.
+        
+        Verifies that the function correctly calls the interface methods and returns the response from _sendPacket.
+        """
         # Create a mock interface
         mock_interface = MagicMock()
         mock_interface._generatePacketId.return_value = 12345
@@ -240,7 +272,9 @@ class TestMeshtasticUtils(unittest.TestCase):
         mock_interface._sendPacket.assert_called_once()
 
     def test_sendTextReply_no_client(self):
-        """Test sending text reply when interface fails."""
+        """
+        Test that sendTextReply returns None when the interface fails to send a packet.
+        """
         # Create a mock interface that fails
         mock_interface = MagicMock()
         mock_interface._generatePacketId.return_value = 12345
@@ -251,7 +285,11 @@ class TestMeshtasticUtils(unittest.TestCase):
         self.assertIsNone(result)
 
     def test_on_meshtastic_message_with_broadcast_config(self):
-        """Test message processing with broadcast config (broadcast_enabled affects Matrix->Meshtastic, not Meshtastic->Matrix)."""
+        """
+        Test that Meshtastic-to-Matrix message relaying occurs even when broadcast is disabled in the configuration.
+        
+        Verifies that the `broadcast_enabled` setting only affects Matrix-to-Meshtastic direction, and does not prevent relaying of Meshtastic messages to Matrix.
+        """
         config_no_broadcast = self.mock_config.copy()
         config_no_broadcast["meshtastic"]["broadcast_enabled"] = False
 
@@ -290,7 +328,11 @@ class TestMeshtasticUtilsAsync(unittest.TestCase):
     """Simplified async tests that avoid AsyncMock warnings."""
 
     def test_async_message_processing_setup(self):
-        """Test that async message processing components are properly configured."""
+        """
+        Verify that async message processing components and functions can be imported and exist.
+        
+        This test ensures that key async functions and infrastructure are present and importable without executing any asynchronous code.
+        """
         # This test just verifies that the async components exist and can be imported
         # without actually running async code that could cause warnings
 

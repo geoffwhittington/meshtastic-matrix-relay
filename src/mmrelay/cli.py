@@ -17,10 +17,12 @@ from mmrelay.tools import get_sample_config_path
 
 def parse_arguments():
     """
-    Parse command-line arguments.
-
+    Parse and validate command-line arguments for the Meshtastic Matrix Relay CLI.
+    
+    Handles standard options for configuration, data directory, logging, version display, sample config generation, service installation, and config validation. On Windows, supports a deprecated positional argument for the config file path with a warning. Ignores unknown arguments outside of test environments and prints a warning if any are present.
+    
     Returns:
-        argparse.Namespace: The parsed command-line arguments
+        argparse.Namespace: Parsed command-line arguments.
     """
     parser = argparse.ArgumentParser(
         description="Meshtastic Matrix Relay - Bridge between Meshtastic and Matrix"

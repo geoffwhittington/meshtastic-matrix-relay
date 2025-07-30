@@ -12,6 +12,11 @@ from mmrelay.matrix_utils import on_room_message
 
 class TestMatrixUtils(unittest.TestCase):
     def setUp(self):
+        """
+        Set up common test fixtures for Matrix room message handling tests.
+        
+        Initializes mocked Matrix room and event objects, and prepares a configuration dictionary for Meshtastic and Matrix settings to be used across test cases.
+        """
         self.mock_room = MagicMock()
         self.mock_room.room_id = "!room:matrix.org"
         self.mock_event = MagicMock()
@@ -44,6 +49,11 @@ class TestMatrixUtils(unittest.TestCase):
         mock_queue_message,
         mock_connect_meshtastic,
     ):
+        """
+        Test that a simple text message event is correctly processed and queued for Meshtastic relay.
+        
+        Verifies that when a non-reaction text message is received from a user, the message is queued with the expected content.
+        """
         mock_isinstance.return_value = False
         mock_get_user_display_name.return_value = "user"
         with patch("mmrelay.matrix_utils.config", self.config), patch(
@@ -64,6 +74,9 @@ class TestMatrixUtils(unittest.TestCase):
     @patch("mmrelay.matrix_utils.queue_message")
     @patch("mmrelay.matrix_utils.bot_start_time", 1234567880)
     def test_on_room_message_ignore_bot(self, mock_queue_message, mock_connect_meshtastic):
+        """
+        Test that messages sent by the bot user are ignored and not queued for Meshtastic relay.
+        """
         self.mock_event.sender = self.config["matrix"]["bot_user_id"]
         with patch("mmrelay.matrix_utils.config", self.config), patch(
             "mmrelay.matrix_utils.matrix_rooms", self.config["matrix_rooms"]
@@ -91,6 +104,11 @@ class TestMatrixUtils(unittest.TestCase):
         mock_queue_message,
         mock_connect_meshtastic,
     ):
+        """
+        Test that a reply message is correctly processed and queued when reply interactions are enabled.
+        
+        Ensures that when a Matrix event is a reply and reply interactions are enabled in the configuration, the reply text is extracted and passed to the message queue for Meshtastic relay.
+        """
         mock_isinstance.return_value = False
         mock_get_user_display_name.return_value = "user"
         self.config["meshtastic"]["message_interactions"]["replies"] = True
@@ -133,6 +151,11 @@ class TestMatrixUtils(unittest.TestCase):
         mock_queue_message,
         mock_connect_meshtastic,
     ):
+        """
+        Test that a reply message is handled correctly when reply interactions are disabled.
+        
+        Verifies that when replies are disabled in the configuration, the full event body (including quoted original message) is queued for Meshtastic relay.
+        """
         mock_isinstance.return_value = False
         mock_get_user_display_name.return_value = "user"
         self.config["meshtastic"]["message_interactions"]["replies"] = False
@@ -172,6 +195,11 @@ class TestMatrixUtils(unittest.TestCase):
         mock_connect_meshtastic,
     ):
         # This is a reaction event
+        """
+        Test that a reaction event is processed and queued when reaction interactions are enabled.
+        
+        Verifies that when a Matrix reaction event occurs and reaction interactions are enabled in the configuration, the corresponding reaction message is correctly queued for Meshtastic relay with the appropriate text.
+        """
         from nio import ReactionEvent
 
         mock_isinstance.side_effect = lambda event, event_type: event_type == ReactionEvent
@@ -216,6 +244,9 @@ class TestMatrixUtils(unittest.TestCase):
         self, mock_isinstance, mock_queue_message, mock_connect_meshtastic
     ):
         # This is a reaction event
+        """
+        Test that reaction events are ignored when reaction interactions are disabled in the configuration.
+        """
         from nio import ReactionEvent
 
         mock_isinstance.side_effect = lambda event, event_type: event_type == ReactionEvent
@@ -249,6 +280,11 @@ class TestMatrixUtils(unittest.TestCase):
     def test_on_room_message_unsupported_room(
         self, mock_queue_message, mock_connect_meshtastic
     ):
+        """
+        Test that messages from unsupported Matrix rooms are ignored by on_room_message.
+        
+        Verifies that when a message event originates from a room not listed in the configured matrix rooms, the message is not queued for Meshtastic relay.
+        """
         self.mock_room.room_id = "!unsupported:matrix.org"
         with patch("mmrelay.matrix_utils.config", self.config), patch(
             "mmrelay.matrix_utils.matrix_rooms", self.config["matrix_rooms"]
