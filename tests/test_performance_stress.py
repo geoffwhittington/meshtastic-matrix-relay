@@ -12,7 +12,6 @@ Tests performance and stress scenarios including:
 - Rate limiting effectiveness
 """
 
-import asyncio
 import gc
 import os
 import sys
@@ -24,8 +23,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from mmrelay.message_queue import MessageQueue
 from mmrelay.meshtastic_utils import on_meshtastic_message
+from mmrelay.message_queue import MessageQueue
 
 
 class TestPerformanceStress(unittest.TestCase):
@@ -45,57 +44,55 @@ class TestPerformanceStress(unittest.TestCase):
         """Test processing high volume of messages without memory leaks."""
         message_count = 1000
         processed_messages = []
-        
+
         def mock_matrix_relay(*args, **kwargs):
             processed_messages.append(args)
-        
+
         mock_interface = MagicMock()
         mock_interface.nodes = {
-            '!12345678': {
-                'user': {
-                    'id': '!12345678',
-                    'longName': 'Test Node',
-                    'shortName': 'TN'
-                }
+            "!12345678": {
+                "user": {"id": "!12345678", "longName": "Test Node", "shortName": "TN"}
             }
         }
-        
+
         # Set up minimal config
         import mmrelay.meshtastic_utils
+
         mmrelay.meshtastic_utils.config = {
-            'matrix_rooms': [{'id': '!room:matrix.org', 'meshtastic_channel': 0}]
+            "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}]
         }
         mmrelay.meshtastic_utils.matrix_rooms = [
-            {'id': '!room:matrix.org', 'meshtastic_channel': 0}
+            {"id": "!room:matrix.org", "meshtastic_channel": 0}
         ]
-        
-        with patch('mmrelay.plugin_loader.load_plugins', return_value=[]):
-            with patch('mmrelay.matrix_utils.matrix_relay', side_effect=mock_matrix_relay):
+
+        with patch("mmrelay.plugin_loader.load_plugins", return_value=[]):
+            with patch(
+                "mmrelay.matrix_utils.matrix_relay", side_effect=mock_matrix_relay
+            ):
                 start_time = time.time()
-                
+
                 # Process many messages
                 for i in range(message_count):
                     packet = {
-                        'decoded': {
-                            'text': f'Message {i}',
-                            'portnum': 1
-                        },
-                        'fromId': '!12345678',
-                        'channel': 0,
-                        'to': 4294967295,
-                        'id': i
+                        "decoded": {"text": f"Message {i}", "portnum": 1},
+                        "fromId": "!12345678",
+                        "channel": 0,
+                        "to": 4294967295,
+                        "id": i,
                     }
                     on_meshtastic_message(packet, mock_interface)
-                
+
                 end_time = time.time()
                 processing_time = end_time - start_time
-                
+
                 # Verify all messages were processed
                 self.assertEqual(len(processed_messages), message_count)
-                
+
                 # Performance assertion (should process 1000 messages in reasonable time)
-                self.assertLess(processing_time, 10.0, "Message processing took too long")
-                
+                self.assertLess(
+                    processing_time, 10.0, "Message processing took too long"
+                )
+
                 # Memory usage should be reasonable
                 messages_per_second = message_count / processing_time
                 self.assertGreater(messages_per_second, 50, "Processing rate too slow")
@@ -104,109 +101,115 @@ class TestPerformanceStress(unittest.TestCase):
         """Test message queue performance under high load."""
         queue = MessageQueue()
         queue.start(message_delay=0.01)  # Very fast processing
-        
+
         message_count = 500
         processed_count = 0
-        
+
         def mock_send_function():
             nonlocal processed_count
             processed_count += 1
             return MagicMock(id="test_id")
-        
+
         try:
             start_time = time.time()
-            
+
             # Queue many messages rapidly
             for i in range(message_count):
                 success = queue.enqueue(
-                    mock_send_function,
-                    description=f"Performance test message {i}"
+                    mock_send_function, description=f"Performance test message {i}"
                 )
                 self.assertTrue(success, f"Failed to enqueue message {i}")
-            
+
             # Wait for processing to complete
             timeout = 30  # 30 second timeout
-            while processed_count < message_count and time.time() - start_time < timeout:
+            while (
+                processed_count < message_count and time.time() - start_time < timeout
+            ):
                 time.sleep(0.1)
-            
+
             end_time = time.time()
             processing_time = end_time - start_time
-            
+
             # Verify all messages were processed
             self.assertEqual(processed_count, message_count)
-            
+
             # Performance assertions
             self.assertLess(processing_time, 20.0, "Queue processing took too long")
-            
+
             messages_per_second = message_count / processing_time
-            self.assertGreater(messages_per_second, 10, "Queue processing rate too slow")
-            
+            self.assertGreater(
+                messages_per_second, 10, "Queue processing rate too slow"
+            )
+
         finally:
             queue.stop()
 
     def test_database_performance_large_dataset(self):
         """Test database performance with large datasets."""
         import tempfile
+
         from mmrelay.db_utils import (
-            initialize_database, save_longname, get_longname,
-            store_message_map, prune_message_map
+            get_longname,
+            initialize_database,
+            prune_message_map,
+            save_longname,
+            store_message_map,
         )
-        
+
         with tempfile.TemporaryDirectory() as temp_dir:
-            db_path = os.path.join(temp_dir, 'performance_test.sqlite')
-            
-            with patch('mmrelay.db_utils.get_db_path', return_value=db_path):
+            db_path = os.path.join(temp_dir, "performance_test.sqlite")
+
+            with patch("mmrelay.db_utils.get_db_path", return_value=db_path):
                 initialize_database()
-                
+
                 # Test bulk insertions
                 node_count = 1000
                 start_time = time.time()
-                
+
                 for i in range(node_count):
-                    save_longname(f'!{i:08x}', f'Node {i}')
-                
+                    save_longname(f"!{i:08x}", f"Node {i}")
+
                 insert_time = time.time() - start_time
-                
+
                 # Test bulk retrievals
                 start_time = time.time()
-                
+
                 for i in range(node_count):
-                    name = get_longname(f'!{i:08x}')
-                    self.assertEqual(name, f'Node {i}')
-                
+                    name = get_longname(f"!{i:08x}")
+                    self.assertEqual(name, f"Node {i}")
+
                 retrieval_time = time.time() - start_time
-                
+
                 # Performance assertions
                 self.assertLess(insert_time, 5.0, "Database insertions too slow")
                 self.assertLess(retrieval_time, 2.0, "Database retrievals too slow")
-                
+
                 # Test message map performance
                 message_count = 1000
                 start_time = time.time()
-                
+
                 for i in range(message_count):
                     store_message_map(
-                        f'mesh_{i}',
-                        f'matrix_{i}',
-                        '!room:matrix.org',
-                        f'Message {i}'
+                        f"mesh_{i}", f"matrix_{i}", "!room:matrix.org", f"Message {i}"
                     )
-                
+
                 message_insert_time = time.time() - start_time
-                self.assertLess(message_insert_time, 5.0, "Message map insertions too slow")
-                
+                self.assertLess(
+                    message_insert_time, 5.0, "Message map insertions too slow"
+                )
+
                 # Test pruning performance
                 start_time = time.time()
                 prune_message_map(100)  # Keep only 100 most recent
                 prune_time = time.time() - start_time
-                
+
                 self.assertLess(prune_time, 2.0, "Message map pruning too slow")
 
     def test_plugin_processing_performance(self):
         """Test plugin processing performance with multiple plugins."""
         plugin_count = 10
         message_count = 100
-        
+
         # Create multiple mock plugins
         plugins = []
         for i in range(plugin_count):
@@ -215,214 +218,223 @@ class TestPerformanceStress(unittest.TestCase):
             plugin.plugin_name = f"plugin_{i}"
             plugin.handle_meshtastic_message = AsyncMock(return_value=False)
             plugins.append(plugin)
-        
+
         packet = {
-            'decoded': {
-                'text': 'Performance test message',
-                'portnum': 1
-            },
-            'fromId': '!12345678',
-            'channel': 0
+            "decoded": {"text": "Performance test message", "portnum": 1},
+            "fromId": "!12345678",
+            "channel": 0,
         }
-        
+
         mock_interface = MagicMock()
-        
-        with patch('mmrelay.plugin_loader.load_plugins', return_value=plugins):
+
+        with patch("mmrelay.plugin_loader.load_plugins", return_value=plugins):
             start_time = time.time()
-            
+
             # Process messages through all plugins
             for i in range(message_count):
                 on_meshtastic_message(packet, mock_interface)
-            
+
             end_time = time.time()
             processing_time = end_time - start_time
-            
+
             # Performance assertions
             total_plugin_calls = plugin_count * message_count
             self.assertLess(processing_time, 5.0, "Plugin processing too slow")
-            
+
             calls_per_second = total_plugin_calls / processing_time
             self.assertGreater(calls_per_second, 100, "Plugin call rate too slow")
-            
+
             # Verify all plugins were called for each message
             for plugin in plugins:
-                self.assertEqual(plugin.handle_meshtastic_message.call_count, message_count)
+                self.assertEqual(
+                    plugin.handle_meshtastic_message.call_count, message_count
+                )
 
     def test_concurrent_message_queue_access(self):
         """Test message queue performance under concurrent access."""
         queue = MessageQueue()
         queue.start(message_delay=0.01)
-        
+
         thread_count = 10
         messages_per_thread = 50
         total_messages = thread_count * messages_per_thread
-        
+
         processed_count = 0
         lock = threading.Lock()
-        
+
         def mock_send_function():
             nonlocal processed_count
             with lock:
                 processed_count += 1
             return MagicMock(id="test_id")
-        
+
         def worker_thread(thread_id):
             for i in range(messages_per_thread):
                 queue.enqueue(
-                    mock_send_function,
-                    description=f"Thread {thread_id} message {i}"
+                    mock_send_function, description=f"Thread {thread_id} message {i}"
                 )
-        
+
         try:
             start_time = time.time()
-            
+
             # Start multiple threads
             threads = []
             for i in range(thread_count):
                 thread = threading.Thread(target=worker_thread, args=(i,))
                 threads.append(thread)
                 thread.start()
-            
+
             # Wait for all threads to complete
             for thread in threads:
                 thread.join()
-            
+
             # Wait for queue processing to complete
             timeout = 30
-            while processed_count < total_messages and time.time() - start_time < timeout:
+            while (
+                processed_count < total_messages and time.time() - start_time < timeout
+            ):
                 time.sleep(0.1)
-            
+
             end_time = time.time()
             processing_time = end_time - start_time
-            
+
             # Verify all messages were processed
             self.assertEqual(processed_count, total_messages)
-            
+
             # Performance assertions
             self.assertLess(processing_time, 20.0, "Concurrent processing too slow")
-            
+
             messages_per_second = total_messages / processing_time
-            self.assertGreater(messages_per_second, 10, "Concurrent processing rate too slow")
-            
+            self.assertGreater(
+                messages_per_second, 10, "Concurrent processing rate too slow"
+            )
+
         finally:
             queue.stop()
 
     def test_memory_usage_stability(self):
         """Test memory usage stability over extended operation."""
-        import psutil
         import os
-        
+
+        import psutil
+
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss
-        
+
         # Simulate extended operation
         iterations = 100
         mock_interface = MagicMock()
-        
-        with patch('mmrelay.plugin_loader.load_plugins', return_value=[]):
-            with patch('mmrelay.matrix_utils.matrix_relay'):
+
+        with patch("mmrelay.plugin_loader.load_plugins", return_value=[]):
+            with patch("mmrelay.matrix_utils.matrix_relay"):
                 # Set up minimal config
                 import mmrelay.meshtastic_utils
-                mmrelay.meshtastic_utils.config = {'matrix_rooms': []}
+
+                mmrelay.meshtastic_utils.config = {"matrix_rooms": []}
                 mmrelay.meshtastic_utils.matrix_rooms = []
-                
-                for i in range(iterations):
+
+                for iteration in range(iterations):
                     # Create and process messages
                     for j in range(10):
                         packet = {
-                            'decoded': {
-                                'text': f'Memory test {i}-{j}',
-                                'portnum': 1
-                            },
-                            'fromId': f'!{j:08x}',
-                            'channel': 0,
-                            'id': i * 10 + j
+                            "decoded": {"text": f"Memory test {iteration}-{j}", "portnum": 1},
+                            "fromId": f"!{j:08x}",
+                            "channel": 0,
+                            "id": iteration * 10 + j,
                         }
                         on_meshtastic_message(packet, mock_interface)
-                    
+
                     # Force garbage collection periodically
-                    if i % 20 == 0:
+                    if iteration % 20 == 0:
                         gc.collect()
-        
+
         # Check final memory usage
         final_memory = process.memory_info().rss
         memory_increase = final_memory - initial_memory
-        
+
         # Memory increase should be reasonable (less than 50MB)
         max_acceptable_increase = 50 * 1024 * 1024  # 50MB
-        self.assertLess(memory_increase, max_acceptable_increase,
-                       f"Memory usage increased by {memory_increase / 1024 / 1024:.2f}MB")
+        self.assertLess(
+            memory_increase,
+            max_acceptable_increase,
+            f"Memory usage increased by {memory_increase / 1024 / 1024:.2f}MB",
+        )
 
     def test_rate_limiting_effectiveness(self):
         """Test that rate limiting effectively controls message flow."""
         queue = MessageQueue()
         message_delay = 0.1  # 100ms delay between messages
         queue.start(message_delay=message_delay)
-        
+
         message_count = 10
         send_times = []
-        
+
         def mock_send_function():
             send_times.append(time.time())
             return MagicMock(id="test_id")
-        
+
         try:
             # Queue messages rapidly
             for i in range(message_count):
                 queue.enqueue(mock_send_function, description=f"Rate limit test {i}")
-            
+
             # Wait for all messages to be processed
             timeout = message_count * message_delay + 5  # Extra buffer
             start_wait = time.time()
-            while len(send_times) < message_count and time.time() - start_wait < timeout:
+            while (
+                len(send_times) < message_count and time.time() - start_wait < timeout
+            ):
                 time.sleep(0.01)
-            
+
             # Verify all messages were sent
             self.assertEqual(len(send_times), message_count)
-            
+
             # Verify rate limiting was effective
             for i in range(1, len(send_times)):
-                time_diff = send_times[i] - send_times[i-1]
+                time_diff = send_times[i] - send_times[i - 1]
                 # Allow some tolerance for timing variations
-                self.assertGreaterEqual(time_diff, message_delay * 0.8,
-                                      f"Rate limiting not effective between messages {i-1} and {i}")
-            
+                self.assertGreaterEqual(
+                    time_diff,
+                    message_delay * 0.8,
+                    f"Rate limiting not effective between messages {i-1} and {i}",
+                )
+
         finally:
             queue.stop()
 
     def test_resource_cleanup_effectiveness(self):
         """Test that resources are properly cleaned up after operations."""
         import weakref
-        
+
         # Test message queue cleanup
         queue = MessageQueue()
         queue_ref = weakref.ref(queue)
-        
+
         queue.start(message_delay=0.1)
         queue.stop()
         del queue
         gc.collect()
-        
+
         # Queue should be garbage collected
         self.assertIsNone(queue_ref(), "MessageQueue not properly cleaned up")
-        
+
         # Test plugin cleanup
         mock_plugin = MagicMock()
         plugin_ref = weakref.ref(mock_plugin)
-        
-        with patch('mmrelay.plugin_loader.load_plugins', return_value=[mock_plugin]):
+
+        with patch("mmrelay.plugin_loader.load_plugins", return_value=[mock_plugin]):
             # Process a message
             packet = {
-                'decoded': {'text': 'cleanup test', 'portnum': 1},
-                'fromId': '!12345678',
-                'channel': 0
+                "decoded": {"text": "cleanup test", "portnum": 1},
+                "fromId": "!12345678",
+                "channel": 0,
             }
             mock_interface = MagicMock()
             on_meshtastic_message(packet, mock_interface)
-        
+
         del mock_plugin
         gc.collect()
-        
+
         # Plugin should be garbage collected
         self.assertIsNone(plugin_ref(), "Plugin not properly cleaned up")
 

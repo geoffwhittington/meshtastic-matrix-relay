@@ -14,7 +14,6 @@ Tests edge cases and error handling including:
 
 import asyncio
 import os
-import ssl
 import sys
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -39,6 +38,7 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         """Set up test fixtures before each test method."""
         # Reset global state
         import mmrelay.matrix_utils
+
         mmrelay.matrix_utils.matrix_client = None
         mmrelay.matrix_utils.config = None
 
@@ -46,21 +46,21 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         """Test message truncation with Unicode characters that span multiple bytes."""
         # Test with emoji and multi-byte characters
         unicode_text = "Hello 🌍 世界 🚀 Testing"
-        
+
         # Test normal truncation
         result = truncate_message(unicode_text, max_bytes=20)
         self.assertIsInstance(result, str)
-        self.assertTrue(len(result.encode('utf-8')) <= 20)
-        
+        self.assertTrue(len(result.encode("utf-8")) <= 20)
+
         # Test truncation that might split a multi-byte character
         result = truncate_message(unicode_text, max_bytes=10)
         self.assertIsInstance(result, str)
-        self.assertTrue(len(result.encode('utf-8')) <= 10)
-        
+        self.assertTrue(len(result.encode("utf-8")) <= 10)
+
         # Test with very small byte limit
         result = truncate_message(unicode_text, max_bytes=1)
         self.assertIsInstance(result, str)
-        self.assertTrue(len(result.encode('utf-8')) <= 1)
+        self.assertTrue(len(result.encode("utf-8")) <= 1)
 
     def test_truncate_message_edge_cases(self):
         """Test message truncation with edge cases."""
@@ -88,22 +88,22 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         is_valid, error = validate_prefix_format("{display}: ", {"display": "Test"})
         self.assertTrue(is_valid)
         self.assertIsNone(error)
-        
+
         # Missing variable
         is_valid, error = validate_prefix_format("{missing}: ", {"display": "Test"})
         self.assertFalse(is_valid)
         self.assertIsNotNone(error)
-        
+
         # Invalid format syntax
         is_valid, error = validate_prefix_format("{display: ", {"display": "Test"})
         self.assertFalse(is_valid)
         self.assertIsNotNone(error)
-        
+
         # Empty format string
         is_valid, error = validate_prefix_format("", {"display": "Test"})
         self.assertTrue(is_valid)  # Empty string is valid
         self.assertIsNone(error)
-        
+
         # Format with no variables
         is_valid, error = validate_prefix_format("Static text: ", {"display": "Test"})
         self.assertTrue(is_valid)
@@ -112,12 +112,9 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
     def test_get_matrix_prefix_with_invalid_format(self):
         """Test matrix prefix generation with invalid format strings."""
         config = {
-            "matrix": {
-                "prefix_enabled": True,
-                "prefix_format": "{invalid_var}: "
-            }
+            "matrix": {"prefix_enabled": True, "prefix_format": "{invalid_var}: "}
         }
-        
+
         # Should fall back to default format when custom format is invalid
         result = get_matrix_prefix(config, "TestUser", "TU", "TestMesh")
         # Should use default format as fallback
@@ -127,12 +124,9 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
     def test_get_meshtastic_prefix_with_invalid_format(self):
         """Test meshtastic prefix generation with invalid format strings."""
         config = {
-            "meshtastic": {
-                "prefix_enabled": True,
-                "prefix_format": "{invalid_var}: "
-            }
+            "meshtastic": {"prefix_enabled": True, "prefix_format": "{invalid_var}: "}
         }
-        
+
         # Should fall back to default format when custom format is invalid
         result = get_meshtastic_prefix(config, "TestUser")
         # Should use default format as fallback
@@ -141,11 +135,11 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
     def test_get_matrix_prefix_with_none_values(self):
         """Test matrix prefix generation with None values."""
         config = {"matrix": {"prefix_enabled": True}}
-        
+
         # Test with None values
         result = get_matrix_prefix(config, None, None, None)
         self.assertIsInstance(result, str)
-        
+
         # Test with empty strings
         result = get_matrix_prefix(config, "", "", "")
         self.assertIsInstance(result, str)
@@ -153,56 +147,59 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
     def test_get_meshtastic_prefix_with_malformed_user_id(self):
         """Test meshtastic prefix generation with malformed user IDs."""
         config = {"meshtastic": {"prefix_enabled": True}}
-        
+
         # Test with malformed user ID (no @)
         result = get_meshtastic_prefix(config, "TestUser", "malformed_id")
         self.assertIsInstance(result, str)
-        
+
         # Test with malformed user ID (no :)
         result = get_meshtastic_prefix(config, "TestUser", "@malformed")
         self.assertIsInstance(result, str)
-        
+
         # Test with empty user ID
         result = get_meshtastic_prefix(config, "TestUser", "")
         self.assertIsInstance(result, str)
-        
+
         # Test with None user ID
         result = get_meshtastic_prefix(config, "TestUser", None)
         self.assertIsInstance(result, str)
 
-    @patch('mmrelay.matrix_utils.logger')
+    @patch("mmrelay.matrix_utils.logger")
     def test_connect_matrix_with_no_config(self, mock_logger):
         """Test connect_matrix behavior when no configuration is available."""
+
         async def run_test():
             result = await connect_matrix(None)
             self.assertIsNone(result)
-            mock_logger.error.assert_called_with("No configuration available. Cannot connect to Matrix.")
+            mock_logger.error.assert_called_with(
+                "No configuration available. Cannot connect to Matrix."
+            )
 
         asyncio.run(run_test())
 
-    @patch('mmrelay.matrix_utils.logger')
-    @patch('ssl.create_default_context')
+    @patch("mmrelay.matrix_utils.logger")
+    @patch("ssl.create_default_context")
     def test_connect_matrix_ssl_context_failure(self, mock_ssl_context, mock_logger):
         """Test connect_matrix behavior when SSL context creation fails."""
         mock_ssl_context.side_effect = Exception("SSL context creation failed")
-        
+
         config = {
             "matrix": {
                 "homeserver": "https://matrix.org",
                 "access_token": "test_token",
-                "bot_user_id": "@test:matrix.org"
+                "bot_user_id": "@test:matrix.org",
             },
-            "matrix_rooms": []
+            "matrix_rooms": [],
         }
 
         async def run_test():
             # This should raise an exception due to SSL context failure
-            with self.assertRaises(Exception):
+            with self.assertRaises((ConnectionError, OSError, ValueError)):
                 await connect_matrix(config)
 
         asyncio.run(run_test())
 
-    @patch('mmrelay.matrix_utils.logger')
+    @patch("mmrelay.matrix_utils.logger")
     def test_join_matrix_room_with_invalid_alias(self, mock_logger):
         """Test join_matrix_room behavior with invalid room alias."""
         mock_client = AsyncMock()
@@ -210,19 +207,19 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         mock_response.room_id = None
         mock_response.message = "Room not found"
         mock_client.room_resolve_alias.return_value = mock_response
-        
+
         async def run_test():
             await join_matrix_room(mock_client, "#invalid:matrix.org")
             mock_logger.error.assert_called()
 
         asyncio.run(run_test())
 
-    @patch('mmrelay.matrix_utils.logger')
+    @patch("mmrelay.matrix_utils.logger")
     def test_join_matrix_room_exception_handling(self, mock_logger):
         """Test join_matrix_room exception handling."""
         mock_client = AsyncMock()
         mock_client.room_resolve_alias.side_effect = Exception("Network error")
-        
+
         async def run_test():
             await join_matrix_room(mock_client, "#test:matrix.org")
             mock_logger.error.assert_called()
@@ -232,12 +229,12 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
     def test_prefix_generation_with_extreme_lengths(self):
         """Test prefix generation with extremely long input values."""
         config = {"matrix": {"prefix_enabled": True}}
-        
+
         # Very long names
         very_long_name = "A" * 1000
         result = get_matrix_prefix(config, very_long_name, "short", "mesh")
         self.assertIsInstance(result, str)
-        
+
         # Test meshtastic prefix with very long display name
         config = {"meshtastic": {"prefix_enabled": True}}
         result = get_meshtastic_prefix(config, very_long_name)
@@ -249,7 +246,7 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         config = {"matrix": {"prefix_enabled": False}}
         result = get_matrix_prefix(config, "User", "U", "Mesh")
         self.assertEqual(result, "")
-        
+
         # Meshtastic prefix disabled
         config = {"meshtastic": {"prefix_enabled": False}}
         result = get_meshtastic_prefix(config, "User")
