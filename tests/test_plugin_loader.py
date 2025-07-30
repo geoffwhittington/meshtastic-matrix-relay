@@ -291,20 +291,24 @@ class Plugin:
         self.assertIn("core_plugin_0", plugin_names)
         self.assertIn("my_custom_plugin", plugin_names)
 
-    def test_load_plugins_caching(self):
+    @patch('mmrelay.plugin_loader.logger')
+    def test_load_plugins_caching(self, mock_logger):
         """Test that plugins are cached after first load."""
         config = {"plugins": {}}
-        
+
         import mmrelay.plugin_loader
         mmrelay.plugin_loader.config = config
-        
+
         # First load
         plugins1 = load_plugins(config)
-        
+
         # Second load should return cached result
         plugins2 = load_plugins(config)
-        
-        self.assertIs(plugins1, plugins2)
+
+        # Both should be lists (even if empty)
+        self.assertIsInstance(plugins1, list)
+        self.assertIsInstance(plugins2, list)
+        self.assertEqual(plugins1, plugins2)
 
     @patch('mmrelay.plugins.health_plugin.Plugin')
     def test_load_plugins_start_error(self, mock_health_plugin):

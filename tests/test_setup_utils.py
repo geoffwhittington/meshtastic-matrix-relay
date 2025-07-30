@@ -348,22 +348,25 @@ class TestSetupUtils(unittest.TestCase):
     @patch('mmrelay.setup_utils.get_executable_path')
     @patch('mmrelay.setup_utils.get_template_service_content')
     @patch('mmrelay.setup_utils.get_user_service_path')
-    def test_create_service_file_success(self, mock_get_path, mock_get_content, mock_get_executable):
+    @patch('pathlib.Path.home')
+    def test_create_service_file_success(self, mock_home, mock_get_path, mock_get_content, mock_get_executable):
         """Test creating service file successfully."""
         mock_get_executable.return_value = "/usr/local/bin/mmrelay"
         mock_get_content.return_value = "template content"
-        
+
+        # Mock the home directory path
+        mock_home_path = MagicMock()
+        mock_logs_dir = MagicMock()
+        mock_home_path.__truediv__.return_value.__truediv__.return_value = mock_logs_dir
+        mock_home.return_value = mock_home_path
+
         mock_path = MagicMock()
         mock_path.parent.mkdir = MagicMock()
         mock_path.write_text = MagicMock()
         mock_get_path.return_value = mock_path
-        
-        with patch('pathlib.Path') as mock_path_class:
-            mock_logs_dir = MagicMock()
-            mock_path_class.home.return_value.__truediv__.return_value.__truediv__.return_value = mock_logs_dir
-            
-            result = create_service_file()
-        
+
+        result = create_service_file()
+
         self.assertTrue(result)
         mock_path.write_text.assert_called_once()
 
