@@ -49,8 +49,10 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
     def test_get_executable_path_not_found(self):
         """Test get_executable_path when mmrelay executable is not found."""
         with patch("shutil.which", return_value=None):
-            result = get_executable_path()
-            self.assertIsNone(result)
+            with patch("builtins.print"):  # Suppress warning print
+                result = get_executable_path()
+                # Should return sys.executable as fallback
+                self.assertEqual(result, sys.executable)
 
     def test_get_executable_path_multiple_locations(self):
         """Test get_executable_path priority order."""
@@ -90,7 +92,7 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
             mock_get_path.return_value = mock_path
 
             with patch(
-                "mmrelay.setup_utils.get_service_template", return_value="[Unit]\nTest"
+                "mmrelay.setup_utils.get_template_service_content", return_value="[Unit]\nTest"
             ):
                 with patch(
                     "mmrelay.setup_utils.get_executable_path",

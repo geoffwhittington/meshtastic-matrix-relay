@@ -157,7 +157,7 @@ class Plugin:
     def test_get_custom_plugin_dirs_permission_error(self):
         """Test get_custom_plugin_dirs when directory access fails."""
         with patch(
-            "mmrelay.plugin_loader.get_plugin_data_dir", return_value="/restricted"
+            "mmrelay.config.get_base_dir", return_value="/restricted"
         ):
             with patch("os.path.exists", return_value=True):
                 with patch(
@@ -170,7 +170,7 @@ class Plugin:
 
     def test_get_custom_plugin_dirs_broken_symlinks(self):
         """Test get_custom_plugin_dirs with broken symbolic links."""
-        with patch("mmrelay.plugin_loader.get_plugin_data_dir", return_value="/test"):
+        with patch("mmrelay.config.get_base_dir", return_value="/test"):
             with patch("os.path.exists", return_value=True):
                 with patch("os.listdir", return_value=["broken_link", "valid_dir"]):
 
@@ -186,7 +186,7 @@ class Plugin:
 
     def test_get_community_plugin_dirs_git_clone_failure(self):
         """Test get_community_plugin_dirs when git clone fails."""
-        with patch("mmrelay.plugin_loader.get_plugin_data_dir", return_value="/test"):
+        with patch("mmrelay.config.get_base_dir", return_value="/test"):
             with patch("os.path.exists", return_value=False):
                 with patch("subprocess.run") as mock_run:
                     mock_run.return_value.returncode = 1  # Git clone failed
@@ -197,7 +197,7 @@ class Plugin:
 
     def test_get_community_plugin_dirs_git_pull_failure(self):
         """Test get_community_plugin_dirs when git pull fails."""
-        with patch("mmrelay.plugin_loader.get_plugin_data_dir", return_value="/test"):
+        with patch("mmrelay.config.get_base_dir", return_value="/test"):
             with patch("os.path.exists", return_value=True):
                 with patch("subprocess.run") as mock_run:
                     mock_run.return_value.returncode = 1  # Git pull failed
@@ -209,7 +209,7 @@ class Plugin:
 
     def test_get_community_plugin_dirs_git_not_available(self):
         """Test get_community_plugin_dirs when git is not available."""
-        with patch("mmrelay.plugin_loader.get_plugin_data_dir", return_value="/test"):
+        with patch("mmrelay.config.get_base_dir", return_value="/test"):
             with patch("os.path.exists", return_value=False):
                 with patch(
                     "subprocess.run", side_effect=FileNotFoundError("git not found")
