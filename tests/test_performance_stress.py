@@ -231,7 +231,7 @@ class TestPerformanceStress(unittest.TestCase):
             start_time = time.time()
 
             # Process messages through all plugins
-            for i in range(message_count):
+            for _ in range(message_count):
                 on_meshtastic_message(packet, mock_interface)
 
             end_time = time.time()
@@ -337,7 +337,10 @@ class TestPerformanceStress(unittest.TestCase):
                     # Create and process messages
                     for j in range(10):
                         packet = {
-                            "decoded": {"text": f"Memory test {iteration}-{j}", "portnum": 1},
+                            "decoded": {
+                                "text": f"Memory test {iteration}-{j}",
+                                "portnum": 1,
+                            },
                             "fromId": f"!{j:08x}",
                             "channel": 0,
                             "id": iteration * 10 + j,

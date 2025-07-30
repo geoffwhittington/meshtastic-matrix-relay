@@ -35,69 +35,73 @@ class TestConfigEdgeCases(unittest.TestCase):
         """Set up test fixtures before each test method."""
         # Reset global state
         import mmrelay.config
+
         mmrelay.config.relay_config = {}
         mmrelay.config.config_path = None
         mmrelay.config.custom_data_dir = None
 
     def test_get_app_path_frozen_executable(self):
         """Test get_app_path when running as a frozen executable."""
-        with patch('sys.frozen', True, create=True):
-            with patch('sys.executable', '/path/to/executable'):
+        with patch("sys.frozen", True, create=True):
+            with patch("sys.executable", "/path/to/executable"):
                 result = get_app_path()
-                self.assertEqual(result, '/path/to')
+                self.assertEqual(result, "/path/to")
 
     def test_get_app_path_normal_python(self):
         """Test get_app_path when running in normal Python environment."""
-        with patch('sys.frozen', False, create=True):
+        with patch("sys.frozen", False, create=True):
             result = get_app_path()
             # Should return directory containing config.py
-            self.assertTrue(result.endswith('mmrelay'))
+            self.assertTrue(result.endswith("mmrelay"))
 
     def test_get_config_paths_with_args(self):
         """Test get_config_paths with command line arguments."""
         mock_args = MagicMock()
-        mock_args.config = '/custom/path/config.yaml'
-        
+        mock_args.config = "/custom/path/config.yaml"
+
         paths = get_config_paths(mock_args)
-        self.assertEqual(paths[0], '/custom/path/config.yaml')
+        self.assertEqual(paths[0], "/custom/path/config.yaml")
 
     def test_get_config_paths_windows_platform(self):
         """Test get_config_paths on Windows platform."""
-        with patch('sys.platform', 'win32'):
-            with patch('platformdirs.user_config_dir') as mock_user_config:
-                mock_user_config.return_value = 'C:\\Users\\Test\\AppData\\Local\\mmrelay'
-                with patch('os.makedirs'):  # Mock directory creation
+        with patch("sys.platform", "win32"):
+            with patch("platformdirs.user_config_dir") as mock_user_config:
+                mock_user_config.return_value = (
+                    "C:\\Users\\Test\\AppData\\Local\\mmrelay"
+                )
+                with patch("os.makedirs"):  # Mock directory creation
                     paths = get_config_paths()
                     # Check that a Windows-style path is in the list
-                    windows_path_found = any('AppData' in path for path in paths)
+                    windows_path_found = any("AppData" in path for path in paths)
                     self.assertTrue(windows_path_found)
 
     def test_get_config_paths_darwin_platform(self):
         """Test get_config_paths on macOS platform."""
-        with patch('sys.platform', 'darwin'):
-            with patch('mmrelay.config.get_base_dir') as mock_get_base_dir:
-                mock_get_base_dir.return_value = '/tmp/test_mmrelay'  # Use /tmp instead
-                with patch('os.makedirs'):  # Mock directory creation
-                    paths = get_config_paths()
-                    self.assertIn('/tmp/test_mmrelay/config.yaml', paths)
+        with patch("sys.platform", "darwin"):
+            with patch("mmrelay.config.get_base_dir") as mock_get_base_dir:
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    mock_get_base_dir.return_value = temp_dir
+                    with patch("os.makedirs"):  # Mock directory creation
+                        paths = get_config_paths()
+                        self.assertIn(f"{temp_dir}/config.yaml", paths)
 
     def test_load_config_yaml_parse_error(self):
         """Test load_config behavior with YAML parsing errors."""
-        with patch('builtins.open', mock_open(read_data='invalid: yaml: content: [')):
-            with patch('os.path.isfile', return_value=True):
-                with patch('mmrelay.config.logger') as mock_logger:
-                    config = load_config(config_file='test.yaml')
+        with patch("builtins.open", mock_open(read_data="invalid: yaml: content: [")):
+            with patch("os.path.isfile", return_value=True):
+                with patch("mmrelay.config.logger"):
+                    config = load_config(config_file="test.yaml")
                     # Should return empty config on YAML error
                     self.assertEqual(config, {})
 
     def test_load_config_file_permission_error(self):
         """Test load_config behavior with file permission errors."""
-        with patch('builtins.open', side_effect=PermissionError("Permission denied")):
-            with patch('os.path.isfile', return_value=True):
-                with patch('mmrelay.config.logger') as mock_logger:
+        with patch("builtins.open", side_effect=PermissionError("Permission denied")):
+            with patch("os.path.isfile", return_value=True):
+                with patch("mmrelay.config.logger"):
                     # Should not raise exception, should return empty config
                     try:
-                        config = load_config(config_file='test.yaml')
+                        config = load_config(config_file="test.yaml")
                         self.assertEqual(config, {})
                     except PermissionError:
                         # If exception is raised, that's also acceptable behavior
@@ -105,12 +109,12 @@ class TestConfigEdgeCases(unittest.TestCase):
 
     def test_load_config_file_not_found_error(self):
         """Test load_config behavior with file not found errors."""
-        with patch('builtins.open', side_effect=FileNotFoundError("File not found")):
-            with patch('os.path.isfile', return_value=True):
-                with patch('mmrelay.config.logger') as mock_logger:
+        with patch("builtins.open", side_effect=FileNotFoundError("File not found")):
+            with patch("os.path.isfile", return_value=True):
+                with patch("mmrelay.config.logger"):
                     # Should not raise exception, should return empty config
                     try:
-                        config = load_config(config_file='nonexistent.yaml')
+                        config = load_config(config_file="nonexistent.yaml")
                         self.assertEqual(config, {})
                     except FileNotFoundError:
                         # If exception is raised, that's also acceptable behavior
@@ -118,10 +122,10 @@ class TestConfigEdgeCases(unittest.TestCase):
 
     def test_load_config_empty_file(self):
         """Test load_config behavior with empty configuration file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            f.write('')  # Empty file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write("")  # Empty file
             temp_path = f.name
-        
+
         try:
             config = load_config(config_file=temp_path)
             # Should handle empty file gracefully
@@ -131,10 +135,10 @@ class TestConfigEdgeCases(unittest.TestCase):
 
     def test_load_config_null_yaml(self):
         """Test load_config behavior with YAML file containing only null."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            f.write('null')
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write("null")
             temp_path = f.name
-        
+
         try:
             config = load_config(config_file=temp_path)
             # Should handle null YAML gracefully
@@ -144,67 +148,65 @@ class TestConfigEdgeCases(unittest.TestCase):
 
     def test_load_config_search_priority(self):
         """Test that load_config respects search priority order."""
-        with patch('mmrelay.config.get_config_paths') as mock_get_paths:
+        with patch("mmrelay.config.get_config_paths") as mock_get_paths:
             mock_get_paths.return_value = [
-                '/first/config.yaml',
-                '/second/config.yaml',
-                '/third/config.yaml'
+                "/first/config.yaml",
+                "/second/config.yaml",
+                "/third/config.yaml",
             ]
-            
+
             # Mock only the second file exists
             def mock_isfile(path):
-                return path == '/second/config.yaml'
-            
-            with patch('os.path.isfile', side_effect=mock_isfile):
-                with patch('builtins.open', mock_open(read_data='test: value')):
-                    with patch('yaml.load', return_value={'test': 'value'}):
+                return path == "/second/config.yaml"
+
+            with patch("os.path.isfile", side_effect=mock_isfile):
+                with patch("builtins.open", mock_open(read_data="test: value")):
+                    with patch("yaml.load", return_value={"test": "value"}):
                         config = load_config()
-                        self.assertEqual(config, {'test': 'value'})
+                        self.assertEqual(config, {"test": "value"})
 
     def test_set_config_matrix_utils(self):
         """Test set_config with matrix_utils module."""
         mock_module = MagicMock()
-        mock_module.__name__ = 'mmrelay.matrix_utils'
+        mock_module.__name__ = "mmrelay.matrix_utils"
         mock_module.matrix_homeserver = None
 
         config = {
-            'matrix': {
-                'homeserver': 'https://test.matrix.org',
-                'access_token': 'test_token',
-                'bot_user_id': '@test:matrix.org'
+            "matrix": {
+                "homeserver": "https://test.matrix.org",
+                "access_token": "test_token",
+                "bot_user_id": "@test:matrix.org",
             },
-            'matrix_rooms': [{'id': '!test:matrix.org'}]
+            "matrix_rooms": [{"id": "!test:matrix.org"}],
         }
 
         result = set_config(mock_module, config)
 
         self.assertEqual(mock_module.config, config)
-        self.assertEqual(mock_module.matrix_homeserver, 'https://test.matrix.org')
+        self.assertEqual(mock_module.matrix_homeserver, "https://test.matrix.org")
         self.assertEqual(result, config)
 
     def test_set_config_meshtastic_utils(self):
         """Test set_config with meshtastic_utils module."""
         mock_module = MagicMock()
-        mock_module.__name__ = 'mmrelay.meshtastic_utils'
+        mock_module.__name__ = "mmrelay.meshtastic_utils"
         mock_module.matrix_rooms = None
 
-        config = {
-            'matrix_rooms': [{'id': '!test:matrix.org', 'meshtastic_channel': 0}]
-        }
+        config = {"matrix_rooms": [{"id": "!test:matrix.org", "meshtastic_channel": 0}]}
 
         result = set_config(mock_module, config)
 
         self.assertEqual(mock_module.config, config)
-        self.assertEqual(mock_module.matrix_rooms, config['matrix_rooms'])
+        self.assertEqual(mock_module.matrix_rooms, config["matrix_rooms"])
         self.assertEqual(result, config)
 
     def test_set_config_with_legacy_setup_function(self):
         """Test set_config with module that has legacy setup_config function."""
         mock_module = MagicMock()
-        mock_module.__name__ = 'test_module'
+        mock_module.__name__ = "test_module"
         mock_module.setup_config = MagicMock()
 
-        config = {'test': 'value'}
+        config = {"test": "value"}
 
         result = set_config(mock_module, config)
 
@@ -215,15 +217,15 @@ class TestConfigEdgeCases(unittest.TestCase):
     def test_set_config_without_required_attributes(self):
         """Test set_config with module missing expected attributes."""
         mock_module = MagicMock()
-        mock_module.__name__ = 'mmrelay.matrix_utils'
+        mock_module.__name__ = "mmrelay.matrix_utils"
         # Remove the matrix_homeserver attribute
         del mock_module.matrix_homeserver
 
         config = {
-            'matrix': {
-                'homeserver': 'https://test.matrix.org',
-                'access_token': 'test_token',
-                'bot_user_id': '@test:matrix.org'
+            "matrix": {
+                "homeserver": "https://test.matrix.org",
+                "access_token": "test_token",
+                "bot_user_id": "@test:matrix.org",
             }
         }
 
@@ -233,16 +235,16 @@ class TestConfigEdgeCases(unittest.TestCase):
 
     def test_load_config_no_files_found(self):
         """Test load_config when no configuration files are found."""
-        with patch('mmrelay.config.get_config_paths') as mock_get_paths:
-            mock_get_paths.return_value = ['/nonexistent1.yaml', '/nonexistent2.yaml']
-            
-            with patch('os.path.isfile', return_value=False):
-                with patch('mmrelay.config.logger') as mock_logger:
+        with patch("mmrelay.config.get_config_paths") as mock_get_paths:
+            mock_get_paths.return_value = ["/nonexistent1.yaml", "/nonexistent2.yaml"]
+
+            with patch("os.path.isfile", return_value=False):
+                with patch("mmrelay.config.logger") as mock_logger:
                     config = load_config()
-                    
+
                     # Should return empty config
                     self.assertEqual(config, {})
-                    
+
                     # Should log error messages
                     mock_logger.error.assert_called()
 

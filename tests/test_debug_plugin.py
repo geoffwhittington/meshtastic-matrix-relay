@@ -43,7 +43,7 @@ class TestDebugPlugin(unittest.TestCase):
         description = self.plugin.description
         self.assertEqual(description, "")
 
-    @patch.object(Plugin, 'strip_raw')
+    @patch.object(Plugin, "strip_raw")
     def test_handle_meshtastic_message_logs_packet(self, mock_strip_raw):
         """Test that handle_meshtastic_message logs the packet after stripping raw data."""
         # Mock the strip_raw method to return a cleaned packet
@@ -53,24 +53,27 @@ class TestDebugPlugin(unittest.TestCase):
         # Test packet
         original_packet = {
             "decoded": {"text": "test message", "raw": b"binary_data"},
-            "fromId": "!12345678"
+            "fromId": "!12345678",
         }
 
         async def run_test():
             result = await self.plugin.handle_meshtastic_message(
                 original_packet, "formatted_message", "TestNode", "TestMesh"
             )
-            
+
             # Should call strip_raw with the original packet
             mock_strip_raw.assert_called_once_with(original_packet)
-            
+
             # Should log the cleaned packet
-            self.plugin.logger.debug.assert_called_once_with(f"Packet received: {cleaned_packet}")
-            
+            self.plugin.logger.debug.assert_called_once_with(
+                f"Packet received: {cleaned_packet}"
+            )
+
             # Should return False (never intercepts messages)
             self.assertFalse(result)
 
         import asyncio
+
         asyncio.run(run_test())
 
     def test_handle_meshtastic_message_returns_false(self):
@@ -84,6 +87,7 @@ class TestDebugPlugin(unittest.TestCase):
             self.assertFalse(result)
 
         import asyncio
+
         asyncio.run(run_test())
 
     def test_handle_room_message_returns_false(self):
@@ -97,6 +101,7 @@ class TestDebugPlugin(unittest.TestCase):
             self.assertFalse(result)
 
         import asyncio
+
         asyncio.run(run_test())
 
     def test_handle_meshtastic_message_with_empty_packet(self):
@@ -107,14 +112,15 @@ class TestDebugPlugin(unittest.TestCase):
             result = await self.plugin.handle_meshtastic_message(
                 empty_packet, "", "", ""
             )
-            
+
             # Should still log the packet (even if empty)
             self.plugin.logger.debug.assert_called_once()
-            
+
             # Should return False
             self.assertFalse(result)
 
         import asyncio
+
         asyncio.run(run_test())
 
     def test_handle_meshtastic_message_with_complex_packet(self):
@@ -123,7 +129,7 @@ class TestDebugPlugin(unittest.TestCase):
             "decoded": {
                 "text": "complex message",
                 "portnum": 1,
-                "payload": b"binary_payload"
+                "payload": b"binary_payload",
             },
             "fromId": "!12345678",
             "toId": "!87654321",
@@ -133,28 +139,29 @@ class TestDebugPlugin(unittest.TestCase):
             "priority": 10,
             "rxTime": 1234567890,
             "rxSnr": -5.5,
-            "rxRssi": -95
+            "rxRssi": -95,
         }
 
         async def run_test():
             result = await self.plugin.handle_meshtastic_message(
                 complex_packet, "formatted_message", "TestNode", "TestMesh"
             )
-            
+
             # Should log the packet
             self.plugin.logger.debug.assert_called_once()
-            
+
             # Should return False
             self.assertFalse(result)
 
         import asyncio
+
         asyncio.run(run_test())
 
     def test_plugin_never_intercepts_messages(self):
         """Test that the debug plugin never intercepts messages, allowing other plugins to process them."""
         # This is a behavioral test to ensure the plugin always returns False
         # from both message handling methods, which is critical for its role as a debug tool
-        
+
         packet = {"decoded": {"text": "!important_command"}, "fromId": "!12345678"}
         room = MagicMock()
         event = MagicMock()
@@ -165,12 +172,15 @@ class TestDebugPlugin(unittest.TestCase):
                 packet, "formatted_message", "TestNode", "TestMesh"
             )
             self.assertFalse(meshtastic_result)
-            
+
             # Test matrix room message handling
-            matrix_result = await self.plugin.handle_room_message(room, event, "!important_command")
+            matrix_result = await self.plugin.handle_room_message(
+                room, event, "!important_command"
+            )
             self.assertFalse(matrix_result)
 
         import asyncio
+
         asyncio.run(run_test())
 
 

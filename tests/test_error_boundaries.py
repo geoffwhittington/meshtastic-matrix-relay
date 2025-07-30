@@ -371,7 +371,7 @@ class TestErrorBoundaries(unittest.TestCase):
                     try:
                         await on_room_message(mock_room, mock_event)
                     except Exception as e:
-                        self.fail(f"Error propagated beyond boundary: {e}") from e
+                        self.fail(f"Error propagated beyond boundary: {e}")
 
                     # Should have logged the error
                     mock_logger.error.assert_called()
@@ -389,8 +389,8 @@ class TestErrorBoundaries(unittest.TestCase):
                 # Try to allocate large amount of memory
                 [0] * (10**6)  # 1 million integers
                 return MagicMock(id="memory_id")
-            except MemoryError:
-                raise Exception("Out of memory")
+            except MemoryError as e:
+                raise Exception("Out of memory") from e
 
         try:
             # Queue many memory-intensive operations
