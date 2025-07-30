@@ -19,3 +19,4 @@ docker-compose.yaml
 htmlcov/
 coverage.xml
 .pytest_cache/
+MagicMock/

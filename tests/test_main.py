@@ -160,43 +160,30 @@ class TestMain(unittest.TestCase):
     @patch('mmrelay.main.connect_matrix')
     @patch('mmrelay.main.join_matrix_room')
     @patch('mmrelay.main.stop_message_queue')
-    async def test_main_with_message_map_wipe(self, mock_stop_queue, mock_join_room,
-                                              mock_connect_matrix, mock_connect_meshtastic,
-                                              mock_start_queue, mock_load_plugins,
-                                              mock_init_db, mock_wipe_map):
+    def test_main_with_message_map_wipe(self, mock_stop_queue, mock_join_room,
+                                        mock_connect_matrix, mock_connect_meshtastic,
+                                        mock_start_queue, mock_load_plugins,
+                                        mock_init_db, mock_wipe_map):
         """Test main application flow with message map wiping enabled."""
         # Enable message map wiping
         config_with_wipe = self.mock_config.copy()
         config_with_wipe["database"]["msg_map"]["wipe_on_restart"] = True
-        
-        # Mock clients
-        mock_matrix_client = AsyncMock()
-        mock_connect_matrix.return_value = mock_matrix_client
-        mock_meshtastic_client = MagicMock()
-        mock_meshtastic_client.nodes = {}
-        mock_connect_meshtastic.return_value = mock_meshtastic_client
-        
-        # Mock quick completion
-        async def mock_sync():
-            await asyncio.sleep(0.1)
-        mock_matrix_client.sync_forever = AsyncMock(side_effect=mock_sync)
-        
-        # Mock shutdown event
-        shutdown_event = asyncio.Event()
-        with patch('mmrelay.main.asyncio.Event') as mock_event:
-            mock_event.return_value = shutdown_event
-            
-            async def trigger_shutdown():
-                await asyncio.sleep(0.2)
-                shutdown_event.set()
-            
-            await asyncio.gather(
-                main(config_with_wipe),
-                trigger_shutdown(),
-                return_exceptions=True
-            )
-        
-        # Verify message map was wiped
+
+        # Mock connections to fail early (return None)
+        mock_connect_matrix.return_value = None
+        mock_connect_meshtastic.return_value = None
+
+        # Mock the main function to exit early after wipe check
+        with patch('mmrelay.main.connect_matrix') as mock_connect_matrix_inner:
+            mock_connect_matrix_inner.side_effect = Exception("Early exit for test")
+
+            # Call main function (should exit early due to exception)
+            try:
+                asyncio.run(main(config_with_wipe))
+            except Exception:
+                pass  # Expected due to our mock exception
+
+        # Verify message map was wiped (this happens before connection attempts)
         mock_wipe_map.assert_called_once()
 
     @patch('mmrelay.config.load_config')
@@ -275,10 +262,10 @@ class TestMain(unittest.TestCase):
     @patch('mmrelay.main.connect_matrix')
     @patch('mmrelay.main.join_matrix_room')
     @patch('mmrelay.main.stop_message_queue')
-    async def test_main_meshtastic_connection_failure(self, mock_stop_queue, mock_join_room,
-                                                      mock_connect_matrix, mock_start_queue,
-                                                      mock_load_plugins, mock_init_db,
-                                                      mock_connect_meshtastic):
+    def test_main_meshtastic_connection_failure(self, mock_stop_queue, mock_join_room,
+                                                mock_connect_matrix, mock_start_queue,
+                                                mock_load_plugins, mock_init_db,
+                                                mock_connect_meshtastic):
         """Test main application flow when Meshtastic connection fails."""
         # Mock Meshtastic connection to return None (failure)
         mock_connect_meshtastic.return_value = None
@@ -292,20 +279,23 @@ class TestMain(unittest.TestCase):
             await asyncio.sleep(0.1)
         mock_matrix_client.sync_forever = AsyncMock(side_effect=mock_sync)
         
-        # Mock shutdown event
-        shutdown_event = asyncio.Event()
-        with patch('mmrelay.main.asyncio.Event') as mock_event:
-            mock_event.return_value = shutdown_event
-            
-            async def trigger_shutdown():
-                await asyncio.sleep(0.2)
-                shutdown_event.set()
-            
-            await asyncio.gather(
-                main(self.mock_config),
-                trigger_shutdown(),
-                return_exceptions=True
-            )
+        # Mock shutdown event and run async test
+        async def run_test():
+            shutdown_event = asyncio.Event()
+            with patch('mmrelay.main.asyncio.Event') as mock_event:
+                mock_event.return_value = shutdown_event
+
+                async def trigger_shutdown():
+                    await asyncio.sleep(0.2)
+                    shutdown_event.set()
+
+                await asyncio.gather(
+                    main(self.mock_config),
+                    trigger_shutdown(),
+                    return_exceptions=True
+                )
+
+        asyncio.run(run_test())
         
         # Should still proceed with Matrix connection
         mock_connect_matrix.assert_called_once()

@@ -30,15 +30,23 @@ from mmrelay.plugin_loader import (
 
 class MockPlugin:
     """Mock plugin class for testing."""
-    
+
     def __init__(self, name="test_plugin", priority=10):
         self.plugin_name = name
         self.priority = priority
         self.started = False
-        
+
     def start(self):
         """Mock start method."""
         self.started = True
+
+    async def handle_meshtastic_message(self, packet, interface, longname, shortname, meshnet_name):
+        """Mock async method to prevent warnings."""
+        pass
+
+    async def handle_room_message(self, room, event, full_message):
+        """Mock async method to prevent warnings."""
+        pass
 
 
 class TestPluginLoader(unittest.TestCase):
