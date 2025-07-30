@@ -531,8 +531,9 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
         mock_meshtastic_client = MagicMock()
         mock_connect_meshtastic.return_value = mock_meshtastic_client
 
-        # Mock the sync_forever to complete quickly
+        # Mock the sync_forever to complete quickly and mock callback methods
         mock_matrix_client.sync_forever = AsyncMock(side_effect=KeyboardInterrupt())
+        mock_matrix_client.add_event_callback = MagicMock()  # Use regular mock for non-async method
 
         try:
             asyncio.run(main(config_with_wipe))
@@ -567,8 +568,9 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
         mock_meshtastic_client = MagicMock()
         mock_connect_meshtastic.return_value = mock_meshtastic_client
 
-        # Mock the sync_forever to complete quickly
+        # Mock the sync_forever to complete quickly and mock callback methods
         mock_matrix_client.sync_forever = AsyncMock(side_effect=KeyboardInterrupt())
+        mock_matrix_client.add_event_callback = MagicMock()  # Use regular mock for non-async method
 
         try:
             asyncio.run(main(config_with_wipe))
@@ -599,8 +601,9 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
         mock_meshtastic_client = MagicMock()
         mock_connect_meshtastic.return_value = mock_meshtastic_client
 
-        # Mock the sync_forever to complete quickly
+        # Mock the sync_forever to complete quickly and mock callback methods
         mock_matrix_client.sync_forever = AsyncMock(side_effect=KeyboardInterrupt())
+        mock_matrix_client.add_event_callback = MagicMock()  # Use regular mock for non-async method
 
         try:
             asyncio.run(main(config_with_delay))
@@ -629,8 +632,9 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
         mock_connect_matrix.return_value = mock_matrix_client
         mock_connect_meshtastic.return_value = None  # No Meshtastic client
 
-        # Mock the sync_forever to complete quickly
+        # Mock the sync_forever to complete quickly and mock callback methods
         mock_matrix_client.sync_forever = AsyncMock(side_effect=KeyboardInterrupt())
+        mock_matrix_client.add_event_callback = MagicMock()  # Use regular mock for non-async method
 
         try:
             asyncio.run(main(self.mock_config))
