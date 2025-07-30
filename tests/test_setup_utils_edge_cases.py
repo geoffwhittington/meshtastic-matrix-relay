@@ -27,10 +27,10 @@ from mmrelay.setup_utils import (
     create_service_file,
     enable_lingering,
     get_executable_path,
-    get_service_template,
+    get_template_service_content,
     get_user_service_path,
     install_service,
-    reload_systemd_daemon,
+    reload_daemon,
 )
 
 
@@ -64,25 +64,23 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
             result = get_executable_path()
             self.assertEqual(result, "/usr/local/bin/mmrelay")
 
-    def test_get_service_template_file_not_found(self):
-        """Test get_service_template when template file doesn't exist."""
-        with patch("mmrelay.setup_utils.get_app_path", return_value="/nonexistent"):
-            with patch("os.path.exists", return_value=False):
-                result = get_service_template()
-                # Should return default template
-                self.assertIn("[Unit]", result)
-                self.assertIn("Description=A Meshtastic", result)
+    def test_get_template_service_content_file_not_found(self):
+        """Test get_template_service_content when template file doesn't exist."""
+        with patch("mmrelay.setup_utils.get_template_service_path", return_value=None):
+            result = get_template_service_content()
+            # Should return default template
+            self.assertIn("[Unit]", result)
+            self.assertIn("Description=A Meshtastic", result)
 
-    def test_get_service_template_read_error(self):
-        """Test get_service_template when template file can't be read."""
-        with patch("mmrelay.setup_utils.get_app_path", return_value="/test"):
-            with patch("os.path.exists", return_value=True):
-                with patch("builtins.open", side_effect=IOError("Read error")):
-                    with patch("builtins.print") as mock_print:
-                        result = get_service_template()
-                        # Should return default template and print error
-                        self.assertIn("[Unit]", result)
-                        mock_print.assert_called()
+    def test_get_template_service_content_read_error(self):
+        """Test get_template_service_content when template file can't be read."""
+        with patch("mmrelay.setup_utils.get_template_service_path", return_value="/test/service.template"):
+            with patch("builtins.open", side_effect=IOError("Read error")):
+                with patch("builtins.print") as mock_print:
+                    result = get_template_service_content()
+                    # Should return default template and print error
+                    self.assertIn("[Unit]", result)
+                    mock_print.assert_called()
 
     def test_create_service_file_write_permission_error(self):
         """Test create_service_file when writing fails due to permissions."""
@@ -111,24 +109,24 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                 self.assertFalse(result)
                 mock_print.assert_called()
 
-    def test_reload_systemd_daemon_command_failure(self):
-        """Test reload_systemd_daemon when systemctl command fails."""
+    def test_reload_daemon_command_failure(self):
+        """Test reload_daemon when systemctl command fails."""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value.returncode = 1
             mock_run.return_value.stderr = "Command failed"
 
             with patch("builtins.print") as mock_print:
-                result = reload_systemd_daemon()
+                result = reload_daemon()
                 self.assertFalse(result)
                 mock_print.assert_called()
 
-    def test_reload_systemd_daemon_exception(self):
-        """Test reload_systemd_daemon when subprocess raises exception."""
+    def test_reload_daemon_exception(self):
+        """Test reload_daemon when subprocess raises exception."""
         with patch(
             "subprocess.run", side_effect=FileNotFoundError("systemctl not found")
         ):
             with patch("builtins.print") as mock_print:
-                result = reload_systemd_daemon()
+                result = reload_daemon()
                 self.assertFalse(result)
                 mock_print.assert_called()
 
@@ -209,7 +207,7 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
         ):
             with patch("mmrelay.setup_utils.create_service_file", return_value=True):
                 with patch(
-                    "mmrelay.setup_utils.reload_systemd_daemon", return_value=False
+                    "mmrelay.setup_utils.reload_daemon", return_value=False
                 ):
                     with patch("builtins.print"):
                         result = install_service()
@@ -223,7 +221,7 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
         ):
             with patch("mmrelay.setup_utils.create_service_file", return_value=True):
                 with patch(
-                    "mmrelay.setup_utils.reload_systemd_daemon", return_value=True
+                    "mmrelay.setup_utils.reload_daemon", return_value=True
                 ):
                     with patch(
                         "mmrelay.setup_utils.check_loginctl_available",
@@ -246,7 +244,7 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
         ):
             with patch("mmrelay.setup_utils.create_service_file", return_value=True):
                 with patch(
-                    "mmrelay.setup_utils.reload_systemd_daemon", return_value=True
+                    "mmrelay.setup_utils.reload_daemon", return_value=True
                 ):
                     with patch(
                         "mmrelay.setup_utils.check_loginctl_available",
@@ -272,7 +270,7 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
         ):
             with patch("mmrelay.setup_utils.create_service_file", return_value=True):
                 with patch(
-                    "mmrelay.setup_utils.reload_systemd_daemon", return_value=True
+                    "mmrelay.setup_utils.reload_daemon", return_value=True
                 ):
                     with patch(
                         "mmrelay.setup_utils.check_loginctl_available",
@@ -294,7 +292,7 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
         ):
             with patch("mmrelay.setup_utils.create_service_file", return_value=True):
                 with patch(
-                    "mmrelay.setup_utils.reload_systemd_daemon", return_value=True
+                    "mmrelay.setup_utils.reload_daemon", return_value=True
                 ):
                     with patch(
                         "mmrelay.setup_utils.check_loginctl_available",
@@ -319,7 +317,7 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
         --config %h/.mmrelay/config/config.yaml
         """
 
-        with patch("mmrelay.setup_utils.get_service_template", return_value=template):
+        with patch("mmrelay.setup_utils.get_template_service_content", return_value=template):
             with patch(
                 "mmrelay.setup_utils.get_executable_path",
                 return_value="/usr/bin/mmrelay",
