@@ -71,13 +71,13 @@ class TestDropPlugin(unittest.TestCase):
         self.assertIsNone(position)
 
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
-    async def test_handle_meshtastic_message_drop_valid(self, mock_connect):
+    def test_handle_meshtastic_message_drop_valid(self, mock_connect):
         """Test dropping a message with valid position data."""
         mock_connect.return_value = self.mock_meshtastic_client
-        
+
         # Mock plugin methods
         self.plugin.store_node_data = MagicMock()
-        
+
         packet = {
             "fromId": "!12345678",
             "decoded": {
@@ -85,25 +85,29 @@ class TestDropPlugin(unittest.TestCase):
                 "text": "!drop This is a test message"
             }
         }
-        
-        result = await self.plugin.handle_meshtastic_message(
-            packet, "formatted_message", "longname", "meshnet_name"
-        )
-        
-        self.assertTrue(result)
-        self.plugin.store_node_data.assert_called_once()
-        call_args = self.plugin.store_node_data.call_args
-        self.assertEqual(call_args[0][0], "!NODE_MSGS!")
-        stored_data = call_args[0][1]
-        self.assertEqual(stored_data["text"], "This is a test message")
-        self.assertEqual(stored_data["originator"], "!12345678")
-        self.assertEqual(stored_data["location"], (40.7128, -74.0060))
+
+        async def run_test():
+            result = await self.plugin.handle_meshtastic_message(
+                packet, "formatted_message", "longname", "meshnet_name"
+            )
+
+            self.assertTrue(result)
+            self.plugin.store_node_data.assert_called_once()
+            call_args = self.plugin.store_node_data.call_args
+            self.assertEqual(call_args[0][0], "!NODE_MSGS!")
+            stored_data = call_args[0][1]
+            self.assertEqual(stored_data["text"], "This is a test message")
+            self.assertEqual(stored_data["originator"], "!12345678")
+            self.assertEqual(stored_data["location"], (40.7128, -74.0060))
+
+        import asyncio
+        asyncio.run(run_test())
 
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
-    async def test_handle_meshtastic_message_drop_no_position(self, mock_connect):
+    def test_handle_meshtastic_message_drop_no_position(self, mock_connect):
         """Test dropping a message when node has no position data."""
         mock_connect.return_value = self.mock_meshtastic_client
-        
+
         packet = {
             "fromId": "!11111111",  # Node without position
             "decoded": {
@@ -111,21 +115,25 @@ class TestDropPlugin(unittest.TestCase):
                 "text": "!drop This should fail"
             }
         }
-        
-        result = await self.plugin.handle_meshtastic_message(
-            packet, "formatted_message", "longname", "meshnet_name"
-        )
-        
-        self.assertTrue(result)  # Returns True but doesn't store
-        self.plugin.logger.debug.assert_called_with(
-            "Position of dropping node is not known. Skipping ..."
-        )
+
+        async def run_test():
+            result = await self.plugin.handle_meshtastic_message(
+                packet, "formatted_message", "longname", "meshnet_name"
+            )
+
+            self.assertTrue(result)  # Returns True but doesn't store
+            self.plugin.logger.debug.assert_called_with(
+                "Position of dropping node is not known. Skipping ..."
+            )
+
+        import asyncio
+        asyncio.run(run_test())
 
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
-    async def test_handle_meshtastic_message_not_drop_command(self, mock_connect):
+    def test_handle_meshtastic_message_not_drop_command(self, mock_connect):
         """Test handling a message that's not a drop command."""
         mock_connect.return_value = self.mock_meshtastic_client
-        
+
         packet = {
             "fromId": "!12345678",
             "decoded": {
@@ -133,18 +141,21 @@ class TestDropPlugin(unittest.TestCase):
                 "text": "Just a regular message"
             }
         }
-        
-        result = await self.plugin.handle_meshtastic_message(
-            packet, "formatted_message", "longname", "meshnet_name"
-        )
-        
-        self.assertFalse(result)
+
+        async def run_test():
+            result = await self.plugin.handle_meshtastic_message(
+                packet, "formatted_message", "longname", "meshnet_name"
+            )
+            self.assertFalse(result)
+
+        import asyncio
+        asyncio.run(run_test())
 
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
-    async def test_handle_meshtastic_message_invalid_drop_format(self, mock_connect):
+    def test_handle_meshtastic_message_invalid_drop_format(self, mock_connect):
         """Test handling a drop command with invalid format."""
         mock_connect.return_value = self.mock_meshtastic_client
-        
+
         packet = {
             "fromId": "!12345678",
             "decoded": {
@@ -152,18 +163,23 @@ class TestDropPlugin(unittest.TestCase):
                 "text": "!drop"  # No message content
             }
         }
-        
-        result = await self.plugin.handle_meshtastic_message(
-            packet, "formatted_message", "longname", "meshnet_name"
-        )
-        
-        self.assertFalse(result)
 
+        async def run_test():
+            result = await self.plugin.handle_meshtastic_message(
+                packet, "formatted_message", "longname", "meshnet_name"
+            )
+            self.assertFalse(result)
+
+        import asyncio
+        asyncio.run(run_test())
+
+    @patch('mmrelay.plugins.drop_plugin.haversine')
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
-    async def test_handle_meshtastic_message_pickup_in_range(self, mock_connect):
+    def test_handle_meshtastic_message_pickup_in_range(self, mock_connect, mock_haversine):
         """Test picking up messages when in range."""
         mock_connect.return_value = self.mock_meshtastic_client
-        
+        mock_haversine.return_value = 1.0  # 1km distance, within 5km radius
+
         # Mock stored messages
         stored_messages = [
             {
@@ -172,10 +188,10 @@ class TestDropPlugin(unittest.TestCase):
                 "originator": "!99999999"  # Different from packet sender
             }
         ]
-        
+
         self.plugin.get_node_data = MagicMock(return_value=stored_messages)
         self.plugin.set_node_data = MagicMock()
-        
+
         packet = {
             "fromId": "!12345678",  # Node1 with position
             "decoded": {
@@ -183,23 +199,29 @@ class TestDropPlugin(unittest.TestCase):
                 "text": "Some message"
             }
         }
-        
-        result = await self.plugin.handle_meshtastic_message(
-            packet, "formatted_message", "longname", "meshnet_name"
-        )
-        
-        # Should send the message to the node
-        self.mock_meshtastic_client.sendText.assert_called_once_with(
-            text="Pickup this message", destinationId="!12345678"
-        )
-        
-        # Should clear the messages (empty list)
-        self.plugin.set_node_data.assert_called_once_with("!NODE_MSGS!", [])
 
+        async def run_test():
+            result = await self.plugin.handle_meshtastic_message(
+                packet, "formatted_message", "longname", "meshnet_name"
+            )
+
+            # Should send the message to the node
+            self.mock_meshtastic_client.sendText.assert_called_once_with(
+                text="Pickup this message", destinationId="!12345678"
+            )
+
+            # Should clear the messages (empty list)
+            self.plugin.set_node_data.assert_called_once_with("!NODE_MSGS!", [])
+
+        import asyncio
+        asyncio.run(run_test())
+
+    @patch('mmrelay.plugins.drop_plugin.haversine')
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
-    async def test_handle_meshtastic_message_pickup_out_of_range(self, mock_connect):
+    def test_handle_meshtastic_message_pickup_out_of_range(self, mock_connect, mock_haversine):
         """Test that messages out of range are not picked up."""
         mock_connect.return_value = self.mock_meshtastic_client
+        mock_haversine.return_value = 10.0  # 10km distance, outside 5km radius
 
         # Mock stored messages at a distant location
         stored_messages = [
@@ -221,20 +243,26 @@ class TestDropPlugin(unittest.TestCase):
             }
         }
 
-        result = await self.plugin.handle_meshtastic_message(
-            packet, "formatted_message", "longname", "meshnet_name"
-        )
+        async def run_test():
+            result = await self.plugin.handle_meshtastic_message(
+                packet, "formatted_message", "longname", "meshnet_name"
+            )
 
-        # Should not send the message
-        self.mock_meshtastic_client.sendText.assert_not_called()
+            # Should not send the message
+            self.mock_meshtastic_client.sendText.assert_not_called()
 
-        # Should keep the message in storage
-        self.plugin.set_node_data.assert_called_once_with("!NODE_MSGS!", stored_messages)
+            # Should keep the message in storage
+            self.plugin.set_node_data.assert_called_once_with("!NODE_MSGS!", stored_messages)
 
+        import asyncio
+        asyncio.run(run_test())
+
+    @patch('mmrelay.plugins.drop_plugin.haversine')
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
-    async def test_handle_meshtastic_message_skip_own_messages(self, mock_connect):
+    def test_handle_meshtastic_message_skip_own_messages(self, mock_connect, mock_haversine):
         """Test that nodes cannot pickup their own dropped messages."""
         mock_connect.return_value = self.mock_meshtastic_client
+        mock_haversine.return_value = 1.0  # 1km distance, within range
 
         # Mock stored messages from the same originator
         stored_messages = [
@@ -256,20 +284,26 @@ class TestDropPlugin(unittest.TestCase):
             }
         }
 
-        result = await self.plugin.handle_meshtastic_message(
-            packet, "formatted_message", "longname", "meshnet_name"
-        )
+        async def run_test():
+            result = await self.plugin.handle_meshtastic_message(
+                packet, "formatted_message", "longname", "meshnet_name"
+            )
 
-        # Should not send the message
-        self.mock_meshtastic_client.sendText.assert_not_called()
+            # Should not send the message
+            self.mock_meshtastic_client.sendText.assert_not_called()
 
-        # Should keep the message in storage (can't pickup own messages)
-        self.plugin.set_node_data.assert_called_once_with("!NODE_MSGS!", stored_messages)
+            # Should keep the message in storage (can't pick up own messages)
+            self.plugin.set_node_data.assert_called_once_with("!NODE_MSGS!", stored_messages)
 
+        import asyncio
+        asyncio.run(run_test())
+
+    @patch('mmrelay.plugins.drop_plugin.haversine')
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
-    async def test_handle_meshtastic_message_distance_calculation_error(self, mock_connect):
+    def test_handle_meshtastic_message_distance_calculation_error(self, mock_connect, mock_haversine):
         """Test handling of distance calculation errors."""
         mock_connect.return_value = self.mock_meshtastic_client
+        mock_haversine.side_effect = ValueError("Invalid coordinates")  # Simulate error
 
         # Mock stored messages with invalid location data
         stored_messages = [
@@ -291,18 +325,22 @@ class TestDropPlugin(unittest.TestCase):
             }
         }
 
-        result = await self.plugin.handle_meshtastic_message(
-            packet, "formatted_message", "longname", "meshnet_name"
-        )
+        async def run_test():
+            result = await self.plugin.handle_meshtastic_message(
+                packet, "formatted_message", "longname", "meshnet_name"
+            )
 
-        # Should not send the message (distance defaults to 1000km, out of range)
-        self.mock_meshtastic_client.sendText.assert_not_called()
+            # Should not send the message (distance defaults to 1000km, out of range)
+            self.mock_meshtastic_client.sendText.assert_not_called()
 
-        # Should keep the message in storage
-        self.plugin.set_node_data.assert_called_once_with("!NODE_MSGS!", stored_messages)
+            # Should keep the message in storage
+            self.plugin.set_node_data.assert_called_once_with("!NODE_MSGS!", stored_messages)
+
+        import asyncio
+        asyncio.run(run_test())
 
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
-    async def test_handle_meshtastic_message_from_relay_node(self, mock_connect):
+    def test_handle_meshtastic_message_from_relay_node(self, mock_connect):
         """Test that messages from the relay node itself are ignored for pickup."""
         mock_connect.return_value = self.mock_meshtastic_client
 
@@ -314,12 +352,16 @@ class TestDropPlugin(unittest.TestCase):
             }
         }
 
-        result = await self.plugin.handle_meshtastic_message(
-            packet, "formatted_message", "longname", "meshnet_name"
-        )
+        async def run_test():
+            result = await self.plugin.handle_meshtastic_message(
+                packet, "formatted_message", "longname", "meshnet_name"
+            )
 
-        # Should not process pickup for relay's own messages
-        self.assertIsNone(result)
+            # Should return False for non-drop messages (not processed)
+            self.assertFalse(result)
+
+        import asyncio
+        asyncio.run(run_test())
 
     def test_handle_room_message_with_matching_command(self):
         """Test handling Matrix room messages with matching commands."""
