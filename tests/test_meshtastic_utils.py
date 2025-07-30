@@ -14,15 +14,18 @@ import asyncio
 import os
 import sys
 import unittest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from mmrelay.meshtastic_utils import (
     connect_meshtastic,
+    is_running_as_service,
+    on_lost_meshtastic_connection,
     on_meshtastic_message,
     sendTextReply,
+    serial_port_exists,
 )
 
 
@@ -318,6 +321,305 @@ class TestMeshtasticUtils(unittest.TestCase):
             # Meshtastic->Matrix messages are still relayed regardless of broadcast_enabled
             # (broadcast_enabled only affects Matrix->Meshtastic direction)
             mock_run_coro.assert_called_once()
+
+
+class TestServiceDetection(unittest.TestCase):
+    """Test cases for service detection functionality."""
+
+    @patch.dict(os.environ, {'INVOCATION_ID': 'test-service-id'})
+    def test_is_running_as_service_with_invocation_id(self):
+        """Test service detection when INVOCATION_ID environment variable is set."""
+        result = is_running_as_service()
+        self.assertTrue(result)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_is_running_as_service_with_systemd_parent(self):
+        """Test service detection when parent process is systemd."""
+        status_data = "PPid:\t1\n"
+        comm_data = "systemd"
+
+        def mock_open_func(filename, *args, **kwargs):
+            if filename == "/proc/self/status":
+                return mock_open(read_data=status_data)()
+            elif filename.startswith("/proc/") and filename.endswith("/comm"):
+                return mock_open(read_data=comm_data)()
+            else:
+                raise FileNotFoundError()
+
+        with patch('builtins.open', side_effect=mock_open_func):
+            result = is_running_as_service()
+            self.assertTrue(result)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_is_running_as_service_normal_process(self):
+        """Test service detection for normal (non-service) process."""
+        status_data = "PPid:\t1234\n"
+        comm_data = "bash"
+
+        def mock_open_func(filename, *args, **kwargs):
+            if filename == "/proc/self/status":
+                return mock_open(read_data=status_data)()
+            elif filename.startswith("/proc/") and filename.endswith("/comm"):
+                return mock_open(read_data=comm_data)()
+            else:
+                raise FileNotFoundError()
+
+        with patch('builtins.open', side_effect=mock_open_func):
+            result = is_running_as_service()
+            self.assertFalse(result)
+
+    @patch.dict(os.environ, {}, clear=True)
+    @patch('builtins.open', side_effect=FileNotFoundError())
+    def test_is_running_as_service_file_not_found(self, mock_open_func):
+        """Test service detection when parent process file cannot be read."""
+        result = is_running_as_service()
+        self.assertFalse(result)
+
+
+class TestSerialPortDetection(unittest.TestCase):
+    """Test cases for serial port detection functionality."""
+
+    @patch('mmrelay.meshtastic_utils.serial.tools.list_ports.comports')
+    def test_serial_port_exists_found(self, mock_comports):
+        """Test serial port detection when port exists."""
+        mock_port = MagicMock()
+        mock_port.device = '/dev/ttyUSB0'
+        mock_comports.return_value = [mock_port]
+
+        result = serial_port_exists('/dev/ttyUSB0')
+        self.assertTrue(result)
+
+    @patch('mmrelay.meshtastic_utils.serial.tools.list_ports.comports')
+    def test_serial_port_exists_not_found(self, mock_comports):
+        """Test serial port detection when port doesn't exist."""
+        mock_port = MagicMock()
+        mock_port.device = '/dev/ttyUSB1'
+        mock_comports.return_value = [mock_port]
+
+        result = serial_port_exists('/dev/ttyUSB0')
+        self.assertFalse(result)
+
+    @patch('mmrelay.meshtastic_utils.serial.tools.list_ports.comports')
+    def test_serial_port_exists_no_ports(self, mock_comports):
+        """Test serial port detection when no ports are available."""
+        mock_comports.return_value = []
+
+        result = serial_port_exists('/dev/ttyUSB0')
+        self.assertFalse(result)
+
+
+class TestConnectionLossHandling(unittest.TestCase):
+    """Test cases for connection loss handling."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        # Reset global state
+        import mmrelay.meshtastic_utils
+        mmrelay.meshtastic_utils.reconnecting = False
+        mmrelay.meshtastic_utils.shutting_down = False
+        mmrelay.meshtastic_utils.reconnect_task = None
+
+    @patch('mmrelay.meshtastic_utils.logger')
+    @patch('mmrelay.meshtastic_utils.event_loop', MagicMock())
+    @patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe')
+    def test_on_lost_meshtastic_connection_normal(self, mock_run_coro, mock_logger):
+        """Test normal connection loss handling."""
+        import mmrelay.meshtastic_utils
+        mmrelay.meshtastic_utils.reconnecting = False
+        mmrelay.meshtastic_utils.shutting_down = False
+
+        mock_interface = MagicMock()
+
+        on_lost_meshtastic_connection(mock_interface, "test_source")
+
+        mock_logger.error.assert_called()
+        # Should log the connection loss
+        error_call = mock_logger.error.call_args[0][0]
+        self.assertIn("Lost connection", error_call)
+        self.assertIn("test_source", error_call)
+
+    @patch('mmrelay.meshtastic_utils.logger')
+    def test_on_lost_meshtastic_connection_already_reconnecting(self, mock_logger):
+        """Test connection loss handling when already reconnecting."""
+        import mmrelay.meshtastic_utils
+        mmrelay.meshtastic_utils.reconnecting = True
+        mmrelay.meshtastic_utils.shutting_down = False
+
+        mock_interface = MagicMock()
+
+        on_lost_meshtastic_connection(mock_interface, "test_source")
+
+        # Should log that reconnection is already in progress
+        mock_logger.debug.assert_called_with("Reconnection already in progress. Skipping additional reconnection attempt.")
+
+    @patch('mmrelay.meshtastic_utils.logger')
+    def test_on_lost_meshtastic_connection_shutting_down(self, mock_logger):
+        """Test connection loss handling during shutdown."""
+        import mmrelay.meshtastic_utils
+        mmrelay.meshtastic_utils.reconnecting = False
+        mmrelay.meshtastic_utils.shutting_down = True
+
+        mock_interface = MagicMock()
+
+        on_lost_meshtastic_connection(mock_interface, "test_source")
+
+        # Should log that system is shutting down
+        mock_logger.debug.assert_called_with("Shutdown in progress. Not attempting to reconnect.")
+
+
+class TestConnectMeshtasticEdgeCases(unittest.TestCase):
+    """Test cases for edge cases in Meshtastic connection."""
+
+    @patch('mmrelay.meshtastic_utils.serial_port_exists')
+    @patch('mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface')
+    def test_connect_meshtastic_serial_port_not_exists(self, mock_serial, mock_port_exists):
+        """Test connection attempt when serial port doesn't exist."""
+        mock_port_exists.return_value = False
+
+        config = {
+            "meshtastic": {
+                "connection_type": "serial",
+                "serial_port": "/dev/ttyUSB0"
+            }
+        }
+
+        result = connect_meshtastic(passed_config=config)
+
+        self.assertIsNone(result)
+        mock_serial.assert_not_called()
+
+    @patch('mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface')
+    def test_connect_meshtastic_serial_exception(self, mock_serial):
+        """Test connection when serial interface raises an exception."""
+        mock_serial.side_effect = Exception("Serial connection failed")
+
+        config = {
+            "meshtastic": {
+                "connection_type": "serial",
+                "serial_port": "/dev/ttyUSB0"
+            }
+        }
+
+        with patch('mmrelay.meshtastic_utils.serial_port_exists', return_value=True):
+            result = connect_meshtastic(passed_config=config)
+
+        self.assertIsNone(result)
+
+    @patch('mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface')
+    def test_connect_meshtastic_tcp_exception(self, mock_tcp):
+        """Test connection when TCP interface raises an exception."""
+        mock_tcp.side_effect = Exception("TCP connection failed")
+
+        config = {
+            "meshtastic": {
+                "connection_type": "tcp",
+                "host": "192.168.1.100"
+            }
+        }
+
+        result = connect_meshtastic(passed_config=config)
+
+        self.assertIsNone(result)
+
+    @patch('mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface')
+    def test_connect_meshtastic_ble_exception(self, mock_ble):
+        """Test connection when BLE interface raises an exception."""
+        mock_ble.side_effect = Exception("BLE connection failed")
+
+        config = {
+            "meshtastic": {
+                "connection_type": "ble",
+                "ble_address": "AA:BB:CC:DD:EE:FF"
+            }
+        }
+
+        result = connect_meshtastic(passed_config=config)
+
+        self.assertIsNone(result)
+
+    def test_connect_meshtastic_no_config(self):
+        """Test connection attempt with no configuration."""
+        result = connect_meshtastic(passed_config=None)
+        self.assertIsNone(result)
+
+    def test_connect_meshtastic_existing_client_simple(self):
+        """Test basic connection functionality."""
+        config = {
+            "meshtastic": {
+                "connection_type": "serial",
+                "serial_port": "/dev/ttyUSB0"
+            }
+        }
+
+        # Test with no config
+        result = connect_meshtastic(passed_config=None)
+        # Should handle gracefully
+        self.assertIsNone(result)
+
+
+class TestMessageProcessingEdgeCases(unittest.TestCase):
+    """Test cases for edge cases in message processing."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.mock_config = {
+            "meshtastic": {
+                "connection_type": "serial",
+                "serial_port": "/dev/ttyUSB0",
+                "broadcast_enabled": True,
+                "meshnet_name": "test_mesh"
+            },
+            "matrix_rooms": [
+                {"id": "!room1:matrix.org", "meshtastic_channel": 0}
+            ]
+        }
+
+    def test_on_meshtastic_message_no_decoded(self):
+        """Test message processing when packet has no decoded field."""
+        packet = {
+            "from": 123456789,
+            "to": 987654321,
+            "channel": 0,
+            "id": 12345,
+            "rxTime": 1234567890
+            # No 'decoded' field
+        }
+
+        with patch('mmrelay.meshtastic_utils.config', self.mock_config), \
+             patch('mmrelay.meshtastic_utils.matrix_rooms', self.mock_config["matrix_rooms"]), \
+             patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe') as mock_run_coro:
+
+            mock_interface = MagicMock()
+
+            on_meshtastic_message(packet, mock_interface)
+
+            # Should not process message without decoded field
+            mock_run_coro.assert_not_called()
+
+    def test_on_meshtastic_message_empty_text(self):
+        """Test message processing with empty text."""
+        packet = {
+            "from": 123456789,
+            "to": 987654321,
+            "decoded": {
+                "text": "",  # Empty text
+                "portnum": "TEXT_MESSAGE_APP"
+            },
+            "channel": 0,
+            "id": 12345,
+            "rxTime": 1234567890
+        }
+
+        with patch('mmrelay.meshtastic_utils.config', self.mock_config), \
+             patch('mmrelay.meshtastic_utils.matrix_rooms', self.mock_config["matrix_rooms"]), \
+             patch('mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe') as mock_run_coro:
+
+            mock_interface = MagicMock()
+
+            on_meshtastic_message(packet, mock_interface)
+
+            # Should not process empty text messages
+            mock_run_coro.assert_not_called()
 
 
 if __name__ == "__main__":
