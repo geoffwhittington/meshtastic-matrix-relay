@@ -10,6 +10,7 @@ Tests the mesh health statistics functionality including:
 - Matrix room message handling
 """
 
+import asyncio
 import os
 import sys
 import unittest
@@ -216,8 +217,6 @@ class TestHealthPlugin(unittest.TestCase):
             )
             self.assertFalse(result)
 
-        import asyncio
-
         asyncio.run(run_test())
 
     def test_handle_room_message_no_match(self):
@@ -237,8 +236,6 @@ class TestHealthPlugin(unittest.TestCase):
             self.assertFalse(result)
             self.plugin.matches.assert_called_once_with(event)
             self.plugin.send_matrix_message.assert_not_called()
-
-        import asyncio
 
         asyncio.run(run_test())
 
@@ -276,8 +273,6 @@ class TestHealthPlugin(unittest.TestCase):
             self.assertEqual(call_args[0][0], "!test:matrix.org")  # room_id
             self.assertIn("Nodes: 5", call_args[0][1])  # message content
             self.assertEqual(call_args.kwargs["formatted"], False)
-
-        import asyncio
 
         asyncio.run(run_test())
 

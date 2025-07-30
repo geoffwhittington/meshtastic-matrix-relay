@@ -165,10 +165,9 @@ class TestMain(unittest.TestCase):
             mock_connect_matrix_inner.side_effect = Exception("Early exit for test")
 
             # Call main function (should exit early due to exception)
-            try:
+            with self.assertRaises(Exception) as context:
                 asyncio.run(main(config_with_wipe))
-            except KeyboardInterrupt:
-                pass  # Expected due to our mock KeyboardInterrupt
+            self.assertIn("Early exit for test", str(context.exception))
 
         # Verify message map was wiped (this happens before connection attempts)
         mock_wipe_map.assert_called_once()
