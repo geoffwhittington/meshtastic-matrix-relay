@@ -226,9 +226,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                     break
                 attempts += 1
                 if retry_limit == 0 or attempts <= retry_limit:
-                    wait_time = min(
-                        2**attempts, 60
-                    )  # Exponential backoff, capped at 60 seconds
+                    wait_time = min(2**attempts, 60)  # Consistent exponential backoff, capped at 60s
                     logger.warning(
                         f"Connection attempt {attempts} failed: {e}. Retrying in {wait_time} seconds..."
                     )
@@ -242,15 +240,13 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                     break
                 attempts += 1
                 if retry_limit == 0 or attempts <= retry_limit:
-                    wait_time = min(
-                        attempts * 2, 30
-                    )  # Exponential backoff capped at 30s
+                    wait_time = min(2**attempts, 60)  # Consistent exponential backoff, capped at 60s
                     logger.warning(
-                        f"Attempt #{attempts - 1} failed. Retrying in {wait_time} secs: {e}"
+                        f"An unexpected error occurred on attempt {attempts}: {e}. Retrying in {wait_time} seconds..."
                     )
                     time.sleep(wait_time)
                 else:
-                    logger.error(f"Could not connect after {retry_limit} attempts: {e}")
+                    logger.error(f"Connection failed after {attempts} attempts: {e}")
                     return None
 
     return meshtastic_client
