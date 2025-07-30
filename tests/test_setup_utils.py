@@ -194,10 +194,13 @@ class TestSetupUtils(unittest.TestCase):
     @patch('subprocess.run')
     def test_is_service_active_true(self, mock_run):
         """Test is_service_active when service is active."""
-        mock_run.return_value.returncode = 0
-        
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout.strip.return_value = "active"
+        mock_run.return_value = mock_result
+
         result = is_service_active()
-        
+
         self.assertTrue(result)
         mock_run.assert_called_once_with(
             ["/usr/bin/systemctl", "--user", "is-active", "mmrelay.service"],
@@ -209,10 +212,12 @@ class TestSetupUtils(unittest.TestCase):
     @patch('subprocess.run')
     def test_is_service_active_false(self, mock_run):
         """Test is_service_active when service is not active."""
-        mock_run.return_value.returncode = 1
-        
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        mock_run.return_value = mock_result
+
         result = is_service_active()
-        
+
         self.assertFalse(result)
 
     @patch('subprocess.run')
@@ -227,19 +232,24 @@ class TestSetupUtils(unittest.TestCase):
     @patch('subprocess.run')
     def test_is_service_enabled_true(self, mock_run):
         """Test is_service_enabled when service is enabled."""
-        mock_run.return_value.returncode = 0
-        
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout.strip.return_value = "enabled"
+        mock_run.return_value = mock_result
+
         result = is_service_enabled()
-        
+
         self.assertTrue(result)
 
     @patch('subprocess.run')
     def test_is_service_enabled_false(self, mock_run):
         """Test is_service_enabled when service is not enabled."""
-        mock_run.return_value.returncode = 1
-        
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        mock_run.return_value = mock_result
+
         result = is_service_enabled()
-        
+
         self.assertFalse(result)
 
     @patch('subprocess.run')

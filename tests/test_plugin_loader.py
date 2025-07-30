@@ -67,33 +67,37 @@ class TestPluginLoader(unittest.TestCase):
 
     @patch('mmrelay.plugin_loader.get_base_dir')
     @patch('mmrelay.plugin_loader.get_app_path')
-    def test_get_custom_plugin_dirs(self, mock_get_app_path, mock_get_base_dir):
+    @patch('os.makedirs')
+    def test_get_custom_plugin_dirs(self, mock_makedirs, mock_get_app_path, mock_get_base_dir):
         """Test custom plugin directory discovery."""
-        mock_get_base_dir.return_value = "/home/user/.mmrelay"
+        mock_get_base_dir.return_value = self.test_dir
         mock_get_app_path.return_value = "/app"
-        
+
         dirs = get_custom_plugin_dirs()
-        
+
         expected_dirs = [
-            "/home/user/.mmrelay/plugins/custom",
+            os.path.join(self.test_dir, "plugins", "custom"),
             "/app/plugins/custom"
         ]
         self.assertEqual(dirs, expected_dirs)
+        mock_makedirs.assert_called_once()
 
     @patch('mmrelay.plugin_loader.get_base_dir')
     @patch('mmrelay.plugin_loader.get_app_path')
-    def test_get_community_plugin_dirs(self, mock_get_app_path, mock_get_base_dir):
+    @patch('os.makedirs')
+    def test_get_community_plugin_dirs(self, mock_makedirs, mock_get_app_path, mock_get_base_dir):
         """Test community plugin directory discovery."""
-        mock_get_base_dir.return_value = "/home/user/.mmrelay"
+        mock_get_base_dir.return_value = self.test_dir
         mock_get_app_path.return_value = "/app"
-        
+
         dirs = get_community_plugin_dirs()
-        
+
         expected_dirs = [
-            "/home/user/.mmrelay/plugins/community",
+            os.path.join(self.test_dir, "plugins", "community"),
             "/app/plugins/community"
         ]
         self.assertEqual(dirs, expected_dirs)
+        mock_makedirs.assert_called_once()
 
     def test_load_plugins_from_directory_empty(self):
         """Test loading plugins from empty directory."""
@@ -162,14 +166,11 @@ class Plugin:
 
     @patch('mmrelay.plugins.health_plugin.Plugin')
     @patch('mmrelay.plugins.map_plugin.Plugin')
-    @patch('mmrelay.plugins.mesh_relay_plugin.Plugin')
-    @patch('mmrelay.plugins.ping_plugin.Plugin')
-    @patch('mmrelay.plugins.telemetry_plugin.Plugin')
-    @patch('mmrelay.plugins.weather_plugin.Plugin')
     @patch('mmrelay.plugins.help_plugin.Plugin')
     @patch('mmrelay.plugins.nodes_plugin.Plugin')
     @patch('mmrelay.plugins.drop_plugin.Plugin')
     @patch('mmrelay.plugins.debug_plugin.Plugin')
+    @patch('mmrelay.plugins.weather_plugin.Plugin')
     def test_load_plugins_core_only(self, *mock_plugins):
         """Test loading core plugins only."""
         # Mock all core plugins
@@ -203,14 +204,11 @@ class Plugin:
 
     @patch('mmrelay.plugins.health_plugin.Plugin')
     @patch('mmrelay.plugins.map_plugin.Plugin')
-    @patch('mmrelay.plugins.mesh_relay_plugin.Plugin')
-    @patch('mmrelay.plugins.ping_plugin.Plugin')
-    @patch('mmrelay.plugins.telemetry_plugin.Plugin')
-    @patch('mmrelay.plugins.weather_plugin.Plugin')
     @patch('mmrelay.plugins.help_plugin.Plugin')
     @patch('mmrelay.plugins.nodes_plugin.Plugin')
     @patch('mmrelay.plugins.drop_plugin.Plugin')
     @patch('mmrelay.plugins.debug_plugin.Plugin')
+    @patch('mmrelay.plugins.weather_plugin.Plugin')
     def test_load_plugins_inactive_plugins(self, *mock_plugins):
         """Test that inactive plugins are not loaded."""
         # Mock core plugins
@@ -241,14 +239,11 @@ class Plugin:
     @patch('mmrelay.plugin_loader.get_custom_plugin_dirs')
     @patch('mmrelay.plugins.health_plugin.Plugin')
     @patch('mmrelay.plugins.map_plugin.Plugin')
-    @patch('mmrelay.plugins.mesh_relay_plugin.Plugin')
-    @patch('mmrelay.plugins.ping_plugin.Plugin')
-    @patch('mmrelay.plugins.telemetry_plugin.Plugin')
-    @patch('mmrelay.plugins.weather_plugin.Plugin')
     @patch('mmrelay.plugins.help_plugin.Plugin')
     @patch('mmrelay.plugins.nodes_plugin.Plugin')
     @patch('mmrelay.plugins.drop_plugin.Plugin')
     @patch('mmrelay.plugins.debug_plugin.Plugin')
+    @patch('mmrelay.plugins.weather_plugin.Plugin')
     def test_load_plugins_with_custom(self, *args):
         """Test loading plugins with custom plugins."""
         mock_get_custom_plugin_dirs = args[0]

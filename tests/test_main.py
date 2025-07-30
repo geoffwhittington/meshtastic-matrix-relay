@@ -199,9 +199,9 @@ class TestMain(unittest.TestCase):
         # Verify message map was wiped
         mock_wipe_map.assert_called_once()
 
-    @patch('mmrelay.main.load_config')
-    @patch('mmrelay.main.set_config')
-    @patch('mmrelay.main.configure_component_debug_logging')
+    @patch('mmrelay.config.load_config')
+    @patch('mmrelay.config.set_config')
+    @patch('mmrelay.log_utils.configure_component_debug_logging')
     @patch('mmrelay.main.print_banner')
     @patch('mmrelay.main.main')
     def test_run_main(self, mock_main, mock_print_banner, mock_configure_debug,
@@ -238,7 +238,7 @@ class TestMain(unittest.TestCase):
         # Should return 0 for success
         self.assertEqual(result, 0)
 
-    @patch('mmrelay.main.load_config')
+    @patch('mmrelay.config.load_config')
     @patch('mmrelay.main.main')
     def test_run_main_exception_handling(self, mock_main, mock_load_config):
         """Test run_main exception handling."""
@@ -253,7 +253,7 @@ class TestMain(unittest.TestCase):
         # Should return 1 for error
         self.assertEqual(result, 1)
 
-    @patch('mmrelay.main.load_config')
+    @patch('mmrelay.config.load_config')
     @patch('mmrelay.main.main')
     def test_run_main_keyboard_interrupt(self, mock_main, mock_load_config):
         """Test run_main keyboard interrupt handling."""

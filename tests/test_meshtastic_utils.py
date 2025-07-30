@@ -58,26 +58,27 @@ class TestMeshtasticUtils(unittest.TestCase):
             "rxTime": 1234567890
         }
 
-    def test_on_meshtastic_message_basic(self):
+    @patch('mmrelay.meshtastic_utils.matrix_relay')
+    @patch('mmrelay.meshtastic_utils.get_longname')
+    @patch('mmrelay.meshtastic_utils.get_shortname')
+    def test_on_meshtastic_message_basic(self, mock_get_shortname, mock_get_longname, mock_matrix_relay):
         """Test basic message processing."""
-        # Mock the required modules and functions
-        with patch('mmrelay.meshtastic_utils.config', self.mock_config), \
-             patch('mmrelay.meshtastic_utils.matrix_rooms', self.mock_config["matrix_rooms"]), \
-             patch('mmrelay.meshtastic_utils.matrix_relay') as mock_matrix_relay, \
-             patch('mmrelay.meshtastic_utils.get_longname') as mock_get_longname, \
-             patch('mmrelay.meshtastic_utils.get_shortname') as mock_get_shortname:
+        mock_get_longname.return_value = "Test User"
+        mock_get_shortname.return_value = "TU"
 
-            mock_get_longname.return_value = "Test User"
-            mock_get_shortname.return_value = "TU"
+        # Mock interface
+        mock_interface = MagicMock()
 
-            # Mock interface
-            mock_interface = MagicMock()
+        # Set up the global config and matrix_rooms
+        import mmrelay.meshtastic_utils
+        mmrelay.meshtastic_utils.config = self.mock_config
+        mmrelay.meshtastic_utils.matrix_rooms = self.mock_config["matrix_rooms"]
 
-            # Call the function
-            on_meshtastic_message(self.mock_packet, mock_interface)
+        # Call the function
+        on_meshtastic_message(self.mock_packet, mock_interface)
 
-            # Verify matrix_relay was called
-            mock_matrix_relay.assert_called_once()
+        # Verify matrix_relay was called
+        mock_matrix_relay.assert_called_once()
 
     def test_on_meshtastic_message_unmapped_channel(self):
         """Test message processing for unmapped channel."""
