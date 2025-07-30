@@ -140,7 +140,7 @@ class TestCLI(unittest.TestCase):
     ):
         # Mock an invalid config (invalid connection type)
         """
-        Test that check_config returns False when the configuration contains an invalid meshtastic connection type.
+        Test that check_config() returns False when the configuration specifies an invalid Meshtastic connection type.
         """
         mock_yaml_load.return_value = {
             "matrix": {
@@ -157,14 +157,18 @@ class TestCLI(unittest.TestCase):
             self.assertFalse(check_config())
 
     def test_get_version(self):
-        """Test get_version function."""
+        """
+        Test that get_version returns a non-empty string representing the version.
+        """
         version = get_version()
         self.assertIsInstance(version, str)
         self.assertGreater(len(version), 0)
 
     @patch('builtins.print')
     def test_print_version(self, mock_print):
-        """Test print_version function."""
+        """
+        Test that print_version outputs the MMRelay version information using the print function.
+        """
         print_version()
         mock_print.assert_called_once()
         # Check that the printed message contains version info
@@ -174,14 +178,18 @@ class TestCLI(unittest.TestCase):
 
     @patch('sys.platform', 'win32')
     def test_parse_arguments_windows_positional(self):
-        """Test Windows-specific positional argument handling."""
+        """
+        Test that on Windows, a positional argument is interpreted as the config file path.
+        """
         with patch("sys.argv", ["mmrelay", "config.yaml"]):
             args = parse_arguments()
             self.assertEqual(args.config, "config.yaml")
 
     @patch('sys.platform', 'win32')
     def test_parse_arguments_windows_both_args(self):
-        """Test Windows handling when both positional and --config are provided."""
+        """
+        Test that on Windows, the --config option takes precedence over a positional config file argument when both are provided.
+        """
         with patch("sys.argv", ["mmrelay", "--config", "explicit.yaml", "positional.yaml"]):
             args = parse_arguments()
             # --config should take precedence
@@ -189,7 +197,11 @@ class TestCLI(unittest.TestCase):
 
     @patch('builtins.print')
     def test_parse_arguments_unknown_args_warning(self, mock_print):
-        """Test warning for unknown arguments outside test environment."""
+        """
+        Test that a warning is printed when unknown CLI arguments are provided outside a test environment.
+        
+        Verifies that `parse_arguments()` triggers a warning message containing the unknown argument name when an unrecognized CLI argument is passed and the environment is not a test context.
+        """
         with patch("sys.argv", ["mmrelay", "--unknown-arg", "value"]):
             args = parse_arguments()
             # Should print warning about unknown arguments
@@ -199,7 +211,9 @@ class TestCLI(unittest.TestCase):
             self.assertIn("unknown-arg", warning_msg)
 
     def test_parse_arguments_test_environment(self):
-        """Test that unknown arguments don't trigger warnings in test environment."""
+        """
+        Verify that unknown CLI arguments do not produce warnings when running in a test environment.
+        """
         with patch("sys.argv", ["pytest", "mmrelay", "--unknown-arg"]):
             with patch('builtins.print') as mock_print:
                 args = parse_arguments()
@@ -213,7 +227,9 @@ class TestGenerateSampleConfig(unittest.TestCase):
     @patch('mmrelay.config.get_config_paths')
     @patch('os.path.isfile')
     def test_generate_sample_config_existing_file(self, mock_isfile, mock_get_paths):
-        """Test generate_sample_config when config file already exists."""
+        """
+        Test that generate_sample_config returns False and prints a message when the config file already exists.
+        """
         mock_get_paths.return_value = ["/home/user/.mmrelay/config.yaml"]
         mock_isfile.return_value = True
 
@@ -234,7 +250,9 @@ class TestGenerateSampleConfig(unittest.TestCase):
     @patch('shutil.copy2')
     def test_generate_sample_config_success(self, mock_copy, mock_exists, mock_get_sample,
                                           mock_makedirs, mock_isfile, mock_get_paths):
-        """Test successful sample config generation."""
+        """
+                                          Test that generate_sample_config creates a sample config file when none exists and the sample file is available, ensuring correct file operations and success message output.
+                                          """
         mock_get_paths.return_value = ["/home/user/.mmrelay/config.yaml"]
         mock_isfile.return_value = False  # No existing config
         mock_get_sample.return_value = "/path/to/sample_config.yaml"
@@ -259,7 +277,11 @@ class TestGenerateSampleConfig(unittest.TestCase):
     def test_generate_sample_config_importlib_fallback(self, mock_files, mock_exists,
                                                      mock_get_sample, mock_makedirs,
                                                      mock_isfile, mock_get_paths):
-        """Test sample config generation using importlib.resources fallback."""
+        """
+                                                     Test that generate_sample_config() uses importlib.resources to create the config file when the sample config is not found at the helper path.
+                                                     
+                                                     Simulates the absence of the sample config file at the expected location, mocks importlib.resources to provide sample content, and verifies that the config file is created with the correct content.
+                                                     """
         mock_get_paths.return_value = ["/home/user/.mmrelay/config.yaml"]
         mock_isfile.return_value = False
         mock_get_sample.return_value = "/nonexistent/path"
@@ -284,7 +306,9 @@ class TestHandleCLICommands(unittest.TestCase):
     """Test cases for handle_cli_commands function."""
 
     def test_handle_version_command(self):
-        """Test handling --version command."""
+        """
+        Test that handle_cli_commands processes the --version flag by calling print_version and returning True.
+        """
         args = MagicMock()
         args.version = True
         args.install_service = False
@@ -300,7 +324,9 @@ class TestHandleCLICommands(unittest.TestCase):
     @patch('mmrelay.setup_utils.install_service')
     @patch('sys.exit')
     def test_handle_install_service_success(self, mock_exit, mock_install):
-        """Test handling --install-service command with success."""
+        """
+        Test that the --install-service command triggers service installation and exits with code 0 on success.
+        """
         args = MagicMock()
         args.version = False
         args.install_service = True
@@ -316,7 +342,9 @@ class TestHandleCLICommands(unittest.TestCase):
     @patch('mmrelay.setup_utils.install_service')
     @patch('sys.exit')
     def test_handle_install_service_failure(self, mock_exit, mock_install):
-        """Test handling --install-service command with failure."""
+        """
+        Test that handle_cli_commands exits with code 1 when service installation fails using the --install-service flag.
+        """
         args = MagicMock()
         args.version = False
         args.install_service = True
@@ -331,7 +359,9 @@ class TestHandleCLICommands(unittest.TestCase):
 
     @patch('mmrelay.cli.generate_sample_config')
     def test_handle_generate_config_success(self, mock_generate):
-        """Test handling --generate-config command with success."""
+        """
+        Test that handle_cli_commands returns True when the --generate-config command is specified and sample config generation succeeds.
+        """
         args = MagicMock()
         args.version = False
         args.install_service = False
@@ -347,7 +377,9 @@ class TestHandleCLICommands(unittest.TestCase):
     @patch('mmrelay.cli.generate_sample_config')
     @patch('sys.exit')
     def test_handle_generate_config_failure(self, mock_exit, mock_generate):
-        """Test handling --generate-config command with failure."""
+        """
+        Test that handle_cli_commands exits with code 1 when --generate-config is specified and config generation fails.
+        """
         args = MagicMock()
         args.version = False
         args.install_service = False
@@ -363,7 +395,9 @@ class TestHandleCLICommands(unittest.TestCase):
     @patch('mmrelay.cli.check_config')
     @patch('sys.exit')
     def test_handle_check_config_success(self, mock_exit, mock_check):
-        """Test handling --check-config command with success."""
+        """
+        Test that handle_cli_commands exits with code 0 when --check-config is specified and the config check succeeds.
+        """
         args = MagicMock()
         args.version = False
         args.install_service = False
@@ -379,7 +413,9 @@ class TestHandleCLICommands(unittest.TestCase):
     @patch('mmrelay.cli.check_config')
     @patch('sys.exit')
     def test_handle_check_config_failure(self, mock_exit, mock_check):
-        """Test handling --check-config command with failure."""
+        """
+        Test that handle_cli_commands exits with code 1 when --check-config is specified and the config check fails.
+        """
         args = MagicMock()
         args.version = False
         args.install_service = False
@@ -393,7 +429,9 @@ class TestHandleCLICommands(unittest.TestCase):
         mock_exit.assert_called_once_with(1)
 
     def test_handle_no_commands(self):
-        """Test when no CLI commands are specified."""
+        """
+        Test that handle_cli_commands returns False when no CLI command flags are set.
+        """
         args = MagicMock()
         args.version = False
         args.install_service = False
@@ -411,7 +449,9 @@ class TestMainFunction(unittest.TestCase):
     @patch('mmrelay.cli.parse_arguments')
     @patch('mmrelay.cli.check_config')
     def test_main_check_config_success(self, mock_check, mock_parse):
-        """Test main function with --check-config success."""
+        """
+        Tests that the main function returns exit code 0 when the --check-config flag is set and the configuration check succeeds.
+        """
         args = MagicMock()
         args.check_config = True
         args.install_service = False
@@ -428,7 +468,9 @@ class TestMainFunction(unittest.TestCase):
     @patch('mmrelay.cli.parse_arguments')
     @patch('mmrelay.cli.check_config')
     def test_main_check_config_failure(self, mock_check, mock_parse):
-        """Test main function with --check-config failure."""
+        """
+        Test that the main function returns exit code 1 when configuration check fails with --check-config.
+        """
         args = MagicMock()
         args.check_config = True
         args.install_service = False
@@ -444,7 +486,9 @@ class TestMainFunction(unittest.TestCase):
     @patch('mmrelay.cli.parse_arguments')
     @patch('mmrelay.setup_utils.install_service')
     def test_main_install_service_success(self, mock_install, mock_parse):
-        """Test main function with --install-service success."""
+        """
+        Test that the main function returns exit code 0 when the --install-service flag is set and service installation succeeds.
+        """
         args = MagicMock()
         args.check_config = False
         args.install_service = True
@@ -461,7 +505,9 @@ class TestMainFunction(unittest.TestCase):
     @patch('mmrelay.cli.parse_arguments')
     @patch('mmrelay.cli.generate_sample_config')
     def test_main_generate_config_success(self, mock_generate, mock_parse):
-        """Test main function with --generate-config success."""
+        """
+        Test that the main function returns exit code 0 when --generate-config is specified and sample config generation succeeds.
+        """
         args = MagicMock()
         args.check_config = False
         args.install_service = False
@@ -478,7 +524,9 @@ class TestMainFunction(unittest.TestCase):
     @patch('mmrelay.cli.parse_arguments')
     @patch('mmrelay.cli.print_version')
     def test_main_version(self, mock_print_version, mock_parse):
-        """Test main function with --version."""
+        """
+        Tests that the main function handles the --version flag by printing version information and returning exit code 0.
+        """
         args = MagicMock()
         args.check_config = False
         args.install_service = False
@@ -494,7 +542,9 @@ class TestMainFunction(unittest.TestCase):
     @patch('mmrelay.cli.parse_arguments')
     @patch('mmrelay.main.run_main')
     def test_main_run_main(self, mock_run_main, mock_parse):
-        """Test main function running normal functionality."""
+        """
+        Tests that the main function calls run_main with parsed arguments and returns its exit code when no special CLI commands are specified.
+        """
         args = MagicMock()
         args.check_config = False
         args.install_service = False

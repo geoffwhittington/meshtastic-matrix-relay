@@ -25,7 +25,9 @@ class TestHelpPlugin(unittest.TestCase):
     """Test cases for the help plugin."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """
+        Initialize the test environment by creating a Plugin instance, mocking its logger and message sending method, and setting up mock plugins with predefined commands and descriptions.
+        """
         self.plugin = Plugin()
         self.plugin.logger = MagicMock()
         
@@ -46,27 +48,40 @@ class TestHelpPlugin(unittest.TestCase):
         self.mock_plugin3.description = "List supported relay commands"
 
     def test_plugin_name(self):
-        """Test that plugin name is correctly set."""
+        """
+        Verify that the plugin's name is set to "help".
+        """
         self.assertEqual(self.plugin.plugin_name, "help")
 
     def test_description_property(self):
-        """Test that description property returns expected string."""
+        """
+        Test that the help plugin's description property returns the expected string.
+        """
         description = self.plugin.description
         self.assertEqual(description, "List supported relay commands")
 
     def test_get_matrix_commands(self):
-        """Test that get_matrix_commands returns help command."""
+        """
+        Test that the help plugin reports 'help' as its supported Matrix command.
+        """
         commands = self.plugin.get_matrix_commands()
         self.assertEqual(commands, ["help"])
 
     def test_get_mesh_commands(self):
-        """Test that get_mesh_commands returns empty list."""
+        """
+        Test that the help plugin reports no supported Meshtastic commands.
+        """
         commands = self.plugin.get_mesh_commands()
         self.assertEqual(commands, [])
 
     def test_handle_meshtastic_message_always_false(self):
-        """Test that handle_meshtastic_message always returns False."""
+        """
+        Test that handle_meshtastic_message always returns False, regardless of input.
+        """
         async def run_test():
+            """
+            Asynchronously tests that handle_meshtastic_message always returns False for the help plugin.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 {}, "formatted_message", "longname", "meshnet_name"
             )
@@ -76,13 +91,18 @@ class TestHelpPlugin(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_handle_room_message_no_match(self):
-        """Test handle_room_message when event doesn't match."""
+        """
+        Test that handle_room_message returns False and does not send a message when the event does not match the help command.
+        """
         self.plugin.matches = MagicMock(return_value=False)
         
         room = MagicMock()
         event = MagicMock()
         
         async def run_test():
+            """
+            Asynchronously tests that handle_room_message returns False and does not send a message when the event does not match the help command.
+            """
             result = await self.plugin.handle_room_message(room, event, "full_message")
             self.assertFalse(result)
             self.plugin.matches.assert_called_once_with(event)
@@ -93,7 +113,11 @@ class TestHelpPlugin(unittest.TestCase):
 
     @patch('mmrelay.plugins.help_plugin.load_plugins')
     def test_handle_room_message_general_help(self, mock_load_plugins):
-        """Test handle_room_message with general help command."""
+        """
+        Test that a general help command triggers a message listing all available commands from loaded plugins.
+        
+        Verifies that when the help command is invoked, the plugin responds with a message containing all supported commands, and that the message is sent to the correct Matrix room.
+        """
         mock_load_plugins.return_value = [self.mock_plugin1, self.mock_plugin2, self.mock_plugin3]
         self.plugin.matches = MagicMock(return_value=True)
         
@@ -103,6 +127,11 @@ class TestHelpPlugin(unittest.TestCase):
         full_message = "bot: !help"
         
         async def run_test():
+            """
+            Asynchronously tests that the help plugin sends a message listing all available commands when handling a general help request.
+            
+            Verifies that the plugin's `handle_room_message` method returns True, calls the `matches` and `send_matrix_message` methods once, and that the sent message includes all expected command names.
+            """
             result = await self.plugin.handle_room_message(room, event, full_message)
             
             self.assertTrue(result)
@@ -126,7 +155,11 @@ class TestHelpPlugin(unittest.TestCase):
 
     @patch('mmrelay.plugins.help_plugin.load_plugins')
     def test_handle_room_message_specific_help_found(self, mock_load_plugins):
-        """Test handle_room_message with specific help command for existing command."""
+        """
+        Test that handle_room_message sends specific help information when a known command is requested.
+        
+        Verifies that when a help request for an existing command is received, the plugin responds with the correct command description.
+        """
         mock_load_plugins.return_value = [self.mock_plugin1, self.mock_plugin2, self.mock_plugin3]
         self.plugin.matches = MagicMock(return_value=True)
         
@@ -136,6 +169,11 @@ class TestHelpPlugin(unittest.TestCase):
         full_message = "bot: !help weather"
         
         async def run_test():
+            """
+            Asynchronously tests that requesting help for a specific command sends the correct help message.
+            
+            Verifies that invoking the help plugin with a specific command triggers sending a message containing the command and its description.
+            """
             result = await self.plugin.handle_room_message(room, event, full_message)
             
             self.assertTrue(result)
@@ -154,7 +192,11 @@ class TestHelpPlugin(unittest.TestCase):
 
     @patch('mmrelay.plugins.help_plugin.load_plugins')
     def test_handle_room_message_specific_help_not_found(self, mock_load_plugins):
-        """Test handle_room_message with specific help command for non-existing command."""
+        """
+        Test that requesting help for a nonexistent command results in an appropriate error message.
+        
+        Verifies that when a specific help command is issued for a command that does not exist, the plugin responds with an error message indicating the command was not found.
+        """
         mock_load_plugins.return_value = [self.mock_plugin1, self.mock_plugin2, self.mock_plugin3]
         self.plugin.matches = MagicMock(return_value=True)
         
@@ -164,6 +206,11 @@ class TestHelpPlugin(unittest.TestCase):
         full_message = "bot: !help nonexistent"
         
         async def run_test():
+            """
+            Asynchronously tests that requesting help for a nonexistent command returns an appropriate error message.
+            
+            Verifies that the help plugin responds with "No such command: nonexistent" and sends a Matrix message when a nonexistent command is queried.
+            """
             result = await self.plugin.handle_room_message(room, event, full_message)
             
             self.assertTrue(result)
@@ -181,7 +228,11 @@ class TestHelpPlugin(unittest.TestCase):
 
     @patch('mmrelay.plugins.help_plugin.load_plugins')
     def test_handle_room_message_multiple_commands_per_plugin(self, mock_load_plugins):
-        """Test handle_room_message with plugins that have multiple commands."""
+        """
+        Test that handle_room_message lists all commands from plugins with multiple commands.
+        
+        Verifies that when the help command is invoked and plugins provide multiple commands, the help message includes all commands from all loaded plugins.
+        """
         # Plugin with multiple commands
         multi_command_plugin = MagicMock()
         multi_command_plugin.get_matrix_commands.return_value = ["cmd1", "cmd2", "cmd3"]
@@ -196,6 +247,9 @@ class TestHelpPlugin(unittest.TestCase):
         full_message = "bot: !help"
         
         async def run_test():
+            """
+            Asynchronously tests that the help plugin's room message handler returns True and sends a message containing all available commands from loaded plugins.
+            """
             result = await self.plugin.handle_room_message(room, event, full_message)
             
             self.assertTrue(result)
@@ -213,7 +267,11 @@ class TestHelpPlugin(unittest.TestCase):
 
     @patch('mmrelay.plugins.help_plugin.load_plugins')
     def test_handle_room_message_specific_help_multi_command_plugin(self, mock_load_plugins):
-        """Test specific help for a command from a multi-command plugin."""
+        """
+        Test that requesting help for a specific command from a plugin with multiple commands returns the correct help message.
+        
+        Verifies that the help message includes the requested command and the plugin's description when a multi-command plugin is loaded.
+        """
         # Plugin with multiple commands
         multi_command_plugin = MagicMock()
         multi_command_plugin.get_matrix_commands.return_value = ["cmd1", "cmd2", "cmd3"]
@@ -228,6 +286,9 @@ class TestHelpPlugin(unittest.TestCase):
         full_message = "bot: !help cmd2"
         
         async def run_test():
+            """
+            Runs an asynchronous test to verify that requesting help for a specific command returns the correct help message, including the command and its plugin description.
+            """
             result = await self.plugin.handle_room_message(room, event, full_message)
             
             self.assertTrue(result)
@@ -243,7 +304,11 @@ class TestHelpPlugin(unittest.TestCase):
 
     @patch('mmrelay.plugins.help_plugin.load_plugins')
     def test_handle_room_message_no_plugins(self, mock_load_plugins):
-        """Test handle_room_message when no plugins are loaded."""
+        """
+        Test that handle_room_message sends an empty command list message when no plugins are loaded.
+        
+        Verifies that when the help command is invoked and no plugins are available, the plugin responds with a message indicating no commands are present.
+        """
         mock_load_plugins.return_value = []
         self.plugin.matches = MagicMock(return_value=True)
         
@@ -253,6 +318,12 @@ class TestHelpPlugin(unittest.TestCase):
         full_message = "bot: !help"
         
         async def run_test():
+            """
+            Asynchronously tests that the help plugin returns an empty command list message when no plugins are loaded.
+            
+            Returns:
+                None
+            """
             result = await self.plugin.handle_room_message(room, event, full_message)
             
             self.assertTrue(result)

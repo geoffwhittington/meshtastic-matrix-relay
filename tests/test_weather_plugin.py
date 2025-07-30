@@ -27,7 +27,9 @@ class TestWeatherPlugin(unittest.TestCase):
     """Test cases for the weather plugin."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """
+        Initialize the test environment for each test case by creating a Plugin instance with mocked dependencies and sample weather data.
+        """
         self.plugin = Plugin()
         self.plugin.logger = MagicMock()
         self.plugin.config = {"units": "metric"}
@@ -53,27 +55,43 @@ class TestWeatherPlugin(unittest.TestCase):
         }
 
     def test_plugin_name(self):
-        """Test that plugin name is correctly set."""
+        """
+        Verify that the plugin's name is set to "weather".
+        """
         self.assertEqual(self.plugin.plugin_name, "weather")
 
     def test_description_property(self):
-        """Test that description property returns expected string."""
+        """
+        Test that the plugin's description property returns the expected string.
+        """
         description = self.plugin.description
         self.assertEqual(description, "Show weather forecast for a radio node using GPS location")
 
     def test_get_matrix_commands(self):
-        """Test that get_matrix_commands returns empty list."""
+        """
+        Test that the plugin's get_matrix_commands method returns an empty list.
+        """
         commands = self.plugin.get_matrix_commands()
         self.assertEqual(commands, [])
 
     def test_get_mesh_commands(self):
-        """Test that get_mesh_commands returns plugin name."""
+        """
+        Test that the plugin's get_mesh_commands method returns the expected list of mesh commands.
+        """
         commands = self.plugin.get_mesh_commands()
         self.assertEqual(commands, ["weather"])
 
     def test_handle_room_message_always_false(self):
-        """Test that handle_room_message always returns False."""
+        """
+        Test that handle_room_message always returns False asynchronously.
+        """
         async def run_test():
+            """
+            Asynchronously tests that handle_room_message always returns False when called.
+            
+            Returns:
+                bool: False, indicating the message was not handled.
+            """
             result = await self.plugin.handle_room_message(None, None, "message")
             self.assertFalse(result)
         
@@ -82,7 +100,11 @@ class TestWeatherPlugin(unittest.TestCase):
 
     @patch('requests.get')
     def test_generate_forecast_metric_units(self, mock_get):
-        """Test weather forecast generation with metric units."""
+        """
+        Test that the weather forecast is generated correctly using metric units.
+        
+        Verifies that the plugin requests weather data with the correct API parameters, parses the response, and formats the forecast string with Celsius temperatures, weather descriptions, emojis, and precipitation probabilities.
+        """
         mock_response = MagicMock()
         mock_response.json.return_value = self.sample_weather_data
         mock_get.return_value = mock_response
@@ -114,7 +136,11 @@ class TestWeatherPlugin(unittest.TestCase):
 
     @patch('requests.get')
     def test_generate_forecast_imperial_units(self, mock_get):
-        """Test weather forecast generation with imperial units."""
+        """
+        Test that the weather forecast is generated with temperatures converted to Fahrenheit when imperial units are configured.
+        
+        Verifies that the forecast output includes correctly converted and rounded Fahrenheit temperatures based on sample weather data.
+        """
         mock_response = MagicMock()
         mock_response.json.return_value = self.sample_weather_data
         mock_get.return_value = mock_response
@@ -131,7 +157,9 @@ class TestWeatherPlugin(unittest.TestCase):
 
     @patch('requests.get')
     def test_generate_forecast_night_weather_codes(self, mock_get):
-        """Test weather forecast generation with night weather codes."""
+        """
+        Test that the forecast generation uses night-specific weather descriptions and emojis when night weather codes are present in the API response.
+        """
         night_weather_data = self.sample_weather_data.copy()
         night_weather_data["current_weather"]["is_day"] = 0  # Night time
         
@@ -146,7 +174,11 @@ class TestWeatherPlugin(unittest.TestCase):
 
     @patch('requests.get')
     def test_generate_forecast_unknown_weather_code(self, mock_get):
-        """Test weather forecast generation with unknown weather code."""
+        """
+        Test that the forecast generation handles unknown weather codes gracefully.
+        
+        Mocks the weather API response to include an unrecognized weather code and verifies that the generated forecast string indicates an unknown weather condition.
+        """
         unknown_weather_data = self.sample_weather_data.copy()
         unknown_weather_data["current_weather"]["weathercode"] = 999  # Unknown code
         
@@ -160,7 +192,11 @@ class TestWeatherPlugin(unittest.TestCase):
         self.assertIn("❓ Unknown", forecast)
 
     def test_handle_meshtastic_message_not_text_message(self):
-        """Test handling non-text message."""
+        """
+        Test that the plugin ignores Meshtastic messages that are not text messages.
+        
+        Verifies that handling a Meshtastic packet with a non-text port number results in the handler returning False.
+        """
         packet = {
             "decoded": {
                 "portnum": "TELEMETRY_APP",  # Not TEXT_MESSAGE_APP
@@ -169,6 +205,12 @@ class TestWeatherPlugin(unittest.TestCase):
         }
         
         async def run_test():
+            """
+            Runs an asynchronous test to verify that handling a Meshtastic message returns False.
+            
+            Returns:
+                bool: False, indicating the message was not handled.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -179,7 +221,11 @@ class TestWeatherPlugin(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     def test_handle_meshtastic_message_no_weather_command(self, mock_connect):
-        """Test handling text message without weather command."""
+        """
+        Test that a Meshtastic text message without the "!weather" command is ignored by the plugin.
+        
+        Verifies that the plugin's message handler returns False when processing a text message that does not contain the weather command.
+        """
         mock_client = MagicMock()
         mock_connect.return_value = mock_client
 
@@ -192,6 +238,12 @@ class TestWeatherPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Runs an asynchronous test to verify that handling a Meshtastic message returns False.
+            
+            Returns:
+                bool: False, indicating the message was not handled.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -202,7 +254,11 @@ class TestWeatherPlugin(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     def test_handle_meshtastic_message_channel_not_enabled(self, mock_connect):
-        """Test handling message on disabled channel."""
+        """
+        Test that a "!weather" message on a disabled channel is not processed.
+        
+        Verifies that the plugin checks channel enablement, does not handle the message, and returns False when the channel is disabled.
+        """
         mock_client = MagicMock()
         mock_client.myInfo.my_node_num = 123456789
         mock_connect.return_value = mock_client
@@ -218,6 +274,9 @@ class TestWeatherPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Asynchronously runs a test to verify that handling a Meshtastic message returns False and checks channel enablement with default parameters.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -230,7 +289,11 @@ class TestWeatherPlugin(unittest.TestCase):
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     @patch('requests.get')
     def test_handle_meshtastic_message_direct_message_with_location(self, mock_get, mock_connect):
-        """Test handling direct message with node location."""
+        """
+        Tests that a direct Meshtastic message containing the "!weather" command from a node with location data triggers a weather forecast response sent directly to the sender.
+        
+        Verifies that the plugin retrieves the node's GPS location, fetches weather data, generates a forecast, and sends a direct message reply. Also checks that channel enablement is validated for direct messages and that the correct recipient and forecast content are used in the response.
+        """
         # Mock weather API response
         mock_response = MagicMock()
         mock_response.json.return_value = self.sample_weather_data
@@ -260,6 +323,11 @@ class TestWeatherPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Asynchronously tests that a direct Meshtastic message containing a weather command from a known node with location data triggers the plugin to send a direct forecast response and checks channel enablement for direct messages.
+            
+            Verifies that the plugin returns True, sends a direct message with the expected weather forecast, and calls the channel enablement check with the correct parameters.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -280,7 +348,11 @@ class TestWeatherPlugin(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     def test_handle_meshtastic_message_broadcast_no_location(self, mock_connect):
-        """Test handling broadcast message with no node location."""
+        """
+        Test that a broadcast "!weather" message from a node without location data results in an error response.
+        
+        Verifies that the plugin sends a broadcast message indicating it cannot determine the location and checks channel enablement for broadcast messages.
+        """
         # Mock meshtastic client
         mock_client = MagicMock()
         mock_client.myInfo.my_node_num = 123456789
@@ -302,6 +374,11 @@ class TestWeatherPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Asynchronously tests that the plugin responds with an error message when handling a broadcast weather request without location data.
+            
+            Verifies that the plugin sends a broadcast message indicating location cannot be determined, checks channel enablement for broadcast, and returns True.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -323,7 +400,11 @@ class TestWeatherPlugin(unittest.TestCase):
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     @patch('requests.get')
     def test_handle_meshtastic_message_broadcast_with_location(self, mock_get, mock_connect):
-        """Test handling broadcast message with node location."""
+        """
+        Tests that a broadcast "!weather" message from a node with location data triggers a weather API request and sends a broadcast response with the forecast.
+        
+        Verifies that the plugin correctly retrieves the node's location, fetches weather data, formats the forecast, and sends it as a broadcast message on the appropriate channel. Also checks that channel enablement is respected for broadcast messages.
+        """
         # Mock weather API response
         mock_response = MagicMock()
         mock_response.json.return_value = self.sample_weather_data
@@ -353,6 +434,11 @@ class TestWeatherPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Asynchronously tests that a broadcast "!weather" message with location data triggers a weather forecast response.
+            
+            Verifies that the plugin sends a broadcast message with the correct weather forecast, checks channel enablement for broadcast, and returns True.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -373,7 +459,9 @@ class TestWeatherPlugin(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     def test_handle_meshtastic_message_unknown_node(self, mock_connect):
-        """Test handling message from unknown node."""
+        """
+        Test that a weather request from an unknown node returns True without sending a response message.
+        """
         # Mock meshtastic client with no nodes
         mock_client = MagicMock()
         mock_client.myInfo.my_node_num = 123456789
@@ -391,6 +479,9 @@ class TestWeatherPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Runs an asynchronous test to verify that handling a Meshtastic message from an unknown node returns True and does not send any message.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -404,7 +495,9 @@ class TestWeatherPlugin(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     def test_handle_meshtastic_message_missing_channel(self, mock_connect):
-        """Test handling message with missing channel field."""
+        """
+        Test that handling a Meshtastic message without a channel field defaults to channel 0 and checks channel enablement accordingly.
+        """
         mock_client = MagicMock()
         mock_client.myInfo.my_node_num = 123456789
         mock_connect.return_value = mock_client
@@ -419,6 +512,9 @@ class TestWeatherPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Runs an asynchronous test to verify that handling a Meshtastic message without a channel field defaults to channel 0 and checks channel enablement accordingly.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )

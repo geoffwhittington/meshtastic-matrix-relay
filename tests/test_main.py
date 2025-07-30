@@ -277,9 +277,9 @@ class TestMain(unittest.TestCase):
                                             mock_connect_meshtastic, mock_start_queue,
                                             mock_load_plugins, mock_init_db):
         """
-                                            Test that the main application raises an exception when the Matrix connection fails during startup.
+                                            Test that an exception is raised and propagated when the Matrix connection fails during main application startup.
                                             
-                                            This test mocks the Matrix connection to raise an exception and verifies that the exception is propagated when running the main function.
+                                            This test mocks the Matrix connection to raise an exception and verifies that the main function does not suppress it.
                                             """
         # Mock Matrix connection to raise an exception
         mock_connect_matrix.side_effect = Exception("Matrix connection failed")
@@ -297,13 +297,17 @@ class TestPrintBanner(unittest.TestCase):
     """Test cases for banner printing functionality."""
 
     def setUp(self):
-        """Reset banner state before each test."""
+        """
+        Resets the banner printed state to ensure the banner can be printed during each test.
+        """
         import mmrelay.main
         mmrelay.main._banner_printed = False
 
     @patch('mmrelay.main.logger')
     def test_print_banner_first_time(self, mock_logger):
-        """Test that banner is printed on first call."""
+        """
+        Test that the banner is printed and includes version information on the first call to print_banner.
+        """
         print_banner()
         mock_logger.info.assert_called_once()
         # Check that the message contains version info
@@ -312,7 +316,9 @@ class TestPrintBanner(unittest.TestCase):
 
     @patch('mmrelay.main.logger')
     def test_print_banner_subsequent_calls(self, mock_logger):
-        """Test that banner is only printed once."""
+        """
+        Test that the banner is printed only once, even if print_banner is called multiple times.
+        """
         print_banner()
         print_banner()  # Second call
         # Should only be called once
@@ -323,7 +329,9 @@ class TestRunMain(unittest.TestCase):
     """Test cases for run_main function."""
 
     def setUp(self):
-        """Reset banner state before each test."""
+        """
+        Resets the banner printed state to ensure the banner can be printed during each test.
+        """
         import mmrelay.main
         mmrelay.main._banner_printed = False
 
@@ -334,7 +342,11 @@ class TestRunMain(unittest.TestCase):
     @patch('mmrelay.main.print_banner')
     def test_run_main_success(self, mock_print_banner, mock_configure_logging,
                              mock_set_config, mock_load_config, mock_asyncio_run):
-        """Test successful run_main execution."""
+        """
+                             Test that run_main completes successfully with valid configuration and returns 0.
+                             
+                             Verifies that the banner is printed, configuration is loaded, and the main async function is executed when provided with correct arguments.
+                             """
         # Mock configuration
         mock_config = {
             "matrix": {"homeserver": "https://matrix.org"},
@@ -360,7 +372,9 @@ class TestRunMain(unittest.TestCase):
     @patch('mmrelay.config.load_config')
     @patch('mmrelay.main.print_banner')
     def test_run_main_missing_config_keys(self, mock_print_banner, mock_load_config, mock_set_config):
-        """Test run_main with missing required configuration keys."""
+        """
+        Test that run_main returns an error code when required configuration keys are missing.
+        """
         # Mock incomplete configuration
         mock_config = {"matrix": {"homeserver": "https://matrix.org"}}  # Missing keys
         mock_load_config.return_value = mock_config
@@ -380,7 +394,9 @@ class TestRunMain(unittest.TestCase):
     @patch('mmrelay.main.print_banner')
     def test_run_main_keyboard_interrupt(self, mock_print_banner, mock_configure_logging,
                                         mock_set_config, mock_load_config, mock_asyncio_run):
-        """Test run_main handling KeyboardInterrupt."""
+        """
+                                        Test that run_main returns 0 when a KeyboardInterrupt occurs during execution.
+                                        """
         mock_config = {
             "matrix": {"homeserver": "https://matrix.org"},
             "meshtastic": {"connection_type": "serial"},
@@ -404,7 +420,9 @@ class TestRunMain(unittest.TestCase):
     @patch('mmrelay.main.print_banner')
     def test_run_main_exception(self, mock_print_banner, mock_configure_logging,
                                mock_set_config, mock_load_config, mock_asyncio_run):
-        """Test run_main handling general exceptions."""
+        """
+                               Test that run_main returns an error code when a general exception occurs during execution.
+                               """
         mock_config = {
             "matrix": {"homeserver": "https://matrix.org"},
             "meshtastic": {"connection_type": "serial"},
@@ -431,7 +449,11 @@ class TestRunMain(unittest.TestCase):
     def test_run_main_with_data_dir(self, mock_print_banner, mock_configure_logging,
                                    mock_set_config, mock_load_config, mock_asyncio_run,
                                    mock_abspath, mock_makedirs):
-        """Test run_main with custom data directory."""
+        """
+                                   Test that run_main correctly handles a custom data directory by creating it and resolving its absolute path.
+                                   
+                                   This test verifies that when a custom data directory is specified, run_main ensures the directory exists and uses its absolute path during initialization.
+                                   """
         import tempfile
         import os
 
@@ -466,7 +488,11 @@ class TestRunMain(unittest.TestCase):
     @patch('mmrelay.main.print_banner')
     def test_run_main_with_log_level(self, mock_print_banner, mock_configure_logging,
                                     mock_set_config, mock_load_config, mock_asyncio_run):
-        """Test run_main with custom log level."""
+        """
+                                    Test that run_main applies a custom log level from arguments and returns success.
+                                    
+                                    Ensures that when a log level is specified in the arguments, it overrides the configuration's logging level, and run_main completes successfully.
+                                    """
         mock_config = {
             "matrix": {"homeserver": "https://matrix.org"},
             "meshtastic": {"connection_type": "serial"},
@@ -490,7 +516,9 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
     """Test cases for edge cases in the main function."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """
+        Prepare a mock configuration dictionary for use in test cases.
+        """
         self.mock_config = {
             "matrix": {
                 "homeserver": "https://matrix.org",
@@ -518,7 +546,11 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
                                                mock_connect_matrix, mock_connect_meshtastic,
                                                mock_start_queue, mock_load_plugins,
                                                mock_init_db, mock_wipe_db):
-        """Test main function with database wipe enabled (new config format)."""
+        """
+                                               Test that the main function calls the message map wipe when the new-format config enables database wiping on restart.
+                                               
+                                               Ensures that `wipe_message_map` is invoked at least once before client connections when `database.msg_map.wipe_on_restart` is set to True in the configuration.
+                                               """
         # Add database config with wipe_on_restart
         config_with_wipe = self.mock_config.copy()
         config_with_wipe["database"] = {
@@ -555,7 +587,11 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
                                                   mock_connect_matrix, mock_connect_meshtastic,
                                                   mock_start_queue, mock_load_plugins,
                                                   mock_init_db, mock_wipe_db):
-        """Test main function with database wipe enabled (legacy config format)."""
+        """
+                                                  Test that the main function performs a database wipe on startup when enabled via the legacy configuration format.
+                                                  
+                                                  Ensures that `wipe_message_map` is called at least once when the legacy `db.msg_map.wipe_on_restart` flag is set to True, and verifies correct handling of shutdown via KeyboardInterrupt.
+                                                  """
         # Add legacy database config with wipe_on_restart
         config_with_wipe = self.mock_config.copy()
         config_with_wipe["db"] = {
@@ -590,7 +626,11 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
     def test_main_with_custom_message_delay(self, mock_stop_queue, mock_join_room,
                                            mock_connect_matrix, mock_connect_meshtastic,
                                            mock_start_queue, mock_load_plugins, mock_init_db):
-        """Test main function with custom message delay configuration."""
+        """
+                                           Verifies that the main function uses a custom message delay from the configuration when starting the message queue.
+                                           
+                                           This test sets a specific message delay in the configuration, mocks all external dependencies, and asserts that `start_message_queue` is called with the correct delay value.
+                                           """
         # Add custom message delay
         config_with_delay = self.mock_config.copy()
         config_with_delay["meshtastic"]["message_delay"] = 5.0
@@ -626,7 +666,11 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
                                               mock_update_long, mock_join_room,
                                               mock_connect_matrix, mock_connect_meshtastic,
                                               mock_start_queue, mock_load_plugins, mock_init_db):
-        """Test main function behavior when Meshtastic client is None."""
+        """
+                                              Test that the main function does not attempt to update longnames or shortnames when the Meshtastic client is None.
+                                              
+                                              Verifies that when the Meshtastic connection returns None, the update functions for longnames and shortnames are not called, even as the Matrix client runs and exits via KeyboardInterrupt.
+                                              """
         # Mock clients - Meshtastic returns None
         mock_matrix_client = AsyncMock()
         mock_connect_matrix.return_value = mock_matrix_client

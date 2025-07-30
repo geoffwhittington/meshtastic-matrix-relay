@@ -291,7 +291,7 @@ class TestMeshtasticUtils(unittest.TestCase):
         """
         Test that Meshtastic-to-Matrix message relaying occurs even when broadcast is disabled in the configuration.
         
-        Verifies that the `broadcast_enabled` setting only affects Matrix-to-Meshtastic direction, and does not prevent relaying of Meshtastic messages to Matrix.
+        Ensures that disabling `broadcast_enabled` in the configuration does not prevent Meshtastic messages from being relayed to Matrix, confirming that this setting only affects Matrix-to-Meshtastic message direction.
         """
         config_no_broadcast = self.mock_config.copy()
         config_no_broadcast["meshtastic"]["broadcast_enabled"] = False
@@ -334,11 +334,27 @@ class TestServiceDetection(unittest.TestCase):
 
     @patch.dict(os.environ, {}, clear=True)
     def test_is_running_as_service_with_systemd_parent(self):
-        """Test service detection when parent process is systemd."""
+        """
+        Tests that `is_running_as_service` returns True when the parent process is `systemd` by mocking the relevant proc files.
+        """
         status_data = "PPid:\t1\n"
         comm_data = "systemd"
 
         def mock_open_func(filename, *args, **kwargs):
+            """
+            Mock file open function for simulating reads from specific `/proc` files during testing.
+            
+            Returns a mock file object with predefined content for `/proc/self/status` and `/proc/[pid]/comm`. Raises `FileNotFoundError` for any other file paths.
+            
+            Parameters:
+                filename (str): The path of the file to open.
+            
+            Returns:
+                file object: A mock file object with the specified content.
+            
+            Raises:
+                FileNotFoundError: If the filename does not match the supported `/proc` paths.
+            """
             if filename == "/proc/self/status":
                 return mock_open(read_data=status_data)()
             elif filename.startswith("/proc/") and filename.endswith("/comm"):
@@ -352,11 +368,27 @@ class TestServiceDetection(unittest.TestCase):
 
     @patch.dict(os.environ, {}, clear=True)
     def test_is_running_as_service_normal_process(self):
-        """Test service detection for normal (non-service) process."""
+        """
+        Tests that is_running_as_service returns False for a normal process with a non-systemd parent.
+        """
         status_data = "PPid:\t1234\n"
         comm_data = "bash"
 
         def mock_open_func(filename, *args, **kwargs):
+            """
+            Mock file open function for simulating reads from specific `/proc` files during testing.
+            
+            Returns a mock file object with predefined content for `/proc/self/status` and `/proc/[pid]/comm`. Raises `FileNotFoundError` for any other file paths.
+            
+            Parameters:
+                filename (str): The path of the file to open.
+            
+            Returns:
+                file object: A mock file object with the specified content.
+            
+            Raises:
+                FileNotFoundError: If the filename does not match the supported `/proc` paths.
+            """
             if filename == "/proc/self/status":
                 return mock_open(read_data=status_data)()
             elif filename.startswith("/proc/") and filename.endswith("/comm"):
@@ -371,7 +403,9 @@ class TestServiceDetection(unittest.TestCase):
     @patch.dict(os.environ, {}, clear=True)
     @patch('builtins.open', side_effect=FileNotFoundError())
     def test_is_running_as_service_file_not_found(self, mock_open_func):
-        """Test service detection when parent process file cannot be read."""
+        """
+        Test that service detection returns False when required process files cannot be read.
+        """
         result = is_running_as_service()
         self.assertFalse(result)
 
@@ -381,7 +415,9 @@ class TestSerialPortDetection(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.serial.tools.list_ports.comports')
     def test_serial_port_exists_found(self, mock_comports):
-        """Test serial port detection when port exists."""
+        """
+        Test that serial_port_exists returns True when the specified serial port is present among available system ports.
+        """
         mock_port = MagicMock()
         mock_port.device = '/dev/ttyUSB0'
         mock_comports.return_value = [mock_port]
@@ -391,7 +427,9 @@ class TestSerialPortDetection(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.serial.tools.list_ports.comports')
     def test_serial_port_exists_not_found(self, mock_comports):
-        """Test serial port detection when port doesn't exist."""
+        """
+        Tests that serial_port_exists returns False when the specified serial port is not found among available ports.
+        """
         mock_port = MagicMock()
         mock_port.device = '/dev/ttyUSB1'
         mock_comports.return_value = [mock_port]
@@ -401,7 +439,9 @@ class TestSerialPortDetection(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.serial.tools.list_ports.comports')
     def test_serial_port_exists_no_ports(self, mock_comports):
-        """Test serial port detection when no ports are available."""
+        """
+        Test that serial port detection returns False when no serial ports are available.
+        """
         mock_comports.return_value = []
 
         result = serial_port_exists('/dev/ttyUSB0')
@@ -412,7 +452,9 @@ class TestConnectionLossHandling(unittest.TestCase):
     """Test cases for connection loss handling."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """
+        Resets global connection state flags before each test to ensure test isolation.
+        """
         # Reset global state
         import mmrelay.meshtastic_utils
         mmrelay.meshtastic_utils.reconnecting = False
@@ -440,7 +482,11 @@ class TestConnectionLossHandling(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.logger')
     def test_on_lost_meshtastic_connection_already_reconnecting(self, mock_logger):
-        """Test connection loss handling when already reconnecting."""
+        """
+        Test that connection loss handling skips reconnection if already reconnecting.
+        
+        Verifies that when the reconnecting flag is set, the function logs a debug message and does not attempt another reconnection.
+        """
         import mmrelay.meshtastic_utils
         mmrelay.meshtastic_utils.reconnecting = True
         mmrelay.meshtastic_utils.shutting_down = False
@@ -454,7 +500,9 @@ class TestConnectionLossHandling(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.logger')
     def test_on_lost_meshtastic_connection_shutting_down(self, mock_logger):
-        """Test connection loss handling during shutdown."""
+        """
+        Tests that connection loss handling does not attempt reconnection and logs the correct message when the system is shutting down.
+        """
         import mmrelay.meshtastic_utils
         mmrelay.meshtastic_utils.reconnecting = False
         mmrelay.meshtastic_utils.shutting_down = True
@@ -473,7 +521,9 @@ class TestConnectMeshtasticEdgeCases(unittest.TestCase):
     @patch('mmrelay.meshtastic_utils.serial_port_exists')
     @patch('mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface')
     def test_connect_meshtastic_serial_port_not_exists(self, mock_serial, mock_port_exists):
-        """Test connection attempt when serial port doesn't exist."""
+        """
+        Test that connect_meshtastic returns None and does not instantiate the serial interface when the specified serial port does not exist.
+        """
         mock_port_exists.return_value = False
 
         config = {
@@ -490,7 +540,9 @@ class TestConnectMeshtasticEdgeCases(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface')
     def test_connect_meshtastic_serial_exception(self, mock_serial):
-        """Test connection when serial interface raises an exception."""
+        """
+        Test that connect_meshtastic returns None when the serial interface raises an exception during connection.
+        """
         mock_serial.side_effect = Exception("Serial connection failed")
 
         config = {
@@ -507,7 +559,9 @@ class TestConnectMeshtasticEdgeCases(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface')
     def test_connect_meshtastic_tcp_exception(self, mock_tcp):
-        """Test connection when TCP interface raises an exception."""
+        """
+        Tests that connect_meshtastic returns None when an exception is raised during TCP interface instantiation.
+        """
         mock_tcp.side_effect = Exception("TCP connection failed")
 
         config = {
@@ -523,7 +577,9 @@ class TestConnectMeshtasticEdgeCases(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface')
     def test_connect_meshtastic_ble_exception(self, mock_ble):
-        """Test connection when BLE interface raises an exception."""
+        """
+        Test that connect_meshtastic returns None when the BLE interface raises an exception during connection.
+        """
         mock_ble.side_effect = Exception("BLE connection failed")
 
         config = {
@@ -538,12 +594,16 @@ class TestConnectMeshtasticEdgeCases(unittest.TestCase):
         self.assertIsNone(result)
 
     def test_connect_meshtastic_no_config(self):
-        """Test connection attempt with no configuration."""
+        """
+        Test that attempting to connect to Meshtastic with no configuration returns None.
+        """
         result = connect_meshtastic(passed_config=None)
         self.assertIsNone(result)
 
     def test_connect_meshtastic_existing_client_simple(self):
-        """Test basic connection functionality."""
+        """
+        Tests that connect_meshtastic returns None gracefully when called with no configuration.
+        """
         config = {
             "meshtastic": {
                 "connection_type": "serial",
@@ -561,7 +621,9 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
     """Test cases for edge cases in message processing."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """
+        Initializes mock configuration data for use in test cases.
+        """
         self.mock_config = {
             "meshtastic": {
                 "connection_type": "serial",
@@ -575,7 +637,9 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
         }
 
     def test_on_meshtastic_message_no_decoded(self):
-        """Test message processing when packet has no decoded field."""
+        """
+        Tests that a Meshtastic packet without a 'decoded' field does not trigger message relay processing.
+        """
         packet = {
             "from": 123456789,
             "to": 987654321,
@@ -597,7 +661,9 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
             mock_run_coro.assert_not_called()
 
     def test_on_meshtastic_message_empty_text(self):
-        """Test message processing with empty text."""
+        """
+        Tests that packets with empty text messages do not trigger message relay to Matrix.
+        """
         packet = {
             "from": 123456789,
             "to": 987654321,

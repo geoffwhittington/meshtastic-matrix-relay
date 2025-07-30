@@ -373,9 +373,9 @@ class TestLogUtils(unittest.TestCase):
 
     def test_get_logger_file_creation_error(self):
         """
-        Test that get_logger handles file creation errors gracefully when an invalid log file path is provided.
+        Test that `get_logger` handles file creation errors gracefully when given an invalid log file path.
         
-        Verifies that logger creation does not raise unexpected exceptions when file logging is enabled with an invalid path, and that either a valid Logger is returned or a PermissionError is raised.
+        Ensures that enabling file logging with a non-existent directory does not raise unexpected exceptions, and that either a valid `Logger` is returned or a `PermissionError` is raised.
         """
         import tempfile
         import os
