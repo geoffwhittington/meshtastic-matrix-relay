@@ -900,4 +900,5 @@ def load_plugins(passed_config=None):
     else:
         logger.info("Loaded: none")
 
-    plugins_loaded = True  # Set the flag to indicate that plugins have been load
+    plugins_loaded = True  # Set the flag to indicate that plugins have been loaded
+    return sorted_active_plugins
