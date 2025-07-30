@@ -62,6 +62,7 @@ class TestPerformanceStress(unittest.TestCase):
 
         # Set up event loop
         loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         mmrelay.meshtastic_utils.event_loop = loop
 
         mmrelay.meshtastic_utils.config = {
@@ -72,87 +73,100 @@ class TestPerformanceStress(unittest.TestCase):
             {"id": "!room:matrix.org", "meshtastic_channel": 0}
         ]
 
-        with patch("mmrelay.plugin_loader.load_plugins", return_value=[]):
-            with patch("mmrelay.matrix_utils.get_matrix_prefix", return_value="[TestMesh/TN] "):
-                with patch("mmrelay.db_utils.get_longname", return_value="Test Node"):
-                    with patch("mmrelay.db_utils.get_shortname", return_value="TN"):
-                        with patch(
-                                    "mmrelay.matrix_utils.matrix_relay", side_effect=mock_matrix_relay
-                                ):
-                            start_time = time.time()
+        try:
+            with patch("mmrelay.plugin_loader.load_plugins", return_value=[]):
+                with patch("mmrelay.matrix_utils.get_matrix_prefix", return_value="[TestMesh/TN] "):
+                    with patch("mmrelay.db_utils.get_longname", return_value="Test Node"):
+                        with patch("mmrelay.db_utils.get_shortname", return_value="TN"):
+                            with patch(
+                                        "mmrelay.matrix_utils.matrix_relay", side_effect=mock_matrix_relay
+                                    ):
+                                start_time = time.time()
 
-                            # Process many messages
-                            for i in range(message_count):
-                                packet = {
-                                    "decoded": {"text": f"Message {i}", "portnum": 1},
-                                    "fromId": "!12345678",
-                                    "channel": 0,
-                                    "to": 4294967295,
-                                    "id": i,
-                                }
-                                on_meshtastic_message(packet, mock_interface)
+                                # Process many messages
+                                for i in range(message_count):
+                                    packet = {
+                                        "decoded": {"text": f"Message {i}", "portnum": "TEXT_MESSAGE_APP"},
+                                        "fromId": "!12345678",
+                                        "channel": 0,
+                                        "to": 4294967295,
+                                        "id": i,
+                                    }
+                                    on_meshtastic_message(packet, mock_interface)
 
-                            end_time = time.time()
-                            processing_time = end_time - start_time
+                                # Run the event loop to process any scheduled coroutines
+                                loop.run_until_complete(asyncio.sleep(0.1))
 
-                            # Verify all messages were processed
-                            self.assertEqual(len(processed_messages), message_count)
+                                end_time = time.time()
+                                processing_time = end_time - start_time
 
-                # Performance assertion (should process 1000 messages in reasonable time)
-                self.assertLess(
-                    processing_time, 10.0, "Message processing took too long"
-                )
+                                # Verify all messages were processed
+                                self.assertEqual(len(processed_messages), message_count)
 
-                # Memory usage should be reasonable
-                messages_per_second = message_count / processing_time
-                self.assertGreater(messages_per_second, 50, "Processing rate too slow")
+                    # Performance assertion (should process 1000 messages in reasonable time)
+                    self.assertLess(
+                        processing_time, 10.0, "Message processing took too long"
+                    )
+
+                    # Memory usage should be reasonable
+                    messages_per_second = message_count / processing_time
+                    self.assertGreater(messages_per_second, 50, "Processing rate too slow")
+        finally:
+            loop.close()
 
     def test_message_queue_performance_under_load(self):
         """Test message queue performance under high load."""
-        queue = MessageQueue()
-        queue.start(message_delay=0.01)  # Very fast processing
+        import asyncio
 
-        message_count = 500
-        processed_count = 0
+        async def run_test():
+            queue = MessageQueue()
+            queue.start(message_delay=0.01)  # Very fast processing (will be enforced to 2.0s minimum)
 
-        def mock_send_function():
-            nonlocal processed_count
-            processed_count += 1
-            return MagicMock(id="test_id")
+            message_count = 5  # Small number due to 2.0s minimum delay
+            processed_count = 0
 
-        try:
-            start_time = time.time()
+            def mock_send_function():
+                nonlocal processed_count
+                processed_count += 1
+                return MagicMock(id="test_id")
 
-            # Queue many messages rapidly
-            for i in range(message_count):
-                success = queue.enqueue(
-                    mock_send_function, description=f"Performance test message {i}"
+            try:
+                start_time = time.time()
+
+                # Queue many messages rapidly
+                for i in range(message_count):
+                    success = queue.enqueue(
+                        mock_send_function, description=f"Performance test message {i}"
+                    )
+                    self.assertTrue(success, f"Failed to enqueue message {i}")
+
+                # Wait for processing to complete (5 messages * 2s = 10s + buffer)
+                timeout = 15  # 15 second timeout
+                while (
+                    processed_count < message_count and time.time() - start_time < timeout
+                ):
+                    await asyncio.sleep(0.1)
+
+                end_time = time.time()
+                processing_time = end_time - start_time
+
+                # Verify all messages were processed
+                self.assertEqual(processed_count, message_count)
+
+                # Performance assertions (adjusted for 2s minimum delay)
+                expected_min_time = message_count * 2.0  # 2s per message minimum
+                self.assertGreaterEqual(processing_time, expected_min_time - 1.0, "Processing too fast (below firmware minimum)")
+
+                messages_per_second = message_count / processing_time
+                self.assertGreater(
+                    messages_per_second, 0.1, "Queue processing rate too slow"
                 )
-                self.assertTrue(success, f"Failed to enqueue message {i}")
 
-            # Wait for processing to complete
-            timeout = 30  # 30 second timeout
-            while (
-                processed_count < message_count and time.time() - start_time < timeout
-            ):
-                time.sleep(0.1)
+            finally:
+                queue.stop()
 
-            end_time = time.time()
-            processing_time = end_time - start_time
-
-            # Verify all messages were processed
-            self.assertEqual(processed_count, message_count)
-
-            # Performance assertions
-            self.assertLess(processing_time, 20.0, "Queue processing took too long")
-
-            messages_per_second = message_count / processing_time
-            self.assertGreater(
-                messages_per_second, 10, "Queue processing rate too slow"
-            )
-
-        finally:
-            queue.stop()
+        # Run the async test
+        asyncio.run(run_test())
 
     def test_database_performance_large_dataset(self):
         """Test database performance with large datasets."""
@@ -262,11 +276,17 @@ class TestPerformanceStress(unittest.TestCase):
 
     def test_concurrent_message_queue_access(self):
         """Test message queue performance under concurrent access."""
+        import asyncio
+
+        # Set up event loop for MessageQueue
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
         queue = MessageQueue()
         queue.start(message_delay=0.01)
 
-        thread_count = 10
-        messages_per_thread = 50
+        thread_count = 5
+        messages_per_thread = 10  # Reduced to stay within queue limit
         total_messages = thread_count * messages_per_thread
 
         processed_count = 0
@@ -321,6 +341,7 @@ class TestPerformanceStress(unittest.TestCase):
 
         finally:
             queue.stop()
+            loop.close()
 
     def test_memory_usage_stability(self):
         """Test memory usage stability over extended operation."""

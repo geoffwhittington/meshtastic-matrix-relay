@@ -302,10 +302,13 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_cursor = mock_conn.cursor.return_value
-            # First table creation succeeds, second fails
+            # First table creation succeeds, second fails, rest succeed
             mock_cursor.execute.side_effect = [
-                None,
-                sqlite3.Error("Table creation failed"),
+                None,  # longnames table succeeds
+                sqlite3.Error("Table creation failed"),  # shortnames table fails
+                None,  # plugin_data table succeeds
+                None,  # message_map table succeeds
+                sqlite3.OperationalError("Column already exists"),  # ALTER TABLE (expected)
             ]
             mock_connect.return_value.__enter__.return_value = mock_conn
 
