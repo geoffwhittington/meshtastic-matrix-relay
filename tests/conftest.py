@@ -61,6 +61,7 @@ sys.modules["meshtastic.protobuf.mesh_pb2"] = MagicMock()
 sys.modules["meshtastic.ble_interface"] = MagicMock()
 sys.modules["meshtastic.serial_interface"] = MagicMock()
 sys.modules["meshtastic.tcp_interface"] = MagicMock()
+sys.modules["meshtastic.mesh_interface"] = MagicMock()
 
 # Set up meshtastic constants
 meshtastic_mock.BROADCAST_ADDR = "^all"
@@ -88,6 +89,7 @@ sys.modules["nio.events.room_events"].RoomMemberEvent = MagicMock()
 # Mock PIL/Pillow
 sys.modules["PIL"] = MagicMock()
 sys.modules["PIL.Image"] = MagicMock()
+sys.modules["PIL.ImageDraw"] = MagicMock()
 
 # Mock other external dependencies (but avoid Python built-ins)
 sys.modules["certifi"] = MagicMock()

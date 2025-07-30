@@ -88,16 +88,16 @@ def serial_port_exists(port_name):
 
 def connect_meshtastic(passed_config=None, force_connect=False):
     """
-    Establishes and manages a connection to a Meshtastic device using serial, BLE, or TCP, with automatic retries and event subscriptions.
-
-    If a configuration is provided, updates the global configuration and Matrix room mappings. If already connected and not forced, returns the existing client. Handles reconnection logic with exponential backoff, verifies serial port existence, and subscribes to message and connection lost events upon successful connection.
-
+    Establishes a connection to a Meshtastic device using serial, BLE, or TCP, with automatic retries and event subscriptions.
+    
+    If a configuration is provided, updates the global configuration and Matrix room mappings. If already connected and not forced, returns the existing client. Handles reconnection with exponential backoff, verifies serial port existence, and subscribes to message and connection lost events upon successful connection.
+    
     Parameters:
         passed_config (dict, optional): Configuration dictionary to use for the connection.
         force_connect (bool, optional): If True, forces a new connection even if one already exists.
-
+    
     Returns:
-        meshtastic_client: The connected Meshtastic client instance, or None if connection fails or shutdown is in progress.
+        The connected Meshtastic client instance, or None if connection fails or shutdown is in progress.
     """
     global meshtastic_client, shutting_down, config, matrix_rooms
     if shutting_down:
@@ -198,9 +198,12 @@ def connect_meshtastic(passed_config=None, force_connect=False):
 
                 successful = True
                 nodeInfo = meshtastic_client.getMyNodeInfo()
-                logger.info(
-                    f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}"
-                )
+
+                # Safely access node info fields
+                user_info = nodeInfo.get('user', {}) if nodeInfo else {}
+                short_name = user_info.get('shortName', 'unknown')
+                hw_model = user_info.get('hwModel', 'unknown')
+                logger.info(f"Connected to {short_name} / {hw_model}")
 
                 # Subscribe to message and connection lost events (only once per application run)
                 global subscribed_to_messages, subscribed_to_connection_lost
@@ -216,26 +219,34 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                     subscribed_to_connection_lost = True
                     logger.debug("Subscribed to meshtastic.connection.lost")
 
-            except (
-                serial.SerialException,
-                BleakDBusError,
-                BleakError,
-                Exception,
-            ) as e:
+            except (serial.SerialException, BleakDBusError, BleakError) as e:
+                # Handle specific connection errors
                 if shutting_down:
                     logger.debug("Shutdown in progress. Aborting connection attempts.")
                     break
                 attempts += 1
                 if retry_limit == 0 or attempts <= retry_limit:
-                    wait_time = min(
-                        attempts * 2, 30
-                    )  # Exponential backoff capped at 30s
+                    wait_time = min(2**attempts, 60)  # Consistent exponential backoff, capped at 60s
                     logger.warning(
-                        f"Attempt #{attempts - 1} failed. Retrying in {wait_time} secs: {e}"
+                        f"Connection attempt {attempts} failed: {e}. Retrying in {wait_time} seconds..."
                     )
                     time.sleep(wait_time)
                 else:
-                    logger.error(f"Could not connect after {retry_limit} attempts: {e}")
+                    logger.error(f"Connection failed after {attempts} attempts: {e}")
+                    return None
+            except Exception as e:
+                if shutting_down:
+                    logger.debug("Shutdown in progress. Aborting connection attempts.")
+                    break
+                attempts += 1
+                if retry_limit == 0 or attempts <= retry_limit:
+                    wait_time = min(2**attempts, 60)  # Consistent exponential backoff, capped at 60s
+                    logger.warning(
+                        f"An unexpected error occurred on attempt {attempts}: {e}. Retrying in {wait_time} seconds..."
+                    )
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Connection failed after {attempts} attempts: {e}")
                     return None
 
     return meshtastic_client

@@ -660,25 +660,16 @@ def load_plugins_from_directory(directory, recursive=False):
 
 
 def load_plugins(passed_config=None):
-    """Load and initialize all active plugins based on configuration.
-
-    Args:
-        passed_config (dict, optional): Configuration dictionary to use.
-                                       If None, uses global config variable.
-
+    """
+    Load and initialize all active plugins according to the configuration.
+    
+    This function discovers, loads, and starts core, custom, and community plugins based on the provided or global configuration. It ensures only plugins marked as active are loaded, handles cloning and updating of community plugin repositories, installs dependencies as needed, and sorts active plugins by priority.
+    
+    Parameters:
+        passed_config (dict, optional): Configuration dictionary to use instead of the global config.
+    
     Returns:
-        list: List of active plugin instances sorted by priority
-
-    This is the main plugin loading function that:
-    - Loads core plugins from mmrelay.plugins package
-    - Processes custom plugins from ~/.mmrelay/plugins/custom and plugins/custom
-    - Downloads and loads community plugins from configured Git repositories
-    - Filters plugins based on active status in configuration
-    - Sorts active plugins by priority and calls their start() method
-    - Sets up proper plugin configuration and channel mapping
-
-    Only plugins explicitly marked as active=true in config are loaded.
-    Custom and community plugins are cloned/updated automatically.
+        list: Active plugin instances sorted by priority.
     """
     global sorted_active_plugins
     global plugins_loaded
@@ -900,4 +891,5 @@ def load_plugins(passed_config=None):
     else:
         logger.info("Loaded: none")
 
-    plugins_loaded = True  # Set the flag to indicate that plugins have been load
+    plugins_loaded = True  # Set the flag to indicate that plugins have been loaded
+    return sorted_active_plugins

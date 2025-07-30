@@ -67,13 +67,13 @@ def configure_component_debug_logging():
 
 def get_logger(name):
     """
-    Create and configure a logger with console and optional rotating file output, using global configuration and command-line arguments.
-
-    The logger supports colorized console output if enabled, and writes logs to a rotating file if configured or requested via command-line arguments. Log file location and rotation parameters are determined by priority: command-line argument, configuration file, or a default directory. The log directory is created if it does not exist, and the log file path is stored globally if the logger name is "M<>M Relay".
-
+    Create and configure a logger with console output (optionally colorized) and optional rotating file logging, based on global configuration and command-line arguments.
+    
+    The logger's log level, colorization, and file logging behavior are determined by configuration settings and command-line options. Log files are rotated by size, and the log directory is created if necessary. If the logger name is "M<>M Relay", the log file path is stored globally.
+    
     Parameters:
-        name (str): The name of the logger to create and configure.
-
+        name (str): The name of the logger to create.
+    
     Returns:
         logging.Logger: The configured logger instance.
     """
@@ -87,13 +87,21 @@ def get_logger(name):
     global config
     if config is not None and "logging" in config:
         if "level" in config["logging"]:
-            log_level = getattr(logging, config["logging"]["level"].upper())
+            try:
+                log_level = getattr(logging, config["logging"]["level"].upper())
+            except AttributeError:
+                # Invalid log level, fall back to default
+                log_level = logging.INFO
         # Check if colors should be disabled
         if "color_enabled" in config["logging"]:
             color_enabled = config["logging"]["color_enabled"]
 
     logger.setLevel(log_level)
     logger.propagate = False
+
+    # Check if logger already has handlers to avoid duplicates
+    if logger.handlers:
+        return logger
 
     # Add handler for console logging (with or without colors)
     if color_enabled:
@@ -168,7 +176,7 @@ def get_logger(name):
         # Create a file handler for logging
         try:
             # Set up size-based log rotation
-            max_bytes = 10 * 1024 * 1024  # Default 10 MB
+            max_bytes = 5 * 1024 * 1024  # Default 5 MB
             backup_count = 1  # Default to 1 backup
 
             if config is not None and "logging" in config:
