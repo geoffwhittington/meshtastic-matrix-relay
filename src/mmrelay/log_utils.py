@@ -87,7 +87,11 @@ def get_logger(name):
     global config
     if config is not None and "logging" in config:
         if "level" in config["logging"]:
-            log_level = getattr(logging, config["logging"]["level"].upper())
+            try:
+                log_level = getattr(logging, config["logging"]["level"].upper())
+            except AttributeError:
+                # Invalid log level, fall back to default
+                log_level = logging.INFO
         # Check if colors should be disabled
         if "color_enabled" in config["logging"]:
             color_enabled = config["logging"]["color_enabled"]
