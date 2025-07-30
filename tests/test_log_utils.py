@@ -158,7 +158,12 @@ class TestLogUtils(unittest.TestCase):
         import mmrelay.log_utils
         mmrelay.log_utils.config = config
 
-        logger = get_logger("test_logger")
+        # Use unique logger name and clear any existing handlers
+        logger_name = "test_logger_custom_file"
+        existing_logger = logging.getLogger(logger_name)
+        existing_logger.handlers.clear()
+
+        logger = get_logger(logger_name)
 
         # Should have handlers
         self.assertGreater(len(logger.handlers), 0)
@@ -210,7 +215,12 @@ class TestLogUtils(unittest.TestCase):
         import mmrelay.log_utils
         mmrelay.log_utils.config = config
 
-        logger = get_logger("test_logger")
+        # Use unique logger name to avoid caching issues
+        logger_name = "test_logger_rotation"
+        existing_logger = logging.getLogger(logger_name)
+        existing_logger.handlers.clear()
+
+        logger = get_logger(logger_name)
 
         # Check file handler rotation settings if file handler exists
         file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]

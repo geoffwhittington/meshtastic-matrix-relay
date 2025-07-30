@@ -58,6 +58,12 @@ class TestMeshtasticUtils(unittest.TestCase):
             "rxTime": 1234567890
         }
 
+        # Reset global state to avoid test interference
+        import mmrelay.meshtastic_utils
+        mmrelay.meshtastic_utils.meshtastic_client = None
+        mmrelay.meshtastic_utils.config = None
+        mmrelay.meshtastic_utils.matrix_rooms = []
+
     def test_on_meshtastic_message_basic(self):
         """Test basic message processing."""
         # Mock the required functions

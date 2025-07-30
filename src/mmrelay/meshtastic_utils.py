@@ -198,9 +198,12 @@ def connect_meshtastic(passed_config=None, force_connect=False):
 
                 successful = True
                 nodeInfo = meshtastic_client.getMyNodeInfo()
-                logger.info(
-                    f"Connected to {nodeInfo['user']['shortName']} / {nodeInfo['user']['hwModel']}"
-                )
+
+                # Safely access node info fields
+                user_info = nodeInfo.get('user', {}) if nodeInfo else {}
+                short_name = user_info.get('shortName', 'unknown')
+                hw_model = user_info.get('hwModel', 'unknown')
+                logger.info(f"Connected to {short_name} / {hw_model}")
 
                 # Subscribe to message and connection lost events (only once per application run)
                 global subscribed_to_messages, subscribed_to_connection_lost
@@ -216,12 +219,24 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                     subscribed_to_connection_lost = True
                     logger.debug("Subscribed to meshtastic.connection.lost")
 
-            except (
-                serial.SerialException,
-                BleakDBusError,
-                BleakError,
-                Exception,
-            ) as e:
+            except (serial.SerialException, BleakDBusError, BleakError) as e:
+                # Handle specific connection errors
+                if shutting_down:
+                    logger.debug("Shutdown in progress. Aborting connection attempts.")
+                    break
+                attempts += 1
+                if retry_limit == 0 or attempts <= retry_limit:
+                    wait_time = min(
+                        2**attempts, 60
+                    )  # Exponential backoff, capped at 60 seconds
+                    logger.warning(
+                        f"Connection attempt {attempts} failed: {e}. Retrying in {wait_time} seconds..."
+                    )
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Connection failed after {attempts} attempts: {e}")
+                    return None
+            except Exception as e:
                 if shutting_down:
                     logger.debug("Shutdown in progress. Aborting connection attempts.")
                     break
