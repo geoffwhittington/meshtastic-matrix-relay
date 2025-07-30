@@ -7,7 +7,21 @@ from unittest.mock import AsyncMock, MagicMock, patch
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from mmrelay.matrix_utils import on_room_message
+from mmrelay.matrix_utils import (
+    _add_truncated_vars,
+    _create_mapping_info,
+    _get_msgs_to_keep_config,
+    bot_command,
+    format_reply_message,
+    get_interaction_settings,
+    get_matrix_prefix,
+    get_meshtastic_prefix,
+    message_storage_enabled,
+    on_room_message,
+    strip_quoted_lines,
+    truncate_message,
+    validate_prefix_format,
+)
 
 
 class TestMatrixUtils(unittest.TestCase):
@@ -281,9 +295,9 @@ class TestMatrixUtils(unittest.TestCase):
         self, mock_queue_message, mock_connect_meshtastic
     ):
         """
-        Test that messages from unsupported Matrix rooms are ignored by on_room_message.
+        Test that messages from Matrix rooms not in the configured list are ignored.
         
-        Verifies that when a message event originates from a room not listed in the configured matrix rooms, the message is not queued for Meshtastic relay.
+        Ensures that when a message event originates from an unsupported Matrix room, it is not queued for Meshtastic relay.
         """
         self.mock_room.room_id = "!unsupported:matrix.org"
         with patch("mmrelay.matrix_utils.config", self.config), patch(
@@ -297,6 +311,430 @@ class TestMatrixUtils(unittest.TestCase):
 
                 # Assert that the message was not queued
                 mock_queue_message.assert_not_called()
+
+
+class TestUtilityFunctions(unittest.TestCase):
+    """Test cases for Matrix utility functions."""
+
+    def test_get_msgs_to_keep_config_default(self):
+        """
+        Test that the default message retention value is returned when no configuration is set.
+        """
+        import mmrelay.matrix_utils
+        original_config = mmrelay.matrix_utils.config
+        try:
+            mmrelay.matrix_utils.config = {}
+            result = _get_msgs_to_keep_config()
+            self.assertEqual(result, 500)
+        finally:
+            mmrelay.matrix_utils.config = original_config
+
+    def test_get_msgs_to_keep_config_legacy(self):
+        """
+        Test that the legacy configuration format correctly sets the message retention value.
+        """
+        import mmrelay.matrix_utils
+        original_config = mmrelay.matrix_utils.config
+        try:
+            mmrelay.matrix_utils.config = {"db": {"msg_map": {"msgs_to_keep": 100}}}
+            result = _get_msgs_to_keep_config()
+            self.assertEqual(result, 100)
+        finally:
+            mmrelay.matrix_utils.config = original_config
+
+    def test_get_msgs_to_keep_config_new_format(self):
+        """
+        Test that the new configuration format correctly sets the message retention value.
+        
+        Verifies that `_get_msgs_to_keep_config()` returns the expected value when the configuration uses the new nested format for message retention.
+        """
+        import mmrelay.matrix_utils
+        original_config = mmrelay.matrix_utils.config
+        try:
+            mmrelay.matrix_utils.config = {"database": {"msg_map": {"msgs_to_keep": 200}}}
+            result = _get_msgs_to_keep_config()
+            self.assertEqual(result, 200)
+        finally:
+            mmrelay.matrix_utils.config = original_config
+
+    def test_create_mapping_info(self):
+        """
+        Tests that _create_mapping_info returns a dictionary with the correct message mapping information based on the provided parameters.
+        """
+        result = _create_mapping_info(
+            matrix_event_id="$event123",
+            room_id="!room:matrix.org",
+            text="Hello world",
+            meshnet="test_mesh",
+            msgs_to_keep=100
+        )
+
+        expected = {
+            "matrix_event_id": "$event123",
+            "room_id": "!room:matrix.org",
+            "text": "Hello world",
+            "meshnet": "test_mesh",
+            "msgs_to_keep": 100
+        }
+        self.assertEqual(result, expected)
+
+    def test_create_mapping_info_defaults(self):
+        """
+        Test that _create_mapping_info returns a mapping dictionary with default values when optional parameters are not provided.
+        """
+        with patch('mmrelay.matrix_utils._get_msgs_to_keep_config', return_value=500):
+            result = _create_mapping_info(
+                matrix_event_id="$event123",
+                room_id="!room:matrix.org",
+                text="Hello world"
+            )
+
+            self.assertEqual(result["msgs_to_keep"], 500)
+            self.assertIsNone(result["meshnet"])
+
+    def test_get_interaction_settings_new_format(self):
+        """
+        Tests that interaction settings are correctly retrieved from a configuration using the new format.
+        """
+        config = {
+            "meshtastic": {
+                "message_interactions": {
+                    "reactions": True,
+                    "replies": False
+                }
+            }
+        }
+
+        result = get_interaction_settings(config)
+        expected = {"reactions": True, "replies": False}
+        self.assertEqual(result, expected)
+
+    def test_get_interaction_settings_legacy_format(self):
+        """
+        Test that interaction settings are correctly parsed from a legacy configuration format.
+        
+        Verifies that the function returns the expected dictionary when only legacy keys are present in the configuration.
+        """
+        config = {
+            "meshtastic": {
+                "relay_reactions": True
+            }
+        }
+
+        result = get_interaction_settings(config)
+        expected = {"reactions": True, "replies": False}
+        self.assertEqual(result, expected)
+
+    def test_get_interaction_settings_defaults(self):
+        """
+        Test that default interaction settings are returned as disabled when no configuration is provided.
+        """
+        config = {}
+
+        result = get_interaction_settings(config)
+        expected = {"reactions": False, "replies": False}
+        self.assertEqual(result, expected)
+
+    def test_message_storage_enabled_true(self):
+        """
+        Test that message storage is enabled when either reactions or replies are enabled in the interaction settings.
+        """
+        interactions = {"reactions": True, "replies": False}
+        self.assertTrue(message_storage_enabled(interactions))
+
+        interactions = {"reactions": False, "replies": True}
+        self.assertTrue(message_storage_enabled(interactions))
+
+        interactions = {"reactions": True, "replies": True}
+        self.assertTrue(message_storage_enabled(interactions))
+
+    def test_message_storage_enabled_false(self):
+        """
+        Test that message storage is disabled when both reactions and replies are disabled in the interaction settings.
+        """
+        interactions = {"reactions": False, "replies": False}
+        self.assertFalse(message_storage_enabled(interactions))
+
+    def test_add_truncated_vars(self):
+        """
+        Tests that truncated versions of a string are correctly added to a format dictionary with specific key suffixes.
+        """
+        format_vars = {}
+        _add_truncated_vars(format_vars, "display", "Hello World")
+
+        # Check that truncated variables are added
+        self.assertEqual(format_vars["display1"], "H")
+        self.assertEqual(format_vars["display5"], "Hello")
+        self.assertEqual(format_vars["display10"], "Hello Worl")
+        self.assertEqual(format_vars["display20"], "Hello World")
+
+    def test_add_truncated_vars_empty_text(self):
+        """
+        Test that _add_truncated_vars correctly handles empty string input by setting truncated variables to empty strings.
+        """
+        format_vars = {}
+        _add_truncated_vars(format_vars, "display", "")
+
+        # Should handle empty text gracefully
+        self.assertEqual(format_vars["display1"], "")
+        self.assertEqual(format_vars["display5"], "")
+
+    def test_add_truncated_vars_none_text(self):
+        """
+        Test that truncated variable keys are added with empty string values when the input text is None.
+        """
+        format_vars = {}
+        _add_truncated_vars(format_vars, "display", None)
+
+        # Should convert None to empty string
+        self.assertEqual(format_vars["display1"], "")
+        self.assertEqual(format_vars["display5"], "")
+
+
+class TestPrefixFormatting(unittest.TestCase):
+    """Test cases for prefix formatting functions."""
+
+    def test_validate_prefix_format_valid(self):
+        """
+        Tests that a valid prefix format string with available variables passes validation without errors.
+        """
+        format_string = "{display5}[M]: "
+        available_vars = {"display5": "Alice"}
+
+        is_valid, error = validate_prefix_format(format_string, available_vars)
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
+
+    def test_validate_prefix_format_invalid_key(self):
+        """
+        Tests that validate_prefix_format correctly identifies an invalid prefix format string containing a missing key.
+        
+        Verifies that the function returns False and provides an error message when the format string references a key not present in the available variables.
+        """
+        format_string = "{invalid_key}: "
+        available_vars = {"display5": "Alice"}
+
+        is_valid, error = validate_prefix_format(format_string, available_vars)
+        self.assertFalse(is_valid)
+        self.assertIsNotNone(error)
+
+    def test_get_meshtastic_prefix_enabled(self):
+        """
+        Tests that the Meshtastic prefix is generated using the specified format when prefixing is enabled in the configuration.
+        """
+        config = {
+            "meshtastic": {
+                "prefix_enabled": True,
+                "prefix_format": "{display5}[M]: "
+            }
+        }
+
+        result = get_meshtastic_prefix(config, "Alice", "@alice:matrix.org")
+        self.assertEqual(result, "Alice[M]: ")
+
+    def test_get_meshtastic_prefix_disabled(self):
+        """
+        Tests that no Meshtastic prefix is generated when prefixing is disabled in the configuration.
+        """
+        config = {
+            "meshtastic": {
+                "prefix_enabled": False
+            }
+        }
+
+        result = get_meshtastic_prefix(config, "Alice")
+        self.assertEqual(result, "")
+
+    def test_get_meshtastic_prefix_custom_format(self):
+        """
+        Tests that a custom Meshtastic prefix format is applied correctly using the truncated display name.
+        """
+        config = {
+            "meshtastic": {
+                "prefix_enabled": True,
+                "prefix_format": "[{display3}]: "
+            }
+        }
+
+        result = get_meshtastic_prefix(config, "Alice")
+        self.assertEqual(result, "[Ali]: ")
+
+    def test_get_meshtastic_prefix_invalid_format(self):
+        """
+        Test that get_meshtastic_prefix falls back to the default format when given an invalid prefix format string.
+        """
+        config = {
+            "meshtastic": {
+                "prefix_enabled": True,
+                "prefix_format": "{invalid_var}: "
+            }
+        }
+
+        result = get_meshtastic_prefix(config, "Alice")
+        self.assertEqual(result, "Alice[M]: ")  # Default format
+
+    def test_get_matrix_prefix_enabled(self):
+        """
+        Tests that the Matrix prefix is generated correctly when prefixing is enabled and a custom format is provided.
+        """
+        config = {
+            "matrix": {
+                "prefix_enabled": True,
+                "prefix_format": "[{long3}/{mesh}]: "
+            }
+        }
+
+        result = get_matrix_prefix(config, "Alice", "A", "TestMesh")
+        self.assertEqual(result, "[Ali/TestMesh]: ")
+
+    def test_get_matrix_prefix_disabled(self):
+        """
+        Test that no Matrix prefix is generated when prefixing is disabled in the configuration.
+        """
+        config = {
+            "matrix": {
+                "prefix_enabled": False
+            }
+        }
+
+        result = get_matrix_prefix(config, "Alice", "A", "TestMesh")
+        self.assertEqual(result, "")
+
+    def test_get_matrix_prefix_default_format(self):
+        """
+        Tests that the default Matrix prefix format is used when no custom format is specified in the configuration.
+        """
+        config = {
+            "matrix": {
+                "prefix_enabled": True
+                # No custom format specified
+            }
+        }
+
+        result = get_matrix_prefix(config, "Alice", "A", "TestMesh")
+        self.assertEqual(result, "[Alice/TestMesh]: ")  # Default format
+
+
+class TestTextProcessing(unittest.TestCase):
+    """Test cases for text processing functions."""
+
+    def test_truncate_message_under_limit(self):
+        """
+        Tests that a message shorter than the specified byte limit is not truncated by the truncate_message function.
+        """
+        text = "Hello world"
+        result = truncate_message(text, max_bytes=50)
+        self.assertEqual(result, "Hello world")
+
+    def test_truncate_message_over_limit(self):
+        """
+        Test that messages exceeding the specified byte limit are truncated without breaking character encoding.
+        """
+        text = "This is a very long message that exceeds the byte limit"
+        result = truncate_message(text, max_bytes=20)
+        self.assertTrue(len(result.encode('utf-8')) <= 20)
+        self.assertTrue(result.startswith("This is"))
+
+    def test_truncate_message_unicode(self):
+        """
+        Tests that truncating a message containing Unicode characters does not split characters and respects the byte limit.
+        """
+        text = "Hello 🌍 world"
+        result = truncate_message(text, max_bytes=10)
+        # Should handle Unicode properly without breaking characters
+        self.assertTrue(len(result.encode('utf-8')) <= 10)
+
+    def test_strip_quoted_lines_with_quotes(self):
+        """
+        Tests that quoted lines (starting with '>') are removed from multi-line text, and remaining lines are joined with spaces.
+        """
+        text = "This is a reply\n> Original message\n> Another quoted line\nNew content"
+        result = strip_quoted_lines(text)
+        expected = "This is a reply New content"  # Joined with spaces
+        self.assertEqual(result, expected)
+
+    def test_strip_quoted_lines_no_quotes(self):
+        """Test stripping quoted lines when no quotes exist."""
+        text = "This is a normal message\nWith multiple lines"
+        result = strip_quoted_lines(text)
+        expected = "This is a normal message With multiple lines"  # Joined with spaces
+        self.assertEqual(result, expected)
+
+    def test_strip_quoted_lines_only_quotes(self):
+        """
+        Tests that stripping quoted lines from text returns an empty string when all lines are quoted.
+        """
+        text = "> First quoted line\n> Second quoted line"
+        result = strip_quoted_lines(text)
+        self.assertEqual(result, "")
+
+    def test_format_reply_message(self):
+        """
+        Tests that reply messages are formatted with a truncated display name and quoted lines are removed from the message body.
+        """
+        config = {}  # Using defaults
+        result = format_reply_message(config, "Alice Smith", "This is a reply\n> Original message")
+
+        # Should include truncated display name and strip quoted lines
+        self.assertTrue(result.startswith("Alice[M]: "))
+        self.assertNotIn("> Original message", result)
+        self.assertIn("This is a reply", result)
+
+
+class TestBotCommand(unittest.TestCase):
+    """Test cases for bot command detection."""
+
+    @patch('mmrelay.matrix_utils.bot_user_id', '@bot:matrix.org')
+    @patch('mmrelay.matrix_utils.bot_user_name', 'Bot')
+    def test_bot_command_direct_mention(self):
+        """
+        Tests that a message starting with the bot command triggers correct command detection.
+        """
+        mock_event = MagicMock()
+        mock_event.body = "!help"
+        mock_event.source = {"content": {"formatted_body": "!help"}}
+
+        result = bot_command("help", mock_event)
+        self.assertTrue(result)
+
+    @patch('mmrelay.matrix_utils.bot_user_id', '@bot:matrix.org')
+    @patch('mmrelay.matrix_utils.bot_user_name', 'Bot')
+    def test_bot_command_no_match(self):
+        """
+        Test that a non-command message does not trigger bot command detection.
+        """
+        mock_event = MagicMock()
+        mock_event.body = "regular message"
+        mock_event.source = {"content": {"formatted_body": "regular message"}}
+
+        result = bot_command("help", mock_event)
+        self.assertFalse(result)
+
+    @patch('mmrelay.matrix_utils.bot_user_id', '@bot:matrix.org')
+    @patch('mmrelay.matrix_utils.bot_user_name', 'Bot')
+    def test_bot_command_case_insensitive(self):
+        """
+        Test that bot command detection is case-insensitive by verifying a command matches regardless of letter case.
+        """
+        mock_event = MagicMock()
+        mock_event.body = "!HELP"
+        mock_event.source = {"content": {"formatted_body": "!HELP"}}
+
+        result = bot_command("HELP", mock_event)  # Command should match case
+        self.assertTrue(result)
+
+    @patch('mmrelay.matrix_utils.bot_user_id', '@bot:matrix.org')
+    @patch('mmrelay.matrix_utils.bot_user_name', 'Bot')
+    def test_bot_command_with_args(self):
+        """
+        Test that the bot command is correctly detected when followed by additional arguments.
+        """
+        mock_event = MagicMock()
+        mock_event.body = "!help me please"
+        mock_event.source = {"content": {"formatted_body": "!help me please"}}
+
+        result = bot_command("help", mock_event)
+        self.assertTrue(result)
 
 
 if __name__ == "__main__":

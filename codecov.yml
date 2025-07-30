@@ -1,0 +1,35 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 55%
+        threshold: 1%
+    patch:
+      default:
+        target: 80%
+
+component_management:
+  default_rules:
+    rules:
+      - paths:
+          - "src/mmrelay/plugins/**"
+        name: "Plugins"
+      - paths:
+          - "src/mmrelay/config_checker.py"
+        name: "Configuration"
+      - paths:
+          - "src/mmrelay/meshtastic_utils.py"
+          - "src/mmrelay/matrix_utils.py"
+        name: "Core Utils"
+      - paths:
+          - "src/mmrelay/main.py"
+          - "src/mmrelay/cli.py"
+        name: "CLI & Main"
+      - paths:
+          - "tests/**"
+        name: "Tests"
+
+comment:
+  layout: "reach,diff,flags,tree,component"
+  behavior: default
+  require_changes: false

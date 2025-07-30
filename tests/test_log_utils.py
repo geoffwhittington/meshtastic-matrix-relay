@@ -373,27 +373,34 @@ class TestLogUtils(unittest.TestCase):
 
     def test_get_logger_file_creation_error(self):
         """
-        Test that get_logger handles file creation errors gracefully when an invalid log file path is provided.
+        Test that `get_logger` handles file creation errors gracefully when given an invalid log file path.
         
-        Verifies that logger creation does not raise unexpected exceptions when file logging is enabled with an invalid path, and that either a valid Logger is returned or a PermissionError is raised.
+        Ensures that enabling file logging with a non-existent directory does not raise unexpected exceptions, and that either a valid `Logger` is returned or a `PermissionError` is raised.
         """
-        config = {
-            "logging": {
-                "log_to_file": True,
-                "filename": "/invalid/path/test.log"  # Invalid path
+        import tempfile
+        import os
+
+        # Use a path in a non-existent subdirectory of temp directory
+        with tempfile.TemporaryDirectory() as temp_dir:
+            invalid_path = os.path.join(temp_dir, "nonexistent", "test.log")
+
+            config = {
+                "logging": {
+                    "log_to_file": True,
+                    "filename": invalid_path  # Invalid path (parent dir doesn't exist)
+                }
             }
-        }
 
-        import mmrelay.log_utils
-        mmrelay.log_utils.config = config
+            import mmrelay.log_utils
+            mmrelay.log_utils.config = config
 
-        # Should not raise exception, just return logger
-        try:
-            logger = get_logger("test_logger")
-            self.assertIsInstance(logger, logging.Logger)
-        except PermissionError:
-            # This is expected behavior - the test passes if we get a permission error
-            pass
+            # Should not raise exception, just return logger
+            try:
+                logger = get_logger("test_logger")
+                self.assertIsInstance(logger, logging.Logger)
+            except PermissionError:
+                # This is expected behavior - the test passes if we get a permission error
+                pass
 
 
 if __name__ == "__main__":

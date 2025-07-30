@@ -12,6 +12,7 @@ Tests the plugin discovery, loading, and management functionality including:
 """
 
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -21,6 +22,7 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from mmrelay.plugin_loader import (
+    clone_or_update_repo,
     get_community_plugin_dirs,
     get_custom_plugin_dirs,
     load_plugins,
@@ -101,16 +103,21 @@ class TestPluginLoader(unittest.TestCase):
         
         Verifies that `get_custom_plugin_dirs()` returns the expected list of custom plugin directories and that the directory creation function is called.
         """
+        import tempfile
+
         mock_get_base_dir.return_value = self.test_dir
-        mock_get_app_path.return_value = "/app"
 
-        dirs = get_custom_plugin_dirs()
+        # Use a temporary directory instead of hardcoded path
+        with tempfile.TemporaryDirectory() as temp_app_dir:
+            mock_get_app_path.return_value = temp_app_dir
 
-        expected_dirs = [
-            os.path.join(self.test_dir, "plugins", "custom"),
-            "/app/plugins/custom"
-        ]
-        self.assertEqual(dirs, expected_dirs)
+            dirs = get_custom_plugin_dirs()
+
+            expected_dirs = [
+                os.path.join(self.test_dir, "plugins", "custom"),
+                os.path.join(temp_app_dir, "plugins", "custom")
+            ]
+            self.assertEqual(dirs, expected_dirs)
         mock_makedirs.assert_called_once()
 
     @patch('mmrelay.plugin_loader.get_base_dir')
@@ -118,18 +125,23 @@ class TestPluginLoader(unittest.TestCase):
     @patch('os.makedirs')
     def test_get_community_plugin_dirs(self, mock_makedirs, mock_get_app_path, mock_get_base_dir):
         """
-        Test that the community plugin directory discovery function returns the correct directories and creates them if necessary.
+        Verify that the community plugin directory discovery function returns the expected directories and ensures their creation when needed.
         """
+        import tempfile
+
         mock_get_base_dir.return_value = self.test_dir
-        mock_get_app_path.return_value = "/app"
 
-        dirs = get_community_plugin_dirs()
+        # Use a temporary directory instead of hardcoded path
+        with tempfile.TemporaryDirectory() as temp_app_dir:
+            mock_get_app_path.return_value = temp_app_dir
 
-        expected_dirs = [
-            os.path.join(self.test_dir, "plugins", "community"),
-            "/app/plugins/community"
-        ]
-        self.assertEqual(dirs, expected_dirs)
+            dirs = get_community_plugin_dirs()
+
+            expected_dirs = [
+                os.path.join(self.test_dir, "plugins", "community"),
+                os.path.join(temp_app_dir, "plugins", "community")
+            ]
+            self.assertEqual(dirs, expected_dirs)
         mock_makedirs.assert_called_once()
 
     def test_load_plugins_from_directory_empty(self):
@@ -366,9 +378,9 @@ class Plugin:
     @patch('mmrelay.plugins.health_plugin.Plugin')
     def test_load_plugins_start_error(self, mock_health_plugin):
         """
-        Test that plugin start() method exceptions are handled gracefully during loading.
+        Test that plugins raising exceptions in their start() method are still loaded.
         
-        Verifies that if a plugin's start() method raises an exception, the error is logged but the plugin is still included in the loaded plugin list.
+        Ensures that if a plugin's start() method raises an exception during loading, the error is handled gracefully and the plugin remains in the loaded plugin list.
         """
         # Create a plugin that raises an error on start
         mock_plugin = MockPlugin("error_plugin")
@@ -390,6 +402,137 @@ class Plugin:
         # Plugin should still be in the list even if start() failed
         self.assertEqual(len(plugins), 1)
         self.assertEqual(plugins[0].plugin_name, "error_plugin")
+
+
+class TestGitRepositoryHandling(unittest.TestCase):
+    """Test cases for Git repository handling functions."""
+
+    def setUp(self):
+        """
+        Create a temporary directory and a subdirectory for plugins for use in test setup.
+        """
+        self.test_dir = tempfile.mkdtemp()
+        self.plugins_dir = os.path.join(self.test_dir, "plugins")
+
+    def tearDown(self):
+        """
+        Remove the temporary directory used for test fixtures after each test.
+        """
+        import shutil
+        shutil.rmtree(self.test_dir, ignore_errors=True)
+
+    @patch('os.makedirs')
+    @patch('subprocess.check_call')
+    @patch('subprocess.check_output')
+    @patch('os.path.isdir')
+    def test_clone_or_update_repo_new_repo_tag(self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs):
+        """
+        Verify that cloning a new Git repository with a specific tag invokes the correct git commands and returns success.
+        """
+        mock_isdir.return_value = False  # Repository doesn't exist
+
+        repo_url = "https://github.com/user/test-repo.git"
+        ref = {"type": "tag", "value": "v1.0.0"}
+
+        result = clone_or_update_repo(repo_url, ref, self.plugins_dir)
+
+        self.assertTrue(result)
+        # Should call git clone with the tag
+        mock_check_call.assert_called()
+        clone_call = mock_check_call.call_args_list[0]
+        self.assertIn("clone", clone_call[0][0])
+        self.assertIn("--branch", clone_call[0][0])
+        self.assertIn("v1.0.0", clone_call[0][0])
+
+    @patch('os.makedirs')
+    @patch('subprocess.check_call')
+    @patch('subprocess.check_output')
+    @patch('os.path.isdir')
+    def test_clone_or_update_repo_new_repo_branch(self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs):
+        """
+        Test that cloning a new Git repository with a specified branch triggers the correct git commands.
+        
+        Verifies that when the repository does not exist locally, `clone_or_update_repo` clones the repository using the provided branch name and returns True.
+        """
+        mock_isdir.return_value = False  # Repository doesn't exist
+
+        repo_url = "https://github.com/user/test-repo.git"
+        ref = {"type": "branch", "value": "develop"}
+
+        result = clone_or_update_repo(repo_url, ref, self.plugins_dir)
+
+        self.assertTrue(result)
+        # Should call git clone with the branch
+        mock_check_call.assert_called()
+        clone_call = mock_check_call.call_args_list[0]
+        self.assertIn("clone", clone_call[0][0])
+        self.assertIn("--branch", clone_call[0][0])
+        self.assertIn("develop", clone_call[0][0])
+
+    @patch('os.makedirs')
+    @patch('subprocess.check_call')
+    @patch('subprocess.check_output')
+    @patch('os.path.isdir')
+    def test_clone_or_update_repo_existing_repo_same_branch(self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs):
+        """
+        Test that updating an existing Git repository on the same branch triggers fetch and pull operations.
+        
+        Verifies that when the repository directory exists and the current branch matches the requested branch, the `clone_or_update_repo` function performs a fetch and pull, and returns True.
+        """
+        mock_isdir.return_value = True  # Repository exists
+        mock_check_output.return_value = "main\n"  # Current branch is main
+
+        repo_url = "https://github.com/user/test-repo.git"
+        ref = {"type": "branch", "value": "main"}
+
+        result = clone_or_update_repo(repo_url, ref, self.plugins_dir)
+
+        self.assertTrue(result)
+        # Should fetch and pull
+        fetch_called = any("fetch" in str(call) for call in mock_check_call.call_args_list)
+        pull_called = any("pull" in str(call) for call in mock_check_call.call_args_list)
+        self.assertTrue(fetch_called)
+        self.assertTrue(pull_called)
+
+    @patch('os.makedirs')
+    @patch('subprocess.check_call')
+    @patch('subprocess.check_output')
+    @patch('os.path.isdir')
+    def test_clone_or_update_repo_existing_repo_different_branch(self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs):
+        """
+        Test that updating an existing Git repository to a different branch triggers the appropriate Git commands.
+        
+        Verifies that when the current branch differs from the target branch, the repository is updated by switching branches and pulling the latest changes.
+        """
+        mock_isdir.return_value = True  # Repository exists
+        mock_check_output.return_value = "main\n"  # Current branch is main
+
+        repo_url = "https://github.com/user/test-repo.git"
+        ref = {"type": "branch", "value": "develop"}
+
+        result = clone_or_update_repo(repo_url, ref, self.plugins_dir)
+
+        self.assertTrue(result)
+        # Should call git commands (fetch, checkout, etc.)
+        self.assertTrue(mock_check_call.called)
+
+    @patch('os.makedirs')
+    @patch('subprocess.check_call')
+    @patch('subprocess.check_output')
+    @patch('os.path.isdir')
+    def test_clone_or_update_repo_git_error(self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs):
+        """Test handling Git command errors."""
+        mock_isdir.return_value = False  # Repository doesn't exist
+        mock_check_call.side_effect = subprocess.CalledProcessError(1, "git")
+
+        repo_url = "https://github.com/user/test-repo.git"
+        ref = {"type": "branch", "value": "main"}
+
+        result = clone_or_update_repo(repo_url, ref, self.plugins_dir)
+
+        self.assertFalse(result)
+
+
 
 
 if __name__ == "__main__":

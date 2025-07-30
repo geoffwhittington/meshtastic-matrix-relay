@@ -103,22 +103,27 @@ class TestDbUtils(unittest.TestCase):
     @patch('mmrelay.db_utils.get_data_dir')
     def test_get_db_path_default(self, mock_get_data_dir):
         """
-        Test that the database path defaults to the data directory when no configuration is set.
+        Test that `get_db_path()` returns the default database path in the absence of configuration.
         
-        Verifies that `get_db_path()` returns the expected default path using a mocked data directory when configuration is absent.
+        Mocks the data directory to verify that the default path is constructed correctly when no configuration is set.
         """
         # Clear config to test default behavior
         import mmrelay.db_utils
         mmrelay.db_utils.config = None
         clear_db_path_cache()
         
-        mock_get_data_dir.return_value = "/test/data"
-        path = get_db_path()
-        self.assertEqual(path, "/test/data/meshtastic.sqlite")
+        import tempfile
+        import os
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            mock_get_data_dir.return_value = temp_dir
+            path = get_db_path()
+            expected_path = os.path.join(temp_dir, "meshtastic.sqlite")
+            self.assertEqual(path, expected_path)
 
     def test_get_db_path_legacy_config(self):
         """
-        Test that the database path is correctly resolved when using a legacy configuration format with the 'db.path' key.
+        Test that get_db_path() returns the correct database path when using a legacy configuration with the 'db.path' key.
         """
         # Use legacy db.path format
         legacy_config = {

@@ -277,9 +277,9 @@ class TestMain(unittest.TestCase):
                                             mock_connect_meshtastic, mock_start_queue,
                                             mock_load_plugins, mock_init_db):
         """
-                                            Test that the main application raises an exception when the Matrix connection fails during startup.
+                                            Test that an exception is raised and propagated when the Matrix connection fails during main application startup.
                                             
-                                            This test mocks the Matrix connection to raise an exception and verifies that the exception is propagated when running the main function.
+                                            This test mocks the Matrix connection to raise an exception and verifies that the main function does not suppress it.
                                             """
         # Mock Matrix connection to raise an exception
         mock_connect_matrix.side_effect = Exception("Matrix connection failed")
@@ -291,6 +291,403 @@ class TestMain(unittest.TestCase):
         # Should raise the exception
         with self.assertRaises(Exception):
             asyncio.run(main(self.mock_config))
+
+
+class TestPrintBanner(unittest.TestCase):
+    """Test cases for banner printing functionality."""
+
+    def setUp(self):
+        """
+        Resets the banner printed state to ensure the banner can be printed during each test.
+        """
+        import mmrelay.main
+        mmrelay.main._banner_printed = False
+
+    @patch('mmrelay.main.logger')
+    def test_print_banner_first_time(self, mock_logger):
+        """
+        Test that the banner is printed and includes version information on the first call to print_banner.
+        """
+        print_banner()
+        mock_logger.info.assert_called_once()
+        # Check that the message contains version info
+        call_args = mock_logger.info.call_args[0][0]
+        self.assertIn("Starting MMRelay", call_args)
+
+    @patch('mmrelay.main.logger')
+    def test_print_banner_subsequent_calls(self, mock_logger):
+        """
+        Test that the banner is printed only once, even if print_banner is called multiple times.
+        """
+        print_banner()
+        print_banner()  # Second call
+        # Should only be called once
+        mock_logger.info.assert_called_once()
+
+
+class TestRunMain(unittest.TestCase):
+    """Test cases for run_main function."""
+
+    def setUp(self):
+        """
+        Resets the banner printed state to ensure the banner can be printed during each test.
+        """
+        import mmrelay.main
+        mmrelay.main._banner_printed = False
+
+    @patch('asyncio.run')
+    @patch('mmrelay.config.load_config')
+    @patch('mmrelay.config.set_config')
+    @patch('mmrelay.log_utils.configure_component_debug_logging')
+    @patch('mmrelay.main.print_banner')
+    def test_run_main_success(self, mock_print_banner, mock_configure_logging,
+                             mock_set_config, mock_load_config, mock_asyncio_run):
+        """
+                             Test that run_main completes successfully with valid configuration and returns 0.
+                             
+                             Verifies that the banner is printed, configuration is loaded, and the main async function is executed when provided with correct arguments.
+                             """
+        # Mock configuration
+        mock_config = {
+            "matrix": {"homeserver": "https://matrix.org"},
+            "meshtastic": {"connection_type": "serial"},
+            "matrix_rooms": [{"id": "!room:matrix.org"}]
+        }
+        mock_load_config.return_value = mock_config
+        mock_asyncio_run.return_value = None
+
+        # Mock args
+        mock_args = MagicMock()
+        mock_args.data_dir = None
+        mock_args.log_level = None
+
+        result = run_main(mock_args)
+
+        self.assertEqual(result, 0)
+        mock_print_banner.assert_called_once()
+        mock_load_config.assert_called_once_with(args=mock_args)
+        mock_asyncio_run.assert_called_once()
+
+    @patch('mmrelay.config.set_config')
+    @patch('mmrelay.config.load_config')
+    @patch('mmrelay.main.print_banner')
+    def test_run_main_missing_config_keys(self, mock_print_banner, mock_load_config, mock_set_config):
+        """
+        Test that run_main returns an error code when required configuration keys are missing.
+        """
+        # Mock incomplete configuration
+        mock_config = {"matrix": {"homeserver": "https://matrix.org"}}  # Missing keys
+        mock_load_config.return_value = mock_config
+
+        mock_args = MagicMock()
+        mock_args.data_dir = None
+        mock_args.log_level = None
+
+        result = run_main(mock_args)
+
+        self.assertEqual(result, 1)  # Should return error code
+
+    @patch('asyncio.run')
+    @patch('mmrelay.config.load_config')
+    @patch('mmrelay.config.set_config')
+    @patch('mmrelay.log_utils.configure_component_debug_logging')
+    @patch('mmrelay.main.print_banner')
+    def test_run_main_keyboard_interrupt(self, mock_print_banner, mock_configure_logging,
+                                        mock_set_config, mock_load_config, mock_asyncio_run):
+        """
+                                        Test that run_main returns 0 when a KeyboardInterrupt occurs during execution.
+                                        """
+        mock_config = {
+            "matrix": {"homeserver": "https://matrix.org"},
+            "meshtastic": {"connection_type": "serial"},
+            "matrix_rooms": [{"id": "!room:matrix.org"}]
+        }
+        mock_load_config.return_value = mock_config
+        mock_asyncio_run.side_effect = KeyboardInterrupt()
+
+        mock_args = MagicMock()
+        mock_args.data_dir = None
+        mock_args.log_level = None
+
+        result = run_main(mock_args)
+
+        self.assertEqual(result, 0)  # Should return success on keyboard interrupt
+
+    @patch('asyncio.run')
+    @patch('mmrelay.config.load_config')
+    @patch('mmrelay.config.set_config')
+    @patch('mmrelay.log_utils.configure_component_debug_logging')
+    @patch('mmrelay.main.print_banner')
+    def test_run_main_exception(self, mock_print_banner, mock_configure_logging,
+                               mock_set_config, mock_load_config, mock_asyncio_run):
+        """
+                               Test that run_main returns an error code when a general exception occurs during execution.
+                               """
+        mock_config = {
+            "matrix": {"homeserver": "https://matrix.org"},
+            "meshtastic": {"connection_type": "serial"},
+            "matrix_rooms": [{"id": "!room:matrix.org"}]
+        }
+        mock_load_config.return_value = mock_config
+        mock_asyncio_run.side_effect = Exception("Test error")
+
+        mock_args = MagicMock()
+        mock_args.data_dir = None
+        mock_args.log_level = None
+
+        result = run_main(mock_args)
+
+        self.assertEqual(result, 1)  # Should return error code
+
+    @patch('os.makedirs')
+    @patch('os.path.abspath')
+    @patch('asyncio.run')
+    @patch('mmrelay.config.load_config')
+    @patch('mmrelay.config.set_config')
+    @patch('mmrelay.log_utils.configure_component_debug_logging')
+    @patch('mmrelay.main.print_banner')
+    def test_run_main_with_data_dir(self, mock_print_banner, mock_configure_logging,
+                                   mock_set_config, mock_load_config, mock_asyncio_run,
+                                   mock_abspath, mock_makedirs):
+        """
+                                   Test that run_main correctly handles a custom data directory by creating it and resolving its absolute path.
+                                   
+                                   This test verifies that when a custom data directory is specified, run_main ensures the directory exists and uses its absolute path during initialization.
+                                   """
+        import tempfile
+        import os
+
+        mock_config = {
+            "matrix": {"homeserver": "https://matrix.org"},
+            "meshtastic": {"connection_type": "serial"},
+            "matrix_rooms": [{"id": "!room:matrix.org"}]
+        }
+        mock_load_config.return_value = mock_config
+        mock_asyncio_run.return_value = None
+
+        # Use a temporary directory instead of hardcoded path
+        with tempfile.TemporaryDirectory() as temp_dir:
+            custom_data_dir = os.path.join(temp_dir, "data")
+            mock_abspath.return_value = custom_data_dir
+
+            mock_args = MagicMock()
+            mock_args.data_dir = custom_data_dir
+            mock_args.log_level = None
+
+            result = run_main(mock_args)
+
+            self.assertEqual(result, 0)
+            # Check that abspath was called with our custom data dir (may be called multiple times)
+            mock_abspath.assert_any_call(custom_data_dir)
+            mock_makedirs.assert_called_once_with(custom_data_dir, exist_ok=True)
+
+    @patch('asyncio.run')
+    @patch('mmrelay.config.load_config')
+    @patch('mmrelay.config.set_config')
+    @patch('mmrelay.log_utils.configure_component_debug_logging')
+    @patch('mmrelay.main.print_banner')
+    def test_run_main_with_log_level(self, mock_print_banner, mock_configure_logging,
+                                    mock_set_config, mock_load_config, mock_asyncio_run):
+        """
+                                    Test that run_main applies a custom log level from arguments and returns success.
+                                    
+                                    Ensures that when a log level is specified in the arguments, it overrides the configuration's logging level, and run_main completes successfully.
+                                    """
+        mock_config = {
+            "matrix": {"homeserver": "https://matrix.org"},
+            "meshtastic": {"connection_type": "serial"},
+            "matrix_rooms": [{"id": "!room:matrix.org"}]
+        }
+        mock_load_config.return_value = mock_config
+        mock_asyncio_run.return_value = None
+
+        mock_args = MagicMock()
+        mock_args.data_dir = None
+        mock_args.log_level = "DEBUG"
+
+        result = run_main(mock_args)
+
+        self.assertEqual(result, 0)
+        # Check that log level was set in config
+        self.assertEqual(mock_config["logging"]["level"], "DEBUG")
+
+
+class TestMainFunctionEdgeCases(unittest.TestCase):
+    """Test cases for edge cases in the main function."""
+
+    def setUp(self):
+        """
+        Prepare a mock configuration dictionary for use in test cases.
+        """
+        self.mock_config = {
+            "matrix": {
+                "homeserver": "https://matrix.org",
+                "access_token": "test_token",
+                "bot_user_id": "@bot:matrix.org"
+            },
+            "matrix_rooms": [
+                {"id": "!room1:matrix.org", "meshtastic_channel": 0}
+            ],
+            "meshtastic": {
+                "connection_type": "serial",
+                "serial_port": "/dev/ttyUSB0"
+            }
+        }
+
+    @patch('mmrelay.main.wipe_message_map')
+    @patch('mmrelay.main.initialize_database')
+    @patch('mmrelay.main.load_plugins')
+    @patch('mmrelay.main.start_message_queue')
+    @patch('mmrelay.main.connect_meshtastic')
+    @patch('mmrelay.main.connect_matrix')
+    @patch('mmrelay.main.join_matrix_room')
+    @patch('mmrelay.main.stop_message_queue')
+    def test_main_with_database_wipe_new_format(self, mock_stop_queue, mock_join_room,
+                                               mock_connect_matrix, mock_connect_meshtastic,
+                                               mock_start_queue, mock_load_plugins,
+                                               mock_init_db, mock_wipe_db):
+        """
+                                               Test that the main function calls the message map wipe when the new-format config enables database wiping on restart.
+                                               
+                                               Ensures that `wipe_message_map` is invoked at least once before client connections when `database.msg_map.wipe_on_restart` is set to True in the configuration.
+                                               """
+        # Add database config with wipe_on_restart
+        config_with_wipe = self.mock_config.copy()
+        config_with_wipe["database"] = {
+            "msg_map": {"wipe_on_restart": True}
+        }
+
+        # Mock clients
+        mock_matrix_client = AsyncMock()
+        mock_connect_matrix.return_value = mock_matrix_client
+        mock_meshtastic_client = MagicMock()
+        mock_connect_meshtastic.return_value = mock_meshtastic_client
+
+        # Mock the sync_forever to complete quickly and mock callback methods
+        mock_matrix_client.sync_forever = AsyncMock(side_effect=KeyboardInterrupt())
+        mock_matrix_client.add_event_callback = MagicMock()  # Use regular mock for non-async method
+
+        try:
+            asyncio.run(main(config_with_wipe))
+        except KeyboardInterrupt:
+            pass
+
+        # Should call wipe_message_map (may be called multiple times - startup and shutdown)
+        self.assertGreaterEqual(mock_wipe_db.call_count, 1)
+
+    @patch('mmrelay.main.wipe_message_map')
+    @patch('mmrelay.main.initialize_database')
+    @patch('mmrelay.main.load_plugins')
+    @patch('mmrelay.main.start_message_queue')
+    @patch('mmrelay.main.connect_meshtastic')
+    @patch('mmrelay.main.connect_matrix')
+    @patch('mmrelay.main.join_matrix_room')
+    @patch('mmrelay.main.stop_message_queue')
+    def test_main_with_database_wipe_legacy_format(self, mock_stop_queue, mock_join_room,
+                                                  mock_connect_matrix, mock_connect_meshtastic,
+                                                  mock_start_queue, mock_load_plugins,
+                                                  mock_init_db, mock_wipe_db):
+        """
+                                                  Test that the main function performs a database wipe on startup when enabled via the legacy configuration format.
+                                                  
+                                                  Ensures that `wipe_message_map` is called at least once when the legacy `db.msg_map.wipe_on_restart` flag is set to True, and verifies correct handling of shutdown via KeyboardInterrupt.
+                                                  """
+        # Add legacy database config with wipe_on_restart
+        config_with_wipe = self.mock_config.copy()
+        config_with_wipe["db"] = {
+            "msg_map": {"wipe_on_restart": True}
+        }
+
+        # Mock clients
+        mock_matrix_client = AsyncMock()
+        mock_connect_matrix.return_value = mock_matrix_client
+        mock_meshtastic_client = MagicMock()
+        mock_connect_meshtastic.return_value = mock_meshtastic_client
+
+        # Mock the sync_forever to complete quickly and mock callback methods
+        mock_matrix_client.sync_forever = AsyncMock(side_effect=KeyboardInterrupt())
+        mock_matrix_client.add_event_callback = MagicMock()  # Use regular mock for non-async method
+
+        try:
+            asyncio.run(main(config_with_wipe))
+        except KeyboardInterrupt:
+            pass
+
+        # Should call wipe_message_map (may be called multiple times - startup and shutdown)
+        self.assertGreaterEqual(mock_wipe_db.call_count, 1)
+
+    @patch('mmrelay.main.initialize_database')
+    @patch('mmrelay.main.load_plugins')
+    @patch('mmrelay.main.start_message_queue')
+    @patch('mmrelay.main.connect_meshtastic')
+    @patch('mmrelay.main.connect_matrix')
+    @patch('mmrelay.main.join_matrix_room')
+    @patch('mmrelay.main.stop_message_queue')
+    def test_main_with_custom_message_delay(self, mock_stop_queue, mock_join_room,
+                                           mock_connect_matrix, mock_connect_meshtastic,
+                                           mock_start_queue, mock_load_plugins, mock_init_db):
+        """
+                                           Verifies that the main function uses a custom message delay from the configuration when starting the message queue.
+                                           
+                                           This test sets a specific message delay in the configuration, mocks all external dependencies, and asserts that `start_message_queue` is called with the correct delay value.
+                                           """
+        # Add custom message delay
+        config_with_delay = self.mock_config.copy()
+        config_with_delay["meshtastic"]["message_delay"] = 5.0
+
+        # Mock clients
+        mock_matrix_client = AsyncMock()
+        mock_connect_matrix.return_value = mock_matrix_client
+        mock_meshtastic_client = MagicMock()
+        mock_connect_meshtastic.return_value = mock_meshtastic_client
+
+        # Mock the sync_forever to complete quickly and mock callback methods
+        mock_matrix_client.sync_forever = AsyncMock(side_effect=KeyboardInterrupt())
+        mock_matrix_client.add_event_callback = MagicMock()  # Use regular mock for non-async method
+
+        try:
+            asyncio.run(main(config_with_delay))
+        except KeyboardInterrupt:
+            pass
+
+        # Should call start_message_queue with custom delay
+        mock_start_queue.assert_called_once_with(message_delay=5.0)
+
+    @patch('mmrelay.main.initialize_database')
+    @patch('mmrelay.main.load_plugins')
+    @patch('mmrelay.main.start_message_queue')
+    @patch('mmrelay.main.connect_meshtastic')
+    @patch('mmrelay.main.connect_matrix')
+    @patch('mmrelay.main.join_matrix_room')
+    @patch('mmrelay.main.update_longnames')
+    @patch('mmrelay.main.update_shortnames')
+    @patch('mmrelay.main.stop_message_queue')
+    def test_main_no_meshtastic_client_warning(self, mock_stop_queue, mock_update_short,
+                                              mock_update_long, mock_join_room,
+                                              mock_connect_matrix, mock_connect_meshtastic,
+                                              mock_start_queue, mock_load_plugins, mock_init_db):
+        """
+                                              Test that the main function does not attempt to update longnames or shortnames when the Meshtastic client is None.
+                                              
+                                              Verifies that when the Meshtastic connection returns None, the update functions for longnames and shortnames are not called, even as the Matrix client runs and exits via KeyboardInterrupt.
+                                              """
+        # Mock clients - Meshtastic returns None
+        mock_matrix_client = AsyncMock()
+        mock_connect_matrix.return_value = mock_matrix_client
+        mock_connect_meshtastic.return_value = None  # No Meshtastic client
+
+        # Mock the sync_forever to complete quickly and mock callback methods
+        mock_matrix_client.sync_forever = AsyncMock(side_effect=KeyboardInterrupt())
+        mock_matrix_client.add_event_callback = MagicMock()  # Use regular mock for non-async method
+
+        try:
+            asyncio.run(main(self.mock_config))
+        except KeyboardInterrupt:
+            pass
+
+        # Should not call update functions when no Meshtastic client
+        mock_update_long.assert_not_called()
+        mock_update_short.assert_not_called()
 
 
 if __name__ == "__main__":
