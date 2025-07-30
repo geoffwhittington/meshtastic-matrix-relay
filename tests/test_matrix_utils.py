@@ -295,9 +295,9 @@ class TestMatrixUtils(unittest.TestCase):
         self, mock_queue_message, mock_connect_meshtastic
     ):
         """
-        Test that messages from unsupported Matrix rooms are ignored by on_room_message.
+        Test that messages from Matrix rooms not in the configured list are ignored.
         
-        Verifies that when a message event originates from a room not listed in the configured matrix rooms, the message is not queued for Meshtastic relay.
+        Ensures that when a message event originates from an unsupported Matrix room, it is not queued for Meshtastic relay.
         """
         self.mock_room.room_id = "!unsupported:matrix.org"
         with patch("mmrelay.matrix_utils.config", self.config), patch(
@@ -317,7 +317,9 @@ class TestUtilityFunctions(unittest.TestCase):
     """Test cases for Matrix utility functions."""
 
     def test_get_msgs_to_keep_config_default(self):
-        """Test default message retention configuration."""
+        """
+        Test that the default message retention value is returned when no configuration is set.
+        """
         import mmrelay.matrix_utils
         original_config = mmrelay.matrix_utils.config
         try:
@@ -328,7 +330,9 @@ class TestUtilityFunctions(unittest.TestCase):
             mmrelay.matrix_utils.config = original_config
 
     def test_get_msgs_to_keep_config_legacy(self):
-        """Test legacy message retention configuration."""
+        """
+        Test that the legacy configuration format correctly sets the message retention value.
+        """
         import mmrelay.matrix_utils
         original_config = mmrelay.matrix_utils.config
         try:
@@ -339,7 +343,11 @@ class TestUtilityFunctions(unittest.TestCase):
             mmrelay.matrix_utils.config = original_config
 
     def test_get_msgs_to_keep_config_new_format(self):
-        """Test new message retention configuration format."""
+        """
+        Test that the new configuration format correctly sets the message retention value.
+        
+        Verifies that `_get_msgs_to_keep_config()` returns the expected value when the configuration uses the new nested format for message retention.
+        """
         import mmrelay.matrix_utils
         original_config = mmrelay.matrix_utils.config
         try:
@@ -350,7 +358,9 @@ class TestUtilityFunctions(unittest.TestCase):
             mmrelay.matrix_utils.config = original_config
 
     def test_create_mapping_info(self):
-        """Test creation of message mapping information."""
+        """
+        Tests that _create_mapping_info returns a dictionary with the correct message mapping information based on the provided parameters.
+        """
         result = _create_mapping_info(
             matrix_event_id="$event123",
             room_id="!room:matrix.org",
@@ -369,7 +379,9 @@ class TestUtilityFunctions(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_create_mapping_info_defaults(self):
-        """Test creation of mapping info with default values."""
+        """
+        Test that _create_mapping_info returns a mapping dictionary with default values when optional parameters are not provided.
+        """
         with patch('mmrelay.matrix_utils._get_msgs_to_keep_config', return_value=500):
             result = _create_mapping_info(
                 matrix_event_id="$event123",
@@ -381,7 +393,9 @@ class TestUtilityFunctions(unittest.TestCase):
             self.assertIsNone(result["meshnet"])
 
     def test_get_interaction_settings_new_format(self):
-        """Test interaction settings with new configuration format."""
+        """
+        Tests that interaction settings are correctly retrieved from a configuration using the new format.
+        """
         config = {
             "meshtastic": {
                 "message_interactions": {
@@ -396,7 +410,11 @@ class TestUtilityFunctions(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_get_interaction_settings_legacy_format(self):
-        """Test interaction settings with legacy configuration format."""
+        """
+        Test that interaction settings are correctly parsed from a legacy configuration format.
+        
+        Verifies that the function returns the expected dictionary when only legacy keys are present in the configuration.
+        """
         config = {
             "meshtastic": {
                 "relay_reactions": True
@@ -408,7 +426,9 @@ class TestUtilityFunctions(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_get_interaction_settings_defaults(self):
-        """Test interaction settings with no configuration."""
+        """
+        Test that default interaction settings are returned as disabled when no configuration is provided.
+        """
         config = {}
 
         result = get_interaction_settings(config)
@@ -416,7 +436,9 @@ class TestUtilityFunctions(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_message_storage_enabled_true(self):
-        """Test message storage enabled when interactions are enabled."""
+        """
+        Test that message storage is enabled when either reactions or replies are enabled in the interaction settings.
+        """
         interactions = {"reactions": True, "replies": False}
         self.assertTrue(message_storage_enabled(interactions))
 
@@ -427,12 +449,16 @@ class TestUtilityFunctions(unittest.TestCase):
         self.assertTrue(message_storage_enabled(interactions))
 
     def test_message_storage_enabled_false(self):
-        """Test message storage disabled when no interactions are enabled."""
+        """
+        Test that message storage is disabled when both reactions and replies are disabled in the interaction settings.
+        """
         interactions = {"reactions": False, "replies": False}
         self.assertFalse(message_storage_enabled(interactions))
 
     def test_add_truncated_vars(self):
-        """Test addition of truncated variables to format dictionary."""
+        """
+        Tests that truncated versions of a string are correctly added to a format dictionary with specific key suffixes.
+        """
         format_vars = {}
         _add_truncated_vars(format_vars, "display", "Hello World")
 
@@ -443,7 +469,9 @@ class TestUtilityFunctions(unittest.TestCase):
         self.assertEqual(format_vars["display20"], "Hello World")
 
     def test_add_truncated_vars_empty_text(self):
-        """Test truncated variables with empty text."""
+        """
+        Test that _add_truncated_vars correctly handles empty string input by setting truncated variables to empty strings.
+        """
         format_vars = {}
         _add_truncated_vars(format_vars, "display", "")
 
@@ -452,7 +480,9 @@ class TestUtilityFunctions(unittest.TestCase):
         self.assertEqual(format_vars["display5"], "")
 
     def test_add_truncated_vars_none_text(self):
-        """Test truncated variables with None text."""
+        """
+        Test that truncated variable keys are added with empty string values when the input text is None.
+        """
         format_vars = {}
         _add_truncated_vars(format_vars, "display", None)
 
@@ -465,7 +495,9 @@ class TestPrefixFormatting(unittest.TestCase):
     """Test cases for prefix formatting functions."""
 
     def test_validate_prefix_format_valid(self):
-        """Test validation of valid prefix format."""
+        """
+        Tests that a valid prefix format string with available variables passes validation without errors.
+        """
         format_string = "{display5}[M]: "
         available_vars = {"display5": "Alice"}
 
@@ -474,7 +506,11 @@ class TestPrefixFormatting(unittest.TestCase):
         self.assertIsNone(error)
 
     def test_validate_prefix_format_invalid_key(self):
-        """Test validation of invalid prefix format with missing key."""
+        """
+        Tests that validate_prefix_format correctly identifies an invalid prefix format string containing a missing key.
+        
+        Verifies that the function returns False and provides an error message when the format string references a key not present in the available variables.
+        """
         format_string = "{invalid_key}: "
         available_vars = {"display5": "Alice"}
 
@@ -483,7 +519,9 @@ class TestPrefixFormatting(unittest.TestCase):
         self.assertIsNotNone(error)
 
     def test_get_meshtastic_prefix_enabled(self):
-        """Test Meshtastic prefix generation when enabled."""
+        """
+        Tests that the Meshtastic prefix is generated using the specified format when prefixing is enabled in the configuration.
+        """
         config = {
             "meshtastic": {
                 "prefix_enabled": True,
@@ -495,7 +533,9 @@ class TestPrefixFormatting(unittest.TestCase):
         self.assertEqual(result, "Alice[M]: ")
 
     def test_get_meshtastic_prefix_disabled(self):
-        """Test Meshtastic prefix generation when disabled."""
+        """
+        Tests that no Meshtastic prefix is generated when prefixing is disabled in the configuration.
+        """
         config = {
             "meshtastic": {
                 "prefix_enabled": False
@@ -506,7 +546,9 @@ class TestPrefixFormatting(unittest.TestCase):
         self.assertEqual(result, "")
 
     def test_get_meshtastic_prefix_custom_format(self):
-        """Test Meshtastic prefix with custom format."""
+        """
+        Tests that a custom Meshtastic prefix format is applied correctly using the truncated display name.
+        """
         config = {
             "meshtastic": {
                 "prefix_enabled": True,
@@ -518,7 +560,9 @@ class TestPrefixFormatting(unittest.TestCase):
         self.assertEqual(result, "[Ali]: ")
 
     def test_get_meshtastic_prefix_invalid_format(self):
-        """Test Meshtastic prefix with invalid format falls back to default."""
+        """
+        Test that get_meshtastic_prefix falls back to the default format when given an invalid prefix format string.
+        """
         config = {
             "meshtastic": {
                 "prefix_enabled": True,
@@ -530,7 +574,9 @@ class TestPrefixFormatting(unittest.TestCase):
         self.assertEqual(result, "Alice[M]: ")  # Default format
 
     def test_get_matrix_prefix_enabled(self):
-        """Test Matrix prefix generation when enabled."""
+        """
+        Tests that the Matrix prefix is generated correctly when prefixing is enabled and a custom format is provided.
+        """
         config = {
             "matrix": {
                 "prefix_enabled": True,
@@ -542,7 +588,9 @@ class TestPrefixFormatting(unittest.TestCase):
         self.assertEqual(result, "[Ali/TestMesh]: ")
 
     def test_get_matrix_prefix_disabled(self):
-        """Test Matrix prefix generation when disabled."""
+        """
+        Test that no Matrix prefix is generated when prefixing is disabled in the configuration.
+        """
         config = {
             "matrix": {
                 "prefix_enabled": False
@@ -553,7 +601,9 @@ class TestPrefixFormatting(unittest.TestCase):
         self.assertEqual(result, "")
 
     def test_get_matrix_prefix_default_format(self):
-        """Test Matrix prefix with default format."""
+        """
+        Tests that the default Matrix prefix format is used when no custom format is specified in the configuration.
+        """
         config = {
             "matrix": {
                 "prefix_enabled": True
@@ -569,27 +619,35 @@ class TestTextProcessing(unittest.TestCase):
     """Test cases for text processing functions."""
 
     def test_truncate_message_under_limit(self):
-        """Test message truncation when under byte limit."""
+        """
+        Tests that a message shorter than the specified byte limit is not truncated by the truncate_message function.
+        """
         text = "Hello world"
         result = truncate_message(text, max_bytes=50)
         self.assertEqual(result, "Hello world")
 
     def test_truncate_message_over_limit(self):
-        """Test message truncation when over byte limit."""
+        """
+        Test that messages exceeding the specified byte limit are truncated without breaking character encoding.
+        """
         text = "This is a very long message that exceeds the byte limit"
         result = truncate_message(text, max_bytes=20)
         self.assertTrue(len(result.encode('utf-8')) <= 20)
         self.assertTrue(result.startswith("This is"))
 
     def test_truncate_message_unicode(self):
-        """Test message truncation with Unicode characters."""
+        """
+        Tests that truncating a message containing Unicode characters does not split characters and respects the byte limit.
+        """
         text = "Hello 🌍 world"
         result = truncate_message(text, max_bytes=10)
         # Should handle Unicode properly without breaking characters
         self.assertTrue(len(result.encode('utf-8')) <= 10)
 
     def test_strip_quoted_lines_with_quotes(self):
-        """Test stripping quoted lines from text."""
+        """
+        Tests that quoted lines (starting with '>') are removed from multi-line text, and remaining lines are joined with spaces.
+        """
         text = "This is a reply\n> Original message\n> Another quoted line\nNew content"
         result = strip_quoted_lines(text)
         expected = "This is a reply New content"  # Joined with spaces
@@ -603,13 +661,17 @@ class TestTextProcessing(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_strip_quoted_lines_only_quotes(self):
-        """Test stripping quoted lines when all lines are quoted."""
+        """
+        Tests that stripping quoted lines from text returns an empty string when all lines are quoted.
+        """
         text = "> First quoted line\n> Second quoted line"
         result = strip_quoted_lines(text)
         self.assertEqual(result, "")
 
     def test_format_reply_message(self):
-        """Test formatting of reply messages."""
+        """
+        Tests that reply messages are formatted with a truncated display name and quoted lines are removed from the message body.
+        """
         config = {}  # Using defaults
         result = format_reply_message(config, "Alice Smith", "This is a reply\n> Original message")
 
@@ -625,7 +687,9 @@ class TestBotCommand(unittest.TestCase):
     @patch('mmrelay.matrix_utils.bot_user_id', '@bot:matrix.org')
     @patch('mmrelay.matrix_utils.bot_user_name', 'Bot')
     def test_bot_command_direct_mention(self):
-        """Test bot command with direct mention."""
+        """
+        Tests that a message starting with the bot command triggers correct command detection.
+        """
         mock_event = MagicMock()
         mock_event.body = "!help"
         mock_event.source = {"content": {"formatted_body": "!help"}}
@@ -636,7 +700,9 @@ class TestBotCommand(unittest.TestCase):
     @patch('mmrelay.matrix_utils.bot_user_id', '@bot:matrix.org')
     @patch('mmrelay.matrix_utils.bot_user_name', 'Bot')
     def test_bot_command_no_match(self):
-        """Test bot command that doesn't match."""
+        """
+        Test that a non-command message does not trigger bot command detection.
+        """
         mock_event = MagicMock()
         mock_event.body = "regular message"
         mock_event.source = {"content": {"formatted_body": "regular message"}}
@@ -647,7 +713,9 @@ class TestBotCommand(unittest.TestCase):
     @patch('mmrelay.matrix_utils.bot_user_id', '@bot:matrix.org')
     @patch('mmrelay.matrix_utils.bot_user_name', 'Bot')
     def test_bot_command_case_insensitive(self):
-        """Test bot command case insensitivity."""
+        """
+        Test that bot command detection is case-insensitive by verifying a command matches regardless of letter case.
+        """
         mock_event = MagicMock()
         mock_event.body = "!HELP"
         mock_event.source = {"content": {"formatted_body": "!HELP"}}
@@ -658,7 +726,9 @@ class TestBotCommand(unittest.TestCase):
     @patch('mmrelay.matrix_utils.bot_user_id', '@bot:matrix.org')
     @patch('mmrelay.matrix_utils.bot_user_name', 'Bot')
     def test_bot_command_with_args(self):
-        """Test bot command with arguments."""
+        """
+        Test that the bot command is correctly detected when followed by additional arguments.
+        """
         mock_event = MagicMock()
         mock_event.body = "!help me please"
         mock_event.source = {"content": {"formatted_body": "!help me please"}}

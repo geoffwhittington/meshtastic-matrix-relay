@@ -42,7 +42,9 @@ class TestTextLabel(unittest.TestCase):
     """Test cases for TextLabel class."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """
+        Initialize a TextLabel instance with a San Francisco coordinate and label for use in tests.
+        """
         self.latlng = s2sphere.LatLng.from_degrees(37.7749, -122.4194)  # San Francisco
         self.text_label = TextLabel(self.latlng, "Test Label", fontSize=12)
 
@@ -55,16 +57,22 @@ class TestTextLabel(unittest.TestCase):
         self.assertEqual(self.text_label._arrow, 16)
 
     def test_latlng(self):
-        """Test latlng property."""
+        """
+        Verify that the latlng property of the TextLabel instance returns the correct coordinate.
+        """
         self.assertEqual(self.text_label.latlng(), self.latlng)
 
     def test_bounds(self):
-        """Test bounds calculation."""
+        """
+        Test that the bounds() method returns an s2sphere.LatLngRect instance for the TextLabel.
+        """
         bounds = self.text_label.bounds()
         self.assertIsInstance(bounds, s2sphere.LatLngRect)
 
     def test_extra_pixel_bounds(self):
-        """Test extra pixel bounds calculation."""
+        """
+        Test that extra_pixel_bounds returns a 4-tuple of positive values representing the label's pixel bounds.
+        """
         bounds = self.text_label.extra_pixel_bounds()
         self.assertIsInstance(bounds, tuple)
         self.assertEqual(len(bounds), 4)
@@ -75,7 +83,9 @@ class TestTextLabel(unittest.TestCase):
 
     @patch('staticmaps.PillowRenderer')
     def test_render_pillow(self, mock_renderer_class):
-        """Test Pillow rendering."""
+        """
+        Tests that the TextLabel's Pillow rendering method calls the expected drawing operations for polygon, line, and text.
+        """
         mock_renderer = MagicMock()
         mock_transformer = MagicMock()
         mock_transformer.ll2pixel.return_value = (100, 100)
@@ -95,7 +105,9 @@ class TestTextLabel(unittest.TestCase):
 
     @patch('staticmaps.SvgRenderer')
     def test_render_svg(self, mock_renderer_class):
-        """Test SVG rendering."""
+        """
+        Tests that the SVG rendering of a TextLabel creates the expected SVG path and text elements and adds them to the group.
+        """
         mock_renderer = MagicMock()
         mock_transformer = MagicMock()
         mock_transformer.ll2pixel.return_value = (100, 100)
@@ -122,7 +134,9 @@ class TestTextSizeFunction(unittest.TestCase):
     """Test cases for textsize function."""
 
     def test_textsize(self):
-        """Test textsize function."""
+        """
+        Tests that the textsize function returns the correct width and height based on the drawing context's text bounding box.
+        """
         mock_draw = MagicMock()
         mock_draw.textbbox.return_value = (0, 0, 100, 20)
         
@@ -137,7 +151,9 @@ class TestAnonymizeLocation(unittest.TestCase):
     """Test cases for location anonymization."""
 
     def test_anonymize_location_default_radius(self):
-        """Test location anonymization with default radius."""
+        """
+        Verify that anonymize_location changes coordinates within approximately 1km when using the default radius.
+        """
         lat, lon = 37.7749, -122.4194
         new_lat, new_lon = anonymize_location(lat, lon)
         
@@ -152,7 +168,9 @@ class TestAnonymizeLocation(unittest.TestCase):
         self.assertLess(lon_diff, 0.01)
 
     def test_anonymize_location_custom_radius(self):
-        """Test location anonymization with custom radius."""
+        """
+        Verify that anonymize_location modifies coordinates within a custom radius and that the changes remain within expected bounds.
+        """
         lat, lon = 37.7749, -122.4194
         radius = 5000  # 5km
         new_lat, new_lon = anonymize_location(lat, lon, radius)
@@ -167,7 +185,9 @@ class TestAnonymizeLocation(unittest.TestCase):
         self.assertLess(lat_diff, 0.05)  # Roughly 5km in degrees
 
     def test_anonymize_location_zero_radius(self):
-        """Test location anonymization with zero radius."""
+        """
+        Verify that anonymizing a location with a zero radius returns coordinates nearly identical to the original.
+        """
         lat, lon = 37.7749, -122.4194
         new_lat, new_lon = anonymize_location(lat, lon, 0)
         
@@ -180,7 +200,9 @@ class TestGetMap(unittest.TestCase):
     """Test cases for map generation."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """
+        Initialize test locations for use in map-related test cases.
+        """
         self.test_locations = [
             {"lat": 37.7749, "lon": -122.4194, "label": "SF"},
             {"lat": 37.7849, "lon": -122.4094, "label": "Oakland"},
@@ -188,7 +210,9 @@ class TestGetMap(unittest.TestCase):
 
     @patch('staticmaps.Context')
     def test_get_map_default_params(self, mock_context_class):
-        """Test map generation with default parameters."""
+        """
+        Test that get_map generates a map with default zoom and image size, and adds all provided locations.
+        """
         mock_context = MagicMock()
         mock_context_class.return_value = mock_context
         mock_context.render_pillow.return_value = MagicMock()
@@ -202,7 +226,9 @@ class TestGetMap(unittest.TestCase):
 
     @patch('staticmaps.Context')
     def test_get_map_custom_params(self, mock_context_class):
-        """Test map generation with custom parameters."""
+        """
+        Tests that get_map generates a map image using custom zoom, image size, anonymization, and radius parameters.
+        """
         mock_context = MagicMock()
         mock_context_class.return_value = mock_context
         mock_context.render_pillow.return_value = MagicMock()
@@ -221,7 +247,9 @@ class TestGetMap(unittest.TestCase):
     @patch('mmrelay.plugins.map_plugin.anonymize_location')
     @patch('staticmaps.Context')
     def test_get_map_with_anonymization(self, mock_context_class, mock_anonymize):
-        """Test map generation with location anonymization."""
+        """
+        Tests that `get_map` calls the anonymization function for each location when anonymization is enabled and a radius is specified.
+        """
         mock_context = MagicMock()
         mock_context_class.return_value = mock_context
         mock_context.render_pillow.return_value = MagicMock()
@@ -245,9 +273,14 @@ class TestImageUploadAndSend(unittest.TestCase):
         self.mock_upload_response.content_uri = "mxc://example.com/test123"
 
     def test_upload_image(self):
-        """Test image upload functionality."""
+        """
+        Test that the image upload function correctly saves the image to a buffer, uploads it using the client, and returns the upload response.
+        """
         async def run_test():
             # Mock image save
+            """
+            Asynchronously tests the upload_image function to ensure it uploads an image using the client and returns the expected upload response.
+            """
             mock_buffer = MagicMock()
             mock_buffer.getvalue.return_value = b"fake_image_data"
 
@@ -262,8 +295,13 @@ class TestImageUploadAndSend(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_send_room_image(self):
-        """Test sending image to room."""
+        """
+        Test that send_room_image sends an image message to the specified room with the correct content using the client.
+        """
         async def run_test():
+            """
+            Asynchronously tests that an image is sent to a Matrix room with the correct message content.
+            """
             room_id = "!test:example.com"
 
             await send_room_image(self.mock_client, room_id, self.mock_upload_response)
@@ -283,8 +321,15 @@ class TestImageUploadAndSend(unittest.TestCase):
     @patch('mmrelay.plugins.map_plugin.upload_image')
     @patch('mmrelay.plugins.map_plugin.send_room_image')
     def test_send_image(self, mock_send_room_image, mock_upload_image):
-        """Test complete image sending workflow."""
+        """
+        Test that the image sending workflow uploads an image and sends it to the specified room.
+        
+        Verifies that `upload_image` is called with the correct client and image, and that `send_room_image` is called with the resulting upload response.
+        """
         async def run_test():
+            """
+            Asynchronously tests the image sending workflow by verifying that image upload and room image sending functions are called with the correct arguments.
+            """
             room_id = "!test:example.com"
             mock_upload_image.return_value = self.mock_upload_response
 
@@ -302,7 +347,9 @@ class TestMapPlugin(unittest.TestCase):
     """Test cases for the map Plugin class."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """
+        Initializes a Plugin instance and sets its configuration for use in tests.
+        """
         self.plugin = Plugin()
         self.plugin.config = {
             "zoom": 10,
@@ -313,19 +360,28 @@ class TestMapPlugin(unittest.TestCase):
         }
 
     def test_plugin_name(self):
-        """Test plugin name property."""
+        """
+        Test that the plugin_name property returns the expected value "map".
+        """
         self.assertEqual(self.plugin.plugin_name, "map")
 
     def test_description(self):
-        """Test plugin description."""
+        """
+        Verifies that the plugin's description contains expected keywords related to map functionality.
+        """
         description = self.plugin.description
         self.assertIn("Map of mesh radio nodes", description)
         self.assertIn("zoom", description)
         self.assertIn("size", description)
 
     def test_handle_meshtastic_message(self):
-        """Test handling Meshtastic messages."""
+        """
+        Tests that handle_meshtastic_message returns False when called with a Meshtastic message.
+        """
         async def run_test():
+            """
+            Asynchronously tests that the plugin's `handle_meshtastic_message` method returns False when invoked with a sample message.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet=MagicMock(),
                 formatted_message="test",
@@ -337,12 +393,16 @@ class TestMapPlugin(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_get_matrix_commands(self):
-        """Test getting Matrix commands."""
+        """
+        Test that the plugin returns the correct list of Matrix commands.
+        """
         commands = self.plugin.get_matrix_commands()
         self.assertEqual(commands, ["map"])
 
     def test_get_mesh_commands(self):
-        """Test getting mesh commands."""
+        """
+        Test that the plugin returns an empty list for mesh commands.
+        """
         commands = self.plugin.get_mesh_commands()
         self.assertEqual(commands, [])
 
@@ -351,9 +411,18 @@ class TestMapPlugin(unittest.TestCase):
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     @patch('mmrelay.matrix_utils.connect_matrix')
     def test_handle_room_message_basic_map(self, mock_connect_matrix, mock_connect_meshtastic, mock_get_map, mock_send_image):
-        """Test handling basic map command."""
+        """
+        Test that the plugin correctly handles a basic "!map" command in a Matrix room message.
+        
+        Verifies that the map is generated and sent when the command matches, and that the appropriate methods are called with the expected arguments.
+        """
         async def run_test():
             # Setup mocks
+            """
+            Asynchronously tests that the plugin handles a "!map" room message by generating a map and sending the resulting image.
+            
+            This test verifies that when a "!map" command is received, the plugin correctly matches the command, generates a map image using node positions, and sends the image to the specified Matrix room.
+            """
             mock_room = MagicMock()
             mock_room.room_id = "!test:example.com"
             mock_event = MagicMock()
@@ -389,8 +458,17 @@ class TestMapPlugin(unittest.TestCase):
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     @patch('mmrelay.matrix_utils.connect_matrix')
     def test_handle_room_message_with_zoom(self, mock_connect_matrix, mock_connect_meshtastic, mock_get_map, mock_send_image):
-        """Test handling map command with zoom parameter."""
+        """
+        Test that the plugin correctly handles a "!map" command with a specified zoom parameter.
+        
+        Verifies that when a room message includes "zoom=15", the plugin parses the zoom value and passes it to the map generation function.
+        """
         async def run_test():
+            """
+            Asynchronously tests that the plugin handles a "!map zoom=15" command by generating a map with the specified zoom level.
+            
+            This test mocks the Matrix and Meshtastic clients, simulates a room message event, and verifies that the map generation function is called with the correct zoom parameter. It asserts that the plugin's message handler returns True, indicating successful handling.
+            """
             mock_room = MagicMock()
             mock_room.room_id = "!test:example.com"
             mock_event = MagicMock()
@@ -421,8 +499,15 @@ class TestMapPlugin(unittest.TestCase):
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     @patch('mmrelay.matrix_utils.connect_matrix')
     def test_handle_room_message_with_size(self, mock_connect_matrix, mock_connect_meshtastic, mock_get_map, mock_send_image):
-        """Test handling map command with size parameter."""
+        """
+        Tests that the map plugin correctly handles the "!map" command with a custom image size parameter, ensuring the generated map uses the specified dimensions.
+        """
         async def run_test():
+            """
+            Asynchronously tests that the plugin handles a "!map size=500,400" command by generating a map image with the specified size and returns True.
+            
+            This test verifies that the `get_map` function is called with the correct `image_size` parameter when the command includes a custom size.
+            """
             mock_room = MagicMock()
             mock_room.room_id = "!test:example.com"
             mock_event = MagicMock()
@@ -449,8 +534,13 @@ class TestMapPlugin(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_handle_room_message_no_match(self):
-        """Test handling non-map messages."""
+        """
+        Test that handle_room_message returns False when the message does not match the map command.
+        """
         async def run_test():
+            """
+            Asynchronously tests that the plugin's handle_room_message method returns False when the message does not match the plugin command.
+            """
             mock_room = MagicMock()
             mock_event = MagicMock()
             mock_event.body = "!help"
@@ -467,8 +557,17 @@ class TestMapPlugin(unittest.TestCase):
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     @patch('mmrelay.matrix_utils.connect_matrix')
     def test_handle_room_message_invalid_zoom(self, mock_connect_matrix, mock_connect_meshtastic, mock_get_map, mock_send_image):
-        """Test handling map command with invalid zoom parameter."""
+        """
+        Test that the plugin resets an invalid zoom parameter to the default value when handling a map command.
+        
+        Verifies that when a map command with an out-of-range zoom value is received, the plugin uses the default zoom (8) for map generation.
+        """
         async def run_test():
+            """
+            Asynchronously tests that an invalid zoom parameter in the "!map" command is reset to the default value when handling a room message.
+            
+            The test mocks Matrix and Meshtastic clients, simulates a "!map zoom=50" command, and verifies that the map generation function is called with the default zoom level (8) instead of the invalid value.
+            """
             mock_room = MagicMock()
             mock_room.room_id = "!test:example.com"
             mock_event = MagicMock()
@@ -499,8 +598,17 @@ class TestMapPlugin(unittest.TestCase):
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     @patch('mmrelay.matrix_utils.connect_matrix')
     def test_handle_room_message_oversized_image(self, mock_connect_matrix, mock_connect_meshtastic, mock_get_map, mock_send_image):
-        """Test handling map command with oversized image parameters."""
+        """
+        Test that the map command with oversized image size parameters results in the image size being capped at 1000x1000 pixels.
+        
+        Verifies that when a user requests an image size exceeding the allowed maximum, the plugin enforces the size limit before generating the map.
+        """
         async def run_test():
+            """
+            Test that oversized image size parameters in the "!map" command are capped at the maximum allowed dimensions when handling a room message.
+            
+            Asserts that the plugin processes the command, generates a map image with the capped size, and returns True.
+            """
             mock_room = MagicMock()
             mock_room.room_id = "!test:example.com"
             mock_event = MagicMock()

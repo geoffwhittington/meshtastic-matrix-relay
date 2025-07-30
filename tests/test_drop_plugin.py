@@ -25,7 +25,9 @@ class TestDropPlugin(unittest.TestCase):
     """Test cases for the drop plugin."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """
+        Initializes the test environment by setting up a Plugin instance with mocked configuration, logger, database operations, and a Meshtastic client with predefined node data for testing.
+        """
         self.plugin = Plugin()
         self.plugin.config = {"radius_km": 5}
         self.plugin.logger = MagicMock()
@@ -56,7 +58,9 @@ class TestDropPlugin(unittest.TestCase):
         }
 
     def test_get_position_with_valid_node(self):
-        """Test getting position for a node that exists with position data."""
+        """
+        Tests that get_position returns the correct latitude and longitude for a node with valid position data.
+        """
         position = self.plugin.get_position(self.mock_meshtastic_client, "!12345678")
         
         self.assertIsNotNone(position)
@@ -64,20 +68,28 @@ class TestDropPlugin(unittest.TestCase):
         self.assertEqual(position["longitude"], -74.0060)
 
     def test_get_position_with_node_no_position(self):
-        """Test getting position for a node that exists but has no position data."""
+        """
+        Test that get_position returns None for a node that exists but lacks position data.
+        """
         position = self.plugin.get_position(self.mock_meshtastic_client, "!11111111")
         
         self.assertIsNone(position)
 
     def test_get_position_with_nonexistent_node(self):
-        """Test getting position for a node that doesn't exist."""
+        """
+        Test that get_position returns None when called with a non-existent node ID.
+        """
         position = self.plugin.get_position(self.mock_meshtastic_client, "!99999999")
         
         self.assertIsNone(position)
 
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
     def test_handle_meshtastic_message_drop_valid(self, mock_connect):
-        """Test dropping a message with valid position data."""
+        """
+        Test that a valid "!drop" command from a node with position data is handled correctly.
+        
+        Verifies that the plugin stores the dropped message with the correct text, originator ID, and location when the node has valid position data.
+        """
         mock_connect.return_value = self.mock_meshtastic_client
 
         packet = {
@@ -89,6 +101,12 @@ class TestDropPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Run an asynchronous test to verify that a dropped message is handled and stored with correct metadata.
+            
+            Returns:
+                result (bool): True if the message was successfully handled and stored.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -107,7 +125,9 @@ class TestDropPlugin(unittest.TestCase):
 
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
     def test_handle_meshtastic_message_drop_no_position(self, mock_connect):
-        """Test dropping a message when node has no position data."""
+        """
+        Test that dropping a message from a node without position data logs a debug message and does not store the message, but returns True.
+        """
         mock_connect.return_value = self.mock_meshtastic_client
 
         packet = {
@@ -119,6 +139,9 @@ class TestDropPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Run an asynchronous test to verify that handling a message from a node without position data returns True and logs the appropriate debug message.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -133,7 +156,11 @@ class TestDropPlugin(unittest.TestCase):
 
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
     def test_handle_meshtastic_message_not_drop_command(self, mock_connect):
-        """Test handling a message that's not a drop command."""
+        """
+        Test that non-drop command messages are not handled by the plugin.
+        
+        Verifies that when a message not starting with the drop command is received, the handler returns False, indicating no action was taken.
+        """
         mock_connect.return_value = self.mock_meshtastic_client
 
         packet = {
@@ -145,6 +172,9 @@ class TestDropPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Run an asynchronous test for handling a Meshtastic message and assert that the handler returns False.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -155,7 +185,9 @@ class TestDropPlugin(unittest.TestCase):
 
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
     def test_handle_meshtastic_message_invalid_drop_format(self, mock_connect):
-        """Test handling a drop command with invalid format."""
+        """
+        Test that a "!drop" command without message content is handled as invalid and not processed.
+        """
         mock_connect.return_value = self.mock_meshtastic_client
 
         packet = {
@@ -167,6 +199,9 @@ class TestDropPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Run an asynchronous test for handling a Meshtastic message and assert that the handler returns False.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -178,7 +213,11 @@ class TestDropPlugin(unittest.TestCase):
     @patch('mmrelay.plugins.drop_plugin.haversine')
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
     def test_handle_meshtastic_message_pickup_in_range(self, mock_connect, mock_haversine):
-        """Test picking up messages when in range."""
+        """
+        Test that a node can pick up stored messages when within the configured proximity radius.
+        
+        Simulates a pickup scenario where a node requests messages and is within range of a stored message. Verifies that the message is sent to the requesting node and that the stored messages are cleared after pickup.
+        """
         mock_connect.return_value = self.mock_meshtastic_client
         mock_haversine.return_value = 1.0  # 1km distance, within 5km radius
 
@@ -202,6 +241,9 @@ class TestDropPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Runs an asynchronous test to verify that a dropped message is picked up and sent to the requesting node, and that stored messages are cleared after pickup.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -220,7 +262,11 @@ class TestDropPlugin(unittest.TestCase):
     @patch('mmrelay.plugins.drop_plugin.haversine')
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
     def test_handle_meshtastic_message_pickup_out_of_range(self, mock_connect, mock_haversine):
-        """Test that messages out of range are not picked up."""
+        """
+        Test that pickup requests do not retrieve messages stored beyond the configured radius.
+        
+        Verifies that when a node requests message pickup, messages located outside the allowed distance are not sent and remain stored.
+        """
         mock_connect.return_value = self.mock_meshtastic_client
         mock_haversine.return_value = 10.0  # 10km distance, outside 5km radius
 
@@ -244,6 +290,11 @@ class TestDropPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Runs an asynchronous test to verify that a message is not sent and remains stored after handling a Meshtastic message.
+            
+            This function awaits the plugin's message handler, asserts that no message is sent via the Meshtastic client, and checks that the message remains in storage.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -260,7 +311,11 @@ class TestDropPlugin(unittest.TestCase):
     @patch('mmrelay.plugins.drop_plugin.haversine')
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
     def test_handle_meshtastic_message_skip_own_messages(self, mock_connect, mock_haversine):
-        """Test that nodes cannot pickup their own dropped messages."""
+        """
+        Test that a node cannot pick up its own dropped messages, even if within the pickup range.
+        
+        Ensures that messages originating from the requesting node are not sent back to it and remain stored.
+        """
         mock_connect.return_value = self.mock_meshtastic_client
         mock_haversine.return_value = 1.0  # 1km distance, within range
 
@@ -284,6 +339,12 @@ class TestDropPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Runs an asynchronous test to verify that a node cannot pick up its own dropped messages.
+            
+            Returns:
+                result: The outcome of the message handling operation.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -300,7 +361,11 @@ class TestDropPlugin(unittest.TestCase):
     @patch('mmrelay.plugins.drop_plugin.haversine')
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
     def test_handle_meshtastic_message_distance_calculation_error(self, mock_connect, mock_haversine):
-        """Test handling of distance calculation errors."""
+        """
+        Test that the plugin handles errors during distance calculation when processing message pickups.
+        
+        Simulates a scenario where stored messages have invalid location data, causing the distance calculation to raise an exception. Verifies that no messages are sent and the stored messages remain unchanged.
+        """
         mock_connect.return_value = self.mock_meshtastic_client
         mock_haversine.side_effect = ValueError("Invalid coordinates")  # Simulate error
 
@@ -324,6 +389,11 @@ class TestDropPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Runs an asynchronous test to verify that messages outside the configured range are not sent and remain stored.
+            
+            This test calls the plugin's message handler with a simulated packet and checks that no message is sent when the distance is out of range. It also asserts that the message remains in storage.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -339,7 +409,11 @@ class TestDropPlugin(unittest.TestCase):
 
     @patch('mmrelay.plugins.drop_plugin.connect_meshtastic')
     def test_handle_meshtastic_message_from_relay_node(self, mock_connect):
-        """Test that messages from the relay node itself are ignored for pickup."""
+        """
+        Test that the plugin ignores messages originating from the relay node during pickup.
+        
+        Verifies that when a message is received from the relay node itself, the handler does not process it and returns False.
+        """
         mock_connect.return_value = self.mock_meshtastic_client
 
         packet = {
@@ -351,6 +425,12 @@ class TestDropPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Run an asynchronous test to verify that non-drop Meshtastic messages are not processed by the plugin.
+            
+            Returns:
+                result (bool): False if the message is not a drop command and is not handled by the plugin.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -362,7 +442,11 @@ class TestDropPlugin(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_handle_room_message_with_matching_command(self):
-        """Test handling Matrix room messages with matching commands."""
+        """
+        Test that Matrix room messages with matching commands are handled and processed by the plugin.
+        
+        Verifies that when the plugin's `matches` method returns True for a given event, `handle_room_message` returns True and the `matches` method is called with the event.
+        """
         # Mock the matches method to return True
         self.plugin.matches = MagicMock(return_value=True)
 
@@ -370,6 +454,9 @@ class TestDropPlugin(unittest.TestCase):
         event = MagicMock()
 
         async def run_test():
+            """
+            Asynchronously runs a test to verify that handling a Matrix room message returns True and that the plugin's command matching method is called with the event.
+            """
             result = await self.plugin.handle_room_message(room, event, "full_message")
             self.assertTrue(result)
             self.plugin.matches.assert_called_once_with(event)
@@ -378,7 +465,11 @@ class TestDropPlugin(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_handle_room_message_without_matching_command(self):
-        """Test handling Matrix room messages without matching commands."""
+        """
+        Test that Matrix room messages without matching commands are not handled by the plugin.
+        
+        Verifies that when the plugin's `matches` method returns False, `handle_room_message` returns None and does not process the message.
+        """
         # Mock the matches method to return False
         self.plugin.matches = MagicMock(return_value=False)
 
@@ -386,6 +477,9 @@ class TestDropPlugin(unittest.TestCase):
         event = MagicMock()
 
         async def run_test():
+            """
+            Asynchronously tests that the plugin's room message handler returns None when the message does not match any command.
+            """
             result = await self.plugin.handle_room_message(room, event, "full_message")
             self.assertIsNone(result)  # Returns None when no match
             self.plugin.matches.assert_called_once_with(event)

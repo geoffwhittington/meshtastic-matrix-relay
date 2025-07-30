@@ -26,7 +26,9 @@ class TestTelemetryPlugin(unittest.TestCase):
     """Test cases for the telemetry plugin."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """
+        Initializes the test environment by creating a Plugin instance and mocking its logger, database operations, and Matrix client methods.
+        """
         self.plugin = Plugin()
         self.plugin.logger = MagicMock()
         
@@ -39,37 +41,53 @@ class TestTelemetryPlugin(unittest.TestCase):
         self.plugin.send_matrix_message = AsyncMock()
 
     def test_plugin_name(self):
-        """Test that plugin name is correctly set."""
+        """
+        Test that the plugin's name attribute is set to "telemetry".
+        """
         self.assertEqual(self.plugin.plugin_name, "telemetry")
 
     def test_max_data_rows_per_node(self):
-        """Test that max data rows per node is set correctly."""
+        """
+        Verify that the plugin's maximum number of data rows per node is set to 50.
+        """
         self.assertEqual(self.plugin.max_data_rows_per_node, 50)
 
     def test_commands(self):
-        """Test that commands returns expected list."""
+        """
+        Test that the plugin's commands method returns the expected list of telemetry commands.
+        """
         commands = self.plugin.commands()
         expected = ["batteryLevel", "voltage", "airUtilTx"]
         self.assertEqual(commands, expected)
 
     def test_description(self):
-        """Test that description returns expected string."""
+        """
+        Verify that the plugin's description method returns the expected summary string.
+        """
         description = self.plugin.description()
         self.assertEqual(description, "Graph of avg Mesh telemetry value for last 12 hours")
 
     def test_get_matrix_commands(self):
-        """Test that get_matrix_commands returns expected list."""
+        """
+        Test that the plugin's get_matrix_commands method returns the expected list of Matrix commands.
+        """
         commands = self.plugin.get_matrix_commands()
         expected = ["batteryLevel", "voltage", "airUtilTx"]
         self.assertEqual(commands, expected)
 
     def test_get_mesh_commands(self):
-        """Test that get_mesh_commands returns empty list."""
+        """
+        Test that the plugin's get_mesh_commands method returns an empty list.
+        """
         commands = self.plugin.get_mesh_commands()
         self.assertEqual(commands, [])
 
     def test_generate_timeperiods_default(self):
-        """Test time period generation with default 12 hours."""
+        """
+        Test that the default time period generation produces 13 hourly intervals spanning the last 12 hours.
+        
+        Verifies that the intervals start 12 hours before the mocked current time, end at the current time, and are spaced one hour apart.
+        """
         with patch('mmrelay.plugins.telemetry_plugin.datetime') as mock_datetime:
             # Mock current time
             mock_now = datetime(2024, 1, 15, 12, 0, 0)
@@ -94,7 +112,11 @@ class TestTelemetryPlugin(unittest.TestCase):
                 self.assertEqual(diff, timedelta(hours=1))
 
     def test_generate_timeperiods_custom_hours(self):
-        """Test time period generation with custom hours."""
+        """
+        Test that custom hour intervals are correctly generated for time period calculations.
+        
+        Verifies that the plugin's `_generate_timeperiods` method produces the expected number of intervals and correct start time when a custom hour range is specified.
+        """
         with patch('mmrelay.plugins.telemetry_plugin.datetime') as mock_datetime:
             mock_now = datetime(2024, 1, 15, 12, 0, 0)
             mock_datetime.now.return_value = mock_now
@@ -110,7 +132,11 @@ class TestTelemetryPlugin(unittest.TestCase):
             self.assertEqual(intervals[0], expected_start)
 
     def test_handle_meshtastic_message_valid_telemetry(self):
-        """Test handling valid telemetry message."""
+        """
+        Test that a valid telemetry Meshtastic message is processed and stored correctly.
+        
+        Verifies that the plugin extracts telemetry metrics from a properly formatted message, stores the data with expected fields and values, and does not relay the message to Matrix.
+        """
         packet = {
             "fromId": "!12345678",
             "decoded": {
@@ -127,6 +153,11 @@ class TestTelemetryPlugin(unittest.TestCase):
         }
         
         async def run_test():
+            """
+            Asynchronously tests that a valid telemetry message is processed and stored correctly by the plugin.
+            
+            Verifies that the plugin does not relay the message to Matrix, stores telemetry data with the expected structure and values, and associates the data with the correct node.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -151,7 +182,9 @@ class TestTelemetryPlugin(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_handle_meshtastic_message_partial_metrics(self):
-        """Test handling telemetry message with partial device metrics."""
+        """
+        Test that the plugin correctly handles telemetry messages with missing device metrics by defaulting absent values to zero and storing the resulting data.
+        """
         packet = {
             "fromId": "!12345678",
             "decoded": {
@@ -167,6 +200,9 @@ class TestTelemetryPlugin(unittest.TestCase):
         }
         
         async def run_test():
+            """
+            Asynchronously tests handling of a Meshtastic telemetry message with partial device metrics, verifying that missing metrics are stored with default values.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -184,7 +220,9 @@ class TestTelemetryPlugin(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_handle_meshtastic_message_non_telemetry(self):
-        """Test handling non-telemetry message."""
+        """
+        Tests that a non-telemetry Meshtastic message is ignored by the plugin and does not result in data storage.
+        """
         packet = {
             "fromId": "!12345678",
             "decoded": {
@@ -194,6 +232,11 @@ class TestTelemetryPlugin(unittest.TestCase):
         }
         
         async def run_test():
+            """
+            Runs an asynchronous test to verify that a non-telemetry Meshtastic message is ignored by the plugin.
+            
+            Asserts that the handler returns None and does not attempt to store any data.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -208,7 +251,9 @@ class TestTelemetryPlugin(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_handle_meshtastic_message_missing_device_metrics(self):
-        """Test handling telemetry message without device metrics."""
+        """
+        Test that a telemetry message missing device metrics is ignored and no data is stored.
+        """
         packet = {
             "fromId": "!12345678",
             "decoded": {
@@ -221,6 +266,11 @@ class TestTelemetryPlugin(unittest.TestCase):
         }
         
         async def run_test():
+            """
+            Runs an asynchronous test to verify that a non-telemetry Meshtastic message is ignored by the plugin.
+            
+            Asserts that the handler returns None and does not attempt to store any data.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "longname", "meshnet_name"
             )
@@ -236,7 +286,11 @@ class TestTelemetryPlugin(unittest.TestCase):
 
     @patch('mmrelay.matrix_utils.bot_command')
     def test_matches_with_valid_command(self, mock_bot_command):
-        """Test matches method with valid telemetry command."""
+        """
+        Test that the matches method returns True when a valid telemetry command is present in the event.
+        
+        Verifies that the method checks all available commands and returns True upon finding a match.
+        """
         mock_bot_command.side_effect = lambda cmd, event: cmd == "batteryLevel"
 
         event = MagicMock()
@@ -248,7 +302,11 @@ class TestTelemetryPlugin(unittest.TestCase):
 
     @patch('mmrelay.matrix_utils.bot_command')
     def test_matches_with_no_command(self, mock_bot_command):
-        """Test matches method with no matching command."""
+        """
+        Test that the matches method returns False when no commands match the event.
+        
+        Verifies that all available commands are checked when there is no match.
+        """
         mock_bot_command.return_value = False
 
         event = MagicMock()
@@ -259,13 +317,20 @@ class TestTelemetryPlugin(unittest.TestCase):
         self.assertEqual(mock_bot_command.call_count, 3)
 
     def test_handle_room_message_no_match(self):
-        """Test handle_room_message when event doesn't match."""
+        """
+        Test that handle_room_message returns False when the event does not match any command.
+        
+        Verifies that the matches method is called once with the event and that no further processing occurs when there is no command match.
+        """
         self.plugin.matches = MagicMock(return_value=False)
 
         room = MagicMock()
         event = MagicMock()
 
         async def run_test():
+            """
+            Asynchronously tests that handling a room message returns False and verifies that the matches method is called once with the event.
+            """
             result = await self.plugin.handle_room_message(room, event, "full_message")
             self.assertFalse(result)
             self.plugin.matches.assert_called_once_with(event)
@@ -274,7 +339,9 @@ class TestTelemetryPlugin(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_handle_room_message_invalid_regex(self):
-        """Test handle_room_message with invalid command format."""
+        """
+        Test that handle_room_message returns False when given a message with an invalid command format.
+        """
         self.plugin.matches = MagicMock(return_value=True)
 
         room = MagicMock()
@@ -282,6 +349,9 @@ class TestTelemetryPlugin(unittest.TestCase):
         full_message = "some invalid message format"
 
         async def run_test():
+            """
+            Runs the test for handling a Matrix room message and asserts that the result is False.
+            """
             result = await self.plugin.handle_room_message(room, event, full_message)
             self.assertFalse(result)
 
@@ -294,7 +364,11 @@ class TestTelemetryPlugin(unittest.TestCase):
     @patch('mmrelay.plugins.telemetry_plugin.plt.xticks')
     @patch('mmrelay.plugins.telemetry_plugin.plt.subplots')
     def test_handle_room_message_valid_command_no_node(self, mock_subplots, mock_xticks, mock_send_image, mock_upload, mock_connect):
-        """Test handle_room_message with valid command but no specific node."""
+        """
+        Test that handle_room_message processes a valid command without a specified node, generates a plot, uploads the image, and sends it to the Matrix room.
+        
+        This test mocks plotting, image handling, and Matrix client operations to verify that the plugin creates and sends a graph in response to a valid command when no node is specified.
+        """
         self.plugin.matches = MagicMock(return_value=True)
 
         # Mock matplotlib
@@ -325,6 +399,11 @@ class TestTelemetryPlugin(unittest.TestCase):
             full_message = "bot: !batteryLevel"
 
             async def run_test():
+                """
+                Runs an asynchronous test to verify that handling a room message triggers graph creation and image upload/sending.
+                
+                Asserts that the plugin processes the message, generates a plot with correct labels, uploads the image, and sends it to the Matrix room.
+                """
                 result = await self.plugin.handle_room_message(room, event, full_message)
 
                 self.assertTrue(result)
@@ -349,7 +428,11 @@ class TestTelemetryPlugin(unittest.TestCase):
     @patch('mmrelay.plugins.telemetry_plugin.plt.xticks')
     @patch('mmrelay.plugins.telemetry_plugin.plt.subplots')
     def test_handle_room_message_with_specific_node(self, mock_subplots, mock_xticks, mock_send_image, mock_upload, mock_connect):
-        """Test handle_room_message with specific node parameter."""
+        """
+        Test that handle_room_message processes a valid command with a specific node parameter, generates a voltage graph for the node, uploads the image, and sends it to the Matrix room.
+        
+        This test mocks node data retrieval, matplotlib plotting, image creation, and Matrix client operations to verify that the correct data is used, the plot title includes the node name and metric, and the method returns True.
+        """
         self.plugin.matches = MagicMock(return_value=True)
 
         # Mock node data
@@ -385,6 +468,9 @@ class TestTelemetryPlugin(unittest.TestCase):
             full_message = "bot: !voltage NodeABC"
 
             async def run_test():
+                """
+                Runs an asynchronous test to verify that handling a room message with a specific node triggers data retrieval for that node and sets the plot title accordingly.
+                """
                 result = await self.plugin.handle_room_message(room, event, full_message)
 
                 self.assertTrue(result)

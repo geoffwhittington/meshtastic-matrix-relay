@@ -25,7 +25,11 @@ class TestHealthPlugin(unittest.TestCase):
     """Test cases for the health plugin."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """
+        Initializes the Plugin instance and prepares sample node data for health statistics tests.
+        
+        Sets up mocked logger and Matrix message sending methods, and defines a variety of node data scenarios including normal, low battery, missing metrics, and None values.
+        """
         self.plugin = Plugin()
         self.plugin.logger = MagicMock()
         
@@ -69,17 +73,25 @@ class TestHealthPlugin(unittest.TestCase):
         }
 
     def test_plugin_name(self):
-        """Test that plugin name is correctly set."""
+        """
+        Test that the plugin's name attribute is set to "health".
+        """
         self.assertEqual(self.plugin.plugin_name, "health")
 
     def test_description_property(self):
-        """Test that description property returns expected string."""
+        """
+        Test that the plugin's description property returns the expected summary string.
+        """
         description = self.plugin.description
         self.assertEqual(description, "Show mesh health using avg battery, SNR, AirUtil")
 
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     def test_generate_response_with_full_data(self, mock_connect):
-        """Test response generation with complete node data."""
+        """
+        Verifies that the plugin generates a correct health summary response when provided with complete node data.
+        
+        Checks that the response includes accurate node count, battery statistics (average, median, low battery count), air utilization statistics (average, median), and SNR statistics (average, median), with values rounded as expected.
+        """
         mock_meshtastic_client = MagicMock()
         mock_meshtastic_client.nodes = self.sample_nodes
         mock_connect.return_value = mock_meshtastic_client
@@ -109,7 +121,11 @@ class TestHealthPlugin(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     def test_generate_response_with_empty_nodes(self, mock_connect):
-        """Test response generation with no nodes (exposes bug in plugin)."""
+        """
+        Test that generating a response with no nodes raises an exception due to empty data lists.
+        
+        Verifies that the plugin does not handle empty node data and raises an exception (such as StatisticsError) when attempting to compute statistics.
+        """
         mock_meshtastic_client = MagicMock()
         mock_meshtastic_client.nodes = {}
         mock_connect.return_value = mock_meshtastic_client
@@ -120,7 +136,11 @@ class TestHealthPlugin(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     def test_generate_response_with_minimal_data(self, mock_connect):
-        """Test response generation with minimal node data (exposes bug)."""
+        """
+        Test that generating a response with minimal node data raises an exception due to missing metrics.
+        
+        This test verifies that the plugin raises an exception (such as StatisticsError) when attempting to compute statistics on empty air utilization and SNR lists, exposing a bug in the response generation logic.
+        """
         minimal_nodes = {
             "node1": {
                 "deviceMetrics": {
@@ -140,7 +160,11 @@ class TestHealthPlugin(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     def test_generate_response_with_all_low_battery(self, mock_connect):
-        """Test response generation with all nodes having low battery (exposes bug)."""
+        """
+        Test that response generation raises an exception when all nodes have low battery and air utilization data is missing.
+        
+        This verifies that the plugin attempts to compute statistics on empty air utilization data, exposing a known bug.
+        """
         low_battery_nodes = {
             "node1": {
                 "deviceMetrics": {
@@ -166,7 +190,9 @@ class TestHealthPlugin(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     def test_generate_response_filters_none_values(self, mock_connect):
-        """Test that None values are properly filtered from statistics."""
+        """
+        Verify that the health plugin correctly filters out None values from node statistics before calculating and reporting mesh health metrics.
+        """
         nodes_with_none = {
             "node1": {
                 "deviceMetrics": {
@@ -198,8 +224,13 @@ class TestHealthPlugin(unittest.TestCase):
         self.assertIn("SNR: 5.00", response)  # Only one valid value
 
     def test_handle_meshtastic_message_always_false(self):
-        """Test that handle_meshtastic_message always returns False."""
+        """
+        Test that handle_meshtastic_message consistently returns False regardless of input.
+        """
         async def run_test():
+            """
+            Asynchronously tests that the plugin's handle_meshtastic_message method returns False when called with sample input.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 {}, "formatted_message", "longname", "meshnet_name"
             )
@@ -209,13 +240,18 @@ class TestHealthPlugin(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_handle_room_message_no_match(self):
-        """Test handle_room_message when event doesn't match."""
+        """
+        Test that handle_room_message returns False and does not send a message when the event does not match the plugin criteria.
+        """
         self.plugin.matches = MagicMock(return_value=False)
         
         room = MagicMock()
         event = MagicMock()
         
         async def run_test():
+            """
+            Asynchronously tests that `handle_room_message` returns False when the event does not match and ensures no Matrix message is sent.
+            """
             result = await self.plugin.handle_room_message(room, event, "full_message")
             self.assertFalse(result)
             self.plugin.matches.assert_called_once_with(event)
@@ -226,7 +262,11 @@ class TestHealthPlugin(unittest.TestCase):
 
     @patch('mmrelay.meshtastic_utils.connect_meshtastic')
     def test_handle_room_message_with_match(self, mock_connect):
-        """Test handle_room_message when event matches."""
+        """
+        Tests that handle_room_message sends a health summary message to the Matrix room when the event matches.
+        
+        Verifies that the message contains the correct node count, is sent to the expected room, and the formatted flag is set to False.
+        """
         mock_meshtastic_client = MagicMock()
         mock_meshtastic_client.nodes = self.sample_nodes
         mock_connect.return_value = mock_meshtastic_client
@@ -238,6 +278,11 @@ class TestHealthPlugin(unittest.TestCase):
         event = MagicMock()
         
         async def run_test():
+            """
+            Asynchronously tests that a Matrix room message event matching the plugin triggers a health summary message to be sent.
+            
+            Verifies that `handle_room_message` returns True, the event matcher is called once, and the Matrix message is sent with the correct room ID, message content, and formatting flag.
+            """
             result = await self.plugin.handle_room_message(room, event, "full_message")
             
             self.assertTrue(result)

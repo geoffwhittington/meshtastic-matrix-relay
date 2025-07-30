@@ -125,7 +125,7 @@ class TestPluginLoader(unittest.TestCase):
     @patch('os.makedirs')
     def test_get_community_plugin_dirs(self, mock_makedirs, mock_get_app_path, mock_get_base_dir):
         """
-        Test that the community plugin directory discovery function returns the correct directories and creates them if necessary.
+        Verify that the community plugin directory discovery function returns the expected directories and ensures their creation when needed.
         """
         import tempfile
 
@@ -378,9 +378,9 @@ class Plugin:
     @patch('mmrelay.plugins.health_plugin.Plugin')
     def test_load_plugins_start_error(self, mock_health_plugin):
         """
-        Test that plugin start() method exceptions are handled gracefully during loading.
+        Test that plugins raising exceptions in their start() method are still loaded.
         
-        Verifies that if a plugin's start() method raises an exception, the error is logged but the plugin is still included in the loaded plugin list.
+        Ensures that if a plugin's start() method raises an exception during loading, the error is handled gracefully and the plugin remains in the loaded plugin list.
         """
         # Create a plugin that raises an error on start
         mock_plugin = MockPlugin("error_plugin")
@@ -408,12 +408,16 @@ class TestGitRepositoryHandling(unittest.TestCase):
     """Test cases for Git repository handling functions."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """
+        Create a temporary directory and a subdirectory for plugins for use in test setup.
+        """
         self.test_dir = tempfile.mkdtemp()
         self.plugins_dir = os.path.join(self.test_dir, "plugins")
 
     def tearDown(self):
-        """Clean up test fixtures."""
+        """
+        Remove the temporary directory used for test fixtures after each test.
+        """
         import shutil
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
@@ -422,7 +426,9 @@ class TestGitRepositoryHandling(unittest.TestCase):
     @patch('subprocess.check_output')
     @patch('os.path.isdir')
     def test_clone_or_update_repo_new_repo_tag(self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs):
-        """Test cloning a new repository with a specific tag."""
+        """
+        Verify that cloning a new Git repository with a specific tag invokes the correct git commands and returns success.
+        """
         mock_isdir.return_value = False  # Repository doesn't exist
 
         repo_url = "https://github.com/user/test-repo.git"
@@ -443,7 +449,11 @@ class TestGitRepositoryHandling(unittest.TestCase):
     @patch('subprocess.check_output')
     @patch('os.path.isdir')
     def test_clone_or_update_repo_new_repo_branch(self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs):
-        """Test cloning a new repository with a specific branch."""
+        """
+        Test that cloning a new Git repository with a specified branch triggers the correct git commands.
+        
+        Verifies that when the repository does not exist locally, `clone_or_update_repo` clones the repository using the provided branch name and returns True.
+        """
         mock_isdir.return_value = False  # Repository doesn't exist
 
         repo_url = "https://github.com/user/test-repo.git"
@@ -464,7 +474,11 @@ class TestGitRepositoryHandling(unittest.TestCase):
     @patch('subprocess.check_output')
     @patch('os.path.isdir')
     def test_clone_or_update_repo_existing_repo_same_branch(self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs):
-        """Test updating an existing repository on the same branch."""
+        """
+        Test that updating an existing Git repository on the same branch triggers fetch and pull operations.
+        
+        Verifies that when the repository directory exists and the current branch matches the requested branch, the `clone_or_update_repo` function performs a fetch and pull, and returns True.
+        """
         mock_isdir.return_value = True  # Repository exists
         mock_check_output.return_value = "main\n"  # Current branch is main
 
@@ -485,7 +499,11 @@ class TestGitRepositoryHandling(unittest.TestCase):
     @patch('subprocess.check_output')
     @patch('os.path.isdir')
     def test_clone_or_update_repo_existing_repo_different_branch(self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs):
-        """Test updating an existing repository to a different branch."""
+        """
+        Test that updating an existing Git repository to a different branch triggers the appropriate Git commands.
+        
+        Verifies that when the current branch differs from the target branch, the repository is updated by switching branches and pulling the latest changes.
+        """
         mock_isdir.return_value = True  # Repository exists
         mock_check_output.return_value = "main\n"  # Current branch is main
 

@@ -26,7 +26,9 @@ class TestConfigChecker(unittest.TestCase):
     """Test cases for the configuration checker."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """
+        Initializes a valid configuration dictionary for use in test cases.
+        """
         self.valid_config = {
             "matrix": {
                 "homeserver": "https://matrix.org",
@@ -43,7 +45,11 @@ class TestConfigChecker(unittest.TestCase):
         }
 
     def test_get_config_paths(self):
-        """Test that get_config_paths returns a list of paths."""
+        """
+        Test that get_config_paths returns a list of configuration file paths.
+        
+        Asserts that the returned value is a list of the expected length and that the function is called exactly once.
+        """
         with patch('mmrelay.config.get_config_paths') as mock_get_paths:
             mock_get_paths.return_value = ['/path1/config.yaml', '/path2/config.yaml']
             
@@ -59,7 +65,9 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_valid_tcp(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test configuration validation with valid TCP configuration."""
+        """
+        Test that `check_config` returns True and prints success messages when provided with a valid TCP configuration.
+        """
         mock_get_paths.return_value = ['/test/config.yaml']
         mock_isfile.return_value = True
         mock_yaml_load.return_value = self.valid_config
@@ -76,7 +84,9 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_valid_serial(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test configuration validation with valid serial configuration."""
+        """
+        Test that `check_config` returns True and prints a success message when provided with a valid serial meshtastic configuration.
+        """
         serial_config = self.valid_config.copy()
         serial_config["meshtastic"] = {
             "connection_type": "serial",
@@ -98,7 +108,11 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_valid_ble(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test configuration validation with valid BLE configuration."""
+        """
+        Test that `check_config` successfully validates a configuration with a valid BLE connection type.
+        
+        Simulates a configuration file specifying a BLE connection and asserts that validation passes and the correct success message is printed.
+        """
         ble_config = self.valid_config.copy()
         ble_config["meshtastic"] = {
             "connection_type": "ble",
@@ -118,7 +132,9 @@ class TestConfigChecker(unittest.TestCase):
     @patch('os.path.isfile')
     @patch('builtins.print')
     def test_check_config_no_file_found(self, mock_print, mock_isfile, mock_get_paths):
-        """Test behavior when no configuration file is found."""
+        """
+        Test that check_config returns False and prints appropriate error messages when no configuration file is found at any of the discovered paths.
+        """
         mock_get_paths.return_value = ['/test/config.yaml', '/test2/config.yaml']
         mock_isfile.return_value = False
         
@@ -135,7 +151,9 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_empty_config(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test behavior with empty configuration."""
+        """
+        Test that check_config returns False and prints an error when the configuration file is empty or invalid.
+        """
         mock_get_paths.return_value = ['/test/config.yaml']
         mock_isfile.return_value = True
         mock_yaml_load.return_value = None
@@ -151,7 +169,11 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_missing_matrix_section(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test behavior with missing matrix section."""
+        """
+        Test that check_config fails when the 'matrix' section is missing from the configuration.
+        
+        Asserts that the function returns False and prints the appropriate error message.
+        """
         invalid_config = {"meshtastic": {"connection_type": "tcp"}}
 
         mock_get_paths.return_value = ['/test/config.yaml']
@@ -169,7 +191,11 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_missing_matrix_fields(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test behavior with missing required matrix fields."""
+        """
+        Test that check_config fails when required fields are missing from the 'matrix' section.
+        
+        Simulates a configuration missing 'access_token' and 'bot_user_id' in the 'matrix' section and asserts that validation fails with the appropriate error message.
+        """
         invalid_config = {
             "matrix": {"homeserver": "https://matrix.org"},  # Missing access_token and bot_user_id
             "matrix_rooms": [{"id": "!room1:matrix.org"}],
@@ -191,7 +217,11 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_missing_matrix_rooms(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test behavior with missing matrix_rooms section."""
+        """
+        Test that `check_config` fails when the 'matrix_rooms' section is missing from the configuration.
+        
+        Asserts that the function returns False and prints an appropriate error message.
+        """
         invalid_config = {
             "matrix": {
                 "homeserver": "https://matrix.org",
@@ -216,7 +246,11 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_invalid_matrix_rooms_type(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test behavior with invalid matrix_rooms type."""
+        """
+        Test that check_config fails when the 'matrix_rooms' field is not a list.
+        
+        Asserts that the function returns False and prints an appropriate error message when 'matrix_rooms' is of an invalid type.
+        """
         invalid_config = {
             "matrix": {
                 "homeserver": "https://matrix.org",
@@ -242,7 +276,11 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_invalid_room_format(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test behavior with invalid room format in matrix_rooms."""
+        """
+        Test that check_config fails when an entry in 'matrix_rooms' is not a dictionary.
+        
+        Asserts that the function returns False and prints an appropriate error message when a non-dictionary object is present in the 'matrix_rooms' list.
+        """
         invalid_config = {
             "matrix": {
                 "homeserver": "https://matrix.org",
@@ -268,7 +306,11 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_missing_room_id(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test behavior with missing room id in matrix_rooms."""
+        """
+        Test that check_config fails when a room in 'matrix_rooms' lacks the required 'id' field.
+        
+        Simulates a configuration where a room dictionary in 'matrix_rooms' is missing the 'id' key and asserts that check_config returns False and prints the appropriate error message.
+        """
         invalid_config = {
             "matrix": {
                 "homeserver": "https://matrix.org",
@@ -294,7 +336,9 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_missing_meshtastic_section(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test behavior with missing meshtastic section."""
+        """
+        Test that `check_config` fails and prints an error when the 'meshtastic' section is missing from the configuration.
+        """
         invalid_config = {
             "matrix": {
                 "homeserver": "https://matrix.org",
@@ -319,7 +363,11 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_missing_connection_type(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test behavior with missing connection_type in meshtastic section."""
+        """
+        Test that check_config fails when the 'connection_type' field is missing from the 'meshtastic' section of the configuration.
+        
+        Asserts that the function returns False and prints the appropriate error message.
+        """
         invalid_config = {
             "matrix": {
                 "homeserver": "https://matrix.org",
@@ -345,7 +393,9 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_invalid_connection_type(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test behavior with invalid connection_type."""
+        """
+        Test that check_config returns False and prints an error when the meshtastic connection_type is invalid.
+        """
         invalid_config = {
             "matrix": {
                 "homeserver": "https://matrix.org",
@@ -371,7 +421,9 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_missing_serial_port(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test behavior with missing serial_port for serial connection."""
+        """
+        Test that check_config fails when 'serial_port' is missing for a serial connection type in the configuration.
+        """
         invalid_config = {
             "matrix": {
                 "homeserver": "https://matrix.org",
@@ -397,7 +449,11 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_missing_tcp_host(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test behavior with missing host for TCP connection."""
+        """
+        Test that `check_config` fails when the 'host' field is missing for a TCP meshtastic connection.
+        
+        Asserts that the function returns False and prints the appropriate error message.
+        """
         invalid_config = {
             "matrix": {
                 "homeserver": "https://matrix.org",
@@ -423,7 +479,9 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_missing_ble_address(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test behavior with missing ble_address for BLE connection."""
+        """
+        Test that check_config fails when the 'ble_address' field is missing for a BLE connection type in the configuration.
+        """
         invalid_config = {
             "matrix": {
                 "homeserver": "https://matrix.org",
@@ -449,7 +507,9 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_yaml_error(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test behavior with YAML parsing error."""
+        """
+        Test that check_config returns False and prints an error message when a YAML parsing error occurs.
+        """
         from yaml import YAMLError
 
         mock_get_paths.return_value = ['/test/config.yaml']
@@ -467,7 +527,9 @@ class TestConfigChecker(unittest.TestCase):
     @patch('yaml.load')
     @patch('builtins.print')
     def test_check_config_general_exception(self, mock_print, mock_yaml_load, mock_file, mock_isfile, mock_get_paths):
-        """Test behavior with general exception during config checking."""
+        """
+        Test that check_config returns False and prints an error message when a general exception occurs during configuration checking.
+        """
         mock_get_paths.return_value = ['/test/config.yaml']
         mock_isfile.return_value = True
         mock_yaml_load.side_effect = Exception("General error")
