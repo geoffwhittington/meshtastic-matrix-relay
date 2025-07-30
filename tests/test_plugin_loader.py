@@ -12,6 +12,7 @@ Tests the plugin discovery, loading, and management functionality including:
 """
 
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -21,6 +22,7 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from mmrelay.plugin_loader import (
+    clone_or_update_repo,
     get_community_plugin_dirs,
     get_custom_plugin_dirs,
     load_plugins,
@@ -390,6 +392,119 @@ class Plugin:
         # Plugin should still be in the list even if start() failed
         self.assertEqual(len(plugins), 1)
         self.assertEqual(plugins[0].plugin_name, "error_plugin")
+
+
+class TestGitRepositoryHandling(unittest.TestCase):
+    """Test cases for Git repository handling functions."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.test_dir = tempfile.mkdtemp()
+        self.plugins_dir = os.path.join(self.test_dir, "plugins")
+
+    def tearDown(self):
+        """Clean up test fixtures."""
+        import shutil
+        shutil.rmtree(self.test_dir, ignore_errors=True)
+
+    @patch('os.makedirs')
+    @patch('subprocess.check_call')
+    @patch('subprocess.check_output')
+    @patch('os.path.isdir')
+    def test_clone_or_update_repo_new_repo_tag(self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs):
+        """Test cloning a new repository with a specific tag."""
+        mock_isdir.return_value = False  # Repository doesn't exist
+
+        repo_url = "https://github.com/user/test-repo.git"
+        ref = {"type": "tag", "value": "v1.0.0"}
+
+        result = clone_or_update_repo(repo_url, ref, self.plugins_dir)
+
+        self.assertTrue(result)
+        # Should call git clone with the tag
+        mock_check_call.assert_called()
+        clone_call = mock_check_call.call_args_list[0]
+        self.assertIn("clone", clone_call[0][0])
+        self.assertIn("--branch", clone_call[0][0])
+        self.assertIn("v1.0.0", clone_call[0][0])
+
+    @patch('os.makedirs')
+    @patch('subprocess.check_call')
+    @patch('subprocess.check_output')
+    @patch('os.path.isdir')
+    def test_clone_or_update_repo_new_repo_branch(self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs):
+        """Test cloning a new repository with a specific branch."""
+        mock_isdir.return_value = False  # Repository doesn't exist
+
+        repo_url = "https://github.com/user/test-repo.git"
+        ref = {"type": "branch", "value": "develop"}
+
+        result = clone_or_update_repo(repo_url, ref, self.plugins_dir)
+
+        self.assertTrue(result)
+        # Should call git clone with the branch
+        mock_check_call.assert_called()
+        clone_call = mock_check_call.call_args_list[0]
+        self.assertIn("clone", clone_call[0][0])
+        self.assertIn("--branch", clone_call[0][0])
+        self.assertIn("develop", clone_call[0][0])
+
+    @patch('os.makedirs')
+    @patch('subprocess.check_call')
+    @patch('subprocess.check_output')
+    @patch('os.path.isdir')
+    def test_clone_or_update_repo_existing_repo_same_branch(self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs):
+        """Test updating an existing repository on the same branch."""
+        mock_isdir.return_value = True  # Repository exists
+        mock_check_output.return_value = "main\n"  # Current branch is main
+
+        repo_url = "https://github.com/user/test-repo.git"
+        ref = {"type": "branch", "value": "main"}
+
+        result = clone_or_update_repo(repo_url, ref, self.plugins_dir)
+
+        self.assertTrue(result)
+        # Should fetch and pull
+        fetch_called = any("fetch" in str(call) for call in mock_check_call.call_args_list)
+        pull_called = any("pull" in str(call) for call in mock_check_call.call_args_list)
+        self.assertTrue(fetch_called)
+        self.assertTrue(pull_called)
+
+    @patch('os.makedirs')
+    @patch('subprocess.check_call')
+    @patch('subprocess.check_output')
+    @patch('os.path.isdir')
+    def test_clone_or_update_repo_existing_repo_different_branch(self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs):
+        """Test updating an existing repository to a different branch."""
+        mock_isdir.return_value = True  # Repository exists
+        mock_check_output.return_value = "main\n"  # Current branch is main
+
+        repo_url = "https://github.com/user/test-repo.git"
+        ref = {"type": "branch", "value": "develop"}
+
+        result = clone_or_update_repo(repo_url, ref, self.plugins_dir)
+
+        self.assertTrue(result)
+        # Should call git commands (fetch, checkout, etc.)
+        self.assertTrue(mock_check_call.called)
+
+    @patch('os.makedirs')
+    @patch('subprocess.check_call')
+    @patch('subprocess.check_output')
+    @patch('os.path.isdir')
+    def test_clone_or_update_repo_git_error(self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs):
+        """Test handling Git command errors."""
+        mock_isdir.return_value = False  # Repository doesn't exist
+        mock_check_call.side_effect = subprocess.CalledProcessError(1, "git")
+
+        repo_url = "https://github.com/user/test-repo.git"
+        ref = {"type": "branch", "value": "main"}
+
+        result = clone_or_update_repo(repo_url, ref, self.plugins_dir)
+
+        self.assertFalse(result)
+
+
 
 
 if __name__ == "__main__":
