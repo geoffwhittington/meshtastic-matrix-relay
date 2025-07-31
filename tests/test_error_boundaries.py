@@ -148,24 +148,40 @@ class TestErrorBoundaries(unittest.TestCase):
                     with patch(
                         "mmrelay.matrix_utils.matrix_relay"
                     ) as mock_matrix_relay:
-                        with patch("mmrelay.meshtastic_utils.logger"):
-                            # Set up config
-                            import mmrelay.meshtastic_utils
+                        with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
+                            with patch("mmrelay.meshtastic_utils.logger"):
+                                # Mock the async execution
+                                def mock_run_coro(coro, loop):
+                                    mock_future = MagicMock()
+                                    try:
+                                        import asyncio
+                                        result = asyncio.run(coro)
+                                        mock_future.result.return_value = result
+                                    except Exception:
+                                        mock_future.result.return_value = None
+                                    return mock_future
 
-                            mmrelay.meshtastic_utils.config = {
-                                "matrix_rooms": [
+                                mock_run_coroutine.side_effect = mock_run_coro
+
+                                # Set up config
+                                import mmrelay.meshtastic_utils
+
+                                mmrelay.meshtastic_utils.config = {
+                                    "matrix_rooms": [
+                                        {"id": "!room:matrix.org", "meshtastic_channel": 0}
+                                    ],
+                                    "meshtastic": {"meshnet_name": "TestMesh"}
+                                }
+                                mmrelay.meshtastic_utils.matrix_rooms = [
                                     {"id": "!room:matrix.org", "meshtastic_channel": 0}
                                 ]
-                            }
-                            mmrelay.meshtastic_utils.matrix_rooms = [
-                                {"id": "!room:matrix.org", "meshtastic_channel": 0}
-                            ]
+                                mmrelay.meshtastic_utils.event_loop = MagicMock()
 
-                            # Process message
-                            on_meshtastic_message(packet, mock_interface)
+                                # Process message
+                                on_meshtastic_message(packet, mock_interface)
 
-                            # Should still relay to Matrix despite database failures
-                            mock_matrix_relay.assert_called_once()
+                                # Should still relay to Matrix despite database failures
+                                mock_matrix_relay.assert_called_once()
 
                             # Should use fallback names from interface
                             call_args = mock_matrix_relay.call_args[0]

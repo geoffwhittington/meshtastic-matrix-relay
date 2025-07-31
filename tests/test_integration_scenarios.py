@@ -96,7 +96,11 @@ class TestIntegrationScenarios(unittest.TestCase):
                 "bot_user_id": "@test:matrix.org",
             },
             "matrix_rooms": [{"id": "!room1:matrix.org", "meshtastic_channel": 0}],
-            "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"},
+            "meshtastic": {
+                "connection_type": "serial",
+                "serial_port": "/dev/ttyUSB0",
+                "meshnet_name": "TestMesh"
+            },
             "plugins": {"debug": {"active": True}},
         }
 
@@ -118,25 +122,42 @@ class TestIntegrationScenarios(unittest.TestCase):
 
         with patch("mmrelay.matrix_utils.matrix_relay") as mock_matrix_relay:
             with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins:
-                # Mock debug plugin
-                mock_plugin = MagicMock()
-                mock_plugin.handle_meshtastic_message = AsyncMock(return_value=False)
-                mock_load_plugins.return_value = [mock_plugin]
+                with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
+                    # Mock debug plugin
+                    mock_plugin = MagicMock()
+                    mock_plugin.handle_meshtastic_message = AsyncMock(return_value=False)
+                    mock_load_plugins.return_value = [mock_plugin]
 
-                # Set up global state
-                import mmrelay.meshtastic_utils
+                    # Mock the async execution to actually call the coroutines
+                    def mock_run_coro(coro, loop):
+                        # Create a mock future and call the coroutine
+                        mock_future = MagicMock()
+                        try:
+                            # Try to run the coroutine synchronously for testing
+                            import asyncio
+                            result = asyncio.run(coro)
+                            mock_future.result.return_value = result
+                        except Exception:
+                            mock_future.result.return_value = None
+                        return mock_future
 
-                mmrelay.meshtastic_utils.config = config
-                mmrelay.meshtastic_utils.matrix_rooms = config["matrix_rooms"]
+                    mock_run_coroutine.side_effect = mock_run_coro
 
-                # Process the message
-                on_meshtastic_message(packet, mock_meshtastic_interface)
+                    # Set up global state
+                    import mmrelay.meshtastic_utils
 
-                # Verify Matrix relay was called
-                mock_matrix_relay.assert_called_once()
+                    mmrelay.meshtastic_utils.config = config
+                    mmrelay.meshtastic_utils.matrix_rooms = config["matrix_rooms"]
+                    mmrelay.meshtastic_utils.event_loop = MagicMock()  # Mock event loop
 
-                # Verify plugin was called
-                mock_plugin.handle_meshtastic_message.assert_called_once()
+                    # Process the message
+                    on_meshtastic_message(packet, mock_meshtastic_interface)
+
+                    # Verify Matrix relay was called
+                    mock_matrix_relay.assert_called_once()
+
+                    # Verify plugin was called
+                    mock_plugin.handle_meshtastic_message.assert_called_once()
 
     def test_complete_matrix_to_meshtastic_flow(self):
         """Test complete message flow from Matrix to Meshtastic."""
