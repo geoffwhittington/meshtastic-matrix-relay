@@ -15,10 +15,10 @@ from mmrelay import __version__
 from mmrelay.config import get_config_paths
 from mmrelay.constants.app import WINDOWS_PLATFORM
 from mmrelay.constants.network import (
-    CONNECTION_TYPE_TCP,
+    CONNECTION_TYPE_BLE,
     CONNECTION_TYPE_NETWORK,
     CONNECTION_TYPE_SERIAL,
-    CONNECTION_TYPE_BLE,
+    CONNECTION_TYPE_TCP,
 )
 from mmrelay.tools import get_sample_config_path
 
@@ -201,7 +201,12 @@ def check_config(args=None):
                     return False
 
                 connection_type = meshtastic_section["connection_type"]
-                if connection_type not in [CONNECTION_TYPE_TCP, CONNECTION_TYPE_SERIAL, CONNECTION_TYPE_BLE, CONNECTION_TYPE_NETWORK]:
+                if connection_type not in [
+                    CONNECTION_TYPE_TCP,
+                    CONNECTION_TYPE_SERIAL,
+                    CONNECTION_TYPE_BLE,
+                    CONNECTION_TYPE_NETWORK,
+                ]:
                     print(
                         f"Error: Invalid 'connection_type': {connection_type}. Must be 'tcp', 'serial', or 'ble'"
                     )
@@ -231,7 +236,10 @@ def check_config(args=None):
                     print("Error: Missing 'host' for 'tcp' connection type")
                     return False
 
-                if connection_type == CONNECTION_TYPE_BLE and "ble_address" not in meshtastic_section:
+                if (
+                    connection_type == CONNECTION_TYPE_BLE
+                    and "ble_address" not in meshtastic_section
+                ):
                     print("Error: Missing 'ble_address' for 'ble' connection type")
                     return False
 

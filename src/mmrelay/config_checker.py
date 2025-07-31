@@ -7,9 +7,9 @@ import yaml
 from yaml.loader import SafeLoader
 
 from mmrelay.constants.network import (
-    CONNECTION_TYPE_TCP,
-    CONNECTION_TYPE_SERIAL,
     CONNECTION_TYPE_BLE,
+    CONNECTION_TYPE_SERIAL,
+    CONNECTION_TYPE_TCP,
 )
 
 
@@ -101,7 +101,11 @@ def check_config():
                     return False
 
                 connection_type = meshtastic_section["connection_type"]
-                if connection_type not in [CONNECTION_TYPE_TCP, CONNECTION_TYPE_SERIAL, CONNECTION_TYPE_BLE]:
+                if connection_type not in [
+                    CONNECTION_TYPE_TCP,
+                    CONNECTION_TYPE_SERIAL,
+                    CONNECTION_TYPE_BLE,
+                ]:
                     print(
                         f"Error: Invalid 'connection_type': {connection_type}. Must be 'tcp', 'serial', or 'ble'"
                     )
@@ -115,11 +119,17 @@ def check_config():
                     print("Error: Missing 'serial_port' for 'serial' connection type")
                     return False
 
-                if connection_type == CONNECTION_TYPE_TCP and "host" not in meshtastic_section:
+                if (
+                    connection_type == CONNECTION_TYPE_TCP
+                    and "host" not in meshtastic_section
+                ):
                     print("Error: Missing 'host' for 'tcp' connection type")
                     return False
 
-                if connection_type == CONNECTION_TYPE_BLE and "ble_address" not in meshtastic_section:
+                if (
+                    connection_type == CONNECTION_TYPE_BLE
+                    and "ble_address" not in meshtastic_section
+                ):
                     print("Error: Missing 'ble_address' for 'ble' connection type")
                     return False
 
