@@ -259,14 +259,14 @@ class BasePlugin(ABC):
     def send_message(self, text: str, channel: int = 0, destination_id=None) -> bool:
         """
         Send a message to the Meshtastic network via the message queue.
-
-        Automatically queues the message for broadcast or direct delivery, applying rate limiting as configured. Returns True if the message was successfully queued, or False if the Meshtastic client is unavailable.
-
+        
+        Queues the specified text for broadcast or direct delivery on the given channel, applying rate limiting as configured. Returns True if the message was successfully queued, or False if the Meshtastic client is unavailable.
+        
         Parameters:
             text (str): The message text to send.
             channel (int, optional): Channel index to send the message on. Defaults to 0.
             destination_id (optional): Destination node ID for direct messages; if None, the message is broadcast.
-
+        
         Returns:
             bool: True if the message was queued successfully, False otherwise.
         """

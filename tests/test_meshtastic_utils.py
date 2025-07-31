@@ -318,9 +318,9 @@ class TestMeshtasticUtils(unittest.TestCase):
 
     def test_on_meshtastic_message_with_broadcast_config(self):
         """
-        Test that Meshtastic-to-Matrix message relaying occurs even when broadcast is disabled in the configuration.
-
-        Ensures that disabling `broadcast_enabled` in the configuration does not prevent Meshtastic messages from being relayed to Matrix, confirming that this setting only affects Matrix-to-Meshtastic message direction.
+        Test that disabling broadcast in the configuration does not prevent relaying Meshtastic messages to Matrix.
+        
+        Verifies that Meshtastic-to-Matrix message relaying occurs even when `broadcast_enabled` is set to `False`, confirming that this setting only affects Matrix-to-Meshtastic message direction.
         """
         config_no_broadcast = self.mock_config.copy()
         config_no_broadcast["meshtastic"]["broadcast_enabled"] = False

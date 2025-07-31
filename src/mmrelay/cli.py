@@ -37,9 +37,9 @@ from mmrelay.tools import get_sample_config_path
 def parse_arguments():
     """
     Parse and validate command-line arguments for the Meshtastic Matrix Relay CLI.
-
-    Handles standard options for configuration, data directory, logging, version display, sample config generation, service installation, and config validation. On Windows, supports a deprecated positional argument for the config file path with a warning. Ignores unknown arguments outside of test environments and prints a warning if any are present.
-
+    
+    Supports options for specifying configuration file, data directory, logging preferences, version display, sample config generation, service installation, and configuration validation. On Windows, also accepts a deprecated positional config file argument with a warning. Ignores unknown arguments outside of test environments and warns if any are present.
+    
     Returns:
         argparse.Namespace: Parsed command-line arguments.
     """
@@ -130,13 +130,9 @@ def print_version():
 
 def check_config(args=None):
     """
-    Check if the configuration file is valid.
-
-    Args:
-        args: The parsed command-line arguments
-
-    Returns:
-        bool: True if the configuration is valid, False otherwise.
+    Validates the application's configuration file for required sections, fields, and supported values.
+    
+    If a configuration file is found, checks for the presence and correctness of the 'matrix', 'matrix_rooms', and 'meshtastic' sections, including required fields and valid connection types. Prints errors or warnings for missing or deprecated fields and sections. Returns True if the configuration is valid, otherwise False.
     """
 
     # If args is None, parse them now

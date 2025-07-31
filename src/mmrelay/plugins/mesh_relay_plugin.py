@@ -29,18 +29,13 @@ class Plugin(BasePlugin):
     max_data_rows_per_node = DEFAULT_MAX_DATA_ROWS_PER_NODE_MESH_RELAY
 
     def normalize(self, dict_obj):
-        """Normalize packet data to consistent dictionary format.
-
-        Args:
-            dict_obj: Packet data (dict, JSON string, or plain string)
-
+        """
+        Normalize packet data into a consistent dictionary format for processing.
+        
+        Accepts packet data as a dictionary, JSON string, or plain string. If the input is a JSON string, it is parsed; if parsing fails, the input is wrapped as a text message under the "decoded" key. Raw data fields are removed before returning the normalized dictionary.
+        
         Returns:
-            dict: Normalized packet dictionary with raw data stripped
-
-        Handles various packet formats:
-        - Dict objects (passed through)
-        - JSON strings (parsed)
-        - Plain strings (wrapped in TEXT_MESSAGE_APP format)
+            dict: The normalized packet dictionary with raw fields stripped.
         """
         if not isinstance(dict_obj, dict):
             try:

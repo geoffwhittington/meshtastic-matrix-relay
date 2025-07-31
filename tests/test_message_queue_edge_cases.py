@@ -49,7 +49,7 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
 
     def tearDown(self):
         """
-        Cleans up the test environment after each test by stopping the message queue if running and resetting global state variables in mmrelay.meshtastic_utils.
+        Clean up the test environment after each test by stopping the message queue, closing any active asyncio event loops, and resetting global state variables in mmrelay.meshtastic_utils.
         """
         if self.queue.is_running():
             self.queue.stop()
@@ -92,15 +92,15 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
     def test_queue_overflow_handling(self):
         """
         Test that the message queue enforces its maximum capacity and rejects additional messages when full.
-
-        Fills the queue to its maximum size, verifies that enqueueing beyond this limit fails, and asserts that the queue size does not exceed the defined maximum.
+        
+        Fills the queue to its defined maximum size, verifies that enqueueing beyond this limit fails, and asserts the queue size does not exceed the allowed maximum.
         """
 
         async def async_test():
             """
-            Asynchronously tests that the message queue enforces its maximum capacity and rejects messages when full.
-
-            Fills the queue to its maximum size, verifies that further enqueue attempts fail, and asserts the queue size does not exceed the defined limit.
+            Asynchronously verifies that the message queue enforces its maximum capacity by filling it to the limit and confirming that additional enqueue attempts are rejected.
+            
+            Ensures the queue does not exceed the defined maximum size and that overflow messages are not accepted.
             """
             self.queue.start(message_delay=0.1)
 

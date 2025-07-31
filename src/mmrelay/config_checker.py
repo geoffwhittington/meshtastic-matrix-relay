@@ -19,10 +19,10 @@ from mmrelay.constants.network import (
 
 def get_config_paths():
     """
-    Get a list of possible configuration file paths.
-
+    Return a list of possible configuration file paths for the system.
+    
     Returns:
-        list: A list of possible configuration file paths
+        list: Paths where the configuration file may be located.
     """
     from mmrelay.config import get_config_paths as get_paths
 
@@ -31,10 +31,12 @@ def get_config_paths():
 
 def check_config():
     """
-    Check if the configuration file is valid.
-
+    Validates the configuration file for Matrix and Meshtastic integration.
+    
+    Searches for a configuration file in standard locations, loads and parses it as YAML, and checks for required sections and fields. Ensures the presence and correctness of Matrix and Meshtastic configuration, including connection type and associated parameters. Prints specific error messages for any validation failures.
+    
     Returns:
-        bool: True if the configuration is valid, False otherwise.
+        bool: True if a valid configuration file is found and passes all checks; False otherwise.
     """
     config_paths = get_config_paths()
     config_path = None

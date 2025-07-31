@@ -73,13 +73,13 @@ def configure_component_debug_logging():
 
 def get_logger(name):
     """
-    Create and configure a logger with console output (optionally colorized) and optional rotating file logging, based on global configuration and command-line arguments.
-
-    The logger's log level, colorization, and file logging behavior are determined by configuration settings and command-line options. Log files are rotated by size, and the log directory is created if necessary. If the logger name is "M<>M Relay", the log file path is stored globally.
-
+    Create and configure a logger with console output (optionally colorized) and optional rotating file logging.
+    
+    The logger's log level, colorization, and file logging behavior are determined by global configuration and command-line arguments. Log files are rotated by size, and the log directory is created if necessary. If the logger name matches the application display name, the log file path is stored globally.
+    
     Parameters:
         name (str): The name of the logger to create.
-
+    
     Returns:
         logging.Logger: The configured logger instance.
     """

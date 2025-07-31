@@ -123,6 +123,14 @@ class Plugin(BasePlugin):
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
     ):
+        """
+        Process incoming Meshtastic text messages and respond with a weather forecast if triggered.
+        
+        Handles decoded text messages received on the designated text message port. If the message contains the plugin's command trigger (e.g., "!weather") and the plugin is enabled for the channel, retrieves the sender's GPS location (if available), generates a weather forecast, and replies either directly or as a broadcast depending on the message type.
+        
+        Returns:
+            bool: True if the message was handled and a response was sent; False otherwise.
+        """
         if (
             "decoded" in packet
             and "portnum" in packet["decoded"]

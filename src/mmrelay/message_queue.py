@@ -61,9 +61,9 @@ class MessageQueue:
 
     def start(self, message_delay: float = DEFAULT_MESSAGE_DELAY):
         """
-        Starts the message queue processor with the specified minimum delay between messages.
-
-        Enforces a minimum delay due to firmware requirements. If the event loop is running, the processor task is started immediately; otherwise, startup is deferred until the event loop becomes available.
+        Start the message queue processor with a specified minimum delay between messages.
+        
+        Enforces a minimum message delay based on firmware requirements. If an asyncio event loop is running, the processor task is started immediately; otherwise, startup is deferred until the event loop is available.
         """
         with self._lock:
             if self._running:
@@ -372,13 +372,9 @@ class MessageQueue:
 
     def _handle_message_mapping(self, result, mapping_info):
         """
-        Stores and prunes message mapping information after a message is sent.
-
-        Parameters:
-            result: The result object from the send function, expected to have an `id` attribute.
-            mapping_info (dict): Dictionary containing mapping details such as `matrix_event_id`, `room_id`, `text`, and optional `meshnet` and `msgs_to_keep`.
-
-        This method updates the message mapping database with the new mapping and prunes old mappings if configured.
+        Stores message mapping information after sending and prunes old mappings if configured.
+        
+        Updates the message mapping database with details linking the sent message to its corresponding Matrix event, and optionally prunes older mappings based on the provided or default retention count.
         """
         try:
             # Import here to avoid circular imports

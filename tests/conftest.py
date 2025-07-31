@@ -237,10 +237,9 @@ def pytest_collection_modifyitems(config, items):
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_environment():
     """
-    Set up a safe test environment that doesn't interfere with user configs.
-
-    This fixture ensures that tests use temporary directories instead of real user directories,
-    preventing accidental overwriting of production configs.
+    Pytest fixture that sets up an isolated temporary configuration environment for tests.
+    
+    Creates a temporary directory for MMRelay configuration files, overrides the application's configuration directory to use this location, writes a test configuration file, and ensures cleanup after tests complete. This prevents tests from affecting real user configuration files or directories.
     """
     import tempfile
     import mmrelay.config
@@ -301,12 +300,12 @@ plugins:
 @pytest.fixture
 def temp_dir():
     """
-    Yields a temporary directory path for use during tests requiring filesystem access.
-
-    The directory and its contents are automatically cleaned up after the test completes.
-
+    Yields a temporary directory path for use during tests.
+    
+    The directory and its contents are automatically deleted after the test completes.
+    
     Yields:
-        temp_path (str): Path to the temporary directory.
+        str: Path to the temporary directory.
     """
     with tempfile.TemporaryDirectory() as temp_path:
         yield temp_path
@@ -335,10 +334,12 @@ def temp_db():
 @pytest.fixture
 def mock_config():
     """
-    Return a mock configuration dictionary emulating MMRelay settings for use in tests.
-
+    Return a mock MMRelay configuration dictionary for testing purposes.
+    
+    The dictionary includes sample Matrix, Meshtastic, room, and plugin settings commonly used in test scenarios.
+    
     Returns:
-        dict: A dictionary containing mock Matrix, Meshtastic, room, and plugin configuration data.
+        dict: Mock configuration data structured for MMRelay tests.
     """
     return {
         "matrix": {
@@ -361,11 +362,7 @@ def mock_config():
 @pytest.fixture(autouse=True)
 def cleanup_async_objects():
     """
-    Automatically clean up any remaining async objects after each test.
-
-    This fixture runs after every test to ensure that any AsyncMock objects
-    or coroutines created during testing are properly cleaned up to prevent
-    warnings about unawaited coroutines.
+    Automatically cleans up unawaited coroutines and AsyncMock objects after each test to prevent resource leaks and warning messages.
     """
     yield  # Run the test
 

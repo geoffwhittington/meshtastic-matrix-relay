@@ -173,14 +173,12 @@ config_path = None
 
 def set_config(module, passed_config):
     """
-    Set the configuration for a module.
-
-    Args:
-        module: The module to set the configuration for
-        passed_config: The configuration dictionary to use
-
+    Assigns the provided configuration dictionary to a module and performs module-specific configuration setup.
+    
+    For modules named "matrix_utils" or "meshtastic_utils", sets additional attributes from the configuration if present. Calls the module's `setup_config()` method if it exists for backward compatibility.
+    
     Returns:
-        The updated config
+        dict: The configuration dictionary that was assigned to the module.
     """
     # Set the module's config variable
     module.config = passed_config

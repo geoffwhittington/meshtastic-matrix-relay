@@ -274,7 +274,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_on_lost_meshtastic_connection_reconnection_failure(self):
         """
-        Verifies that on_lost_meshtastic_connection logs an error when reconnection fails.
+        Test that on_lost_meshtastic_connection logs an error when reconnection is unsuccessful.
+        
+        This test mocks the Meshtastic connection logic to simulate a failed reconnection attempt and verifies that an error is logged.
         """
         mock_interface = MagicMock()
 
@@ -287,9 +289,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_on_lost_meshtastic_connection_detection_source_edge_cases(self):
         """
-        Verify that on_lost_meshtastic_connection handles edge cases for the detection_source parameter without raising exceptions.
-
-        Tests the function with various invalid or unusual detection_source values to ensure robust and graceful handling.
+        Test that on_lost_meshtastic_connection handles unusual or invalid detection_source values without raising exceptions.
+        
+        Verifies robust handling of edge cases by passing various invalid or unexpected detection_source inputs.
         """
         mock_interface = MagicMock()
 

@@ -27,7 +27,11 @@ class TestConnectionRetryLogic:
 
     @pytest.mark.asyncio
     async def test_connection_retry_backoff_timing(self):
-        """Test that connection retries use proper backoff timing."""
+        """
+        Verify that connection retry logic attempts reconnection with appropriate backoff timing after failures.
+        
+        This test simulates two consecutive connection failures followed by a successful attempt, ensuring that the retry mechanism waits for the expected backoff duration between attempts and that the total elapsed time reflects these delays within an acceptable variance.
+        """
         with patch("mmrelay.meshtastic_utils.time.sleep"), patch(
             "mmrelay.meshtastic_utils.connect_meshtastic"
         ) as mock_connect:
@@ -67,10 +71,20 @@ class TestConnectionRetryLogic:
 
     @pytest.mark.asyncio
     async def test_exponential_backoff_progression(self):
-        """Test that backoff time increases exponentially."""
+        """
+        Verifies that connection retry backoff durations increase exponentially after consecutive failures.
+        
+        Simulates multiple connection failures and records the durations passed to the backoff mechanism, asserting that each subsequent backoff is at least as long as the previous, following an exponential progression.
+        """
         backoff_times = []
 
         def mock_sleep(duration):
+            """
+            Appends the given duration to the backoff_times list to record simulated sleep intervals during testing.
+            
+            Parameters:
+                duration (float): The simulated sleep duration to record.
+            """
             backoff_times.append(duration)
 
         with patch("asyncio.sleep", side_effect=mock_sleep), patch(
@@ -96,10 +110,23 @@ class TestConnectionRetryLogic:
 
     @pytest.mark.asyncio
     async def test_infinite_retries_behavior(self):
-        """Test behavior when infinite retries is configured."""
+        """
+        Test that the connection logic correctly retries indefinitely when configured for infinite retries, eventually succeeding after multiple failures.
+        
+        Simulates repeated connection failures and verifies that the retry mechanism continues until a successful connection is made, as expected with infinite retry settings.
+        """
         retry_count = 0
 
         def mock_connect():
+            """
+            Simulates a connection attempt that fails nine times before succeeding on the tenth attempt.
+            
+            Returns:
+                MagicMock: A mock object representing a successful connection on the tenth attempt.
+            
+            Raises:
+                ConnectionError: If called fewer than ten times, raises with the current attempt number.
+            """
             nonlocal retry_count
             retry_count += 1
             if retry_count < 10:  # Fail first 9 times
@@ -128,10 +155,26 @@ class TestConnectionTypeFallback:
 
     @pytest.mark.asyncio
     async def test_connection_type_sequence(self):
-        """Test trying different connection types in sequence."""
+        """
+        Verifies that connection attempts proceed through TCP, Serial, and BLE in order, succeeding on BLE after previous failures.
+        
+        Asserts that all connection types are attempted in sequence and that the BLE connection is the one that succeeds.
+        """
         connection_attempts = []
 
         def mock_connect(connection_type):
+            """
+            Simulates a connection attempt for the specified connection type, succeeding only for BLE.
+            
+            Parameters:
+                connection_type (str): The type of connection to attempt.
+            
+            Returns:
+                MagicMock: A mock connection object if the connection type is BLE.
+            
+            Raises:
+                ConnectionError: If the connection type is not BLE.
+            """
             connection_attempts.append(connection_type)
             if connection_type == CONNECTION_TYPE_BLE:
                 return MagicMock()  # BLE succeeds
@@ -153,7 +196,9 @@ class TestConnectionTypeFallback:
 
     @pytest.mark.asyncio
     async def test_connection_type_validation(self):
-        """Test that only valid connection types are attempted."""
+        """
+        Verify that all defined connection types are valid, non-empty strings and belong to the accepted set of connection types.
+        """
         valid_types = {CONNECTION_TYPE_TCP, CONNECTION_TYPE_SERIAL, CONNECTION_TYPE_BLE}
 
         # Test that all defined connection types are valid
@@ -164,7 +209,9 @@ class TestConnectionTypeFallback:
 
     @pytest.mark.asyncio
     async def test_connection_preference_order(self):
-        """Test that connection types are tried in preferred order."""
+        """
+        Verify that the preferred connection types are ordered as TCP, Serial, then BLE for optimal reliability and speed.
+        """
         # Typically TCP -> Serial -> BLE for reliability/speed
         preferred_order = [CONNECTION_TYPE_TCP, CONNECTION_TYPE_SERIAL, CONNECTION_TYPE_BLE]
 
@@ -178,7 +225,9 @@ class TestMessageQueueDuringDisconnection:
     """Test message queuing behavior during network interruptions."""
 
     def test_message_queuing_when_disconnected(self):
-        """Test that messages are queued when connection is unavailable."""
+        """
+        Verifies that messages are enqueued in the message queue when the connection is unavailable, ensuring no messages are lost during disconnection.
+        """
         from mmrelay.message_queue import MessageQueue
 
         queue = MessageQueue()
@@ -206,7 +255,11 @@ class TestMessageQueueDuringDisconnection:
             queue.stop()
 
     def test_queue_overflow_protection(self):
-        """Test queue behavior when approaching maximum size."""
+        """
+        Verify that the message queue enforces its maximum size limit by rejecting messages when full.
+        
+        Fills the queue beyond its maximum capacity while disconnected and asserts that the queue size does not exceed the defined maximum, with some messages being rejected once the limit is reached.
+        """
         from mmrelay.message_queue import MessageQueue
 
         queue = MessageQueue()
@@ -238,7 +291,11 @@ class TestMessageQueueDuringDisconnection:
 
     @pytest.mark.asyncio
     async def test_message_processing_after_reconnection(self):
-        """Test that queued messages are processed after reconnection."""
+        """
+        Verify that messages enqueued during a disconnection are processed after reconnection.
+        
+        This test enqueues messages while the client is disconnected, then simulates reconnection and checks that the message queue size decreases, indicating that queued messages are being processed.
+        """
         from mmrelay.message_queue import MessageQueue
 
         queue = MessageQueue()
@@ -276,10 +333,18 @@ class TestNetworkErrorRecovery:
 
     @pytest.mark.asyncio
     async def test_timeout_error_recovery(self):
-        """Test recovery from network timeout errors."""
+        """
+        Verifies that the system recovers from consecutive network timeout errors by retrying the connection until it succeeds after multiple failures.
+        """
         timeout_count = 0
 
         def mock_connect():
+            """
+            Simulates a network connection attempt that raises a TimeoutError on the first two calls, then succeeds on the third and subsequent calls.
+            
+            Returns:
+                MagicMock: A mock object representing a successful connection after two timeouts.
+            """
             nonlocal timeout_count
             timeout_count += 1
             if timeout_count <= 2:
@@ -300,10 +365,18 @@ class TestNetworkErrorRecovery:
 
     @pytest.mark.asyncio
     async def test_connection_reset_recovery(self):
-        """Test recovery from connection reset errors."""
+        """
+        Asynchronously tests that the system recovers from a ConnectionResetError by retrying the connection and succeeding on a subsequent attempt.
+        """
         reset_count = 0
 
         def mock_connect():
+            """
+            Simulates a connection attempt that raises a ConnectionResetError on the first call and succeeds on subsequent calls.
+            
+            Returns:
+                MagicMock: A mock object representing a successful connection after the initial failure.
+            """
             nonlocal reset_count
             reset_count += 1
             if reset_count <= 1:
@@ -324,10 +397,17 @@ class TestNetworkErrorRecovery:
 
     @pytest.mark.asyncio
     async def test_message_delay_enforcement(self):
-        """Test that minimum message delay is enforced during recovery."""
+        """
+        Verify that the minimum delay between consecutive messages is enforced during message sending recovery.
+        
+        Sends three messages in rapid succession with enforced delays, then asserts that the time between each send meets or exceeds the minimum message delay within a 10% margin.
+        """
         send_times = []
 
         async def mock_send_message():
+            """
+            Appends the current timestamp to the send_times list to simulate a message send event.
+            """
             send_times.append(time.time())
 
         # Simulate rapid message sending

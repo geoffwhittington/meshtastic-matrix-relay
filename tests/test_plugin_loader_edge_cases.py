@@ -96,9 +96,9 @@ class TestPluginLoaderEdgeCases(unittest.TestCase):
 
     def test_load_plugins_from_directory_plugin_initialization_failure(self):
         """
-        Test that plugins with failing initialization are not loaded.
-
-        Creates a plugin file whose `Plugin` class raises an exception during initialization, then verifies that `load_plugins_from_directory` returns an empty list and logs an error.
+        Test that plugins raising exceptions during initialization are not loaded.
+        
+        Creates a plugin file whose `Plugin` class raises an exception in its constructor, then verifies that `load_plugins_from_directory` returns an empty list and logs an error.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create a plugin file with failing initialization
@@ -119,10 +119,9 @@ class Plugin:
 
     def test_load_plugins_from_directory_import_error_with_dependency_install(self):
         """
-        Test that plugins with missing dependencies trigger installation attempts.
-
-        Creates a plugin file that imports a nonexistent module and verifies that the plugin loader
-        attempts to install the missing dependency via subprocess call.
+        Verifies that the plugin loader attempts to install missing dependencies when a plugin import fails due to a missing module.
+        
+        Creates a plugin file that imports a nonexistent module, mocks the subprocess call for dependency installation, and asserts that the loader tries to install the dependency, logs appropriate warnings and info messages, and returns an empty plugin list when loading fails.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             plugin_file = os.path.join(temp_dir, "dependency_plugin.py")
@@ -167,9 +166,9 @@ class Plugin:
 
     def test_load_plugins_from_directory_dependency_install_failure(self):
         """
-        Test that plugin loading fails gracefully when a plugin's missing dependency cannot be installed.
-
-        Creates a plugin file that imports a nonexistent module, simulates a failed dependency installation, and verifies that no plugins are loaded and an error is logged.
+        Test that plugin loading handles failed dependency installation gracefully.
+        
+        Creates a plugin file importing a nonexistent module, simulates a failed installation attempt, and verifies that no plugins are loaded and an error is logged.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             plugin_file = os.path.join(temp_dir, "dependency_plugin.py")

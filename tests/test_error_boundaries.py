@@ -77,9 +77,9 @@ class TestErrorBoundaries(unittest.TestCase):
 
     def test_plugin_failure_isolation(self):
         """
-        Verify that a plugin failure during message handling does not prevent other plugins or the core Matrix relay functionality from executing.
-
-        This test ensures that exceptions raised by one plugin are isolated, allowing other plugins and the main message relay to continue processing without interruption.
+        Test that a plugin failure during message handling does not prevent other plugins or the core Matrix relay from executing.
+        
+        Ensures that exceptions raised by one plugin are isolated, allowing other plugins and the main message relay to continue processing the message.
         """
         # Create plugins with different failure modes
         failing_plugin = MagicMock()

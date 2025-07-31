@@ -171,9 +171,9 @@ class TestBasePlugin(unittest.TestCase):
 
     def test_config_loading_without_plugin_config(self):
         """
-        Test that the plugin loads default configuration values when no plugin-specific config is present.
-
-        Verifies that the plugin is inactive, uses the default response delay, and has no enabled channels if its configuration is missing.
+        Test that the plugin uses default configuration values when no plugin-specific config is present.
+        
+        Verifies that the plugin is inactive, sets the response delay to the default value (2.0 seconds), and has no enabled channels if its configuration is missing.
         """
         # Remove plugin config
         config_without_plugin = {"plugins": {}}
@@ -187,7 +187,7 @@ class TestBasePlugin(unittest.TestCase):
 
     def test_response_delay_minimum_enforcement(self):
         """
-        Test that the plugin enforces a minimum response delay of 2.0 seconds when configured with a lower value.
+        Verify that the plugin enforces a minimum response delay of 2.0 seconds when the configured delay is set below this threshold.
         """
         config_low_delay = {
             "plugins": {"test_plugin": {"active": True}},
