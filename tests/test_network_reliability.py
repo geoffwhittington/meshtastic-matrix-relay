@@ -9,7 +9,7 @@ queuing during network interruptions.
 import asyncio
 import pytest
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from mmrelay.constants.network import (
     CONNECTION_TYPE_BLE,
@@ -28,7 +28,7 @@ class TestConnectionRetryLogic:
     @pytest.mark.asyncio
     async def test_connection_retry_backoff_timing(self):
         """Test that connection retries use proper backoff timing."""
-        with patch("mmrelay.meshtastic_utils.time.sleep") as mock_sleep, patch(
+        with patch("mmrelay.meshtastic_utils.time.sleep"), patch(
             "mmrelay.meshtastic_utils.connect_meshtastic"
         ) as mock_connect:
             # Simulate connection failures followed by success
@@ -288,7 +288,7 @@ class TestNetworkErrorRecovery:
 
         with patch("mmrelay.meshtastic_utils.connect_meshtastic", side_effect=mock_connect):
             # Should eventually succeed after timeouts
-            for attempt in range(5):
+            for _ in range(5):
                 try:
                     result = mock_connect()
                     assert result is not None
@@ -312,7 +312,7 @@ class TestNetworkErrorRecovery:
 
         with patch("mmrelay.meshtastic_utils.connect_meshtastic", side_effect=mock_connect):
             # Should recover from connection reset
-            for attempt in range(3):
+            for _ in range(3):
                 try:
                     result = mock_connect()
                     assert result is not None

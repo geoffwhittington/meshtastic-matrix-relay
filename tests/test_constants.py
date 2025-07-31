@@ -5,7 +5,6 @@ This module tests that all constants are properly defined, have valid values,
 and maintain logical relationships with each other.
 """
 
-import pytest
 from mmrelay.constants import (
     app,
     config,
