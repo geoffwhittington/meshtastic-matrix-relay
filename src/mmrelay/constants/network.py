@@ -11,6 +11,12 @@ CONNECTION_TYPE_SERIAL = "serial"
 CONNECTION_TYPE_BLE = "ble"
 CONNECTION_TYPE_NETWORK = "network"  # Legacy alias for tcp
 
+# Configuration keys for connection settings
+CONFIG_KEY_BLE_ADDRESS = "ble_address"
+CONFIG_KEY_SERIAL_PORT = "serial_port"
+CONFIG_KEY_HOST = "host"
+CONFIG_KEY_CONNECTION_TYPE = "connection_type"
+
 # Connection retry and timing
 DEFAULT_BACKOFF_TIME = 10  # seconds
 DEFAULT_RETRY_ATTEMPTS = 1

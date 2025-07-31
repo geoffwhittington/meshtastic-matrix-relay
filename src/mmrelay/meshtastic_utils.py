@@ -30,6 +30,9 @@ from mmrelay.constants.network import (
     ERRNO_BAD_FILE_DESCRIPTOR,
     INFINITE_RETRIES,
     SYSTEMD_INIT_SYSTEM,
+    CONFIG_KEY_BLE_ADDRESS,
+    CONFIG_KEY_SERIAL_PORT,
+    CONFIG_KEY_HOST,
 )
 
 # Import BLE exceptions conditionally
@@ -200,7 +203,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
             try:
                 if connection_type == CONNECTION_TYPE_SERIAL:
                     # Serial connection
-                    serial_port = config["meshtastic"].get("serial_port")
+                    serial_port = config["meshtastic"].get(CONFIG_KEY_SERIAL_PORT)
                     if not serial_port:
                         logger.error(
                             "No serial port specified in Meshtastic configuration."
@@ -224,7 +227,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
 
                 elif connection_type == CONNECTION_TYPE_BLE:
                     # BLE connection
-                    ble_address = config["meshtastic"].get("ble_address")
+                    ble_address = config["meshtastic"].get(CONFIG_KEY_BLE_ADDRESS)
                     if ble_address:
                         logger.info(f"Connecting to BLE address {ble_address}")
 
@@ -241,7 +244,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
 
                 elif connection_type == CONNECTION_TYPE_TCP:
                     # TCP connection
-                    target_host = config["meshtastic"].get("host")
+                    target_host = config["meshtastic"].get(CONFIG_KEY_HOST)
                     if not target_host:
                         logger.error(
                             "No host specified in Meshtastic configuration for TCP connection."
