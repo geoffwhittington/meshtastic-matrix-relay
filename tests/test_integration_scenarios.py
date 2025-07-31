@@ -305,10 +305,25 @@ class TestIntegrationScenarios(unittest.TestCase):
                     mock_future = MagicMock()
                     try:
                         import asyncio
+                        import inspect
 
-                        result = asyncio.run(coro)
-                        mock_future.result.return_value = result
+                        # Check if it's actually a coroutine
+                        if inspect.iscoroutine(coro):
+                            result = asyncio.run(coro)
+                            mock_future.result.return_value = result
+                        else:
+                            # If it's not a coroutine, just close it to prevent warnings
+                            try:
+                                coro.close()
+                            except:
+                                pass
+                            mock_future.result.return_value = None
                     except Exception:
+                        # Close the coroutine to prevent warnings
+                        try:
+                            coro.close()
+                        except:
+                            pass
                         mock_future.result.return_value = None
                     return mock_future
 

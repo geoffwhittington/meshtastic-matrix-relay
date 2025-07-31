@@ -225,16 +225,16 @@ class TestMain(unittest.TestCase):
         self.assertEqual(result, 1)
 
     @patch("mmrelay.config.load_config")
-    @patch("mmrelay.main.main", new_callable=AsyncMock)
-    def test_run_main_keyboard_interrupt(self, mock_main, mock_load_config):
+    @patch("asyncio.run")
+    def test_run_main_keyboard_interrupt(self, mock_asyncio_run, mock_load_config):
         """
         Test that run_main returns 0 when a KeyboardInterrupt is raised during execution, indicating a graceful shutdown.
         """
         # Mock config loading
         mock_load_config.return_value = self.mock_config
 
-        # Mock main to raise KeyboardInterrupt
-        mock_main.side_effect = KeyboardInterrupt()
+        # Mock asyncio.run to raise KeyboardInterrupt
+        mock_asyncio_run.side_effect = KeyboardInterrupt()
 
         result = run_main(None)
 
