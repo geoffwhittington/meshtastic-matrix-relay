@@ -57,11 +57,22 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
         # Clean up any remaining event loops to prevent ResourceWarnings
         try:
             import asyncio
-            loop = asyncio.get_event_loop()
-            if not loop.is_closed():
-                loop.close()
-        except RuntimeError:
-            pass  # No event loop running
+            # Try to get and close the current event loop
+            try:
+                loop = asyncio.get_event_loop()
+                if not loop.is_closed():
+                    # Cancel all pending tasks
+                    pending = asyncio.all_tasks(loop)
+                    for task in pending:
+                        task.cancel()
+                    loop.close()
+            except RuntimeError:
+                pass  # No current event loop
+
+            # Set event loop to None to ensure clean state
+            asyncio.set_event_loop(None)
+        except Exception:
+            pass  # Ignore any cleanup errors
 
         # Reset global state
         import mmrelay.meshtastic_utils
@@ -139,8 +150,15 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
                 final_queue_size, 500, "Should not exceed expected maximum"
             )
 
-        # Run the async test
-        asyncio.run(async_test())
+        # Run the async test with proper event loop handling
+        try:
+            asyncio.run(async_test())
+        except RuntimeError as e:
+            if "cannot be called from a running event loop" in str(e):
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(async_test())
+            else:
+                raise
 
     def test_enqueue_when_not_running(self):
         """
@@ -225,7 +243,16 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
                 # Just check that it handled the error gracefully
                 self.assertIsInstance(self.queue.is_running(), bool)
 
-        asyncio.run(async_test())
+        # Run the async test with proper event loop handling
+        try:
+            asyncio.run(async_test())
+        except RuntimeError as e:
+            if "cannot be called from a running event loop" in str(e):
+                # If there's already an event loop running, use it
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(async_test())
+            else:
+                raise
 
     def test_message_mapping_with_invalid_result(self):
         """
@@ -269,7 +296,15 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
             # Wait for processing
             await asyncio.sleep(0.2)
 
-        asyncio.run(async_test())
+        # Run the async test with proper event loop handling
+        try:
+            asyncio.run(async_test())
+        except RuntimeError as e:
+            if "cannot be called from a running event loop" in str(e):
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(async_test())
+            else:
+                raise
 
     def test_processor_task_cancellation(self):
         """
@@ -299,7 +334,15 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
             # Task should be done
             self.assertTrue(processor_task.done())
 
-        asyncio.run(async_test())
+        # Run the async test with proper event loop handling
+        try:
+            asyncio.run(async_test())
+        except RuntimeError as e:
+            if "cannot be called from a running event loop" in str(e):
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(async_test())
+            else:
+                raise
 
     def test_ensure_processor_started_without_event_loop(self):
         """
@@ -346,7 +389,15 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
                 # Should wait for rate limiting
                 await asyncio.sleep(0.2)
 
-        asyncio.run(async_test())
+        # Run the async test with proper event loop handling
+        try:
+            asyncio.run(async_test())
+        except RuntimeError as e:
+            if "cannot be called from a running event loop" in str(e):
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(async_test())
+            else:
+                raise
 
     def test_queue_status_with_no_sends(self):
         """
@@ -422,7 +473,15 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
             # Wait for processing
             await asyncio.sleep(0.2)
 
-        asyncio.run(async_test())
+        # Run the async test with proper event loop handling
+        try:
+            asyncio.run(async_test())
+        except RuntimeError as e:
+            if "cannot be called from a running event loop" in str(e):
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(async_test())
+            else:
+                raise
 
     def test_global_queue_functions(self):
         """

@@ -218,7 +218,9 @@ class TestMain(unittest.TestCase):
         mock_load_config.return_value = self.mock_config
 
         # Mock main to raise an exception (async function)
-        mock_main.side_effect = AsyncMock(side_effect=Exception("Test error"))
+        async def mock_main_func(*args, **kwargs):
+            raise Exception("Test error")
+        mock_main.side_effect = mock_main_func
 
         result = run_main(None)
 
