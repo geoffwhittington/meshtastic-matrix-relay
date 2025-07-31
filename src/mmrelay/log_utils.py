@@ -6,6 +6,12 @@ from rich.logging import RichHandler
 
 # Import parse_arguments only when needed to avoid conflicts with pytest
 from mmrelay.config import get_log_dir
+from mmrelay.constants.app import APP_DISPLAY_NAME
+from mmrelay.constants.messages import (
+    DEFAULT_LOG_BACKUP_COUNT,
+    DEFAULT_LOG_SIZE_MB,
+    LOG_SIZE_BYTES_MULTIPLIER,
+)
 
 # Initialize Rich console
 console = Console()
@@ -67,13 +73,13 @@ def configure_component_debug_logging():
 
 def get_logger(name):
     """
-    Create and configure a logger with console output (optionally colorized) and optional rotating file logging, based on global configuration and command-line arguments.
-
-    The logger's log level, colorization, and file logging behavior are determined by configuration settings and command-line options. Log files are rotated by size, and the log directory is created if necessary. If the logger name is "M<>M Relay", the log file path is stored globally.
-
+    Create and configure a logger with console output (optionally colorized) and optional rotating file logging.
+    
+    The logger's log level, colorization, and file logging behavior are determined by global configuration and command-line arguments. Log files are rotated by size, and the log directory is created if necessary. If the logger name matches the application display name, the log file path is stored globally for reference.
+    
     Parameters:
         name (str): The name of the logger to create.
-
+    
     Returns:
         logging.Logger: The configured logger instance.
     """
@@ -171,15 +177,15 @@ def get_logger(name):
             os.makedirs(log_dir, exist_ok=True)
 
         # Store the log file path for later use
-        if name == "M<>M Relay":
+        if name == APP_DISPLAY_NAME:
             global log_file_path
             log_file_path = log_file
 
         # Create a file handler for logging
         try:
             # Set up size-based log rotation
-            max_bytes = 5 * 1024 * 1024  # Default 5 MB
-            backup_count = 1  # Default to 1 backup
+            max_bytes = DEFAULT_LOG_SIZE_MB * LOG_SIZE_BYTES_MULTIPLIER
+            backup_count = DEFAULT_LOG_BACKUP_COUNT
 
             if config is not None and "logging" in config:
                 max_bytes = config["logging"].get("max_log_size", max_bytes)

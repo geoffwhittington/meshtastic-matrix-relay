@@ -1,18 +1,37 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Configuration checker module for MMRelay.
+
+Note: This module contains similar functionality to the check_config function
+in mmrelay.cli. The CLI version is more complete and uses centralized constants.
+Future refactoring should consider consolidating these implementations to reduce
+code duplication while maintaining backward compatibility and test coverage.
+"""
+
 import os
 
 import yaml
 from yaml.loader import SafeLoader
 
+from mmrelay.constants.network import (
+    CONNECTION_TYPE_BLE,
+    CONNECTION_TYPE_SERIAL,
+    CONNECTION_TYPE_TCP,
+    CONFIG_KEY_BLE_ADDRESS,
+    CONFIG_KEY_SERIAL_PORT,
+    CONFIG_KEY_HOST,
+    CONFIG_KEY_CONNECTION_TYPE,
+)
+
 
 def get_config_paths():
     """
-    Get a list of possible configuration file paths.
-
+    Return a list of possible file paths where the mmrelay configuration file may be located.
+    
     Returns:
-        list: A list of possible configuration file paths
+        list: Paths to potential configuration files.
     """
     from mmrelay.config import get_config_paths as get_paths
 
@@ -21,10 +40,10 @@ def get_config_paths():
 
 def check_config():
     """
-    Check if the configuration file is valid.
-
+    Validates the mmrelay configuration file by checking for required sections and fields.
+    
     Returns:
-        bool: True if the configuration is valid, False otherwise.
+        bool: True if a valid configuration file is found and passes all checks; False otherwise.
     """
     config_paths = get_config_paths()
     config_path = None
@@ -90,30 +109,40 @@ def check_config():
                     return False
 
                 meshtastic_section = config["meshtastic"]
-                if "connection_type" not in meshtastic_section:
+                if CONFIG_KEY_CONNECTION_TYPE not in meshtastic_section:
                     print("Error: Missing 'connection_type' in 'meshtastic' section")
                     return False
 
-                connection_type = meshtastic_section["connection_type"]
-                if connection_type not in ["tcp", "serial", "ble"]:
+                connection_type = meshtastic_section[CONFIG_KEY_CONNECTION_TYPE]
+                if connection_type not in [
+                    CONNECTION_TYPE_TCP,
+                    CONNECTION_TYPE_SERIAL,
+                    CONNECTION_TYPE_BLE,
+                ]:
                     print(
-                        f"Error: Invalid 'connection_type': {connection_type}. Must be 'tcp', 'serial', or 'ble'"
+                        f"Error: Invalid 'connection_type': {connection_type}. Must be '{CONNECTION_TYPE_TCP}', '{CONNECTION_TYPE_SERIAL}', or '{CONNECTION_TYPE_BLE}'"
                     )
                     return False
 
                 # Check connection-specific fields
                 if (
-                    connection_type == "serial"
-                    and "serial_port" not in meshtastic_section
+                    connection_type == CONNECTION_TYPE_SERIAL
+                    and CONFIG_KEY_SERIAL_PORT not in meshtastic_section
                 ):
                     print("Error: Missing 'serial_port' for 'serial' connection type")
                     return False
 
-                if connection_type == "tcp" and "host" not in meshtastic_section:
+                if (
+                    connection_type == CONNECTION_TYPE_TCP
+                    and CONFIG_KEY_HOST not in meshtastic_section
+                ):
                     print("Error: Missing 'host' for 'tcp' connection type")
                     return False
 
-                if connection_type == "ble" and "ble_address" not in meshtastic_section:
+                if (
+                    connection_type == CONNECTION_TYPE_BLE
+                    and CONFIG_KEY_BLE_ADDRESS not in meshtastic_section
+                ):
                     print("Error: Missing 'ble_address' for 'ble' connection type")
                     return False
 

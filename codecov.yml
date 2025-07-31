@@ -86,6 +86,9 @@ component_management:
         - type: project
           target: 30%
           threshold: 3%
+        - type: patch
+          target: 30%
+          threshold: 3%
 
 comment:
   layout: "header, diff, flags, components"

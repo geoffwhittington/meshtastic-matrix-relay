@@ -7,6 +7,11 @@ import markdown
 import schedule
 
 from mmrelay.config import get_plugin_data_dir
+from mmrelay.constants.database import (
+    DEFAULT_MAX_DATA_ROWS_PER_NODE_BASE,
+    DEFAULT_TEXT_TRUNCATION_LENGTH,
+)
+from mmrelay.constants.queue import DEFAULT_MESSAGE_DELAY
 from mmrelay.db_utils import (
     delete_plugin_data,
     get_plugin_data,
@@ -14,7 +19,7 @@ from mmrelay.db_utils import (
     store_plugin_data,
 )
 from mmrelay.log_utils import get_logger
-from mmrelay.message_queue import DEFAULT_MESSAGE_DELAY, queue_message
+from mmrelay.message_queue import queue_message
 
 # Global config variable that will be set from main.py
 config = None
@@ -47,7 +52,7 @@ class BasePlugin(ABC):
 
     # Class-level default attributes
     plugin_name = None  # Must be overridden in subclasses
-    max_data_rows_per_node = 100
+    max_data_rows_per_node = DEFAULT_MAX_DATA_ROWS_PER_NODE_BASE
     priority = 10
 
     @property
@@ -253,17 +258,17 @@ class BasePlugin(ABC):
 
     def send_message(self, text: str, channel: int = 0, destination_id=None) -> bool:
         """
-        Send a message to the Meshtastic network via the message queue.
-
-        Automatically queues the message for broadcast or direct delivery, applying rate limiting as configured. Returns True if the message was successfully queued, or False if the Meshtastic client is unavailable.
-
+        Send a message to the Meshtastic network using the message queue.
+        
+        Queues the specified text for broadcast or direct delivery on the given channel. Returns True if the message was successfully queued, or False if the Meshtastic client is unavailable.
+        
         Parameters:
-            text (str): The message text to send.
-            channel (int, optional): Channel index to send the message on. Defaults to 0.
-            destination_id (optional): Destination node ID for direct messages; if None, the message is broadcast.
-
+            text (str): The message content to send.
+            channel (int, optional): The channel index for sending the message. Defaults to 0.
+            destination_id (optional): The destination node ID for direct messages. If None, the message is broadcast.
+        
         Returns:
-            bool: True if the message was queued successfully, False otherwise.
+            bool: True if the message was queued successfully; False otherwise.
         """
         from mmrelay.meshtastic_utils import connect_meshtastic
 
@@ -272,9 +277,7 @@ class BasePlugin(ABC):
             self.logger.error("No Meshtastic client available")
             return False
 
-        description = (
-            f"Plugin {self.plugin_name}: {text[:50]}{'...' if len(text) > 50 else ''}"
-        )
+        description = f"Plugin {self.plugin_name}: {text[:DEFAULT_TEXT_TRUNCATION_LENGTH]}{'...' if len(text) > DEFAULT_TEXT_TRUNCATION_LENGTH else ''}"
 
         send_kwargs = {
             "text": text,

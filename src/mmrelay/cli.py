@@ -13,15 +13,33 @@ from yaml.loader import SafeLoader
 # Import version from package
 from mmrelay import __version__
 from mmrelay.config import get_config_paths
+from mmrelay.constants.app import WINDOWS_PLATFORM
+from mmrelay.constants.config import (
+    CONFIG_SECTION_MATRIX,
+    CONFIG_SECTION_MESHTASTIC,
+    CONFIG_KEY_HOMESERVER,
+    CONFIG_KEY_ACCESS_TOKEN,
+    CONFIG_KEY_BOT_USER_ID,
+)
+from mmrelay.constants.network import (
+    CONNECTION_TYPE_BLE,
+    CONNECTION_TYPE_NETWORK,
+    CONNECTION_TYPE_SERIAL,
+    CONNECTION_TYPE_TCP,
+    CONFIG_KEY_BLE_ADDRESS,
+    CONFIG_KEY_SERIAL_PORT,
+    CONFIG_KEY_HOST,
+    CONFIG_KEY_CONNECTION_TYPE,
+)
 from mmrelay.tools import get_sample_config_path
 
 
 def parse_arguments():
     """
     Parse and validate command-line arguments for the Meshtastic Matrix Relay CLI.
-
-    Handles standard options for configuration, data directory, logging, version display, sample config generation, service installation, and config validation. On Windows, supports a deprecated positional argument for the config file path with a warning. Ignores unknown arguments outside of test environments and prints a warning if any are present.
-
+    
+    Supports options for specifying configuration file, data directory, logging preferences, version display, sample configuration generation, service installation, and configuration validation. On Windows, also accepts a deprecated positional argument for the config file path with a warning. Ignores unknown arguments outside of test environments and warns if any are present.
+    
     Returns:
         argparse.Namespace: Parsed command-line arguments.
     """
@@ -64,7 +82,7 @@ def parse_arguments():
 
     # Windows-specific handling for backward compatibility
     # On Windows, add a positional argument for the config file path
-    if sys.platform == "win32":
+    if sys.platform == WINDOWS_PLATFORM:
         parser.add_argument(
             "config_path", nargs="?", help=argparse.SUPPRESS, default=None
         )
@@ -77,7 +95,7 @@ def parse_arguments():
 
     # If on Windows and a positional config path is provided but --config is not, use the positional one
     if (
-        sys.platform == "win32"
+        sys.platform == WINDOWS_PLATFORM
         and hasattr(args, "config_path")
         and args.config_path
         and not args.config
@@ -112,13 +130,15 @@ def print_version():
 
 def check_config(args=None):
     """
-    Check if the configuration file is valid.
-
-    Args:
-        args: The parsed command-line arguments
-
+    Validates the application's configuration file for required structure and fields.
+    
+    If a configuration file is found, checks for the presence and correctness of required sections and keys, including Matrix and Meshtastic settings, and validates the format of matrix rooms. Prints errors or warnings for missing or deprecated fields. Returns True if the configuration is valid, otherwise False.
+    
+    Parameters:
+        args: Parsed command-line arguments. If None, arguments are parsed internally.
+    
     Returns:
-        bool: True if the configuration is valid, False otherwise.
+        bool: True if the configuration file is valid, False otherwise.
     """
 
     # If args is None, parse them now
@@ -143,12 +163,12 @@ def check_config(args=None):
                     return False
 
                 # Check matrix section
-                if "matrix" not in config:
+                if CONFIG_SECTION_MATRIX not in config:
                     print("Error: Missing 'matrix' section in config")
                     return False
 
-                matrix_section = config["matrix"]
-                required_matrix_fields = ["homeserver", "access_token", "bot_user_id"]
+                matrix_section = config[CONFIG_SECTION_MATRIX]
+                required_matrix_fields = [CONFIG_KEY_HOMESERVER, CONFIG_KEY_ACCESS_TOKEN, CONFIG_KEY_BOT_USER_ID]
                 missing_matrix_fields = [
                     field
                     for field in required_matrix_fields
@@ -184,24 +204,29 @@ def check_config(args=None):
                         return False
 
                 # Check meshtastic section
-                if "meshtastic" not in config:
+                if CONFIG_SECTION_MESHTASTIC not in config:
                     print("Error: Missing 'meshtastic' section in config")
                     return False
 
-                meshtastic_section = config["meshtastic"]
+                meshtastic_section = config[CONFIG_SECTION_MESHTASTIC]
                 if "connection_type" not in meshtastic_section:
                     print("Error: Missing 'connection_type' in 'meshtastic' section")
                     return False
 
-                connection_type = meshtastic_section["connection_type"]
-                if connection_type not in ["tcp", "serial", "ble", "network"]:
+                connection_type = meshtastic_section[CONFIG_KEY_CONNECTION_TYPE]
+                if connection_type not in [
+                    CONNECTION_TYPE_TCP,
+                    CONNECTION_TYPE_SERIAL,
+                    CONNECTION_TYPE_BLE,
+                    CONNECTION_TYPE_NETWORK,
+                ]:
                     print(
-                        f"Error: Invalid 'connection_type': {connection_type}. Must be 'tcp', 'serial', or 'ble'"
+                        f"Error: Invalid 'connection_type': {connection_type}. Must be '{CONNECTION_TYPE_TCP}', '{CONNECTION_TYPE_SERIAL}', or '{CONNECTION_TYPE_BLE}'"
                     )
                     return False
 
                 # Check for deprecated connection_type
-                if connection_type == "network":
+                if connection_type == CONNECTION_TYPE_NETWORK:
                     print(
                         "\nWarning: 'network' connection_type is deprecated. Please use 'tcp' instead."
                     )
@@ -211,20 +236,23 @@ def check_config(args=None):
 
                 # Check connection-specific fields
                 if (
-                    connection_type == "serial"
-                    and "serial_port" not in meshtastic_section
+                    connection_type == CONNECTION_TYPE_SERIAL
+                    and CONFIG_KEY_SERIAL_PORT not in meshtastic_section
                 ):
                     print("Error: Missing 'serial_port' for 'serial' connection type")
                     return False
 
                 if (
-                    connection_type in ["tcp", "network"]
-                    and "host" not in meshtastic_section
+                    connection_type in [CONNECTION_TYPE_TCP, CONNECTION_TYPE_NETWORK]
+                    and CONFIG_KEY_HOST not in meshtastic_section
                 ):
                     print("Error: Missing 'host' for 'tcp' connection type")
                     return False
 
-                if connection_type == "ble" and "ble_address" not in meshtastic_section:
+                if (
+                    connection_type == CONNECTION_TYPE_BLE
+                    and CONFIG_KEY_BLE_ADDRESS not in meshtastic_section
+                ):
                     print("Error: Missing 'ble_address' for 'ble' connection type")
                     return False
 

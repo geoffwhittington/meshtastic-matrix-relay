@@ -281,14 +281,13 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.connect_meshtastic", return_value=None):
             with patch("time.sleep"):  # Speed up test
                 with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
-                    on_lost_meshtastic_connection(mock_interface)
-                    mock_logger.error.assert_called()
+                    with patch("mmrelay.meshtastic_utils.event_loop", None):  # Prevent async reconnect
+                        on_lost_meshtastic_connection(mock_interface)
+                        mock_logger.error.assert_called()
 
     def test_on_lost_meshtastic_connection_detection_source_edge_cases(self):
         """
-        Verify that on_lost_meshtastic_connection handles edge cases for the detection_source parameter without raising exceptions.
-
-        Tests the function with various invalid or unusual detection_source values to ensure robust and graceful handling.
+        Test that on_lost_meshtastic_connection gracefully handles various invalid or unusual detection_source values without raising exceptions.
         """
         mock_interface = MagicMock()
 

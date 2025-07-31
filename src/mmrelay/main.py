@@ -15,6 +15,7 @@ from nio.events.room_events import RoomMemberEvent
 # Import version from package
 # Import meshtastic_utils as a module to set event_loop
 from mmrelay import __version__, meshtastic_utils
+from mmrelay.constants.app import APP_DISPLAY_NAME, WINDOWS_PLATFORM
 from mmrelay.db_utils import (
     initialize_database,
     update_longnames,
@@ -36,7 +37,7 @@ from mmrelay.message_queue import (
 from mmrelay.plugin_loader import load_plugins
 
 # Initialize logger
-logger = get_logger(name="M<>M Relay")
+logger = get_logger(name=APP_DISPLAY_NAME)
 
 # Set the logging level for 'nio' to ERROR to suppress warnings
 logging.getLogger("nio").setLevel(logging.ERROR)
@@ -57,9 +58,9 @@ def print_banner():
 
 async def main(config):
     """
-    Runs the main asynchronous relay loop, managing the lifecycle and coordination between Meshtastic and Matrix clients.
-
-    Initializes the database, loads plugins, starts the message queue, and establishes connections to both Meshtastic and Matrix. Joins configured Matrix rooms, registers event callbacks for message and membership events, and periodically updates node names from the Meshtastic network. Monitors connection health, manages the Matrix sync loop with reconnection and shutdown handling, and ensures graceful shutdown of all components, including optional message map wiping on startup and shutdown if configured.
+    Coordinates the main asynchronous relay loop between Meshtastic and Matrix clients.
+    
+    Initializes the database, loads plugins, starts the message queue, and establishes connections to both Meshtastic and Matrix. Joins configured Matrix rooms, registers event callbacks for message and membership events, and periodically updates node names from the Meshtastic network. Monitors connection health, manages the Matrix sync loop with reconnection and shutdown handling, and ensures graceful shutdown of all components. Optionally wipes the message map on startup and shutdown if configured.
     """
     # Extract Matrix configuration
     from typing import List
@@ -133,7 +134,7 @@ async def main(config):
     loop = asyncio.get_running_loop()
 
     # Handle signals differently based on the platform
-    if sys.platform != "win32":
+    if sys.platform != WINDOWS_PLATFORM:
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown()))
     else:

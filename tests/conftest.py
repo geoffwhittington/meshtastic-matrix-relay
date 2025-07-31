@@ -235,18 +235,28 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def setup_test_config():
+def setup_test_environment():
     """
-    Creates a test configuration YAML file for MMRelay in either a CI-specific or local user path.
-
-    Attempts to write a predefined configuration to `/home/runner/.mmrelay/config.yaml` for CI environments, falling back to `~/.mmrelay/config.yaml` if necessary. The configuration includes matrix, meshtastic, and plugin settings for use in tests.
+    Pytest fixture that sets up an isolated test environment using a temporary configuration directory.
+    
+    This fixture overrides the MMRelay configuration directory to a temporary location, writes a test configuration file, and ensures cleanup after tests complete. It prevents tests from modifying or interfering with real user configuration files.
     """
-    # Define config paths
-    ci_config_path = "/home/runner/.mmrelay/config.yaml"
-    local_config_path = os.path.expanduser("~/.mmrelay/config.yaml")
+    import tempfile
+    import mmrelay.config
+    import shutil
 
-    # Create test config content
-    test_config = """# Test configuration for MMRelay
+    # Create a temporary directory for test configs
+    temp_dir = tempfile.mkdtemp(prefix="mmrelay_test_")
+
+    try:
+        # Store original custom_data_dir
+        original_custom_data_dir = mmrelay.config.custom_data_dir
+
+        # Set custom_data_dir to our temp directory to prevent writing to real user dirs
+        mmrelay.config.custom_data_dir = temp_dir
+
+        # Create test config content
+        test_config = """# Test configuration for MMRelay
 matrix:
   homeserver: "https://matrix.example.org"
   username: "@testbot:example.org"
@@ -267,32 +277,33 @@ plugins:
     active: true
 """
 
-    # Try to create config in CI environment first
-    try:
-        os.makedirs(os.path.dirname(ci_config_path), exist_ok=True)
-        with open(ci_config_path, "w") as f:
-            f.write(test_config)
-        print(f"Created test config at {ci_config_path}")
-    except (OSError, PermissionError):
-        # Fall back to local config path
+        # Create config file in temp directory
+        config_path = os.path.join(temp_dir, "config.yaml")
         try:
-            os.makedirs(os.path.dirname(local_config_path), exist_ok=True)
-            with open(local_config_path, "w") as f:
+            with open(config_path, "w") as f:
                 f.write(test_config)
-            print(f"Created test config at {local_config_path}")
+            print(f"Created test config at {config_path}")
         except (OSError, PermissionError):
             print("Could not create test config file")
+
+        # Run tests
+        yield
+
+    finally:
+        # Clean up temp directory
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+        # Restore original custom_data_dir
+        mmrelay.config.custom_data_dir = original_custom_data_dir
 
 
 @pytest.fixture
 def temp_dir():
     """
-    Yields a temporary directory path for use during tests requiring filesystem access.
-
-    The directory and its contents are automatically cleaned up after the test completes.
-
+    Provide a temporary directory path for use during a test, ensuring automatic cleanup after the test finishes.
+    
     Yields:
-        temp_path (str): Path to the temporary directory.
+        str: Path to the temporary directory.
     """
     with tempfile.TemporaryDirectory() as temp_path:
         yield temp_path
@@ -321,10 +332,10 @@ def temp_db():
 @pytest.fixture
 def mock_config():
     """
-    Return a mock configuration dictionary emulating MMRelay settings for use in tests.
-
+    Return a mock configuration dictionary representing typical MMRelay settings for testing purposes.
+    
     Returns:
-        dict: A dictionary containing mock Matrix, Meshtastic, room, and plugin configuration data.
+        dict: Mock configuration data including Matrix, Meshtastic, room, and plugin settings.
     """
     return {
         "matrix": {
@@ -342,3 +353,37 @@ def mock_config():
         },
         "plugins": {"debug": {"active": True}},
     }
+
+
+@pytest.fixture(autouse=True)
+def cleanup_async_objects():
+    """
+    Automatically cleans up unawaited coroutines and AsyncMock objects after each test to prevent resource warnings and side effects.
+    """
+    yield  # Run the test
+
+    # Clean up any remaining coroutines
+    import gc
+    from unittest.mock import AsyncMock
+
+    try:
+        # Get all objects in memory
+        for obj in gc.get_objects():
+            # Close any coroutines that weren't awaited
+            if asyncio.iscoroutine(obj):
+                try:
+                    obj.close()
+                except:
+                    pass
+            # Clean up AsyncMock objects
+            elif isinstance(obj, AsyncMock):
+                try:
+                    # Reset the AsyncMock to clear any pending coroutines
+                    obj.reset_mock()
+                except:
+                    pass
+    except:
+        pass
+
+    # Force garbage collection to clean up any remaining objects
+    gc.collect()

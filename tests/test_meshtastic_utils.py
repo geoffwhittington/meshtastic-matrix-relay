@@ -14,7 +14,7 @@ import asyncio
 import os
 import sys
 import unittest
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -319,8 +319,8 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_on_meshtastic_message_with_broadcast_config(self):
         """
         Test that Meshtastic-to-Matrix message relaying occurs even when broadcast is disabled in the configuration.
-
-        Ensures that disabling `broadcast_enabled` in the configuration does not prevent Meshtastic messages from being relayed to Matrix, confirming that this setting only affects Matrix-to-Meshtastic message direction.
+        
+        Verifies that disabling `broadcast_enabled` in the configuration does not prevent Meshtastic messages from being relayed to Matrix, confirming that this setting only affects Matrix-to-Meshtastic message direction.
         """
         config_no_broadcast = self.mock_config.copy()
         config_no_broadcast["meshtastic"]["broadcast_enabled"] = False
@@ -330,6 +330,8 @@ class TestMeshtasticUtils(unittest.TestCase):
         ), patch(
             "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
         ) as mock_run_coro, patch(
+            "mmrelay.matrix_utils.matrix_relay"
+        ), patch(
             "mmrelay.meshtastic_utils.get_longname"
         ) as mock_get_longname, patch(
             "mmrelay.meshtastic_utils.get_shortname"

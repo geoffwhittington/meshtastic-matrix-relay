@@ -14,6 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from mmrelay.constants.database import PROGRESS_COMPLETE, PROGRESS_TOTAL_STEPS
 from mmrelay.tools import get_service_template_path
 
 
@@ -54,7 +55,11 @@ def print_service_commands():
 
 
 def wait_for_service_start():
-    """Wait for the service to start with a Rich progress indicator."""
+    """
+    Displays a progress spinner while waiting up to 10 seconds for the mmrelay service to become active.
+    
+    The function checks the service status after 5 seconds and completes early if the service is detected as active.
+    """
     import time
 
     from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
@@ -67,7 +72,7 @@ def wait_for_service_start():
         transient=True,
     ) as progress:
         # Add a task that will run for approximately 10 seconds
-        task = progress.add_task("Starting", total=100)
+        task = progress.add_task("Starting", total=PROGRESS_TOTAL_STEPS)
 
         # Update progress over 10 seconds
         for i in range(10):
@@ -76,7 +81,7 @@ def wait_for_service_start():
 
             # Check if service is active after 5 seconds to potentially finish early
             if i >= 5 and is_service_active():
-                progress.update(task, completed=100)
+                progress.update(task, completed=PROGRESS_COMPLETE)
                 break
 
 

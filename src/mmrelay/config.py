@@ -6,10 +6,14 @@ import platformdirs
 import yaml
 from yaml.loader import SafeLoader
 
-# Define custom base directory for Unix systems
-APP_NAME = "mmrelay"
-APP_AUTHOR = None  # No author directory
-
+# Import application constants
+from mmrelay.constants.app import APP_AUTHOR, APP_NAME
+from mmrelay.constants.config import (
+    CONFIG_SECTION_MATRIX,
+    CONFIG_KEY_HOMESERVER,
+    CONFIG_KEY_ACCESS_TOKEN,
+    CONFIG_KEY_BOT_USER_ID,
+)
 
 # Global variable to store the custom data directory
 custom_data_dir = None
@@ -169,14 +173,12 @@ config_path = None
 
 def set_config(module, passed_config):
     """
-    Set the configuration for a module.
-
-    Args:
-        module: The module to set the configuration for
-        passed_config: The configuration dictionary to use
-
+    Assigns the provided configuration dictionary to a module and sets additional attributes for known module types.
+    
+    For modules named "matrix_utils" or "meshtastic_utils", sets specific configuration attributes if present. Calls the module's `setup_config()` method if it exists for backward compatibility.
+    
     Returns:
-        The updated config
+        dict: The configuration dictionary that was assigned to the module.
     """
     # Set the module's config variable
     module.config = passed_config
@@ -186,11 +188,11 @@ def set_config(module, passed_config):
 
     if module_name == "matrix_utils":
         # Set Matrix-specific configuration
-        if hasattr(module, "matrix_homeserver") and "matrix" in passed_config:
-            module.matrix_homeserver = passed_config["matrix"]["homeserver"]
+        if hasattr(module, "matrix_homeserver") and CONFIG_SECTION_MATRIX in passed_config:
+            module.matrix_homeserver = passed_config[CONFIG_SECTION_MATRIX][CONFIG_KEY_HOMESERVER]
             module.matrix_rooms = passed_config["matrix_rooms"]
-            module.matrix_access_token = passed_config["matrix"]["access_token"]
-            module.bot_user_id = passed_config["matrix"]["bot_user_id"]
+            module.matrix_access_token = passed_config[CONFIG_SECTION_MATRIX][CONFIG_KEY_ACCESS_TOKEN]
+            module.bot_user_id = passed_config[CONFIG_SECTION_MATRIX][CONFIG_KEY_BOT_USER_ID]
 
     elif module_name == "meshtastic_utils":
         # Set Meshtastic-specific configuration

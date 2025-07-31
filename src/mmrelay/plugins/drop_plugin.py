@@ -2,6 +2,8 @@ import re
 
 from haversine import haversine
 
+from mmrelay.constants.database import DEFAULT_DISTANCE_KM_FALLBACK, DEFAULT_RADIUS_KM
+from mmrelay.constants.formats import TEXT_MESSAGE_APP
 from mmrelay.meshtastic_utils import connect_meshtastic
 from mmrelay.plugins.base_plugin import BasePlugin
 
@@ -25,6 +27,14 @@ class Plugin(BasePlugin):
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
     ):
+        """
+        Handles incoming Meshtastic packets for the drop message plugin, delivering or storing dropped messages based on packet content and node location.
+        
+        When a packet is received, attempts to deliver any stored dropped messages to the sender if they are within a configured radius of the message's location and are not the original dropper. If the packet contains a properly formatted drop command, extracts the message and stores it with the sender's current location for future delivery.
+        
+        Returns:
+            True if a drop command was processed and stored, False otherwise.
+        """
         meshtastic_client = connect_meshtastic()
         nodeInfo = meshtastic_client.getMyNodeInfo()
 
@@ -55,10 +65,8 @@ class Plugin(BasePlugin):
                             message["location"],
                         )
                     except (ValueError, TypeError):
-                        distance_km = 1000
-                    radius_km = (
-                        self.config["radius_km"] if "radius_km" in self.config else 5
-                    )
+                        distance_km = DEFAULT_DISTANCE_KM_FALLBACK
+                    radius_km = self.config.get("radius_km", DEFAULT_RADIUS_KM)
                     if distance_km <= radius_km:
                         target_node = packet["fromId"]
                         self.logger.debug(f"Sending dropped message to {target_node}")
@@ -76,7 +84,7 @@ class Plugin(BasePlugin):
         if (
             "decoded" in packet
             and "portnum" in packet["decoded"]
-            and packet["decoded"]["portnum"] == "TEXT_MESSAGE_APP"
+            and packet["decoded"]["portnum"] == TEXT_MESSAGE_APP
         ):
             text = packet["decoded"]["text"] if "text" in packet["decoded"] else None
             if f"!{self.plugin_name}" not in text:

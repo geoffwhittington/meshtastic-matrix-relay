@@ -77,9 +77,9 @@ class TestErrorBoundaries(unittest.TestCase):
 
     def test_plugin_failure_isolation(self):
         """
-        Verify that a plugin failure during message handling does not prevent other plugins or the core Matrix relay functionality from executing.
-
-        This test ensures that exceptions raised by one plugin are isolated, allowing other plugins and the main message relay to continue processing without interruption.
+        Test that a plugin failure during Meshtastic message handling does not prevent other plugins or the core Matrix relay from executing.
+        
+        Simulates one plugin raising an exception and another succeeding, verifying that errors are isolated, logged, and do not disrupt the main relay or other plugins.
         """
         # Create plugins with different failure modes
         failing_plugin = MagicMock()
@@ -106,7 +106,9 @@ class TestErrorBoundaries(unittest.TestCase):
             "mmrelay.plugin_loader.load_plugins",
             return_value=[failing_plugin, working_plugin],
         ):
-            with patch("mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock) as mock_matrix_relay:
+            with patch(
+                "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
+            ) as mock_matrix_relay:
                 with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
                     with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
                         # Mock the async execution

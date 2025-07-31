@@ -519,26 +519,17 @@ def clone_or_update_repo(repo_url, ref, plugins_dir):
 
 
 def load_plugins_from_directory(directory, recursive=False):
-    """Load plugin classes from Python files in a directory.
-
-    Args:
-        directory (str): Directory path to search for plugin files
-        recursive (bool): Whether to search subdirectories recursively
-
+    """
+    Dynamically loads and instantiates plugin classes from Python files in a specified directory.
+    
+    Scans the given directory (and subdirectories if `recursive` is True) for `.py` files, importing each as a module and instantiating its `Plugin` class if present. Automatically attempts to install missing dependencies when a `ModuleNotFoundError` occurs, supporting both pip and pipx environments. Provides compatibility for plugins importing from either `plugins` or `mmrelay.plugins`. Skips files without a `Plugin` class or with unresolved import errors.
+    
+    Parameters:
+        directory (str): Path to the directory containing plugin files.
+        recursive (bool): If True, searches subdirectories recursively.
+    
     Returns:
-        list: List of instantiated plugin objects found in the directory
-
-    Scans for .py files and attempts to import each as a module. Looks for
-    a 'Plugin' class in each module and instantiates it if found.
-
-    Features:
-    - Automatic dependency installation for missing imports (via pip/pipx)
-    - Compatibility layer for import paths (plugins vs mmrelay.plugins)
-    - Proper sys.path management for plugin directory imports
-    - Comprehensive error handling and logging
-
-    Skips files that don't define a Plugin class or have import errors
-    that can't be automatically resolved.
+        list: Instantiated plugin objects found in the directory.
     """
     plugins = []
     if os.path.isdir(directory):
@@ -626,13 +617,23 @@ def load_plugins_from_directory(directory, recursive=False):
                             )
 
                             # Try to load the module again
-                            spec.loader.exec_module(plugin_module)
+                            try:
+                                spec.loader.exec_module(plugin_module)
 
-                            if hasattr(plugin_module, "Plugin"):
-                                plugins.append(plugin_module.Plugin())
-                            else:
-                                logger.warning(
-                                    f"{plugin_path} does not define a Plugin class."
+                                if hasattr(plugin_module, "Plugin"):
+                                    plugins.append(plugin_module.Plugin())
+                                else:
+                                    logger.warning(
+                                        f"{plugin_path} does not define a Plugin class."
+                                    )
+                            except ModuleNotFoundError:
+                                logger.error(
+                                    f"Module {missing_module} still not available after installation. "
+                                    f"The package name might be different from the import name."
+                                )
+                            except Exception as retry_error:
+                                logger.error(
+                                    f"Error loading plugin {plugin_path} after dependency installation: {retry_error}"
                                 )
 
                         except subprocess.CalledProcessError:

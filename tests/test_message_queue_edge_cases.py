@@ -49,7 +49,7 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
 
     def tearDown(self):
         """
-        Cleans up the test environment after each test by stopping the message queue if running and resetting global state variables in mmrelay.meshtastic_utils.
+        Clean up the test environment after each test by stopping the message queue, closing any active asyncio event loops, and resetting global state variables in mmrelay.meshtastic_utils.
         """
         if self.queue.is_running():
             self.queue.stop()
@@ -57,6 +57,7 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
         # Clean up any remaining event loops to prevent ResourceWarnings
         try:
             import asyncio
+
             # Try to get and close the current event loop
             try:
                 loop = asyncio.get_event_loop()
@@ -91,15 +92,15 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
     def test_queue_overflow_handling(self):
         """
         Test that the message queue enforces its maximum capacity and rejects additional messages when full.
-
-        Fills the queue to its maximum size, verifies that enqueueing beyond this limit fails, and asserts that the queue size does not exceed the defined maximum.
+        
+        Fills the queue to its defined maximum size, verifies that enqueueing beyond this limit fails, and asserts the queue size does not exceed the allowed maximum.
         """
 
         async def async_test():
             """
-            Asynchronously tests that the message queue enforces its maximum capacity and rejects messages when full.
-
-            Fills the queue to its maximum size, verifies that further enqueue attempts fail, and asserts the queue size does not exceed the defined limit.
+            Asynchronously verifies that the message queue enforces its maximum capacity by filling it to the defined limit and confirming that additional enqueue attempts are rejected.
+            
+            Ensures the queue does not exceed its maximum size and that overflow messages are not accepted.
             """
             self.queue.start(message_delay=0.1)
 
@@ -112,7 +113,10 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
             )
 
             # Fill the queue to capacity
-            for i in range(500):  # MAX_QUEUE_SIZE = 500
+            # Import MAX_QUEUE_SIZE for consistency
+            from mmrelay.constants.queue import MAX_QUEUE_SIZE
+
+            for i in range(MAX_QUEUE_SIZE):
                 success = self.queue.enqueue(lambda: None, description=f"Message {i}")
                 if not success:
                     print(
@@ -129,14 +133,14 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
             print(f"Final queue size: {final_queue_size}")
 
             # The test should work with whatever the actual limit is
-            if final_queue_size < 500:
-                # Queue hit its limit before 500, so test with that limit
+            if final_queue_size < MAX_QUEUE_SIZE:
+                # Queue hit its limit before MAX_QUEUE_SIZE, so test with that limit
                 success = self.queue.enqueue(
                     lambda: None, description="Overflow message"
                 )
                 self.assertFalse(success, "Should reject message when queue is full")
             else:
-                # Queue accepted all 500, so it should reject the next one
+                # Queue accepted all MAX_QUEUE_SIZE, so it should reject the next one
                 success = self.queue.enqueue(
                     lambda: None, description="Overflow message"
                 )
@@ -147,7 +151,7 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
                 final_queue_size, 0, "Should have enqueued at least some messages"
             )
             self.assertLessEqual(
-                final_queue_size, 500, "Should not exceed expected maximum"
+                final_queue_size, MAX_QUEUE_SIZE, "Should not exceed expected maximum"
             )
 
         # Run the async test with proper event loop handling

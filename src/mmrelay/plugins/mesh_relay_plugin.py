@@ -6,6 +6,7 @@ import re
 
 from meshtastic import mesh_pb2
 
+from mmrelay.constants.database import DEFAULT_MAX_DATA_ROWS_PER_NODE_MESH_RELAY
 from mmrelay.plugins.base_plugin import BasePlugin, config
 
 
@@ -25,21 +26,17 @@ class Plugin(BasePlugin):
     """
 
     plugin_name = "mesh_relay"
-    max_data_rows_per_node = 50
+    max_data_rows_per_node = DEFAULT_MAX_DATA_ROWS_PER_NODE_MESH_RELAY
 
     def normalize(self, dict_obj):
-        """Normalize packet data to consistent dictionary format.
-
-        Args:
-            dict_obj: Packet data (dict, JSON string, or plain string)
-
+        """
+        Converts packet data in various formats (dict, JSON string, or plain string) into a normalized dictionary with raw data fields removed.
+        
+        Parameters:
+            dict_obj: Packet data as a dictionary, JSON string, or plain string.
+        
         Returns:
-            dict: Normalized packet dictionary with raw data stripped
-
-        Handles various packet formats:
-        - Dict objects (passed through)
-        - JSON strings (parsed)
-        - Plain strings (wrapped in TEXT_MESSAGE_APP format)
+            A dictionary representing the normalized packet with raw fields stripped.
         """
         if not isinstance(dict_obj, dict):
             try:

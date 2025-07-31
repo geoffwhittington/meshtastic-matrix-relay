@@ -13,17 +13,17 @@ from dataclasses import dataclass
 from queue import Empty, Queue
 from typing import Callable, Optional
 
+from mmrelay.constants.database import DEFAULT_MSGS_TO_KEEP
+from mmrelay.constants.network import MINIMUM_MESSAGE_DELAY
+from mmrelay.constants.queue import (
+    DEFAULT_MESSAGE_DELAY,
+    MAX_QUEUE_SIZE,
+    QUEUE_HIGH_WATER_MARK,
+    QUEUE_MEDIUM_WATER_MARK,
+)
 from mmrelay.log_utils import get_logger
 
 logger = get_logger(name="MessageQueue")
-
-# Default message delay in seconds (minimum 2.0 due to firmware constraints)
-DEFAULT_MESSAGE_DELAY = 2.2
-
-# Queue size configuration
-MAX_QUEUE_SIZE = 500
-QUEUE_HIGH_WATER_MARK = 375  # 75% of MAX_QUEUE_SIZE
-QUEUE_MEDIUM_WATER_MARK = 250  # 50% of MAX_QUEUE_SIZE
 
 
 @dataclass
@@ -61,20 +61,20 @@ class MessageQueue:
 
     def start(self, message_delay: float = DEFAULT_MESSAGE_DELAY):
         """
-        Starts the message queue processor with the specified minimum delay between messages.
-
-        Enforces a minimum delay of 2.0 seconds due to firmware requirements. If the event loop is running, the processor task is started immediately; otherwise, startup is deferred until the event loop becomes available.
+        Start the message queue processor with a specified minimum delay between messages.
+        
+        If the provided delay is below the firmware-enforced minimum, the minimum is used instead. The processor task is started immediately if the asyncio event loop is running; otherwise, startup is deferred until the event loop becomes available.
         """
         with self._lock:
             if self._running:
                 return
 
             # Validate and enforce firmware minimum
-            if message_delay < 2.0:
+            if message_delay < MINIMUM_MESSAGE_DELAY:
                 logger.warning(
-                    f"Message delay {message_delay}s below firmware minimum (2.0s), using 2.0s"
+                    f"Message delay {message_delay}s below firmware minimum ({MINIMUM_MESSAGE_DELAY}s), using {MINIMUM_MESSAGE_DELAY}s"
                 )
-                self._message_delay = 2.0
+                self._message_delay = MINIMUM_MESSAGE_DELAY
             else:
                 self._message_delay = message_delay
             self._running = True
@@ -372,13 +372,13 @@ class MessageQueue:
 
     def _handle_message_mapping(self, result, mapping_info):
         """
-        Stores and prunes message mapping information after a message is sent.
-
+        Update the message mapping database with information about a sent message and prune old mappings if configured.
+        
         Parameters:
             result: The result object from the send function, expected to have an `id` attribute.
-            mapping_info (dict): Dictionary containing mapping details such as `matrix_event_id`, `room_id`, `text`, and optional `meshnet` and `msgs_to_keep`.
-
-        This method updates the message mapping database with the new mapping and prunes old mappings if configured.
+            mapping_info (dict): Contains mapping details such as `matrix_event_id`, `room_id`, `text`, and optionally `meshnet` and `msgs_to_keep`.
+        
+        If required mapping fields are present, stores the mapping and prunes old entries based on the specified or default retention count.
         """
         try:
             # Import here to avoid circular imports
@@ -402,7 +402,7 @@ class MessageQueue:
                 logger.debug(f"Stored message map for meshtastic_id: {result.id}")
 
                 # Handle pruning if configured
-                msgs_to_keep = mapping_info.get("msgs_to_keep", 500)
+                msgs_to_keep = mapping_info.get("msgs_to_keep", DEFAULT_MSGS_TO_KEEP)
                 if msgs_to_keep > 0:
                     prune_message_map(msgs_to_keep)
 
