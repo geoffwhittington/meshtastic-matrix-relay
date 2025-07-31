@@ -92,6 +92,10 @@ class MockRoomMessageNotice:
 class MockMatrixRoom:
     pass
 
+class MockWhoamiError:
+    def __init__(self, message="Whoami error"):
+        self.message = message
+
 nio_mock.AsyncClient = MagicMock()
 nio_mock.AsyncClientConfig = MagicMock()
 nio_mock.MatrixRoom = MockMatrixRoom
@@ -100,7 +104,7 @@ nio_mock.RoomMessageEmote = MockRoomMessageEmote
 nio_mock.RoomMessageNotice = MockRoomMessageNotice
 nio_mock.RoomMessageText = MockRoomMessageText
 nio_mock.UploadResponse = MagicMock()
-nio_mock.WhoamiError = MagicMock()
+nio_mock.WhoamiError = MockWhoamiError
 
 # Mock RoomMemberEvent from nio.events.room_events
 sys.modules["nio.events.room_events"].RoomMemberEvent = MagicMock()
@@ -115,8 +119,20 @@ sys.modules["certifi"] = MagicMock()
 sys.modules["serial"] = MagicMock()
 sys.modules["serial.tools"] = MagicMock()
 sys.modules["serial.tools.list_ports"] = MagicMock()
+# Create proper exception classes for bleak
+class BleakError(Exception):
+    pass
+
+class BleakDBusError(BleakError):
+    pass
+
+# Create a proper module-like object for bleak.exc
+class BleakExcModule:
+    BleakError = BleakError
+    BleakDBusError = BleakDBusError
+
 sys.modules["bleak"] = MagicMock()
-sys.modules["bleak.exc"] = MagicMock()
+sys.modules["bleak.exc"] = BleakExcModule()
 sys.modules["pubsub"] = MagicMock()
 sys.modules["matplotlib"] = MagicMock()
 sys.modules["matplotlib.pyplot"] = MagicMock()

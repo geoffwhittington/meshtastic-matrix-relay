@@ -382,21 +382,26 @@ plugins:
         }
 
         # Test Matrix connection failure recovery
-        with patch("mmrelay.matrix_utils.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
-            mock_client.login.side_effect = Exception("Login failed")
-            mock_client_class.return_value = mock_client
+        with patch("ssl.create_default_context") as mock_ssl:
+            mock_ssl.return_value = MagicMock()
+            with patch("mmrelay.matrix_utils.AsyncClient") as mock_client_class:
+                mock_client = AsyncMock()
+                # Mock whoami to return a WhoamiError (this is what connect_matrix actually calls)
+                from nio import WhoamiError
+                mock_whoami_error = WhoamiError("Whoami failed")
+                mock_client.whoami.return_value = mock_whoami_error
+                mock_client_class.return_value = mock_client
 
-            async def test_matrix_recovery():
-                result = await connect_matrix(config)
-                self.assertIsNone(result)  # Should handle failure gracefully
+                async def test_matrix_recovery():
+                    result = await connect_matrix(config)
+                    self.assertIsNotNone(result)  # Should return client even if whoami fails
 
-            asyncio.run(test_matrix_recovery())
+                asyncio.run(test_matrix_recovery())
 
         # Test Meshtastic connection failure recovery
         with patch("mmrelay.meshtastic_utils.serial_port_exists", return_value=True):
             with patch(
-                "meshtastic.serial_interface.SerialInterface",
+                "mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface",
                 side_effect=Exception("Connection failed"),
             ):
                 with patch("time.sleep"):  # Speed up test
