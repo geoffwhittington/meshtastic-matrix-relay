@@ -86,7 +86,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     def test_serial_port_exists_device_busy(self):
         """
         Test that serial_port_exists returns False when the serial device is busy.
-        
+
         Simulates a busy device by patching serial.Serial to raise SerialException.
         """
         import serial
@@ -116,14 +116,12 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     def test_connect_meshtastic_ble_device_not_found(self):
         """
         Test that connect_meshtastic returns None and logs an error when a BLE device is not found.
-        
+
         Simulates a BLE connection attempt where the device is unavailable, verifying graceful failure and error logging.
         """
         config = {
             "meshtastic": {"connection_type": "ble", "ble_address": "00:11:22:33:44:55"}
         }
-
-        from bleak.exc import BleakError
 
         with patch(
             "mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface",
@@ -184,7 +182,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     def test_on_meshtastic_message_malformed_packet(self):
         """
         Verifies that on_meshtastic_message handles various malformed packet inputs without raising exceptions.
-        
+
         Tests the function's robustness against empty packets, missing or None fields, and invalid channel types.
         """
         malformed_packets = [
@@ -256,7 +254,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     def test_on_meshtastic_message_database_error(self):
         """
         Test that on_meshtastic_message handles database errors gracefully during message processing.
-        
+
         Simulates a failure in the database utility function when processing a Meshtastic message and verifies that no unhandled exceptions occur.
         """
         packet = {
@@ -289,7 +287,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     def test_on_lost_meshtastic_connection_detection_source_edge_cases(self):
         """
         Verify that on_lost_meshtastic_connection handles edge cases for the detection_source parameter without raising exceptions.
-        
+
         Tests the function with various invalid or unusual detection_source values to ensure robust and graceful handling.
         """
         mock_interface = MagicMock()
@@ -316,7 +314,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     def test_sendTextReply_no_client(self):
         """
         Test the behavior of sendTextReply when no Meshtastic client is set.
-        
+
         Verifies that sendTextReply returns None and logs an error if the Meshtastic client is unavailable.
         """
         import mmrelay.meshtastic_utils
@@ -347,7 +345,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     def test_is_running_as_service_detection_failure(self):
         """
         Test that is_running_as_service returns a boolean when process detection methods fail.
-        
+
         Simulates failures in retrieving the parent process ID and process information to verify that is_running_as_service handles these errors gracefully without raising exceptions.
         """
         with patch("os.getppid", side_effect=OSError("Cannot get parent PID")):
@@ -377,7 +375,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     def test_connect_meshtastic_memory_constraint(self):
         """
         Test that connect_meshtastic handles MemoryError exceptions gracefully during serial connection attempts.
-        
+
         Simulates a memory constraint scenario by forcing SerialInterface to raise MemoryError, and verifies that connect_meshtastic returns None and logs an error.
         """
         config = {
@@ -397,7 +395,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     def test_on_meshtastic_message_large_node_list(self):
         """
         Verifies that on_meshtastic_message can process a packet when the interface contains a very large node list without crashing.
-        
+
         This test ensures robustness and scalability of message handling with extensive node data.
         """
         packet = {
@@ -426,7 +424,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     def test_connect_meshtastic_config_validation_edge_cases(self):
         """
         Test that connect_meshtastic gracefully handles various invalid or incomplete configuration inputs.
-        
+
         Verifies that the function returns None without raising exceptions when provided with None, empty, or malformed configuration dictionaries.
         """
         invalid_configs = [

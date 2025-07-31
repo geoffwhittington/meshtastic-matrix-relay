@@ -35,7 +35,7 @@ class TestPerformanceStress(unittest.TestCase):
     def setUp(self):
         """
         Reset global state and force garbage collection before each test.
-        
+
         Ensures that shared variables in mmrelay.meshtastic_utils are set to default values and memory is cleared to provide test isolation.
         """
         # Reset global state
@@ -80,7 +80,7 @@ class TestPerformanceStress(unittest.TestCase):
     def test_high_volume_message_processing(self):
         """
         Test processing of 1000 messages through the Meshtastic message handler to ensure high throughput and absence of memory leaks.
-        
+
         Simulates message reception by mocking dependencies and measures total processing time and throughput. Asserts that all messages are processed, processing completes within 10 seconds, and the rate exceeds 50 messages per second.
         """
         message_count = 1000
@@ -101,8 +101,9 @@ class TestPerformanceStress(unittest.TestCase):
         mock_interface.myInfo.my_node_num = 123456789
 
         # Set up minimal config
-        import mmrelay.meshtastic_utils
         import asyncio
+
+        import mmrelay.meshtastic_utils
 
         # Set up event loop
         loop = asyncio.new_event_loop()
@@ -111,7 +112,7 @@ class TestPerformanceStress(unittest.TestCase):
 
         mmrelay.meshtastic_utils.config = {
             "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}],
-            "meshtastic": {"meshnet_name": "TestMesh"}
+            "meshtastic": {"meshnet_name": "TestMesh"},
         }
         mmrelay.meshtastic_utils.matrix_rooms = [
             {"id": "!room:matrix.org", "meshtastic_channel": 0}
@@ -119,18 +120,27 @@ class TestPerformanceStress(unittest.TestCase):
 
         try:
             with patch("mmrelay.plugin_loader.load_plugins", return_value=[]):
-                with patch("mmrelay.matrix_utils.get_matrix_prefix", return_value="[TestMesh/TN] "):
-                    with patch("mmrelay.db_utils.get_longname", return_value="Test Node"):
+                with patch(
+                    "mmrelay.matrix_utils.get_matrix_prefix",
+                    return_value="[TestMesh/TN] ",
+                ):
+                    with patch(
+                        "mmrelay.db_utils.get_longname", return_value="Test Node"
+                    ):
                         with patch("mmrelay.db_utils.get_shortname", return_value="TN"):
                             with patch(
-                                        "mmrelay.matrix_utils.matrix_relay", side_effect=mock_matrix_relay
-                                    ):
+                                "mmrelay.matrix_utils.matrix_relay",
+                                side_effect=mock_matrix_relay,
+                            ):
                                 start_time = time.time()
 
                                 # Process many messages
                                 for i in range(message_count):
                                     packet = {
-                                        "decoded": {"text": f"Message {i}", "portnum": "TEXT_MESSAGE_APP"},
+                                        "decoded": {
+                                            "text": f"Message {i}",
+                                            "portnum": "TEXT_MESSAGE_APP",
+                                        },
                                         "fromId": "!12345678",
                                         "channel": 0,
                                         "to": 4294967295,
@@ -154,7 +164,9 @@ class TestPerformanceStress(unittest.TestCase):
 
                     # Memory usage should be reasonable
                     messages_per_second = message_count / processing_time
-                    self.assertGreater(messages_per_second, 50, "Processing rate too slow")
+                    self.assertGreater(
+                        messages_per_second, 50, "Processing rate too slow"
+                    )
         finally:
             loop.close()
 
@@ -162,7 +174,7 @@ class TestPerformanceStress(unittest.TestCase):
     def test_message_queue_performance_under_load(self):
         """
         Test the performance of the MessageQueue under rapid enqueueing and high load.
-        
+
         Enqueues 50 messages into the MessageQueue with a minimal delay, verifies all messages are processed within a 120-second timeout, and asserts that the processing rate and timing meet expected thresholds.
         """
         import asyncio
@@ -171,13 +183,18 @@ class TestPerformanceStress(unittest.TestCase):
             # Mock Meshtastic client to allow message sending
             """
             Asynchronously tests the performance of the MessageQueue under rapid enqueueing and enforced minimum message delay.
-            
+
             Enqueues 50 messages with a mock send function into the MessageQueue, ensuring that all messages are processed within a 120-second timeout. Verifies that the queue enforces a minimum 2-second delay between messages, all messages are processed, and the processing rate exceeds 0.3 messages per second.
             """
-            with patch("mmrelay.meshtastic_utils.meshtastic_client", MagicMock(is_connected=True)):
+            with patch(
+                "mmrelay.meshtastic_utils.meshtastic_client",
+                MagicMock(is_connected=True),
+            ):
                 with patch("mmrelay.meshtastic_utils.reconnecting", False):
                     queue = MessageQueue()
-                    queue.start(message_delay=0.01)  # Very fast processing (will be enforced to 2.0s minimum)
+                    queue.start(
+                        message_delay=0.01
+                    )  # Very fast processing (will be enforced to 2.0s minimum)
                     # Ensure processor starts now that event loop is running
                     queue.ensure_processor_started()
 
@@ -195,14 +212,16 @@ class TestPerformanceStress(unittest.TestCase):
                         # Queue many messages rapidly
                         for i in range(message_count):
                             success = queue.enqueue(
-                                mock_send_function, description=f"Performance test message {i}"
+                                mock_send_function,
+                                description=f"Performance test message {i}",
                             )
                             self.assertTrue(success, f"Failed to enqueue message {i}")
 
                         # Wait for processing to complete (50 messages * 2s = 100s + buffer)
                         timeout = 120  # 120 second timeout
                         while (
-                            processed_count < message_count and time.time() - start_time < timeout
+                            processed_count < message_count
+                            and time.time() - start_time < timeout
                         ):
                             await asyncio.sleep(0.1)
 
@@ -213,8 +232,14 @@ class TestPerformanceStress(unittest.TestCase):
                         self.assertEqual(processed_count, message_count)
 
                         # Performance assertions (adjusted for 2s minimum delay)
-                        expected_min_time = message_count * 2.0  # 2s per message minimum
-                        self.assertGreaterEqual(processing_time, expected_min_time - 5.0, "Processing too fast (below firmware minimum)")
+                        expected_min_time = (
+                            message_count * 2.0
+                        )  # 2s per message minimum
+                        self.assertGreaterEqual(
+                            processing_time,
+                            expected_min_time - 5.0,
+                            "Processing too fast (below firmware minimum)",
+                        )
 
                         messages_per_second = message_count / processing_time
                         self.assertGreater(
@@ -231,7 +256,7 @@ class TestPerformanceStress(unittest.TestCase):
     def test_database_performance_large_dataset(self):
         """
         Test database operations with large datasets, including bulk insertions, retrievals, message map storage, and pruning.
-        
+
         This test measures the performance of inserting and retrieving 1000 node longnames, storing 1000 message map entries, and pruning the message map to retain only the 100 most recent entries. It asserts that each operation completes within specified time limits to ensure acceptable database performance under load.
         """
         import tempfile
@@ -297,7 +322,7 @@ class TestPerformanceStress(unittest.TestCase):
     def test_plugin_processing_performance(self):
         """
         Measures the performance of processing messages through multiple plugins, ensuring all plugins are invoked for each message and overall processing meets speed requirements.
-        
+
         Asserts that 100 messages are processed through 10 mock plugins in under 5 seconds, with each plugin's handler called for every message and a minimum call rate maintained.
         """
         plugin_count = 10
@@ -322,15 +347,9 @@ class TestPerformanceStress(unittest.TestCase):
 
         # Mock the global config that on_meshtastic_message needs
         mock_config = {
-            "meshtastic": {
-                "connection_type": "serial",
-                "meshnet_name": "TestMesh"
-            },
+            "meshtastic": {"connection_type": "serial", "meshnet_name": "TestMesh"},
             "matrix_rooms": {
-                "general": {
-                    "id": "!room:matrix.org",
-                    "meshtastic_channel": 0
-                }
+                "general": {"id": "!room:matrix.org", "meshtastic_channel": 0}
             },
         }
 
@@ -338,71 +357,95 @@ class TestPerformanceStress(unittest.TestCase):
         mock_interactions = {"reactions": True, "replies": True}
 
         # matrix_rooms should be a list of room dictionaries, not a dict of dicts
-        mock_matrix_rooms = [
-            {
-                "id": "!room:matrix.org",
-                "meshtastic_channel": 0
-            }
-        ]
+        mock_matrix_rooms = [{"id": "!room:matrix.org", "meshtastic_channel": 0}]
 
         with patch("mmrelay.plugin_loader.load_plugins", return_value=plugins):
             with patch("mmrelay.meshtastic_utils.config", mock_config):
                 with patch("mmrelay.meshtastic_utils.matrix_rooms", mock_matrix_rooms):
                     with patch("mmrelay.meshtastic_utils.event_loop", MagicMock()):
-                        with patch("mmrelay.matrix_utils.get_interaction_settings", return_value=mock_interactions):
-                            with patch("mmrelay.matrix_utils.message_storage_enabled", return_value=True):
-                                with patch("mmrelay.meshtastic_utils.shutting_down", False):
+                        with patch(
+                            "mmrelay.matrix_utils.get_interaction_settings",
+                            return_value=mock_interactions,
+                        ):
+                            with patch(
+                                "mmrelay.matrix_utils.message_storage_enabled",
+                                return_value=True,
+                            ):
+                                with patch(
+                                    "mmrelay.meshtastic_utils.shutting_down", False
+                                ):
                                     # Mock asyncio.run_coroutine_threadsafe to actually call the coroutine
                                     def mock_run_coroutine_threadsafe(coro, loop):
                                         # Create a mock future that returns False (plugin didn't handle message)
                                         """
                                         Synchronously executes a coroutine for testing purposes and returns a mock future with a preset result.
-                                        
+
                                         Parameters:
-                                        	coro: The coroutine to execute.
-                                        	loop: The event loop (unused, included for interface compatibility).
-                                        
+                                                coro: The coroutine to execute.
+                                                loop: The event loop (unused, included for interface compatibility).
+
                                         Returns:
-                                        	A mock future whose `result()` method returns False.
+                                                A mock future whose `result()` method returns False.
                                         """
                                         mock_future = MagicMock()
                                         mock_future.result.return_value = False
                                         # Actually call the coroutine to trigger the mock
                                         try:
                                             import asyncio
-                                            asyncio.get_event_loop().run_until_complete(coro)
+
+                                            asyncio.get_event_loop().run_until_complete(
+                                                coro
+                                            )
                                         except:
                                             pass  # Ignore any errors from running the mock coroutine
                                         return mock_future
 
-                                    with patch("asyncio.run_coroutine_threadsafe", side_effect=mock_run_coroutine_threadsafe):
+                                    with patch(
+                                        "asyncio.run_coroutine_threadsafe",
+                                        side_effect=mock_run_coroutine_threadsafe,
+                                    ):
                                         start_time = time.time()
 
                                         # Process messages through all plugins
                                         for _ in range(message_count):
-                                            on_meshtastic_message(packet, mock_interface)
+                                            on_meshtastic_message(
+                                                packet, mock_interface
+                                            )
 
                                         end_time = time.time()
                                         processing_time = end_time - start_time
 
                                         # Performance assertions
-                                        total_plugin_calls = plugin_count * message_count
-                                        self.assertLess(processing_time, 5.0, "Plugin processing too slow")
+                                        total_plugin_calls = (
+                                            plugin_count * message_count
+                                        )
+                                        self.assertLess(
+                                            processing_time,
+                                            5.0,
+                                            "Plugin processing too slow",
+                                        )
 
-                                        calls_per_second = total_plugin_calls / processing_time
-                                        self.assertGreater(calls_per_second, 100, "Plugin call rate too slow")
+                                        calls_per_second = (
+                                            total_plugin_calls / processing_time
+                                        )
+                                        self.assertGreater(
+                                            calls_per_second,
+                                            100,
+                                            "Plugin call rate too slow",
+                                        )
 
                                         # Verify all plugins were called for each message
                                         for plugin in plugins:
                                             self.assertEqual(
-                                                plugin.handle_meshtastic_message.call_count, message_count
+                                                plugin.handle_meshtastic_message.call_count,
+                                                message_count,
                                             )
 
     @pytest.mark.slow
     def test_concurrent_message_queue_access(self):
         """
         Test the MessageQueue's ability to handle concurrent enqueuing and processing of messages from multiple threads.
-        
+
         Spawns several threads, each enqueuing multiple messages into the queue, and verifies that all messages are processed within expected timing constraints. Asserts that processing rate and total processing time meet minimum performance requirements under concurrent load.
         """
         import asyncio
@@ -411,10 +454,13 @@ class TestPerformanceStress(unittest.TestCase):
             # Mock Meshtastic client to allow message sending
             """
             Runs a concurrent test to verify that MessageQueue processes messages correctly and efficiently when enqueued from multiple threads.
-            
+
             This function starts a MessageQueue with a minimal enforced delay, spawns several threads to enqueue messages concurrently, and waits for all messages to be processed. It asserts that all messages are processed within the expected time frame and that the processing rate meets minimum performance requirements.
             """
-            with patch("mmrelay.meshtastic_utils.meshtastic_client", MagicMock(is_connected=True)):
+            with patch(
+                "mmrelay.meshtastic_utils.meshtastic_client",
+                MagicMock(is_connected=True),
+            ):
                 with patch("mmrelay.meshtastic_utils.reconnecting", False):
                     queue = MessageQueue()
                     queue.start(message_delay=0.01)
@@ -422,7 +468,9 @@ class TestPerformanceStress(unittest.TestCase):
                     queue.ensure_processor_started()
 
                     thread_count = 5
-                    messages_per_thread = 3  # Small number due to 2s minimum delay (15 messages = 30s)
+                    messages_per_thread = (
+                        3  # Small number due to 2s minimum delay (15 messages = 30s)
+                    )
                     total_messages = thread_count * messages_per_thread
 
                     processed_count = 0
@@ -437,7 +485,8 @@ class TestPerformanceStress(unittest.TestCase):
                     def worker_thread(thread_id):
                         for i in range(messages_per_thread):
                             queue.enqueue(
-                                mock_send_function, description=f"Thread {thread_id} message {i}"
+                                mock_send_function,
+                                description=f"Thread {thread_id} message {i}",
                             )
 
                     try:
@@ -457,7 +506,8 @@ class TestPerformanceStress(unittest.TestCase):
                         # Wait for queue processing to complete (15 messages * 2s = 30s + buffer)
                         timeout = 40
                         while (
-                            processed_count < total_messages and time.time() - start_time < timeout
+                            processed_count < total_messages
+                            and time.time() - start_time < timeout
                         ):
                             await asyncio.sleep(0.1)
 
@@ -468,12 +518,20 @@ class TestPerformanceStress(unittest.TestCase):
                         self.assertEqual(processed_count, total_messages)
 
                         # Performance assertions (adjusted for 2s minimum delay)
-                        expected_min_time = total_messages * 2.0  # 2s per message minimum
-                        self.assertLess(processing_time, expected_min_time + 10.0, "Concurrent processing too slow")
+                        expected_min_time = (
+                            total_messages * 2.0
+                        )  # 2s per message minimum
+                        self.assertLess(
+                            processing_time,
+                            expected_min_time + 10.0,
+                            "Concurrent processing too slow",
+                        )
 
                         messages_per_second = total_messages / processing_time
                         self.assertGreater(
-                            messages_per_second, 0.3, "Concurrent processing rate too slow"
+                            messages_per_second,
+                            0.3,
+                            "Concurrent processing rate too slow",
                         )
 
                     finally:
@@ -486,7 +544,7 @@ class TestPerformanceStress(unittest.TestCase):
     def test_memory_usage_stability(self):
         """
         Verifies that processing a large number of messages does not cause excessive memory growth.
-        
+
         Simulates extended operation by processing 1,000 messages in batches, periodically forcing garbage collection, and asserts that the increase in process memory usage remains below 50 MB.
         """
         import os
@@ -542,7 +600,7 @@ class TestPerformanceStress(unittest.TestCase):
     def test_rate_limiting_effectiveness(self):
         """
         Test that the MessageQueue enforces rate limiting by ensuring a minimum delay between message sends.
-        
+
         This test rapidly enqueues multiple messages with a requested short delay, verifies that the enforced delay between sends is at least 80% of the minimum rate limit (2 seconds), and asserts all messages are sent within the expected timeframe.
         """
         import asyncio
@@ -551,11 +609,14 @@ class TestPerformanceStress(unittest.TestCase):
             # Mock Meshtastic client to allow message sending
             """
             Asynchronously tests that the MessageQueue enforces a minimum delay between message sends, verifying rate limiting behavior by measuring the time intervals between processed messages.
-            
+
             Returns:
                 None
             """
-            with patch("mmrelay.meshtastic_utils.meshtastic_client", MagicMock(is_connected=True)):
+            with patch(
+                "mmrelay.meshtastic_utils.meshtastic_client",
+                MagicMock(is_connected=True),
+            ):
                 with patch("mmrelay.meshtastic_utils.reconnecting", False):
                     queue = MessageQueue()
                     message_delay = 0.1  # 100ms delay between messages (will be enforced to 2.0s minimum)
@@ -573,13 +634,18 @@ class TestPerformanceStress(unittest.TestCase):
                     try:
                         # Queue messages rapidly
                         for i in range(message_count):
-                            queue.enqueue(mock_send_function, description=f"Rate limit test {i}")
+                            queue.enqueue(
+                                mock_send_function, description=f"Rate limit test {i}"
+                            )
 
                         # Wait for all messages to be processed (5 messages * 2s = 10s + buffer)
-                        timeout = message_count * 2.0 + 5  # Extra buffer for 2s minimum delay
+                        timeout = (
+                            message_count * 2.0 + 5
+                        )  # Extra buffer for 2s minimum delay
                         start_wait = time.time()
                         while (
-                            len(send_times) < message_count and time.time() - start_wait < timeout
+                            len(send_times) < message_count
+                            and time.time() - start_wait < timeout
                         ):
                             await asyncio.sleep(0.1)
 

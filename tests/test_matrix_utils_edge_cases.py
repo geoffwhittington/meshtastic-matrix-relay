@@ -37,7 +37,7 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
     def setUp(self):
         """
         Resets global state in the mmrelay.matrix_utils module before each test.
-        
+
         Ensures that the matrix_client and config variables are cleared to prevent test interference.
         """
         # Reset global state
@@ -122,7 +122,7 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
     def test_get_matrix_prefix_with_invalid_format(self):
         """
         Test that get_matrix_prefix falls back to the default format when given an invalid prefix format in the configuration.
-        
+
         Verifies that the generated prefix includes the username and mesh name when the custom format string is invalid.
         """
         config = {
@@ -138,7 +138,7 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
     def test_get_meshtastic_prefix_with_invalid_format(self):
         """
         Test that get_meshtastic_prefix falls back to the default format when given an invalid prefix format string.
-        
+
         Verifies that when the custom prefix format is invalid, the generated prefix uses the default format based on the display name.
         """
         config = {
@@ -167,7 +167,7 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
     def test_get_meshtastic_prefix_with_malformed_user_id(self):
         """
         Test that meshtastic prefix generation returns a string when provided with malformed, empty, or None user IDs.
-        
+
         Verifies that the prefix function handles user IDs missing expected delimiters or values without raising errors.
         """
         config = {"meshtastic": {"prefix_enabled": True}}
@@ -211,7 +211,7 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
     def test_connect_matrix_ssl_context_failure(self, mock_ssl_context, mock_logger):
         """
         Test that connect_matrix raises an exception when SSL context creation fails.
-        
+
         Simulates an SSL context creation failure and verifies that connect_matrix raises a connection-related exception.
         """
         mock_ssl_context.side_effect = Exception("SSL context creation failed")
@@ -239,7 +239,7 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
     def test_join_matrix_room_with_invalid_alias(self, mock_logger):
         """
         Test that join_matrix_room logs an error when attempting to join a Matrix room with an invalid alias.
-        
+
         Verifies that an error is logged if the room alias cannot be resolved to a room ID.
         """
         mock_client = AsyncMock()
@@ -268,7 +268,7 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         async def run_test():
             """
             Asynchronously attempts to join a Matrix room and verifies that an error is logged.
-            
+
             This function calls `join_matrix_room` with a mocked Matrix client and room alias, then asserts that an error was logged via the mock logger.
             """
             await join_matrix_room(mock_client, "#test:matrix.org")
@@ -279,7 +279,7 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
     def test_prefix_generation_with_extreme_lengths(self):
         """
         Test that prefix generation functions handle extremely long input strings without errors.
-        
+
         Verifies that both Matrix and Meshtastic prefix generation return string outputs when provided with input values of excessive length.
         """
         config = {"matrix": {"prefix_enabled": True}}

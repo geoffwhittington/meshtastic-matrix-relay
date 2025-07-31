@@ -88,7 +88,7 @@ class TestConfigEdgeCases(unittest.TestCase):
     def test_get_config_paths_darwin_platform(self):
         """
         Test that get_config_paths returns the correct configuration file path on macOS.
-        
+
         Simulates the macOS platform and a custom base directory to verify that get_config_paths includes the expected config.yaml path for macOS environments.
         """
         with patch("sys.platform", "darwin"):
@@ -113,7 +113,7 @@ class TestConfigEdgeCases(unittest.TestCase):
     def test_load_config_file_permission_error(self):
         """
         Test that load_config handles file permission errors gracefully.
-        
+
         Verifies that when a PermissionError occurs while opening the config file, load_config either returns an empty config dictionary or raises the exception, without causing unexpected failures.
         """
         with patch("builtins.open", side_effect=PermissionError("Permission denied")):
@@ -130,7 +130,7 @@ class TestConfigEdgeCases(unittest.TestCase):
     def test_load_config_file_not_found_error(self):
         """
         Test that load_config returns an empty config or handles exceptions when the config file is not found.
-        
+
         Simulates a FileNotFoundError when attempting to open the config file and verifies that load_config either returns an empty dictionary or allows the exception to propagate without causing test failure.
         """
         with patch("builtins.open", side_effect=FileNotFoundError("File not found")):
@@ -189,10 +189,10 @@ class TestConfigEdgeCases(unittest.TestCase):
             def mock_isfile(path):
                 """
                 Mock implementation of os.path.isfile that returns True only for '/second/config.yaml'.
-                
+
                 Parameters:
                     path (str): The file path to check.
-                
+
                 Returns:
                     bool: True if the path is '/second/config.yaml', otherwise False.
                 """
@@ -207,7 +207,7 @@ class TestConfigEdgeCases(unittest.TestCase):
     def test_set_config_matrix_utils(self):
         """
         Tests that set_config correctly sets the config and matrix_homeserver attributes for a matrix_utils module.
-        
+
         Verifies that the configuration dictionary is assigned to the module, the matrix_homeserver is set from the config, and the function returns the config.
         """
         mock_module = MagicMock()
@@ -232,7 +232,7 @@ class TestConfigEdgeCases(unittest.TestCase):
     def test_set_config_meshtastic_utils(self):
         """
         Test that set_config correctly assigns configuration and matrix_rooms for a meshtastic_utils module.
-        
+
         Verifies that set_config sets the config and matrix_rooms attributes on a module named "mmrelay.meshtastic_utils" and returns the provided config dictionary.
         """
         mock_module = MagicMock()
@@ -250,7 +250,7 @@ class TestConfigEdgeCases(unittest.TestCase):
     def test_set_config_with_legacy_setup_function(self):
         """
         Test that set_config correctly handles modules with a legacy setup_config function.
-        
+
         Verifies that set_config calls the module's setup_config method, sets the config attribute, and returns the provided config dictionary when the module defines a setup_config function.
         """
         mock_module = MagicMock()

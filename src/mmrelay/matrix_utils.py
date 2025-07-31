@@ -373,7 +373,7 @@ def bot_command(command, event):
 async def connect_matrix(passed_config=None):
     """
     Asynchronously establishes and initializes a connection to the Matrix homeserver using the provided or global configuration.
-    
+
     If a configuration dictionary is supplied, it updates the global configuration. The function sets up the Matrix client with a secure SSL context, retrieves the bot's device ID and display name, and returns the initialized client instance. Returns `None` if configuration is missing. Raises a `ConnectionError` if SSL context creation fails.
     """
     global matrix_client, bot_user_name, matrix_homeserver, matrix_rooms, matrix_access_token, bot_user_id, config

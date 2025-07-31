@@ -29,7 +29,6 @@ from mmrelay.db_utils import (
     get_longname,
     get_message_map_by_matrix_event_id,
     get_message_map_by_meshtastic_id,
-    get_plugin_data,
     get_plugin_data_for_node,
     get_shortname,
     initialize_database,
@@ -77,7 +76,7 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
     def test_get_db_path_custom_config_invalid_path(self):
         """
         Test that get_db_path returns a string path when a custom config specifies an invalid database path and directory creation fails.
-        
+
         Simulates an OSError during directory creation and verifies that get_db_path handles the error gracefully by still returning a string path.
         """
         import mmrelay.db_utils
@@ -123,7 +122,7 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
     def test_save_longname_database_locked(self):
         """
         Test that save_longname handles a locked database by simulating a database lock error.
-        
+
         Verifies that the function does not crash or raise unhandled exceptions when an OperationalError indicating "database is locked" occurs during execution.
         """
         with patch("sqlite3.connect") as mock_connect:
@@ -139,7 +138,7 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
     def test_save_shortname_constraint_violation(self):
         """
         Test that save_shortname handles database constraint violations gracefully.
-        
+
         Simulates a constraint violation during the save_shortname operation and verifies that the function does not raise an exception.
         """
         with patch("sqlite3.connect") as mock_connect:
@@ -317,7 +316,7 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
     def test_update_shortnames_malformed_node_data(self):
         """
         Test that update_shortnames handles malformed node data without raising exceptions.
-        
+
         This test verifies that update_shortnames can process node data with missing or None fields gracefully, ensuring robustness against incomplete or invalid input.
         """
         malformed_nodes = MagicMock()
@@ -340,7 +339,7 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
         def side_effect_clear_cache(*args, **kwargs):
             """
             Clears the cached database path and returns a test database path.
-            
+
             Returns:
                 str: The test database path "/test/path/meshtastic.sqlite".
             """
@@ -359,7 +358,7 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
     def test_database_initialization_partial_failure(self):
         """
         Test that `initialize_database` raises an exception if a table creation fails during initialization.
-        
+
         Simulates partial failure by causing one table creation to raise an error, and asserts that the function fails fast by raising the exception.
         """
         with patch("sqlite3.connect") as mock_connect:
@@ -371,7 +370,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
                 sqlite3.Error("Table creation failed"),  # shortnames table fails
                 None,  # plugin_data table succeeds
                 None,  # message_map table succeeds
-                sqlite3.OperationalError("Column already exists"),  # ALTER TABLE (expected)
+                sqlite3.OperationalError(
+                    "Column already exists"
+                ),  # ALTER TABLE (expected)
             ]
             mock_connect.return_value.__enter__.return_value = mock_conn
 

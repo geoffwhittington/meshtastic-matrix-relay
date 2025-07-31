@@ -135,7 +135,7 @@ class TestCLIEdgeCases(unittest.TestCase):
     def test_check_config_missing_required_sections(self):
         """
         Test that check_config returns False when required configuration sections or fields are missing.
-        
+
         Verifies that various incomplete or malformed configuration dictionaries cause check_config to fail validation.
         """
         invalid_configs = [
@@ -192,7 +192,7 @@ class TestCLIEdgeCases(unittest.TestCase):
     def test_check_config_missing_connection_specific_fields(self):
         """
         Test that `check_config` returns False when required connection-specific fields are missing from the Meshtastic configuration.
-        
+
         Verifies that the function correctly identifies missing fields for each connection type (serial, tcp, ble) and fails validation as expected.
         """
         test_cases = [
@@ -257,12 +257,16 @@ class TestCLIEdgeCases(unittest.TestCase):
             mock_get_paths.return_value = ["/test/config.yaml"]
             with patch("os.path.isfile", return_value=False):
                 with patch("os.makedirs"):
-                    with patch("mmrelay.tools.get_sample_config_path") as mock_get_sample:
+                    with patch(
+                        "mmrelay.tools.get_sample_config_path"
+                    ) as mock_get_sample:
                         mock_get_sample.return_value = "/nonexistent/sample.yaml"
                         with patch("mmrelay.cli.os.path.exists", return_value=False):
                             with patch("importlib.resources.files") as mock_resources:
                                 mock_file = MagicMock()
-                                mock_file.joinpath.return_value.read_text.side_effect = FileNotFoundError("Resource not found")
+                                mock_file.joinpath.return_value.read_text.side_effect = FileNotFoundError(
+                                    "Resource not found"
+                                )
                                 mock_resources.return_value = mock_file
                                 with patch("builtins.print") as mock_print:
                                     result = generate_sample_config()
@@ -277,7 +281,9 @@ class TestCLIEdgeCases(unittest.TestCase):
             mock_get_paths.return_value = ["/test/config.yaml"]
             with patch("os.path.isfile", return_value=False):
                 with patch("os.makedirs"):
-                    with patch("mmrelay.tools.get_sample_config_path") as mock_get_sample:
+                    with patch(
+                        "mmrelay.tools.get_sample_config_path"
+                    ) as mock_get_sample:
                         mock_get_sample.return_value = "/sample/config.yaml"
                         with patch("os.path.exists", return_value=True):
                             with patch(
@@ -310,7 +316,7 @@ class TestCLIEdgeCases(unittest.TestCase):
     def test_handle_cli_commands_service_installation_failure(self):
         """
         Test that handle_cli_commands exits with code 1 when service installation fails.
-        
+
         Simulates a failure in the service installation process and verifies that the CLI handler triggers a system exit with the appropriate error code.
         """
         args = MagicMock()
@@ -327,7 +333,7 @@ class TestCLIEdgeCases(unittest.TestCase):
     def test_handle_cli_commands_config_generation_failure(self):
         """
         Test that handle_cli_commands exits with code 1 when configuration generation fails.
-        
+
         Simulates a failure in generate_sample_config and verifies that handle_cli_commands calls sys.exit(1).
         """
         args = MagicMock()

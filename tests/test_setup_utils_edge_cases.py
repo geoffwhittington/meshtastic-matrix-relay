@@ -62,17 +62,17 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
     def test_get_executable_path_multiple_locations(self):
         """
         Test that get_executable_path returns the correct path when multiple executable locations exist.
-        
+
         Verifies that get_executable_path prioritizes the expected location when multiple possible paths are available.
         """
 
         def mock_which(cmd):
             """
             Mock implementation of shutil.which that returns a fixed path for the "mmrelay" command.
-            
+
             Parameters:
                 cmd (str): The command to search for.
-            
+
             Returns:
                 str or None: The mocked path to "mmrelay" if requested, otherwise None.
             """
@@ -98,7 +98,10 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
         """
         Test that get_template_service_content returns the default template and prints an error when reading the template file raises an IOError.
         """
-        with patch("mmrelay.setup_utils.get_template_service_path", return_value="/test/service.template"):
+        with patch(
+            "mmrelay.setup_utils.get_template_service_path",
+            return_value="/test/service.template",
+        ):
             with patch("builtins.open", side_effect=IOError("Read error")):
                 with patch("builtins.print") as mock_print:
                     result = get_template_service_content()
@@ -116,7 +119,8 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
             mock_get_path.return_value = mock_path
 
             with patch(
-                "mmrelay.setup_utils.get_template_service_content", return_value="[Unit]\nTest"
+                "mmrelay.setup_utils.get_template_service_content",
+                return_value="[Unit]\nTest",
             ):
                 with patch(
                     "mmrelay.setup_utils.get_executable_path",
@@ -143,7 +147,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
         """
         with patch("subprocess.run") as mock_run:
             # Mock subprocess.run to raise CalledProcessError (since check=True is used)
-            mock_run.side_effect = subprocess.CalledProcessError(1, "systemctl", "Command failed")
+            mock_run.side_effect = subprocess.CalledProcessError(
+                1, "systemctl", "Command failed"
+            )
 
             with patch("builtins.print") as mock_print:
                 result = reload_daemon()
@@ -252,20 +258,28 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
     def test_install_service_daemon_reload_failure(self):
         """
         Test that install_service returns True even if daemon reload fails.
-        
+
         This test simulates a failure in the daemon reload step during service installation and verifies that install_service still returns True, reflecting user choice to decline further action.
         """
         with patch(
             "mmrelay.setup_utils.get_executable_path", return_value="/usr/bin/mmrelay"
         ):
             with patch("mmrelay.setup_utils.create_service_file", return_value=True):
-                with patch(
-                    "mmrelay.setup_utils.reload_daemon", return_value=False
-                ):
-                    with patch("mmrelay.setup_utils.read_service_file", return_value=None):
-                        with patch("mmrelay.setup_utils.service_needs_update", return_value=(True, "test")):
-                            with patch("mmrelay.setup_utils.check_loginctl_available", return_value=False):
-                                with patch("builtins.input", return_value="n"):  # Mock all input prompts to return "n"
+                with patch("mmrelay.setup_utils.reload_daemon", return_value=False):
+                    with patch(
+                        "mmrelay.setup_utils.read_service_file", return_value=None
+                    ):
+                        with patch(
+                            "mmrelay.setup_utils.service_needs_update",
+                            return_value=(True, "test"),
+                        ):
+                            with patch(
+                                "mmrelay.setup_utils.check_loginctl_available",
+                                return_value=False,
+                            ):
+                                with patch(
+                                    "builtins.input", return_value="n"
+                                ):  # Mock all input prompts to return "n"
                                     with patch("builtins.print"):
                                         result = install_service()
                                         # Should still return True even if reload fails
@@ -279,9 +293,7 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
             "mmrelay.setup_utils.get_executable_path", return_value="/usr/bin/mmrelay"
         ):
             with patch("mmrelay.setup_utils.create_service_file", return_value=True):
-                with patch(
-                    "mmrelay.setup_utils.reload_daemon", return_value=True
-                ):
+                with patch("mmrelay.setup_utils.reload_daemon", return_value=True):
                     with patch(
                         "mmrelay.setup_utils.check_loginctl_available",
                         return_value=True,
@@ -299,16 +311,14 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
     def test_install_service_enable_lingering_failure(self):
         """
         Test that install_service returns True when enabling lingering fails after user consents.
-        
+
         Simulates the scenario where the user agrees to enable lingering, but the operation fails, and verifies that install_service still reports success.
         """
         with patch(
             "mmrelay.setup_utils.get_executable_path", return_value="/usr/bin/mmrelay"
         ):
             with patch("mmrelay.setup_utils.create_service_file", return_value=True):
-                with patch(
-                    "mmrelay.setup_utils.reload_daemon", return_value=True
-                ):
+                with patch("mmrelay.setup_utils.reload_daemon", return_value=True):
                     with patch(
                         "mmrelay.setup_utils.check_loginctl_available",
                         return_value=True,
@@ -329,16 +339,14 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
     def test_install_service_user_interaction_eof(self):
         """
         Test that install_service returns True when user input raises EOFError during lingering enabling prompt.
-        
+
         Simulates an EOFError occurring when prompting the user to enable lingering, verifying that install_service completes successfully without raising an exception.
         """
         with patch(
             "mmrelay.setup_utils.get_executable_path", return_value="/usr/bin/mmrelay"
         ):
             with patch("mmrelay.setup_utils.create_service_file", return_value=True):
-                with patch(
-                    "mmrelay.setup_utils.reload_daemon", return_value=True
-                ):
+                with patch("mmrelay.setup_utils.reload_daemon", return_value=True):
                     with patch(
                         "mmrelay.setup_utils.check_loginctl_available",
                         return_value=True,
@@ -360,9 +368,7 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
             "mmrelay.setup_utils.get_executable_path", return_value="/usr/bin/mmrelay"
         ):
             with patch("mmrelay.setup_utils.create_service_file", return_value=True):
-                with patch(
-                    "mmrelay.setup_utils.reload_daemon", return_value=True
-                ):
+                with patch("mmrelay.setup_utils.reload_daemon", return_value=True):
                     with patch(
                         "mmrelay.setup_utils.check_loginctl_available",
                         return_value=True,
@@ -388,7 +394,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
         --config %h/.mmrelay/config/config.yaml
         """
 
-        with patch("mmrelay.setup_utils.get_template_service_content", return_value=template):
+        with patch(
+            "mmrelay.setup_utils.get_template_service_content", return_value=template
+        ):
             with patch(
                 "mmrelay.setup_utils.get_executable_path",
                 return_value="/usr/bin/mmrelay",

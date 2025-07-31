@@ -32,7 +32,7 @@ def clear_db_path_cache():
 def get_db_path():
     """
     Resolves and returns the file path to the SQLite database, using configuration overrides if provided.
-    
+
     Prefers the path specified in `config["database"]["path"]`, falls back to `config["db"]["path"]` (legacy), and defaults to `meshtastic.sqlite` in the standard data directory if neither is set. The resolved path is cached and the cache is invalidated if relevant configuration changes. Attempts to create the directory for the database path if it does not exist.
     """
     global config, _cached_db_path, _db_path_logged, _cached_config_hash
@@ -69,7 +69,9 @@ def get_db_path():
                     try:
                         os.makedirs(db_dir, exist_ok=True)
                     except (OSError, PermissionError) as e:
-                        logger.warning(f"Could not create database directory {db_dir}: {e}")
+                        logger.warning(
+                            f"Could not create database directory {db_dir}: {e}"
+                        )
                         # Continue anyway - the database connection will fail later if needed
 
                 # Cache the path and log only once
@@ -107,7 +109,7 @@ def get_db_path():
 def initialize_database():
     """
     Initializes the SQLite database schema for the relay application.
-    
+
     Creates required tables (`longnames`, `shortnames`, `plugin_data`, and `message_map`) if they do not exist, and ensures the `meshtastic_meshnet` column is present in `message_map`. Raises an exception if database initialization fails.
     """
     db_path = get_db_path()
@@ -140,7 +142,9 @@ def initialize_database():
             # This is a no-op if the column already exists.
             # If user runs fresh, it will already be there from CREATE TABLE IF NOT EXISTS.
             try:
-                cursor.execute("ALTER TABLE message_map ADD COLUMN meshtastic_meshnet TEXT")
+                cursor.execute(
+                    "ALTER TABLE message_map ADD COLUMN meshtastic_meshnet TEXT"
+                )
             except sqlite3.OperationalError:
                 # Column already exists, or table just created with it
                 pass
@@ -152,7 +156,7 @@ def initialize_database():
 def store_plugin_data(plugin_name, meshtastic_id, data):
     """
     Store or update JSON-serialized plugin data for a specific plugin and Meshtastic ID in the database.
-    
+
     Parameters:
         plugin_name (str): The name of the plugin.
         meshtastic_id (str): The Meshtastic node identifier.
@@ -167,13 +171,15 @@ def store_plugin_data(plugin_name, meshtastic_id, data):
             )
             conn.commit()
     except sqlite3.Error as e:
-        logger.error(f"Database error storing plugin data for {plugin_name}, {meshtastic_id}: {e}")
+        logger.error(
+            f"Database error storing plugin data for {plugin_name}, {meshtastic_id}: {e}"
+        )
 
 
 def delete_plugin_data(plugin_name, meshtastic_id):
     """
     Deletes the plugin data entry for the specified plugin and Meshtastic ID from the database.
-    
+
     Parameters:
         plugin_name (str): The name of the plugin whose data should be deleted.
         meshtastic_id (str): The Meshtastic node ID associated with the plugin data.
@@ -187,14 +193,16 @@ def delete_plugin_data(plugin_name, meshtastic_id):
             )
             conn.commit()
     except sqlite3.Error as e:
-        logger.error(f"Database error deleting plugin data for {plugin_name}, {meshtastic_id}: {e}")
+        logger.error(
+            f"Database error deleting plugin data for {plugin_name}, {meshtastic_id}: {e}"
+        )
 
 
 # Get the data for a given plugin and Meshtastic ID
 def get_plugin_data_for_node(plugin_name, meshtastic_id):
     """
     Retrieve and decode plugin data for a specific plugin and Meshtastic node.
-    
+
     Returns:
         list: The deserialized plugin data as a list, or an empty list if no data is found or on error.
     """
@@ -212,10 +220,14 @@ def get_plugin_data_for_node(plugin_name, meshtastic_id):
         try:
             return json.loads(result[0] if result else "[]")
         except (json.JSONDecodeError, TypeError) as e:
-            logger.error(f"Failed to decode JSON data for plugin {plugin_name}, node {meshtastic_id}: {e}")
+            logger.error(
+                f"Failed to decode JSON data for plugin {plugin_name}, node {meshtastic_id}: {e}"
+            )
             return []
     except (MemoryError, sqlite3.Error) as e:
-        logger.error(f"Database error retrieving plugin data for {plugin_name}, node {meshtastic_id}: {e}")
+        logger.error(
+            f"Database error retrieving plugin data for {plugin_name}, node {meshtastic_id}: {e}"
+        )
         return []
 
 
@@ -234,10 +246,10 @@ def get_plugin_data(plugin_name):
 def get_longname(meshtastic_id):
     """
     Retrieve the long name associated with a given Meshtastic ID.
-    
+
     Parameters:
         meshtastic_id (str): The Meshtastic node identifier.
-    
+
     Returns:
         str or None: The long name if found, otherwise None.
     """
@@ -257,7 +269,7 @@ def get_longname(meshtastic_id):
 def save_longname(meshtastic_id, longname):
     """
     Insert or update the long name for a given Meshtastic ID in the database.
-    
+
     If an entry for the Meshtastic ID already exists, its long name is updated; otherwise, a new entry is created.
     """
     try:
@@ -275,7 +287,7 @@ def save_longname(meshtastic_id, longname):
 def update_longnames(nodes):
     """
     Updates the long names for all users in the provided nodes dictionary.
-    
+
     Parameters:
         nodes (dict): A dictionary of nodes, each containing user information with Meshtastic IDs and long names.
     """
@@ -291,18 +303,19 @@ def update_longnames(nodes):
 def get_shortname(meshtastic_id):
     """
     Retrieve the short name associated with a given Meshtastic ID.
-    
+
     Parameters:
-    	meshtastic_id (str): The Meshtastic node ID to look up.
-    
+        meshtastic_id (str): The Meshtastic node ID to look up.
+
     Returns:
-    	str or None: The short name if found, or None if not found or on database error.
+        str or None: The short name if found, or None if not found or on database error.
     """
     try:
         with sqlite3.connect(get_db_path()) as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT shortname FROM shortnames WHERE meshtastic_id=?", (meshtastic_id,)
+                "SELECT shortname FROM shortnames WHERE meshtastic_id=?",
+                (meshtastic_id,),
             )
             result = cursor.fetchone()
         return result[0] if result else None
@@ -314,7 +327,7 @@ def get_shortname(meshtastic_id):
 def save_shortname(meshtastic_id, shortname):
     """
     Insert or update the short name for a given Meshtastic ID in the database.
-    
+
     If an entry for the Meshtastic ID already exists, its short name is updated; otherwise, a new entry is created.
     """
     try:
@@ -332,7 +345,7 @@ def save_shortname(meshtastic_id, shortname):
 def update_shortnames(nodes):
     """
     Updates the short names for all users in the provided nodes dictionary.
-    
+
     Parameters:
         nodes (dict): A dictionary of nodes, each containing user information with Meshtastic IDs and short names.
     """
@@ -354,7 +367,7 @@ def store_message_map(
 ):
     """
     Stores or updates a mapping between a Meshtastic message and its corresponding Matrix event in the database.
-    
+
     Parameters:
         meshtastic_id: The Meshtastic message ID.
         matrix_event_id: The Matrix event ID (primary key).
@@ -386,7 +399,7 @@ def store_message_map(
 def get_message_map_by_meshtastic_id(meshtastic_id):
     """
     Retrieve the message mapping entry for a given Meshtastic ID.
-    
+
     Returns:
         tuple or None: A tuple (matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet) if found and valid, or None if not found, on malformed data, or if a database error occurs.
     """
@@ -406,18 +419,22 @@ def get_message_map_by_meshtastic_id(meshtastic_id):
                     # result = (matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
                     return result[0], result[1], result[2], result[3]
                 except (IndexError, TypeError) as e:
-                    logger.error(f"Malformed data in message_map for meshtastic_id {meshtastic_id}: {e}")
+                    logger.error(
+                        f"Malformed data in message_map for meshtastic_id {meshtastic_id}: {e}"
+                    )
                     return None
             return None
     except sqlite3.Error as e:
-        logger.error(f"Database error retrieving message map for meshtastic_id {meshtastic_id}: {e}")
+        logger.error(
+            f"Database error retrieving message map for meshtastic_id {meshtastic_id}: {e}"
+        )
         return None
 
 
 def get_message_map_by_matrix_event_id(matrix_event_id):
     """
     Retrieve the message mapping entry for a given Matrix event ID.
-    
+
     Returns:
         tuple or None: A tuple (meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet) if found, or None if not found or on error.
     """
@@ -437,11 +454,15 @@ def get_message_map_by_matrix_event_id(matrix_event_id):
                     # result = (meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
                     return result[0], result[1], result[2], result[3]
                 except (IndexError, TypeError) as e:
-                    logger.error(f"Malformed data in message_map for matrix_event_id {matrix_event_id}: {e}")
+                    logger.error(
+                        f"Malformed data in message_map for matrix_event_id {matrix_event_id}: {e}"
+                    )
                     return None
             return None
     except (UnicodeDecodeError, sqlite3.Error) as e:
-        logger.error(f"Database error retrieving message map for matrix_event_id {matrix_event_id}: {e}")
+        logger.error(
+            f"Database error retrieving message map for matrix_event_id {matrix_event_id}: {e}"
+        )
         return None
 
 

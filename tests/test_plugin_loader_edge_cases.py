@@ -59,7 +59,7 @@ class TestPluginLoaderEdgeCases(unittest.TestCase):
         """
         with patch("os.path.isdir", return_value=True):
             with patch("os.walk", side_effect=PermissionError("Permission denied")):
-                with patch("mmrelay.plugin_loader.logger") as mock_logger:
+                with patch("mmrelay.plugin_loader.logger"):
                     # The function should raise PermissionError since it doesn't handle it
                     with self.assertRaises(PermissionError):
                         load_plugins_from_directory("/restricted/plugins")
@@ -97,7 +97,7 @@ class TestPluginLoaderEdgeCases(unittest.TestCase):
     def test_load_plugins_from_directory_plugin_initialization_failure(self):
         """
         Test that plugins with failing initialization are not loaded.
-        
+
         Creates a plugin file whose `Plugin` class raises an exception during initialization, then verifies that `load_plugins_from_directory` returns an empty list and logs an error.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -121,7 +121,7 @@ class Plugin:
     def test_load_plugins_from_directory_import_error_with_dependency_install(self):
         """
         Test that plugins with missing dependencies trigger installation attempts and log warnings.
-        
+
         Creates a plugin file that imports a nonexistent module, simulates successful dependency installation, and verifies that the plugin loader logs a warning and does not load the plugin.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -136,7 +136,9 @@ class Plugin:
                 )
 
             # Mock environment to force pip usage instead of pipx
-            with patch.dict("os.environ", {}, clear=True):  # Clear pipx environment variables
+            with patch.dict(
+                "os.environ", {}, clear=True
+            ):  # Clear pipx environment variables
                 with patch("subprocess.check_call") as mock_check_call:
                     # Mock successful installation
                     mock_check_call.return_value = None
@@ -150,7 +152,7 @@ class Plugin:
     def test_load_plugins_from_directory_dependency_install_failure(self):
         """
         Test that plugin loading fails gracefully when a plugin's missing dependency cannot be installed.
-        
+
         Creates a plugin file that imports a nonexistent module, simulates a failed dependency installation, and verifies that no plugins are loaded and an error is logged.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -189,14 +191,12 @@ class Plugin:
         """
         Verify that get_custom_plugin_dirs returns plugin directories even when directory listing raises a PermissionError.
         """
-        with patch(
-            "mmrelay.config.get_base_dir", return_value="/restricted"
-        ):
+        with patch("mmrelay.config.get_base_dir", return_value="/restricted"):
             with patch("os.path.exists", return_value=True):
                 with patch(
                     "os.listdir", side_effect=PermissionError("Permission denied")
                 ):
-                    with patch("mmrelay.plugin_loader.logger") as mock_logger:
+                    with patch("mmrelay.plugin_loader.logger"):
                         dirs = get_custom_plugin_dirs()
                         # Function should still return directories even if listing fails
                         self.assertGreater(len(dirs), 0)
@@ -205,7 +205,7 @@ class Plugin:
     def test_get_custom_plugin_dirs_broken_symlinks(self):
         """
         Test that get_custom_plugin_dirs returns both user and app plugin directories when symbolic links are broken.
-        
+
         Verifies that the function attempts to create the user plugin directory and includes both expected directories in the result.
         """
         with patch("mmrelay.plugin_loader.get_base_dir", return_value="/test"):
@@ -222,14 +222,14 @@ class Plugin:
     def test_get_community_plugin_dirs_git_clone_failure(self):
         """
         Test that get_community_plugin_dirs returns plugin directories even if a git clone operation fails.
-        
+
         Simulates a failure during the git clone process and verifies that the function still returns a non-empty list of directories without logging errors.
         """
         with patch("mmrelay.config.get_base_dir", return_value="/test"):
             with patch("os.path.exists", return_value=False):
                 with patch("subprocess.run") as mock_run:
                     mock_run.return_value.returncode = 1  # Git clone failed
-                    with patch("mmrelay.plugin_loader.logger") as mock_logger:
+                    with patch("mmrelay.plugin_loader.logger"):
                         dirs = get_community_plugin_dirs()
                         # Function should still return directories even if git operations fail
                         self.assertGreater(len(dirs), 0)
@@ -238,14 +238,14 @@ class Plugin:
     def test_get_community_plugin_dirs_git_pull_failure(self):
         """
         Test that get_community_plugin_dirs returns directory paths even if a git pull operation fails.
-        
+
         Simulates a git pull failure and verifies that the function still returns the expected plugin directories without logging warnings or errors.
         """
         with patch("mmrelay.config.get_base_dir", return_value="/test"):
             with patch("os.path.exists", return_value=True):
                 with patch("subprocess.run") as mock_run:
                     mock_run.return_value.returncode = 1  # Git pull failed
-                    with patch("mmrelay.plugin_loader.logger") as mock_logger:
+                    with patch("mmrelay.plugin_loader.logger"):
                         dirs = get_community_plugin_dirs()
                         # Should still return directory paths regardless of git operations
                         self.assertGreater(len(dirs), 0)
@@ -255,7 +255,7 @@ class Plugin:
     def test_get_community_plugin_dirs_git_not_available(self):
         """
         Test that get_community_plugin_dirs returns plugin directories when git is not available.
-        
+
         Simulates the absence of the git command and verifies that the function still returns a list of directories without logging errors.
         """
         with patch("mmrelay.config.get_base_dir", return_value="/test"):
@@ -263,7 +263,7 @@ class Plugin:
                 with patch(
                     "subprocess.run", side_effect=FileNotFoundError("git not found")
                 ):
-                    with patch("mmrelay.plugin_loader.logger") as mock_logger:
+                    with patch("mmrelay.plugin_loader.logger"):
                         dirs = get_community_plugin_dirs()
                         # Function should still return directories even if git is not available
                         self.assertGreater(len(dirs), 0)
@@ -289,7 +289,7 @@ class Plugin:
     def test_load_plugins_plugin_priority_conflict(self):
         """
         Test that load_plugins handles plugins with conflicting priorities.
-        
+
         Verifies that when multiple plugins have the same priority, load_plugins loads them without error and includes both in the result.
         """
         mock_plugin1 = MagicMock()
@@ -300,7 +300,9 @@ class Plugin:
         mock_plugin2.priority = 5  # Same priority
         mock_plugin2.plugin_name = "plugin2"
 
-        config = {"custom-plugins": {"plugin1": {"active": True}, "plugin2": {"active": True}}}
+        config = {
+            "custom-plugins": {"plugin1": {"active": True}, "plugin2": {"active": True}}
+        }
 
         with patch("mmrelay.plugin_loader.load_plugins_from_directory") as mock_load:
             mock_load.return_value = [mock_plugin1, mock_plugin2]
@@ -325,6 +327,7 @@ class Plugin:
 
         # Reset global state
         import mmrelay.plugin_loader
+
         mmrelay.plugin_loader.plugins_loaded = False
         mmrelay.plugin_loader.sorted_active_plugins = []
 
@@ -349,6 +352,7 @@ class Plugin:
 
         # Reset global state
         import mmrelay.plugin_loader
+
         mmrelay.plugin_loader.plugins_loaded = False
         mmrelay.plugin_loader.sorted_active_plugins = []
 
@@ -367,13 +371,16 @@ class Plugin:
     def test_load_plugins_circular_dependency(self):
         """
         Test that load_plugins can handle scenarios where plugins may have circular dependencies.
-        
+
         This test simulates loading two custom plugins with the same priority, representing a potential circular dependency situation. It verifies that load_plugins loads both plugins without errors, ensuring robustness even though explicit dependency resolution is not implemented.
         """
         # This is more of a conceptual test since the current implementation
         # doesn't handle plugin dependencies, but it tests robustness
         config = {
-            "custom-plugins": {"plugin_a": {"active": True}, "plugin_b": {"active": True}}
+            "custom-plugins": {
+                "plugin_a": {"active": True},
+                "plugin_b": {"active": True},
+            }
         }
 
         mock_plugin_a = MagicMock()
@@ -397,7 +404,7 @@ class Plugin:
     def test_load_plugins_duplicate_plugin_names(self):
         """
         Test that load_plugins correctly handles plugins with duplicate names from different directories.
-        
+
         Ensures that when multiple plugins with the same name but different priorities are present, load_plugins loads at least one instance and does not fail due to the duplication.
         """
         mock_plugin1 = MagicMock()

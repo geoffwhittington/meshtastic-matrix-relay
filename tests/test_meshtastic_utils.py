@@ -170,11 +170,13 @@ class TestMeshtasticUtils(unittest.TestCase):
     ):
         """
         Test that the Meshtastic client connects via serial interface when the serial port exists.
-        
+
         Verifies that the serial interface is instantiated with the configured port and that the returned client matches the mock client.
         """
         mock_client = MagicMock()
-        mock_client.getMyNodeInfo.return_value = {"user": {"shortName": "test", "hwModel": "test"}}
+        mock_client.getMyNodeInfo.return_value = {
+            "user": {"shortName": "test", "hwModel": "test"}
+        }
         mock_serial.return_value = mock_client
         mock_port_exists.return_value = True
 
@@ -184,6 +186,7 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         # Reset global state
         import mmrelay.meshtastic_utils
+
         mmrelay.meshtastic_utils.meshtastic_client = None
         mmrelay.meshtastic_utils.shutting_down = False
         mmrelay.meshtastic_utils.reconnecting = False
@@ -199,11 +202,13 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_connect_meshtastic_tcp(self, mock_tcp, mock_ble, mock_serial):
         """
         Tests that the Meshtastic client connects via the TCP interface using the configured host.
-        
+
         Verifies that the TCP interface is instantiated with the correct hostname and that the returned client matches the mocked instance.
         """
         mock_client = MagicMock()
-        mock_client.getMyNodeInfo.return_value = {"user": {"shortName": "test", "hwModel": "test"}}
+        mock_client.getMyNodeInfo.return_value = {
+            "user": {"shortName": "test", "hwModel": "test"}
+        }
         mock_tcp.return_value = mock_client
 
         config = {
@@ -215,6 +220,7 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         # Reset global state
         import mmrelay.meshtastic_utils
+
         mmrelay.meshtastic_utils.meshtastic_client = None
         mmrelay.meshtastic_utils.shutting_down = False
         mmrelay.meshtastic_utils.reconnecting = False
@@ -230,11 +236,13 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_connect_meshtastic_ble(self, mock_tcp, mock_ble, mock_serial):
         """
         Test that the Meshtastic client connects via BLE using the configured BLE address.
-        
+
         Verifies that the BLE interface is instantiated with the expected parameters and that the returned client matches the mocked BLE client.
         """
         mock_client = MagicMock()
-        mock_client.getMyNodeInfo.return_value = {"user": {"shortName": "test", "hwModel": "test"}}
+        mock_client.getMyNodeInfo.return_value = {
+            "user": {"shortName": "test", "hwModel": "test"}
+        }
         mock_ble.return_value = mock_client
 
         config = {
@@ -243,6 +251,7 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         # Reset global state
         import mmrelay.meshtastic_utils
+
         mmrelay.meshtastic_utils.meshtastic_client = None
         mmrelay.meshtastic_utils.shutting_down = False
         mmrelay.meshtastic_utils.reconnecting = False

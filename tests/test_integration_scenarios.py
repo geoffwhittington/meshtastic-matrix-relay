@@ -48,7 +48,7 @@ class TestIntegrationScenarios(unittest.TestCase):
     def _reset_global_state(self):
         """
         Reset global state variables in all MMRelay modules to ensure test isolation.
-        
+
         This method clears or reinitializes global variables in the `meshtastic_utils`, `matrix_utils`, `plugin_loader`, `config`, and `db_utils` modules if they are loaded, preventing state leakage between tests.
         """
         # Reset meshtastic_utils globals
@@ -97,7 +97,7 @@ class TestIntegrationScenarios(unittest.TestCase):
     def test_complete_meshtastic_to_matrix_flow(self):
         """
         Tests the end-to-end flow of a Meshtastic message being relayed to Matrix, including plugin handling.
-        
+
         Verifies that a Meshtastic message is processed through the plugin chain and relayed to the appropriate Matrix room, ensuring both the Matrix relay and plugin handler are invoked as expected.
         """
         # Create test configuration
@@ -111,7 +111,7 @@ class TestIntegrationScenarios(unittest.TestCase):
             "meshtastic": {
                 "connection_type": "serial",
                 "serial_port": "/dev/ttyUSB0",
-                "meshnet_name": "TestMesh"
+                "meshnet_name": "TestMesh",
             },
             "plugins": {"debug": {"active": True}},
         }
@@ -137,7 +137,9 @@ class TestIntegrationScenarios(unittest.TestCase):
                 with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
                     # Mock debug plugin
                     mock_plugin = MagicMock()
-                    mock_plugin.handle_meshtastic_message = AsyncMock(return_value=False)
+                    mock_plugin.handle_meshtastic_message = AsyncMock(
+                        return_value=False
+                    )
                     mock_load_plugins.return_value = [mock_plugin]
 
                     # Mock the async execution to actually call the coroutines
@@ -145,11 +147,11 @@ class TestIntegrationScenarios(unittest.TestCase):
                         # Create a mock future and call the coroutine
                         """
                         Synchronously executes a coroutine for testing and returns a mock future with the result.
-                        
+
                         Parameters:
                             coro: The coroutine to execute.
                             loop: The event loop (unused in this mock implementation).
-                        
+
                         Returns:
                             A MagicMock object simulating a future, with its result set to the coroutine's return value or None if an exception occurs.
                         """
@@ -157,6 +159,7 @@ class TestIntegrationScenarios(unittest.TestCase):
                         try:
                             # Try to run the coroutine synchronously for testing
                             import asyncio
+
                             result = asyncio.run(coro)
                             mock_future.result.return_value = result
                         except Exception:
@@ -184,7 +187,7 @@ class TestIntegrationScenarios(unittest.TestCase):
     def test_complete_matrix_to_meshtastic_flow(self):
         """
         Tests the end-to-end flow of a Matrix text message being processed and relayed to Meshtastic, including plugin interception.
-        
+
         This test sets up a mock Matrix event and Meshtastic client, loads a plugin that intercepts the message, and verifies that the plugin's handler is called once, confirming correct integration between Matrix message handling and plugin processing.
         """
 
@@ -192,7 +195,7 @@ class TestIntegrationScenarios(unittest.TestCase):
             # Create test configuration
             """
             Asynchronously tests that a Matrix text message event is intercepted by a plugin during message handling.
-            
+
             Simulates a Matrix message event, configures a mock plugin to intercept the message, and verifies that the plugin's handler is called once.
             """
             config = {
@@ -220,7 +223,9 @@ class TestIntegrationScenarios(unittest.TestCase):
             mock_event = MagicMock(spec=RoomMessageText)
             mock_event.sender = "@user:matrix.org"
             mock_event.body = "!help"
-            mock_event.server_timestamp = int(time.time() * 1000) + 1000  # Future timestamp
+            mock_event.server_timestamp = (
+                int(time.time() * 1000) + 1000
+            )  # Future timestamp
             mock_event.source = {"content": {}}
 
             # Mock Meshtastic client
@@ -257,7 +262,7 @@ class TestIntegrationScenarios(unittest.TestCase):
     def test_plugin_chain_processing(self):
         """
         Test that multiple plugins process a Meshtastic message in priority order, with message interception by the highest priority plugin.
-        
+
         This test verifies that all loaded plugins are invoked in order of their priority when handling a Meshtastic message, and that message processing stops when a plugin intercepts the message.
         """
         packet = {
@@ -289,17 +294,18 @@ class TestIntegrationScenarios(unittest.TestCase):
                 def mock_run_coro(coro, loop):
                     """
                     Synchronously executes an asynchronous coroutine and returns a mock future with the result.
-                    
+
                     Parameters:
-                    	coro: The coroutine to execute.
-                    	loop: The event loop (unused).
-                    
+                        coro: The coroutine to execute.
+                        loop: The event loop (unused).
+
                     Returns:
-                    	A MagicMock object mimicking a future, with its result set to the coroutine's return value or None if execution fails.
+                        A MagicMock object mimicking a future, with its result set to the coroutine's return value or None if execution fails.
                     """
                     mock_future = MagicMock()
                     try:
                         import asyncio
+
                         result = asyncio.run(coro)
                         mock_future.result.return_value = result
                     except Exception:
@@ -309,15 +315,24 @@ class TestIntegrationScenarios(unittest.TestCase):
                 mock_run_coroutine.side_effect = mock_run_coro
 
                 # Return plugins in random order (should be sorted by priority)
-                mock_load_plugins.return_value = [mock_plugin2, mock_plugin1, mock_plugin3]
+                mock_load_plugins.return_value = [
+                    mock_plugin2,
+                    mock_plugin1,
+                    mock_plugin3,
+                ]
 
                 # Set up minimal config
                 import mmrelay.meshtastic_utils
+
                 mmrelay.meshtastic_utils.config = {
-                    "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}],
-                    "meshtastic": {"meshnet_name": "TestMesh"}
+                    "matrix_rooms": [
+                        {"id": "!room:matrix.org", "meshtastic_channel": 0}
+                    ],
+                    "meshtastic": {"meshnet_name": "TestMesh"},
                 }
-                mmrelay.meshtastic_utils.matrix_rooms = [{"id": "!room:matrix.org", "meshtastic_channel": 0}]
+                mmrelay.meshtastic_utils.matrix_rooms = [
+                    {"id": "!room:matrix.org", "meshtastic_channel": 0}
+                ]
                 mmrelay.meshtastic_utils.event_loop = MagicMock()
 
                 on_meshtastic_message(packet, mock_interface)
@@ -330,7 +345,7 @@ class TestIntegrationScenarios(unittest.TestCase):
     def test_configuration_loading_and_validation_flow(self):
         """
         Test loading a configuration file and validating its structure and correctness.
-        
+
         This test writes a sample configuration to a temporary YAML file, loads it using the application's configuration loader, and verifies the presence of required sections. It then invokes the CLI configuration validation function to ensure the loaded configuration passes validation.
         """
         # Create temporary config file
@@ -371,8 +386,9 @@ plugins:
             self.assertIn("plugins", config)
 
             # Test configuration validation
-            from mmrelay.cli import check_config
             from unittest.mock import MagicMock
+
+            from mmrelay.cli import check_config
 
             # Create mock args
             mock_args = MagicMock()
@@ -388,7 +404,7 @@ plugins:
     def test_database_initialization_and_usage_flow(self):
         """
         Test initialization of the database and verify basic CRUD operations for node names and message mappings.
-        
+
         This test ensures that the database can be initialized, node long and short names can be stored and retrieved, and message mappings can be saved and fetched correctly.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -425,7 +441,7 @@ plugins:
     def test_error_recovery_scenario(self):
         """
         Test error recovery mechanisms for Matrix and Meshtastic connection failures.
-        
+
         Simulates failures during Matrix and Meshtastic client connections by mocking exceptions and error responses. Verifies that the system returns a client instance for Matrix even if authentication fails, and gracefully returns None for Meshtastic when repeated connection attempts fail.
         """
         config = {
@@ -445,6 +461,7 @@ plugins:
                 mock_client = AsyncMock()
                 # Mock whoami to return a WhoamiError (this is what connect_matrix actually calls)
                 from nio import WhoamiError
+
                 mock_whoami_error = WhoamiError("Whoami failed")
                 mock_client.whoami.return_value = mock_whoami_error
                 mock_client_class.return_value = mock_client
@@ -454,7 +471,9 @@ plugins:
                     Asynchronously tests that the Matrix connection function returns a client instance even when the 'whoami' check fails.
                     """
                     result = await connect_matrix(config)
-                    self.assertIsNotNone(result)  # Should return client even if whoami fails
+                    self.assertIsNotNone(
+                        result
+                    )  # Should return client even if whoami fails
 
                 asyncio.run(test_matrix_recovery())
 
@@ -463,7 +482,9 @@ plugins:
             # Patch all exceptions in the except clause to be proper Exception classes
             with patch("mmrelay.meshtastic_utils.BleakDBusError", Exception):
                 with patch("mmrelay.meshtastic_utils.BleakError", Exception):
-                    with patch("mmrelay.meshtastic_utils.serial.SerialException", Exception):
+                    with patch(
+                        "mmrelay.meshtastic_utils.serial.SerialException", Exception
+                    ):
                         with patch(
                             "mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface",
                             side_effect=Exception("Connection failed"),
@@ -473,10 +494,11 @@ plugins:
                                 def side_effect_shutdown(*args, **kwargs):
                                     """
                                     Sets the Meshtastic shutdown flag and raises an exception to simulate a connection failure.
-                                    
+
                                     Intended for use as a side effect in tests that require simulating a shutdown scenario.
                                     """
                                     import mmrelay.meshtastic_utils
+
                                     mmrelay.meshtastic_utils.shutting_down = True
                                     raise Exception("Connection failed")
 
@@ -485,18 +507,18 @@ plugins:
                                     side_effect=side_effect_shutdown,
                                 ):
                                     result = connect_meshtastic(config)
-                                    self.assertIsNone(result)  # Should handle failure gracefully
+                                    self.assertIsNone(
+                                        result
+                                    )  # Should handle failure gracefully
 
     def test_multi_room_message_routing(self):
         """
         Tests that a Meshtastic message is routed to all Matrix rooms configured for the same channel.
-        
+
         Verifies that when a Meshtastic packet is received on a specific channel, it is relayed to each Matrix room mapped to that channel, and not to rooms mapped to other channels.
         """
         config = {
-            "meshtastic": {
-                "meshnet_name": "TestMesh"
-            },
+            "meshtastic": {"meshnet_name": "TestMesh"},
             "matrix_rooms": [
                 {"id": "!room1:matrix.org", "meshtastic_channel": 0},
                 {"id": "!room2:matrix.org", "meshtastic_channel": 0},
@@ -504,7 +526,7 @@ plugins:
                     "id": "!room3:matrix.org",
                     "meshtastic_channel": 1,
                 },  # Different channel
-            ]
+            ],
         }
 
         packet = {
@@ -523,15 +545,22 @@ plugins:
                 with patch("mmrelay.db_utils.get_longname", return_value="TestNode"):
                     with patch("mmrelay.db_utils.get_shortname", return_value="TN"):
                         with patch("mmrelay.meshtastic_utils.logger"):
-                            with patch("mmrelay.matrix_utils.get_interaction_settings") as mock_interactions:
+                            with patch(
+                                "mmrelay.matrix_utils.get_interaction_settings"
+                            ) as mock_interactions:
                                 mock_interactions.return_value = {"reactions": True}
-                                with patch("mmrelay.matrix_utils.message_storage_enabled"):
+                                with patch(
+                                    "mmrelay.matrix_utils.message_storage_enabled"
+                                ):
                                     # Set up global state
-                                    import mmrelay.meshtastic_utils
                                     import asyncio
 
+                                    import mmrelay.meshtastic_utils
+
                                     mmrelay.meshtastic_utils.config = config
-                                    mmrelay.meshtastic_utils.matrix_rooms = config["matrix_rooms"]
+                                    mmrelay.meshtastic_utils.matrix_rooms = config[
+                                        "matrix_rooms"
+                                    ]
 
                                     # Create and set event loop
                                     try:
@@ -565,16 +594,22 @@ plugins:
             "mmrelay.setup_utils.get_executable_path", return_value="/usr/bin/mmrelay"
         ):
             with patch("mmrelay.setup_utils.create_service_file", return_value=True):
-                with patch(
-                    "mmrelay.setup_utils.reload_daemon", return_value=True
-                ):
+                with patch("mmrelay.setup_utils.reload_daemon", return_value=True):
                     with patch(
                         "mmrelay.setup_utils.check_loginctl_available",
                         return_value=False,
                     ):
-                        with patch("builtins.input", return_value="n"):  # Mock user input
-                            with patch("mmrelay.setup_utils.is_service_enabled", return_value=False):
-                                with patch("mmrelay.setup_utils.is_service_active", return_value=False):
+                        with patch(
+                            "builtins.input", return_value="n"
+                        ):  # Mock user input
+                            with patch(
+                                "mmrelay.setup_utils.is_service_enabled",
+                                return_value=False,
+                            ):
+                                with patch(
+                                    "mmrelay.setup_utils.is_service_active",
+                                    return_value=False,
+                                ):
                                     result = install_service()
                                     self.assertTrue(result)
 

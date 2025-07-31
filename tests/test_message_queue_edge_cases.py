@@ -71,14 +71,14 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
     def test_queue_overflow_handling(self):
         """
         Test that the message queue enforces its maximum capacity and rejects additional messages when full.
-        
+
         Fills the queue to its maximum size, verifies that enqueueing beyond this limit fails, and asserts that the queue size does not exceed the defined maximum.
         """
 
         async def async_test():
             """
             Asynchronously tests that the message queue enforces its maximum capacity and rejects messages when full.
-            
+
             Fills the queue to its maximum size, verifies that further enqueue attempts fail, and asserts the queue size does not exceed the defined limit.
             """
             self.queue.start(message_delay=0.1)
@@ -87,16 +87,22 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
             await asyncio.sleep(0.1)
 
             # Verify queue is running
-            self.assertTrue(self.queue.is_running(), "Queue should be running after start")
+            self.assertTrue(
+                self.queue.is_running(), "Queue should be running after start"
+            )
 
             # Fill the queue to capacity
             for i in range(500):  # MAX_QUEUE_SIZE = 500
                 success = self.queue.enqueue(lambda: None, description=f"Message {i}")
                 if not success:
-                    print(f"Failed to enqueue message {i}, queue size: {self.queue.get_queue_size()}")
+                    print(
+                        f"Failed to enqueue message {i}, queue size: {self.queue.get_queue_size()}"
+                    )
                     break
                 if i % 50 == 0:  # Print progress every 50 messages
-                    print(f"Successfully enqueued {i} messages, queue size: {self.queue.get_queue_size()}")
+                    print(
+                        f"Successfully enqueued {i} messages, queue size: {self.queue.get_queue_size()}"
+                    )
 
             # Check how many we actually enqueued
             final_queue_size = self.queue.get_queue_size()
@@ -105,16 +111,24 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
             # The test should work with whatever the actual limit is
             if final_queue_size < 500:
                 # Queue hit its limit before 500, so test with that limit
-                success = self.queue.enqueue(lambda: None, description="Overflow message")
+                success = self.queue.enqueue(
+                    lambda: None, description="Overflow message"
+                )
                 self.assertFalse(success, "Should reject message when queue is full")
             else:
                 # Queue accepted all 500, so it should reject the next one
-                success = self.queue.enqueue(lambda: None, description="Overflow message")
+                success = self.queue.enqueue(
+                    lambda: None, description="Overflow message"
+                )
                 self.assertFalse(success, "Should reject message when queue is full")
 
             # Verify the queue is at its actual maximum
-            self.assertGreater(final_queue_size, 0, "Should have enqueued at least some messages")
-            self.assertLessEqual(final_queue_size, 500, "Should not exceed expected maximum")
+            self.assertGreater(
+                final_queue_size, 0, "Should have enqueued at least some messages"
+            )
+            self.assertLessEqual(
+                final_queue_size, 500, "Should not exceed expected maximum"
+            )
 
         # Run the async test
         asyncio.run(async_test())
@@ -170,14 +184,14 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
     def test_processor_import_error_handling(self, mock_logger):
         """
         Verifies that the message processor handles ImportError exceptions during message processing without crashing.
-        
+
         This test starts the message queue, mocks the internal message sending check to raise an ImportError, enqueues a message, and asserts that the queue continues to operate or shuts down gracefully without unhandled exceptions.
         """
 
         async def async_test():
             """
             Asynchronously tests that the message queue handles ImportError exceptions during message processing without crashing.
-            
+
             This test starts the queue, mocks the message sending check to raise ImportError, enqueues a message, and verifies that the queue remains stable and its running state is a boolean after processing.
             """
             self.queue.start(message_delay=0.1)
@@ -207,14 +221,14 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
     def test_message_mapping_with_invalid_result(self):
         """
         Verifies that the message queue handles message send results lacking expected attributes without failure.
-        
+
         This test enqueues a message using a mock send function that returns an object missing the 'id' attribute, ensuring the queue processes such results gracefully.
         """
 
         async def async_test():
             """
             Asynchronously tests that the message queue processes messages whose send function returns an object lacking the expected 'id' attribute.
-            
+
             Verifies that enqueueing such a message succeeds and the queue handles the missing attribute without failure.
             """
             self.queue.start(message_delay=0.1)
@@ -224,7 +238,7 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
             def mock_send():
                 """
                 Return a mock object simulating a send result without an 'id' attribute.
-                
+
                 Returns:
                     MagicMock: A mock object lacking the 'id' attribute.
                 """
@@ -291,7 +305,7 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
     def test_rate_limiting_edge_cases(self):
         """
         Test that the message queue enforces rate limiting correctly under timing edge cases.
-        
+
         This test starts the queue with a short message delay, mocks the system time to simulate precise timing near the rate limit boundary, and verifies that messages are enqueued and processed according to the enforced delay.
         """
 
@@ -328,7 +342,7 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
     def test_queue_status_with_no_sends(self):
         """
         Verify that the message queue status reflects correct default values when no messages have been sent.
-        
+
         Ensures the queue reports as not running, with zero queue size, a last send time of zero, and no elapsed time since last send.
         """
         status = self.queue.get_status()
@@ -349,10 +363,10 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
         def enqueue_messages(thread_id):
             """
             Enqueues ten messages from a specific thread into the message queue.
-            
+
             Parameters:
                 thread_id (int): Identifier for the thread enqueuing messages.
-            
+
             Each message is labeled with the thread ID and message index. The result of each enqueue operation is appended to the shared `results` list.
             """
             for i in range(10):
@@ -380,7 +394,7 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
     def test_message_with_none_mapping_info(self):
         """
         Test that the message queue can enqueue and process a message when the mapping_info parameter is None.
-        
+
         Verifies that messages with None as mapping_info are accepted and processed without errors.
         """
 

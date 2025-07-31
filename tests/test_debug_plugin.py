@@ -53,7 +53,7 @@ class TestDebugPlugin(unittest.TestCase):
     def test_handle_meshtastic_message_logs_packet(self, mock_strip_raw):
         """
         Verify that handle_meshtastic_message logs the cleaned packet after stripping raw data and returns False.
-        
+
         This test mocks the strip_raw method to ensure the cleaned packet is logged and confirms that the message handler does not intercept messages.
         """
         # Mock the strip_raw method to return a cleaned packet
@@ -119,7 +119,7 @@ class TestDebugPlugin(unittest.TestCase):
         async def run_test():
             """
             Asynchronously tests that the plugin's handle_room_message method does not intercept messages.
-            
+
             Returns:
                 None
             """
@@ -133,7 +133,7 @@ class TestDebugPlugin(unittest.TestCase):
     def test_handle_meshtastic_message_with_empty_packet(self):
         """
         Test that the plugin processes an empty packet without errors and logs it.
-        
+
         Verifies that `handle_meshtastic_message` logs empty packets and returns False, ensuring graceful handling of minimal input.
         """
         empty_packet = {}
@@ -180,7 +180,7 @@ class TestDebugPlugin(unittest.TestCase):
         async def run_test():
             """
             Asynchronously tests that the debug plugin logs a complex Meshtastic packet and does not intercept the message.
-            
+
             This function verifies that the plugin's logger is called when handling a complex packet and that the method returns False, indicating the message is not intercepted.
             """
             result = await self.plugin.handle_meshtastic_message(
@@ -212,7 +212,7 @@ class TestDebugPlugin(unittest.TestCase):
             # Test meshtastic message handling
             """
             Asynchronously tests that the plugin's message handling methods do not intercept messages.
-            
+
             Runs both Meshtastic and Matrix room message handling methods and asserts that they always return False, ensuring the plugin allows message processing to continue.
             """
             meshtastic_result = await self.plugin.handle_meshtastic_message(

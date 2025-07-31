@@ -50,12 +50,12 @@ def get_app_path():
 def get_config_paths(args=None):
     """
     Return a prioritized list of possible configuration file paths for the application.
-    
+
     The search order is: a command-line specified path (if provided), the user config directory, the current working directory, and the application directory. The user config directory is skipped if it cannot be created due to permission or OS errors.
-    
+
     Parameters:
         args: Parsed command-line arguments, expected to have a 'config' attribute specifying a config file path.
-    
+
     Returns:
         List of absolute paths to candidate configuration files, ordered by priority.
     """
@@ -207,13 +207,13 @@ def set_config(module, passed_config):
 def load_config(config_file=None, args=None):
     """
     Load the application configuration from a specified file or by searching standard locations.
-    
+
     If a config file path is provided and valid, attempts to load and parse it as YAML. If not, searches for a configuration file in prioritized locations and loads the first valid one found. Returns an empty dictionary if no valid configuration is found or if loading fails due to file or YAML errors.
-    
+
     Parameters:
         config_file (str, optional): Path to a specific configuration file. If None, searches default locations.
         args: Parsed command-line arguments, used to determine config search order.
-    
+
     Returns:
         dict: The loaded configuration dictionary, or an empty dictionary if loading fails.
     """

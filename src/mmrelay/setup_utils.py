@@ -374,7 +374,7 @@ def check_loginctl_available():
 def check_lingering_enabled():
     """
     Determine whether user lingering is enabled for the current user.
-    
+
     Returns:
         bool: True if user lingering is enabled, False otherwise.
     """
@@ -421,9 +421,9 @@ def enable_lingering():
 def install_service():
     """
     Install or update the MMRelay systemd user service, guiding the user through creation, updating, enabling, and starting the service as needed.
-    
+
     Prompts the user for confirmation before updating an existing service file, enabling user lingering, enabling the service to start at boot, and starting or restarting the service. Handles user interruptions gracefully and prints a summary of the service status and management commands upon completion.
-    
+
     Returns:
         bool: True if the installation or update process completes successfully, False otherwise.
     """
@@ -464,7 +464,9 @@ def install_service():
 
         # Reload daemon (continue even if this fails)
         if not reload_daemon():
-            print("Warning: Failed to reload systemd daemon. You may need to run 'systemctl --user daemon-reload' manually.")
+            print(
+                "Warning: Failed to reload systemd daemon. You may need to run 'systemctl --user daemon-reload' manually."
+            )
 
         if existing_service:
             print("Service file updated successfully")
@@ -504,7 +506,9 @@ def install_service():
     else:
         print("The service is not currently enabled to start at boot.")
         try:
-            user_input = input("Do you want to enable the service to start at boot? (y/n): ")
+            user_input = input(
+                "Do you want to enable the service to start at boot? (y/n): "
+            )
             enable_service = user_input.lower().startswith("y")
         except (EOFError, KeyboardInterrupt):
             print("\nInput cancelled. Skipping service enable.")
