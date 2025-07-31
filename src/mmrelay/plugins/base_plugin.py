@@ -7,6 +7,11 @@ import markdown
 import schedule
 
 from mmrelay.config import get_plugin_data_dir
+from mmrelay.constants.database import (
+    DEFAULT_MAX_DATA_ROWS_PER_NODE_BASE,
+    DEFAULT_TEXT_TRUNCATION_LENGTH,
+)
+from mmrelay.constants.queue import DEFAULT_MESSAGE_DELAY
 from mmrelay.db_utils import (
     delete_plugin_data,
     get_plugin_data,
@@ -14,11 +19,6 @@ from mmrelay.db_utils import (
     store_plugin_data,
 )
 from mmrelay.log_utils import get_logger
-from mmrelay.constants.queue import DEFAULT_MESSAGE_DELAY
-from mmrelay.constants.database import (
-    DEFAULT_MAX_DATA_ROWS_PER_NODE_BASE,
-    DEFAULT_TEXT_TRUNCATION_LENGTH,
-)
 from mmrelay.message_queue import queue_message
 
 # Global config variable that will be set from main.py
@@ -277,9 +277,7 @@ class BasePlugin(ABC):
             self.logger.error("No Meshtastic client available")
             return False
 
-        description = (
-            f"Plugin {self.plugin_name}: {text[:DEFAULT_TEXT_TRUNCATION_LENGTH]}{'...' if len(text) > DEFAULT_TEXT_TRUNCATION_LENGTH else ''}"
-        )
+        description = f"Plugin {self.plugin_name}: {text[:DEFAULT_TEXT_TRUNCATION_LENGTH]}{'...' if len(text) > DEFAULT_TEXT_TRUNCATION_LENGTH else ''}"
 
         send_kwargs = {
             "text": text,

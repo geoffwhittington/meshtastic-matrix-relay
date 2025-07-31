@@ -21,6 +21,13 @@ from nio import (
 from nio.events.room_events import RoomMemberEvent
 from PIL import Image
 
+from mmrelay.constants.database import DEFAULT_MSGS_TO_KEEP
+from mmrelay.constants.formats import (
+    DEFAULT_MATRIX_PREFIX,
+    DEFAULT_MESHTASTIC_PREFIX,
+    DETECTION_SENSOR_APP,
+)
+from mmrelay.constants.network import MILLISECONDS_PER_SECOND
 from mmrelay.db_utils import (
     get_message_map_by_matrix_event_id,
     prune_message_map,
@@ -92,16 +99,6 @@ def _create_mapping_info(
         "meshnet": meshnet,
         "msgs_to_keep": msgs_to_keep,
     }
-
-
-# Import format constants
-from mmrelay.constants.formats import (
-    DEFAULT_MESHTASTIC_PREFIX,
-    DEFAULT_MATRIX_PREFIX,
-    DETECTION_SENSOR_APP,
-)
-from mmrelay.constants.database import DEFAULT_MSGS_TO_KEEP
-from mmrelay.constants.network import MILLISECONDS_PER_SECOND
 
 
 def get_interaction_settings(config):

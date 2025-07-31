@@ -13,19 +13,17 @@ from dataclasses import dataclass
 from queue import Empty, Queue
 from typing import Callable, Optional
 
-from mmrelay.log_utils import get_logger
-
-logger = get_logger(name="MessageQueue")
-
-# Import constants from constants package
+from mmrelay.constants.database import DEFAULT_MSGS_TO_KEEP
+from mmrelay.constants.network import MINIMUM_MESSAGE_DELAY
 from mmrelay.constants.queue import (
     DEFAULT_MESSAGE_DELAY,
     MAX_QUEUE_SIZE,
     QUEUE_HIGH_WATER_MARK,
     QUEUE_MEDIUM_WATER_MARK,
 )
-from mmrelay.constants.database import DEFAULT_MSGS_TO_KEEP
-from mmrelay.constants.network import MINIMUM_MESSAGE_DELAY
+from mmrelay.log_utils import get_logger
+
+logger = get_logger(name="MessageQueue")
 
 
 @dataclass

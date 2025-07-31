@@ -14,23 +14,22 @@ import serial.tools.list_ports  # Import serial tools for port listing
 from meshtastic.protobuf import mesh_pb2, portnums_pb2
 from pubsub import pub
 
-from mmrelay.constants.formats import TEXT_MESSAGE_APP, DETECTION_SENSOR_APP
-from mmrelay.constants.network import (
-    CONNECTION_TYPE_TCP,
-    CONNECTION_TYPE_SERIAL,
-    CONNECTION_TYPE_BLE,
-    CONNECTION_TYPE_NETWORK,
-    DEFAULT_BACKOFF_TIME,
-    DEFAULT_RETRY_ATTEMPTS,
-    INFINITE_RETRIES,
-    ERRNO_BAD_FILE_DESCRIPTOR,
-    SYSTEMD_INIT_SYSTEM,
-    MILLISECONDS_PER_SECOND,
-)
+from mmrelay.constants.formats import DETECTION_SENSOR_APP, TEXT_MESSAGE_APP
 from mmrelay.constants.messages import (
+    DEFAULT_CHANNEL_VALUE,
     EMOJI_FLAG_VALUE,
     PORTNUM_NUMERIC_VALUE,
-    DEFAULT_CHANNEL_VALUE,
+)
+from mmrelay.constants.network import (
+    CONNECTION_TYPE_BLE,
+    CONNECTION_TYPE_NETWORK,
+    CONNECTION_TYPE_SERIAL,
+    CONNECTION_TYPE_TCP,
+    DEFAULT_BACKOFF_TIME,
+    DEFAULT_RETRY_ATTEMPTS,
+    ERRNO_BAD_FILE_DESCRIPTOR,
+    INFINITE_RETRIES,
+    SYSTEMD_INIT_SYSTEM,
 )
 
 # Import BLE exceptions conditionally

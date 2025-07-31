@@ -57,6 +57,7 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
         # Clean up any remaining event loops to prevent ResourceWarnings
         try:
             import asyncio
+
             # Try to get and close the current event loop
             try:
                 loop = asyncio.get_event_loop()

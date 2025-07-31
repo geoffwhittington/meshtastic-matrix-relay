@@ -14,7 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from mmrelay.constants.database import PROGRESS_TOTAL_STEPS, PROGRESS_COMPLETE
+from mmrelay.constants.database import PROGRESS_COMPLETE, PROGRESS_TOTAL_STEPS
 from mmrelay.tools import get_service_template_path
 
 

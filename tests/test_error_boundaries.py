@@ -106,7 +106,9 @@ class TestErrorBoundaries(unittest.TestCase):
             "mmrelay.plugin_loader.load_plugins",
             return_value=[failing_plugin, working_plugin],
         ):
-            with patch("mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock) as mock_matrix_relay:
+            with patch(
+                "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
+            ) as mock_matrix_relay:
                 with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
                     with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
                         # Mock the async execution

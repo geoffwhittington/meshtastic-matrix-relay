@@ -7,8 +7,7 @@ import yaml
 from yaml.loader import SafeLoader
 
 # Import application constants
-from mmrelay.constants.app import APP_NAME, APP_AUTHOR
-
+from mmrelay.constants.app import APP_AUTHOR, APP_NAME
 
 # Global variable to store the custom data directory
 custom_data_dir = None

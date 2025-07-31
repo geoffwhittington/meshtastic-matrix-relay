@@ -684,6 +684,7 @@ class TestPerformanceStress(unittest.TestCase):
         # Ensure any event loops are properly closed
         try:
             import asyncio
+
             loop = asyncio.get_event_loop()
             if not loop.is_closed():
                 loop.close()

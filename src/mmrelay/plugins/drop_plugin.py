@@ -2,8 +2,8 @@ import re
 
 from haversine import haversine
 
-from mmrelay.constants.formats import TEXT_MESSAGE_APP
 from mmrelay.constants.database import DEFAULT_DISTANCE_KM_FALLBACK, DEFAULT_RADIUS_KM
+from mmrelay.constants.formats import TEXT_MESSAGE_APP
 from mmrelay.meshtastic_utils import connect_meshtastic
 from mmrelay.plugins.base_plugin import BasePlugin
 
@@ -59,7 +59,9 @@ class Plugin(BasePlugin):
                     except (ValueError, TypeError):
                         distance_km = DEFAULT_DISTANCE_KM_FALLBACK
                     radius_km = (
-                        self.config["radius_km"] if "radius_km" in self.config else DEFAULT_RADIUS_KM
+                        self.config["radius_km"]
+                        if "radius_km" in self.config
+                        else DEFAULT_RADIUS_KM
                     )
                     if distance_km <= radius_km:
                         target_node = packet["fromId"]

@@ -18,7 +18,7 @@ All constants are organized in the `src/mmrelay/constants/` package, structured 
 src/mmrelay/constants/
 ├── __init__.py          # Re-exports commonly used constants
 ├── app.py              # Application metadata & platform constants
-├── queue.py            # Message queue configuration constants  
+├── queue.py            # Message queue configuration constants
 ├── formats.py          # Message format templates & port constants
 ├── network.py          # Network/connection constants
 ├── database.py         # Database-related constants
@@ -28,6 +28,7 @@ src/mmrelay/constants/
 ## Constants by Category
 
 ### Application Metadata (`constants/app.py`)
+
 ```python
 APP_NAME = "mmrelay"
 APP_AUTHOR = None
@@ -36,6 +37,7 @@ WINDOWS_PLATFORM = "win32"
 ```
 
 ### Message Queue (`constants/queue.py`)
+
 ```python
 DEFAULT_MESSAGE_DELAY = 2.2  # Firmware constraint: >= 2.0
 MAX_QUEUE_SIZE = 500
@@ -44,6 +46,7 @@ QUEUE_MEDIUM_WATER_MARK = 250 # 50% of MAX_QUEUE_SIZE
 ```
 
 ### Message Formats (`constants/formats.py`)
+
 ```python
 DEFAULT_MESHTASTIC_PREFIX = "{display5}[M]: "
 DEFAULT_MATRIX_PREFIX = "[{long}/{mesh}]: "
@@ -53,6 +56,7 @@ DEFAULT_CHANNEL = 0
 ```
 
 ### Network & Connection (`constants/network.py`)
+
 ```python
 CONNECTION_TYPE_TCP = "tcp"
 CONNECTION_TYPE_SERIAL = "serial"
@@ -67,6 +71,7 @@ MILLISECONDS_PER_SECOND = 1000
 ```
 
 ### Database (`constants/database.py`)
+
 ```python
 DEFAULT_MSGS_TO_KEEP = 500
 DEFAULT_MAX_DATA_ROWS_PER_NODE_BASE = 100
@@ -79,6 +84,7 @@ DEFAULT_RADIUS_KM = 5
 ```
 
 ### Messages & Logging (`constants/messages.py`)
+
 ```python
 DEFAULT_LOG_SIZE_MB = 5
 DEFAULT_LOG_BACKUP_COUNT = 1
@@ -105,12 +111,14 @@ LOG_LEVEL_STYLES = {
 ## Usage Patterns
 
 ### Convenient Re-exports
+
 ```python
 # Import commonly used constants from main package
 from mmrelay.constants import APP_NAME, DEFAULT_MESSAGE_DELAY, MAX_QUEUE_SIZE
 ```
 
 ### Specific Module Imports
+
 ```python
 # Import from specific modules for clarity
 from mmrelay.constants.app import APP_DISPLAY_NAME, WINDOWS_PLATFORM
@@ -119,6 +127,7 @@ from mmrelay.constants.network import CONNECTION_TYPE_TCP, DEFAULT_BACKOFF_TIME
 ```
 
 ### Multiple Constants from Same Module
+
 ```python
 from mmrelay.constants.queue import (
     DEFAULT_MESSAGE_DELAY,
@@ -142,6 +151,7 @@ from mmrelay.constants.queue import (
 All existing hardcoded values have been extracted to appropriate constant modules. The original functionality is preserved - this is purely an organizational improvement.
 
 Files updated with constant imports:
+
 - Core modules: `main.py`, `config.py`, `matrix_utils.py`, `meshtastic_utils.py`, etc.
 - Message queue: `message_queue.py`
 - Logging: `log_utils.py`

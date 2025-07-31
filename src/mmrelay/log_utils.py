@@ -8,8 +8,8 @@ from rich.logging import RichHandler
 from mmrelay.config import get_log_dir
 from mmrelay.constants.app import APP_DISPLAY_NAME
 from mmrelay.constants.messages import (
-    DEFAULT_LOG_SIZE_MB,
     DEFAULT_LOG_BACKUP_COUNT,
+    DEFAULT_LOG_SIZE_MB,
     LOG_SIZE_BYTES_MULTIPLIER,
 )
 

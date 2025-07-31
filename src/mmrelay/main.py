@@ -15,13 +15,13 @@ from nio.events.room_events import RoomMemberEvent
 # Import version from package
 # Import meshtastic_utils as a module to set event_loop
 from mmrelay import __version__, meshtastic_utils
+from mmrelay.constants.app import APP_DISPLAY_NAME, WINDOWS_PLATFORM
 from mmrelay.db_utils import (
     initialize_database,
     update_longnames,
     update_shortnames,
     wipe_message_map,
 )
-from mmrelay.constants.app import APP_DISPLAY_NAME, WINDOWS_PLATFORM
 from mmrelay.log_utils import get_logger
 from mmrelay.matrix_utils import connect_matrix, join_matrix_room
 from mmrelay.matrix_utils import logger as matrix_logger

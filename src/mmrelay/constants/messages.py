@@ -21,7 +21,7 @@ COMPONENT_LOGGERS = {
     "bleak": ["bleak", "bleak.backends"],
     "meshtastic": [
         "meshtastic",
-        "meshtastic.serial_interface", 
+        "meshtastic.serial_interface",
         "meshtastic.tcp_interface",
         "meshtastic.ble_interface",
     ],
