@@ -235,18 +235,29 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def setup_test_config():
+def setup_test_environment():
     """
-    Creates a test configuration YAML file for MMRelay in either a CI-specific or local user path.
+    Set up a safe test environment that doesn't interfere with user configs.
 
-    Attempts to write a predefined configuration to `/home/runner/.mmrelay/config.yaml` for CI environments, falling back to `~/.mmrelay/config.yaml` if necessary. The configuration includes matrix, meshtastic, and plugin settings for use in tests.
+    This fixture ensures that tests use temporary directories instead of real user directories,
+    preventing accidental overwriting of production configs.
     """
-    # Define config paths
-    ci_config_path = "/home/runner/.mmrelay/config.yaml"
-    local_config_path = os.path.expanduser("~/.mmrelay/config.yaml")
+    import tempfile
+    import mmrelay.config
+    import shutil
 
-    # Create test config content
-    test_config = """# Test configuration for MMRelay
+    # Create a temporary directory for test configs
+    temp_dir = tempfile.mkdtemp(prefix="mmrelay_test_")
+
+    try:
+        # Store original custom_data_dir
+        original_custom_data_dir = mmrelay.config.custom_data_dir
+
+        # Set custom_data_dir to our temp directory to prevent writing to real user dirs
+        mmrelay.config.custom_data_dir = temp_dir
+
+        # Create test config content
+        test_config = """# Test configuration for MMRelay
 matrix:
   homeserver: "https://matrix.example.org"
   username: "@testbot:example.org"
@@ -267,21 +278,24 @@ plugins:
     active: true
 """
 
-    # Try to create config in CI environment first
-    try:
-        os.makedirs(os.path.dirname(ci_config_path), exist_ok=True)
-        with open(ci_config_path, "w") as f:
-            f.write(test_config)
-        print(f"Created test config at {ci_config_path}")
-    except (OSError, PermissionError):
-        # Fall back to local config path
+        # Create config file in temp directory
+        config_path = os.path.join(temp_dir, "config.yaml")
         try:
-            os.makedirs(os.path.dirname(local_config_path), exist_ok=True)
-            with open(local_config_path, "w") as f:
+            with open(config_path, "w") as f:
                 f.write(test_config)
-            print(f"Created test config at {local_config_path}")
+            print(f"Created test config at {config_path}")
         except (OSError, PermissionError):
             print("Could not create test config file")
+
+        # Run tests
+        yield
+
+    finally:
+        # Clean up temp directory
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+        # Restore original custom_data_dir
+        mmrelay.config.custom_data_dir = original_custom_data_dir
 
 
 @pytest.fixture

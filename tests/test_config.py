@@ -31,7 +31,7 @@ class TestConfig(unittest.TestCase):
         """
         Tests that get_base_dir returns the default base directory on Linux systems.
         """
-        with patch("sys.platform", "linux"):
+        with patch("sys.platform", "linux"), patch("mmrelay.config.custom_data_dir", None):
             base_dir = get_base_dir()
             self.assertEqual(base_dir, os.path.expanduser("~/.mmrelay"))
 
@@ -41,7 +41,7 @@ class TestConfig(unittest.TestCase):
         """
         Tests that get_base_dir returns the correct default base directory on Windows platforms by mocking platform detection and user data directory.
         """
-        with patch("sys.platform", "win32"):
+        with patch("sys.platform", "win32"), patch("mmrelay.config.custom_data_dir", None):
             mock_user_data_dir.return_value = "C:\\Users\\test\\AppData\\Local\\mmrelay"
             base_dir = get_base_dir()
             self.assertEqual(base_dir, "C:\\Users\\test\\AppData\\Local\\mmrelay")
@@ -79,7 +79,7 @@ class TestConfig(unittest.TestCase):
         """
         Test that `get_config_paths` includes the default Linux config path when no arguments are provided.
         """
-        with patch("sys.platform", "linux"), patch("sys.argv", ["mmrelay"]):
+        with patch("sys.platform", "linux"), patch("sys.argv", ["mmrelay"]), patch("mmrelay.config.custom_data_dir", None):
             paths = get_config_paths()
             self.assertIn(os.path.expanduser("~/.mmrelay/config.yaml"), paths)
 
@@ -105,12 +105,12 @@ class TestConfig(unittest.TestCase):
         """
         Test that get_data_dir returns the correct default data directory on Linux.
         """
-        with patch("sys.platform", "linux"):
+        with patch("sys.platform", "linux"), patch("mmrelay.config.custom_data_dir", None):
             data_dir = get_data_dir()
             self.assertEqual(data_dir, os.path.expanduser("~/.mmrelay/data"))
 
     def test_get_log_dir_linux(self):
-        with patch("sys.platform", "linux"):
+        with patch("sys.platform", "linux"), patch("mmrelay.config.custom_data_dir", None):
             log_dir = get_log_dir()
             self.assertEqual(log_dir, os.path.expanduser("~/.mmrelay/logs"))
 
@@ -120,7 +120,7 @@ class TestConfig(unittest.TestCase):
 
         Verifies that the default plugins data directory and a plugin-specific data directory are correctly resolved for the Linux platform.
         """
-        with patch("sys.platform", "linux"):
+        with patch("sys.platform", "linux"), patch("mmrelay.config.custom_data_dir", None):
             plugin_data_dir = get_plugin_data_dir()
             self.assertEqual(
                 plugin_data_dir, os.path.expanduser("~/.mmrelay/data/plugins")
