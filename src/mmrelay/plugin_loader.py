@@ -747,7 +747,7 @@ def load_plugins(passed_config=None):
                     )
                     plugin_found = True
                     break
-                except BaseException as e:
+                except Exception as e:
                     logger.error(f"Failed to load custom plugin {plugin_name}: {e}")
                     continue
 
@@ -843,7 +843,7 @@ def load_plugins(passed_config=None):
                         )
                         plugin_found = True
                         break
-                    except BaseException as e:
+                    except Exception as e:
                         logger.error(
                             f"Failed to load community plugin {repo_name}: {e}"
                         )
@@ -886,7 +886,7 @@ def load_plugins(passed_config=None):
             active_plugins.append(plugin)
             try:
                 plugin.start()
-            except BaseException as e:
+            except Exception as e:
                 logger.error(f"Error starting plugin {plugin_name}: {e}")
 
     sorted_active_plugins = sorted(active_plugins, key=lambda plugin: plugin.priority)

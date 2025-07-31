@@ -820,6 +820,7 @@ def sendTextReply(
     Sends a text message as a reply to a specific previous message via the Meshtastic interface.
 
     Parameters:
+        interface: The Meshtastic interface to send through.
         text (str): The message content to send.
         reply_id (int): The ID of the message being replied to.
         destinationId: The recipient address (defaults to broadcast).
