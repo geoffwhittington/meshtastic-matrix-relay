@@ -106,7 +106,7 @@ class TestErrorBoundaries(unittest.TestCase):
             "mmrelay.plugin_loader.load_plugins",
             return_value=[failing_plugin, working_plugin],
         ):
-            with patch("mmrelay.matrix_utils.matrix_relay") as mock_matrix_relay:
+            with patch("mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock) as mock_matrix_relay:
                 with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
                     with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
                         # Mock the async execution
@@ -185,7 +185,7 @@ class TestErrorBoundaries(unittest.TestCase):
             ):
                 with patch("mmrelay.plugin_loader.load_plugins", return_value=[]):
                     with patch(
-                        "mmrelay.matrix_utils.matrix_relay"
+                        "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
                     ) as mock_matrix_relay:
                         with patch(
                             "asyncio.run_coroutine_threadsafe"
@@ -277,6 +277,7 @@ class TestErrorBoundaries(unittest.TestCase):
         with patch("mmrelay.plugin_loader.load_plugins", return_value=[]):
             with patch(
                 "mmrelay.matrix_utils.matrix_relay",
+                new_callable=AsyncMock,
                 side_effect=matrix_relay_side_effect,
             ):
                 with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
@@ -444,6 +445,7 @@ class TestErrorBoundaries(unittest.TestCase):
 
                     with patch(
                         "mmrelay.matrix_utils.matrix_relay",
+                        new_callable=AsyncMock,
                         side_effect=Exception("Matrix failure"),
                     ):
                         with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
