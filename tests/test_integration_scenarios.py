@@ -276,15 +276,15 @@ class TestIntegrationScenarios(unittest.TestCase):
         # Create plugins with different priorities
         mock_plugin1 = MagicMock()
         mock_plugin1.priority = 1
-        mock_plugin1.handle_meshtastic_message = AsyncMock(return_value=False)
+        mock_plugin1.handle_meshtastic_message = MagicMock(return_value=False)
 
         mock_plugin2 = MagicMock()
         mock_plugin2.priority = 5
-        mock_plugin2.handle_meshtastic_message = AsyncMock(return_value=False)
+        mock_plugin2.handle_meshtastic_message = MagicMock(return_value=False)
 
         mock_plugin3 = MagicMock()
         mock_plugin3.priority = 10
-        mock_plugin3.handle_meshtastic_message = AsyncMock(
+        mock_plugin3.handle_meshtastic_message = MagicMock(
             return_value=True
         )  # Intercepts
 

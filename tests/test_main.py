@@ -560,7 +560,15 @@ class TestRunMain(unittest.TestCase):
             "matrix_rooms": [{"id": "!room:matrix.org"}],
         }
         mock_load_config.return_value = mock_config
-        mock_asyncio_run.return_value = None
+        # Mock asyncio.run to consume the coroutine to prevent warnings
+        def mock_run(coro):
+            try:
+                # Close the coroutine to prevent "never awaited" warning
+                coro.close()
+            except:
+                pass
+            return None
+        mock_asyncio_run.side_effect = mock_run
 
         mock_args = MagicMock()
         mock_args.data_dir = None
