@@ -444,15 +444,10 @@ plugins:
         # Test service detection
         from mmrelay.meshtastic_utils import is_running_as_service
 
-        # Mock systemd environment
-        with patch("os.getppid", return_value=1):
-            with patch("psutil.Process") as mock_process:
-                mock_parent = MagicMock()
-                mock_parent.name.return_value = "systemd"
-                mock_process.return_value.parent.return_value = mock_parent
-
-                result = is_running_as_service()
-                self.assertTrue(result)
+        # Mock systemd environment by setting INVOCATION_ID
+        with patch.dict("os.environ", {"INVOCATION_ID": "test_invocation"}):
+            result = is_running_as_service()
+            self.assertTrue(result)
 
         # Test service installation
         from mmrelay.setup_utils import install_service
@@ -468,8 +463,11 @@ plugins:
                         "mmrelay.setup_utils.check_loginctl_available",
                         return_value=False,
                     ):
-                        result = install_service()
-                        self.assertTrue(result)
+                        with patch("builtins.input", return_value="n"):  # Mock user input
+                            with patch("mmrelay.setup_utils.is_service_enabled", return_value=False):
+                                with patch("mmrelay.setup_utils.is_service_active", return_value=False):
+                                    result = install_service()
+                                    self.assertTrue(result)
 
     def test_concurrent_message_processing(self):
         """Test concurrent message processing scenarios."""
