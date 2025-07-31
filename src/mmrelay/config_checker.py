@@ -111,7 +111,7 @@ def check_config():
                     CONNECTION_TYPE_BLE,
                 ]:
                     print(
-                        f"Error: Invalid 'connection_type': {connection_type}. Must be 'tcp', 'serial', or 'ble'"
+                        f"Error: Invalid 'connection_type': {connection_type}. Must be '{CONNECTION_TYPE_TCP}', '{CONNECTION_TYPE_SERIAL}', or '{CONNECTION_TYPE_BLE}'"
                     )
                     return False
 

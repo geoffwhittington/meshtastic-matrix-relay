@@ -14,10 +14,9 @@ import serial.tools.list_ports  # Import serial tools for port listing
 from meshtastic.protobuf import mesh_pb2, portnums_pb2
 from pubsub import pub
 
-from mmrelay.constants.formats import DETECTION_SENSOR_APP, TEXT_MESSAGE_APP
+from mmrelay.constants.formats import DETECTION_SENSOR_APP, TEXT_MESSAGE_APP, EMOJI_FLAG_VALUE
 from mmrelay.constants.messages import (
     DEFAULT_CHANNEL_VALUE,
-    EMOJI_FLAG_VALUE,
     PORTNUM_NUMERIC_VALUE,
 )
 from mmrelay.constants.config import (
@@ -605,9 +604,8 @@ def on_meshtastic_message(packet, interface):
             if (
                 decoded.get("portnum") == TEXT_MESSAGE_APP
                 or decoded.get("portnum") == PORTNUM_NUMERIC_VALUE
+                or decoded.get("portnum") == DETECTION_SENSOR_APP
             ):
-                channel = DEFAULT_CHANNEL_VALUE
-            elif decoded.get("portnum") == DETECTION_SENSOR_APP:
                 channel = DEFAULT_CHANNEL_VALUE
             else:
                 logger.debug(

@@ -182,7 +182,7 @@ class TestBasePlugin(unittest.TestCase):
             plugin = MockPlugin()
 
             self.assertFalse(plugin.config["active"])
-            self.assertEqual(plugin.response_delay, 2.2)  # DEFAULT_MESSAGE_DELAY
+            self.assertEqual(plugin.response_delay, 2.0)  # DEFAULT_MESSAGE_DELAY
             self.assertEqual(plugin.channels, [])
 
     def test_response_delay_minimum_enforcement(self):

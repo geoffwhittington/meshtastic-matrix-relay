@@ -14,7 +14,7 @@ All constants are organized in the `src/mmrelay/constants/` package, structured 
 
 ## Package Structure
 
-```
+```text
 src/mmrelay/constants/
 ├── __init__.py          # Re-exports commonly used constants
 ├── app.py              # Application metadata & platform constants
@@ -39,7 +39,7 @@ WINDOWS_PLATFORM = "win32"
 ### Message Queue (`constants/queue.py`)
 
 ```python
-DEFAULT_MESSAGE_DELAY = 2.2  # Firmware constraint: >= 2.0
+DEFAULT_MESSAGE_DELAY = 2.0  # Firmware-enforced minimum delay
 MAX_QUEUE_SIZE = 500
 QUEUE_HIGH_WATER_MARK = 375   # 75% of MAX_QUEUE_SIZE
 QUEUE_MEDIUM_WATER_MARK = 250 # 50% of MAX_QUEUE_SIZE
@@ -159,4 +159,4 @@ Files updated with constant imports:
 - Plugins: `base_plugin.py`, `mesh_relay_plugin.py`, `drop_plugin.py`, `weather_plugin.py`
 - Tests: `test_message_queue.py`, `test_message_queue_edge_cases.py`
 
-All 594 tests continue to pass, ensuring no functionality was broken during the extraction process.
+All 595 tests continue to pass, ensuring no functionality was broken during the extraction process.

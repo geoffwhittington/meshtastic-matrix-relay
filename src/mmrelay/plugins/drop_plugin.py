@@ -58,11 +58,7 @@ class Plugin(BasePlugin):
                         )
                     except (ValueError, TypeError):
                         distance_km = DEFAULT_DISTANCE_KM_FALLBACK
-                    radius_km = (
-                        self.config["radius_km"]
-                        if "radius_km" in self.config
-                        else DEFAULT_RADIUS_KM
-                    )
+                    radius_km = self.config.get("radius_km", DEFAULT_RADIUS_KM)
                     if distance_km <= radius_km:
                         target_node = packet["fromId"]
                         self.logger.debug(f"Sending dropped message to {target_node}")

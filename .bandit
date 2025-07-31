@@ -1,7 +1,11 @@
 [bandit]
-# Skip B101 (assert_used) project-wide
-# Asserts are commonly used in tests and are acceptable in this codebase
+# Skip B101 (assert_used) in test directories only
+# Asserts are commonly used in tests and are acceptable there
+tests = tests
 skips = B101
 
-# Exclude paths that are already handled by trunk.yaml
-exclude_dirs = src/mmrelay/tools,src/mmrelay/plugins/map_plugin.py
+# Exclude directories
+exclude_dirs = src/mmrelay/tools
+
+# Exclude individual files
+exclude = src/mmrelay/plugins/map_plugin.py

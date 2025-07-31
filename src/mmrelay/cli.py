@@ -14,7 +14,13 @@ from yaml.loader import SafeLoader
 from mmrelay import __version__
 from mmrelay.config import get_config_paths
 from mmrelay.constants.app import WINDOWS_PLATFORM
-from mmrelay.constants.config import CONFIG_SECTION_MATRIX, CONFIG_SECTION_MESHTASTIC
+from mmrelay.constants.config import (
+    CONFIG_SECTION_MATRIX,
+    CONFIG_SECTION_MESHTASTIC,
+    CONFIG_KEY_HOMESERVER,
+    CONFIG_KEY_ACCESS_TOKEN,
+    CONFIG_KEY_BOT_USER_ID,
+)
 from mmrelay.constants.network import (
     CONNECTION_TYPE_BLE,
     CONNECTION_TYPE_NETWORK,
@@ -160,7 +166,7 @@ def check_config(args=None):
                     return False
 
                 matrix_section = config[CONFIG_SECTION_MATRIX]
-                required_matrix_fields = ["homeserver", "access_token", "bot_user_id"]
+                required_matrix_fields = [CONFIG_KEY_HOMESERVER, CONFIG_KEY_ACCESS_TOKEN, CONFIG_KEY_BOT_USER_ID]
                 missing_matrix_fields = [
                     field
                     for field in required_matrix_fields
@@ -213,7 +219,7 @@ def check_config(args=None):
                     CONNECTION_TYPE_NETWORK,
                 ]:
                     print(
-                        f"Error: Invalid 'connection_type': {connection_type}. Must be 'tcp', 'serial', or 'ble'"
+                        f"Error: Invalid 'connection_type': {connection_type}. Must be '{CONNECTION_TYPE_TCP}', '{CONNECTION_TYPE_SERIAL}', or '{CONNECTION_TYPE_BLE}'"
                     )
                     return False
 

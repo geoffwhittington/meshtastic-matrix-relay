@@ -11,7 +11,6 @@ DEFAULT_LOG_BACKUP_COUNT = 1
 LOG_SIZE_BYTES_MULTIPLIER = 1024 * 1024  # Convert MB to bytes
 
 # Numeric constants for comparisons
-EMOJI_FLAG_VALUE = 1
 PORTNUM_NUMERIC_VALUE = 1  # Numeric equivalent of TEXT_MESSAGE_APP
 DEFAULT_CHANNEL_VALUE = 0
 
