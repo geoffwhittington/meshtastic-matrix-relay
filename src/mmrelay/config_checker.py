@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Configuration checker module for MMRelay.
+
+Note: This module contains similar functionality to the check_config function
+in mmrelay.cli. The CLI version is more complete and uses centralized constants.
+Future refactoring should consider consolidating these implementations to reduce
+code duplication while maintaining backward compatibility and test coverage.
+"""
+
 import os
 
 import yaml
@@ -100,7 +109,7 @@ def check_config():
                     return False
 
                 meshtastic_section = config["meshtastic"]
-                if "connection_type" not in meshtastic_section:
+                if CONFIG_KEY_CONNECTION_TYPE not in meshtastic_section:
                     print("Error: Missing 'connection_type' in 'meshtastic' section")
                     return False
 
