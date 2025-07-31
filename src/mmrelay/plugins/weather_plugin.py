@@ -3,6 +3,7 @@ import asyncio
 import requests
 from meshtastic.mesh_interface import BROADCAST_NUM
 
+from mmrelay.constants.formats import TEXT_MESSAGE_APP
 from mmrelay.plugins.base_plugin import BasePlugin
 
 
@@ -125,7 +126,7 @@ class Plugin(BasePlugin):
         if (
             "decoded" in packet
             and "portnum" in packet["decoded"]
-            and packet["decoded"]["portnum"] == "TEXT_MESSAGE_APP"
+            and packet["decoded"]["portnum"] == TEXT_MESSAGE_APP
             and "text" in packet["decoded"]
         ):
             message = packet["decoded"]["text"].strip()

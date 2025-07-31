@@ -13,6 +13,7 @@ from yaml.loader import SafeLoader
 # Import version from package
 from mmrelay import __version__
 from mmrelay.config import get_config_paths
+from mmrelay.constants.app import WINDOWS_PLATFORM
 from mmrelay.tools import get_sample_config_path
 
 
@@ -64,7 +65,7 @@ def parse_arguments():
 
     # Windows-specific handling for backward compatibility
     # On Windows, add a positional argument for the config file path
-    if sys.platform == "win32":
+    if sys.platform == WINDOWS_PLATFORM:
         parser.add_argument(
             "config_path", nargs="?", help=argparse.SUPPRESS, default=None
         )
@@ -77,7 +78,7 @@ def parse_arguments():
 
     # If on Windows and a positional config path is provided but --config is not, use the positional one
     if (
-        sys.platform == "win32"
+        sys.platform == WINDOWS_PLATFORM
         and hasattr(args, "config_path")
         and args.config_path
         and not args.config

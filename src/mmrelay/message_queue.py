@@ -17,13 +17,13 @@ from mmrelay.log_utils import get_logger
 
 logger = get_logger(name="MessageQueue")
 
-# Default message delay in seconds (minimum 2.0 due to firmware constraints)
-DEFAULT_MESSAGE_DELAY = 2.2
-
-# Queue size configuration
-MAX_QUEUE_SIZE = 500
-QUEUE_HIGH_WATER_MARK = 375  # 75% of MAX_QUEUE_SIZE
-QUEUE_MEDIUM_WATER_MARK = 250  # 50% of MAX_QUEUE_SIZE
+# Import constants from constants package
+from mmrelay.constants.queue import (
+    DEFAULT_MESSAGE_DELAY,
+    MAX_QUEUE_SIZE,
+    QUEUE_HIGH_WATER_MARK,
+    QUEUE_MEDIUM_WATER_MARK,
+)
 
 
 @dataclass

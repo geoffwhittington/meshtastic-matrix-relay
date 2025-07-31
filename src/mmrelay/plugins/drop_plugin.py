@@ -2,6 +2,7 @@ import re
 
 from haversine import haversine
 
+from mmrelay.constants.formats import TEXT_MESSAGE_APP
 from mmrelay.meshtastic_utils import connect_meshtastic
 from mmrelay.plugins.base_plugin import BasePlugin
 
@@ -76,7 +77,7 @@ class Plugin(BasePlugin):
         if (
             "decoded" in packet
             and "portnum" in packet["decoded"]
-            and packet["decoded"]["portnum"] == "TEXT_MESSAGE_APP"
+            and packet["decoded"]["portnum"] == TEXT_MESSAGE_APP
         ):
             text = packet["decoded"]["text"] if "text" in packet["decoded"] else None
             if f"!{self.plugin_name}" not in text:

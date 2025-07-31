@@ -14,6 +14,8 @@ import serial.tools.list_ports  # Import serial tools for port listing
 from meshtastic.protobuf import mesh_pb2, portnums_pb2
 from pubsub import pub
 
+from mmrelay.constants.formats import TEXT_MESSAGE_APP, DETECTION_SENSOR_APP
+
 # Import BLE exceptions conditionally
 try:
     from bleak.exc import BleakDBusError, BleakError
@@ -434,7 +436,7 @@ def on_meshtastic_message(packet, interface):
     message_storage_enabled(interactions)
 
     # Filter packets based on interaction settings
-    if packet.get("decoded", {}).get("portnum") == "TEXT_MESSAGE_APP":
+    if packet.get("decoded", {}).get("portnum") == TEXT_MESSAGE_APP:
         decoded = packet.get("decoded", {})
         # Filter out reactions if reactions are disabled
         if (
@@ -577,11 +579,11 @@ def on_meshtastic_message(packet, interface):
         if channel is None:
             # If channel not specified, deduce from portnum
             if (
-                decoded.get("portnum") == "TEXT_MESSAGE_APP"
+                decoded.get("portnum") == TEXT_MESSAGE_APP
                 or decoded.get("portnum") == 1
             ):
                 channel = 0
-            elif decoded.get("portnum") == "DETECTION_SENSOR_APP":
+            elif decoded.get("portnum") == DETECTION_SENSOR_APP:
                 channel = 0
             else:
                 logger.debug(
@@ -601,7 +603,7 @@ def on_meshtastic_message(packet, interface):
             return
 
         # If detection_sensor is disabled and this is a detection sensor packet, skip it
-        if decoded.get("portnum") == "DETECTION_SENSOR_APP" and not config[
+        if decoded.get("portnum") == DETECTION_SENSOR_APP and not config[
             "meshtastic"
         ].get("detection_sensor", False):
             logger.debug(

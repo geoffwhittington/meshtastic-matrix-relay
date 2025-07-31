@@ -6,6 +6,7 @@ from rich.logging import RichHandler
 
 # Import parse_arguments only when needed to avoid conflicts with pytest
 from mmrelay.config import get_log_dir
+from mmrelay.constants.app import APP_DISPLAY_NAME
 
 # Initialize Rich console
 console = Console()
@@ -171,7 +172,7 @@ def get_logger(name):
             os.makedirs(log_dir, exist_ok=True)
 
         # Store the log file path for later use
-        if name == "M<>M Relay":
+        if name == APP_DISPLAY_NAME:
             global log_file_path
             log_file_path = log_file
 

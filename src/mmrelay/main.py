@@ -21,6 +21,7 @@ from mmrelay.db_utils import (
     update_shortnames,
     wipe_message_map,
 )
+from mmrelay.constants.app import APP_DISPLAY_NAME, WINDOWS_PLATFORM
 from mmrelay.log_utils import get_logger
 from mmrelay.matrix_utils import connect_matrix, join_matrix_room
 from mmrelay.matrix_utils import logger as matrix_logger
@@ -36,7 +37,7 @@ from mmrelay.message_queue import (
 from mmrelay.plugin_loader import load_plugins
 
 # Initialize logger
-logger = get_logger(name="M<>M Relay")
+logger = get_logger(name=APP_DISPLAY_NAME)
 
 # Set the logging level for 'nio' to ERROR to suppress warnings
 logging.getLogger("nio").setLevel(logging.ERROR)
@@ -133,7 +134,7 @@ async def main(config):
     loop = asyncio.get_running_loop()
 
     # Handle signals differently based on the platform
-    if sys.platform != "win32":
+    if sys.platform != WINDOWS_PLATFORM:
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown()))
     else:

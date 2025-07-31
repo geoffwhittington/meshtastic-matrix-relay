@@ -19,8 +19,8 @@ import unittest
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+from mmrelay.constants.queue import MAX_QUEUE_SIZE
 from mmrelay.message_queue import (
-    MAX_QUEUE_SIZE,
     MessageQueue,
     QueuedMessage,
     queue_message,

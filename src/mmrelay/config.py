@@ -6,9 +6,8 @@ import platformdirs
 import yaml
 from yaml.loader import SafeLoader
 
-# Define custom base directory for Unix systems
-APP_NAME = "mmrelay"
-APP_AUTHOR = None  # No author directory
+# Import application constants
+from mmrelay.constants.app import APP_NAME, APP_AUTHOR
 
 
 # Global variable to store the custom data directory

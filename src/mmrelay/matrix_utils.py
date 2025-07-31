@@ -94,9 +94,12 @@ def _create_mapping_info(
     }
 
 
-# Default prefix format constants
-DEFAULT_MESHTASTIC_PREFIX = "{display5}[M]: "
-DEFAULT_MATRIX_PREFIX = "[{long}/{mesh}]: "
+# Import format constants
+from mmrelay.constants.formats import (
+    DEFAULT_MESHTASTIC_PREFIX,
+    DEFAULT_MATRIX_PREFIX,
+    DETECTION_SENSOR_APP,
+)
 
 
 def get_interaction_settings(config):
@@ -1229,7 +1232,7 @@ async def on_room_message(
     if not found_matching_plugin:
         if config["meshtastic"]["broadcast_enabled"]:
             portnum = event.source["content"].get("meshtastic_portnum")
-            if portnum == "DETECTION_SENSOR_APP":
+            if portnum == DETECTION_SENSOR_APP:
                 # If detection_sensor is enabled, forward this data as detection sensor data
                 if config["meshtastic"].get("detection_sensor", False):
                     success = queue_message(

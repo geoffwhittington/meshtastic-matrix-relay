@@ -112,7 +112,10 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
             )
 
             # Fill the queue to capacity
-            for i in range(500):  # MAX_QUEUE_SIZE = 500
+            # Import MAX_QUEUE_SIZE for consistency
+            from mmrelay.constants.queue import MAX_QUEUE_SIZE
+
+            for i in range(MAX_QUEUE_SIZE):
                 success = self.queue.enqueue(lambda: None, description=f"Message {i}")
                 if not success:
                     print(
@@ -129,14 +132,14 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
             print(f"Final queue size: {final_queue_size}")
 
             # The test should work with whatever the actual limit is
-            if final_queue_size < 500:
-                # Queue hit its limit before 500, so test with that limit
+            if final_queue_size < MAX_QUEUE_SIZE:
+                # Queue hit its limit before MAX_QUEUE_SIZE, so test with that limit
                 success = self.queue.enqueue(
                     lambda: None, description="Overflow message"
                 )
                 self.assertFalse(success, "Should reject message when queue is full")
             else:
-                # Queue accepted all 500, so it should reject the next one
+                # Queue accepted all MAX_QUEUE_SIZE, so it should reject the next one
                 success = self.queue.enqueue(
                     lambda: None, description="Overflow message"
                 )
@@ -147,7 +150,7 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
                 final_queue_size, 0, "Should have enqueued at least some messages"
             )
             self.assertLessEqual(
-                final_queue_size, 500, "Should not exceed expected maximum"
+                final_queue_size, MAX_QUEUE_SIZE, "Should not exceed expected maximum"
             )
 
         # Run the async test with proper event loop handling
