@@ -425,6 +425,9 @@ plugins:
     def test_multi_room_message_routing(self):
         """Test message routing to multiple Matrix rooms."""
         config = {
+            "meshtastic": {
+                "meshnet_name": "TestMesh"
+            },
             "matrix_rooms": [
                 {"id": "!room1:matrix.org", "meshtastic_channel": 0},
                 {"id": "!room2:matrix.org", "meshtastic_channel": 0},
@@ -444,19 +447,28 @@ plugins:
         }
 
         mock_interface = MagicMock()
+        mock_interface.myInfo.my_node_num = 123456789
 
         with patch("mmrelay.matrix_utils.matrix_relay") as mock_matrix_relay:
             with patch("mmrelay.plugin_loader.load_plugins", return_value=[]):
-                # Set up global state
-                import mmrelay.meshtastic_utils
+                with patch("mmrelay.db_utils.get_longname", return_value="TestNode"):
+                    with patch("mmrelay.db_utils.get_shortname", return_value="TN"):
+                        with patch("mmrelay.meshtastic_utils.logger"):
+                            with patch("mmrelay.matrix_utils.get_interaction_settings") as mock_interactions:
+                                mock_interactions.return_value = {"reactions": True}
+                                with patch("mmrelay.matrix_utils.message_storage_enabled"):
+                                    # Set up global state
+                                    import mmrelay.meshtastic_utils
+                                    import asyncio
 
-                mmrelay.meshtastic_utils.config = config
-                mmrelay.meshtastic_utils.matrix_rooms = config["matrix_rooms"]
+                                    mmrelay.meshtastic_utils.config = config
+                                    mmrelay.meshtastic_utils.matrix_rooms = config["matrix_rooms"]
+                                    mmrelay.meshtastic_utils.event_loop = asyncio.get_event_loop()
 
-                on_meshtastic_message(packet, mock_interface)
+                                    on_meshtastic_message(packet, mock_interface)
 
-                # Should be called for each matching room
-                self.assertEqual(mock_matrix_relay.call_count, 2)
+                                    # Should be called for each matching room
+                                    self.assertEqual(mock_matrix_relay.call_count, 2)
 
     def test_service_lifecycle_simulation(self):
         """Test service lifecycle management simulation."""
