@@ -457,7 +457,7 @@ def generate_sample_config():
                     return True
                 except (IOError, OSError) as e:
                     print(f"Error copying sample config file from {path}: {e}")
-                    continue
+                    return False
 
         print("Error: Could not find sample_config.yaml")
         return False

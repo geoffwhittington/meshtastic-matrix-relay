@@ -148,8 +148,6 @@ def initialize_database():
         logger.error(f"Database initialization failed: {e}")
         raise
 
-        conn.commit()
-
 
 def store_plugin_data(plugin_name, meshtastic_id, data):
     """

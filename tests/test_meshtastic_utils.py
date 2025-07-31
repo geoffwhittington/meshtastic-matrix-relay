@@ -192,7 +192,6 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         self.assertEqual(result, mock_client)
         mock_serial.assert_called_once_with("/dev/ttyUSB0")
-        mock_serial.assert_called_once_with("/dev/ttyUSB0")
 
     @patch("mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface")
     @patch("mmrelay.meshtastic_utils.meshtastic.ble_interface.BLEInterface")
@@ -223,7 +222,6 @@ class TestMeshtasticUtils(unittest.TestCase):
         result = connect_meshtastic(passed_config=config)
 
         self.assertEqual(result, mock_client)
-        mock_tcp.assert_called_once_with(hostname="192.168.1.100")
         mock_tcp.assert_called_once_with(hostname="192.168.1.100")
 
     @patch("mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface")
@@ -257,10 +255,6 @@ class TestMeshtasticUtils(unittest.TestCase):
             noProto=False,
             debugOut=None,
             noNodes=False,
-        )
-        # Check the actual call parameters
-        mock_ble.assert_called_once_with(
-            address="AA:BB:CC:DD:EE:FF", noProto=False, debugOut=None, noNodes=False
         )
 
     @patch("mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface")
