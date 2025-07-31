@@ -463,7 +463,14 @@ plugins:
 
                                     mmrelay.meshtastic_utils.config = config
                                     mmrelay.meshtastic_utils.matrix_rooms = config["matrix_rooms"]
-                                    mmrelay.meshtastic_utils.event_loop = asyncio.get_event_loop()
+
+                                    # Create and set event loop
+                                    try:
+                                        loop = asyncio.get_event_loop()
+                                    except RuntimeError:
+                                        loop = asyncio.new_event_loop()
+                                        asyncio.set_event_loop(loop)
+                                    mmrelay.meshtastic_utils.event_loop = loop
 
                                     on_meshtastic_message(packet, mock_interface)
 
