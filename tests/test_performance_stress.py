@@ -32,11 +32,39 @@ class TestPerformanceStress(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures before each test method."""
+        # Reset global state
+        import mmrelay.meshtastic_utils
+        import mmrelay.message_queue
+
+        mmrelay.meshtastic_utils.meshtastic_client = None
+        mmrelay.meshtastic_utils.reconnecting = False
+        mmrelay.meshtastic_utils.config = None
+        mmrelay.meshtastic_utils.matrix_rooms = []
+        mmrelay.meshtastic_utils.shutting_down = False
+        mmrelay.meshtastic_utils.event_loop = None
+        mmrelay.meshtastic_utils.reconnect_task = None
+        mmrelay.meshtastic_utils.subscribed_to_messages = False
+        mmrelay.meshtastic_utils.subscribed_to_connection_lost = False
+
         # Force garbage collection before each test
         gc.collect()
 
     def tearDown(self):
         """Clean up after each test method."""
+        # Reset global state
+        import mmrelay.meshtastic_utils
+        import mmrelay.message_queue
+
+        mmrelay.meshtastic_utils.meshtastic_client = None
+        mmrelay.meshtastic_utils.reconnecting = False
+        mmrelay.meshtastic_utils.config = None
+        mmrelay.meshtastic_utils.matrix_rooms = []
+        mmrelay.meshtastic_utils.shutting_down = False
+        mmrelay.meshtastic_utils.event_loop = None
+        mmrelay.meshtastic_utils.reconnect_task = None
+        mmrelay.meshtastic_utils.subscribed_to_messages = False
+        mmrelay.meshtastic_utils.subscribed_to_connection_lost = False
+
         # Force garbage collection after each test
         gc.collect()
 

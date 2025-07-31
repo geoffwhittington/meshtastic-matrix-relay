@@ -42,6 +42,11 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         mmrelay.meshtastic_utils.reconnecting = False
         mmrelay.meshtastic_utils.config = None
         mmrelay.meshtastic_utils.matrix_rooms = []
+        mmrelay.meshtastic_utils.shutting_down = False
+        mmrelay.meshtastic_utils.event_loop = None
+        mmrelay.meshtastic_utils.reconnect_task = None
+        mmrelay.meshtastic_utils.subscribed_to_messages = False
+        mmrelay.meshtastic_utils.subscribed_to_connection_lost = False
 
     def tearDown(self):
         """Clean up after each test method."""
@@ -50,6 +55,13 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
         mmrelay.meshtastic_utils.meshtastic_client = None
         mmrelay.meshtastic_utils.reconnecting = False
+        mmrelay.meshtastic_utils.config = None
+        mmrelay.meshtastic_utils.matrix_rooms = []
+        mmrelay.meshtastic_utils.shutting_down = False
+        mmrelay.meshtastic_utils.event_loop = None
+        mmrelay.meshtastic_utils.reconnect_task = None
+        mmrelay.meshtastic_utils.subscribed_to_messages = False
+        mmrelay.meshtastic_utils.subscribed_to_connection_lost = False
 
     def test_serial_port_exists_permission_error(self):
         """Test serial_port_exists when port access is denied."""

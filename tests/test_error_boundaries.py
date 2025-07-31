@@ -39,21 +39,32 @@ class TestErrorBoundaries(unittest.TestCase):
 
     def _reset_global_state(self):
         """Reset global state across modules."""
-        modules_to_reset = [
-            "mmrelay.meshtastic_utils",
-            "mmrelay.matrix_utils",
-            "mmrelay.plugin_loader",
-        ]
+        # Reset meshtastic_utils globals
+        if "mmrelay.meshtastic_utils" in sys.modules:
+            module = sys.modules["mmrelay.meshtastic_utils"]
+            module.config = None
+            module.matrix_rooms = []
+            module.meshtastic_client = None
+            module.event_loop = None
+            module.reconnecting = False
+            module.shutting_down = False
+            module.reconnect_task = None
+            module.subscribed_to_messages = False
+            module.subscribed_to_connection_lost = False
 
-        for module_name in modules_to_reset:
-            if module_name in sys.modules:
-                module = sys.modules[module_name]
-                if hasattr(module, "config"):
-                    module.config = None
-                if hasattr(module, "matrix_client"):
-                    module.matrix_client = None
-                if hasattr(module, "meshtastic_client"):
-                    module.meshtastic_client = None
+        # Reset matrix_utils globals
+        if "mmrelay.matrix_utils" in sys.modules:
+            module = sys.modules["mmrelay.matrix_utils"]
+            if hasattr(module, "config"):
+                module.config = None
+            if hasattr(module, "matrix_client"):
+                module.matrix_client = None
+
+        # Reset plugin_loader globals
+        if "mmrelay.plugin_loader" in sys.modules:
+            module = sys.modules["mmrelay.plugin_loader"]
+            if hasattr(module, "config"):
+                module.config = None
 
     def test_plugin_failure_isolation(self):
         """Test that plugin failures don't affect other plugins or core functionality."""
