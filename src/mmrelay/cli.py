@@ -383,12 +383,7 @@ def generate_sample_config():
     # No config file exists, generate one in the first location
     target_path = config_paths[0]
 
-    # Ensure the directory exists
-    try:
-        os.makedirs(os.path.dirname(target_path), exist_ok=True)
-    except (OSError, PermissionError) as e:
-        print(f"Error creating directory for config file: {e}")
-        return False
+    # Directory should already exist from get_config_paths() call
 
     # Use the helper function to get the sample config path
     sample_config_path = get_sample_config_path()
