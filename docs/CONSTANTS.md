@@ -41,8 +41,8 @@ WINDOWS_PLATFORM = "win32"
 ```python
 DEFAULT_MESSAGE_DELAY = 2.0  # Firmware-enforced minimum delay
 MAX_QUEUE_SIZE = 500
-QUEUE_HIGH_WATER_MARK = 375   # 75% of MAX_QUEUE_SIZE
-QUEUE_MEDIUM_WATER_MARK = 250 # 50% of MAX_QUEUE_SIZE
+QUEUE_HIGH_WATER_MARK = int(MAX_QUEUE_SIZE * 0.75)   # 75% of MAX_QUEUE_SIZE
+QUEUE_MEDIUM_WATER_MARK = int(MAX_QUEUE_SIZE * 0.50) # 50% of MAX_QUEUE_SIZE
 ```
 
 ### Message Formats (`constants/formats.py`)
