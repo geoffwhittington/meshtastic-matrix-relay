@@ -400,13 +400,27 @@ plugins:
 
         # Test Meshtastic connection failure recovery
         with patch("mmrelay.meshtastic_utils.serial_port_exists", return_value=True):
-            with patch(
-                "mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface",
-                side_effect=Exception("Connection failed"),
-            ):
-                with patch("time.sleep"):  # Speed up test
-                    result = connect_meshtastic(config)
-                    self.assertIsNone(result)  # Should handle failure gracefully
+            # Patch all exceptions in the except clause to be proper Exception classes
+            with patch("mmrelay.meshtastic_utils.BleakDBusError", Exception):
+                with patch("mmrelay.meshtastic_utils.BleakError", Exception):
+                    with patch("mmrelay.meshtastic_utils.serial.SerialException", Exception):
+                        with patch(
+                            "mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface",
+                            side_effect=Exception("Connection failed"),
+                        ):
+                            with patch("time.sleep"):  # Speed up test
+                                # Set shutting_down to True after a few attempts to break the retry loop
+                                def side_effect_shutdown(*args, **kwargs):
+                                    import mmrelay.meshtastic_utils
+                                    mmrelay.meshtastic_utils.shutting_down = True
+                                    raise Exception("Connection failed")
+
+                                with patch(
+                                    "mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface",
+                                    side_effect=side_effect_shutdown,
+                                ):
+                                    result = connect_meshtastic(config)
+                                    self.assertIsNone(result)  # Should handle failure gracefully
 
     def test_multi_room_message_routing(self):
         """Test message routing to multiple Matrix rooms."""

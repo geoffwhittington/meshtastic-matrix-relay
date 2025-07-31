@@ -277,44 +277,63 @@ class TestErrorBoundaries(unittest.TestCase):
         import asyncio
 
         async def run_queue_test():
-            queue = MessageQueue()
-            queue.start(message_delay=0.1)
+            # Mock the Meshtastic client to allow message sending
+            with patch("mmrelay.meshtastic_utils.meshtastic_client", MagicMock(is_connected=True)):
+                with patch("mmrelay.meshtastic_utils.reconnecting", False):
+                    queue = MessageQueue()
+                    queue.start(message_delay=0.01)  # Very fast processing (will be enforced to 2.0s minimum)
+                    # Ensure processor starts now that event loop is running
+                    queue.ensure_processor_started()
 
-            success_count = 0
-            failure_count = 0
+                    success_count = 0
+                    failure_count = 0
 
-            def failing_function():
-                nonlocal failure_count
-                failure_count += 1
-                raise Exception("Function failed")
+                    def failing_function():
+                        nonlocal failure_count
+                        failure_count += 1
+                        raise Exception("Function failed")
 
-            def success_function():
-                nonlocal success_count
-                success_count += 1
-                return MagicMock(id="success_id")
+                    def success_function():
+                        nonlocal success_count
+                        success_count += 1
+                        return MagicMock(id="success_id")
 
-            try:
-                # Queue alternating failing and successful functions
-                for i in range(10):
-                    if i % 2 == 0:
-                        queue.enqueue(failing_function, description=f"Failing function {i}")
-                    else:
-                        queue.enqueue(success_function, description=f"Success function {i}")
+                    try:
+                        # Queue fewer functions to reduce test time
+                        message_count = 6  # 3 failing, 3 successful
+                        for i in range(message_count):
+                            if i % 2 == 0:
+                                success = queue.enqueue(failing_function, description=f"Failing function {i}")
+                                self.assertTrue(success, f"Failed to enqueue failing function {i}")
+                            else:
+                                success = queue.enqueue(success_function, description=f"Success function {i}")
+                                self.assertTrue(success, f"Failed to enqueue success function {i}")
 
-                # Wait for processing
-                await asyncio.sleep(3)  # Wait for queue processing
+                        # Wait for processing to complete (6 messages * 2s = 12s + buffer)
+                        import time
+                        start_time = time.time()
+                        timeout = 20  # 20 second timeout
+                        processed_count = 0
+                        while (
+                            processed_count < message_count and time.time() - start_time < timeout
+                        ):
+                            processed_count = failure_count + success_count
+                            await asyncio.sleep(0.5)  # Check every 0.5 seconds
 
-                # Force queue processing to complete
-                queue.stop()
+                        # Force queue processing to complete
+                        queue.stop()
 
-                # Verify that failures didn't stop successful processing
-                self.assertEqual(failure_count, 5)  # 5 failing functions called
-                self.assertEqual(success_count, 5)  # 5 successful functions called
+                        # Verify all messages were processed
+                        self.assertEqual(processed_count, message_count)
 
-            except Exception:
-                # Ensure queue is stopped even if test fails
-                queue.stop()
-                raise
+                        # Verify that failures didn't stop successful processing
+                        self.assertEqual(failure_count, 3)  # 3 failing functions called
+                        self.assertEqual(success_count, 3)  # 3 successful functions called
+
+                    except Exception:
+                        # Ensure queue is stopped even if test fails
+                        queue.stop()
+                        raise
 
         asyncio.run(run_queue_test())
 
@@ -368,35 +387,47 @@ class TestErrorBoundaries(unittest.TestCase):
 
     def test_transient_failure_recovery(self):
         """Test recovery from transient failures."""
-        call_count = 0
+        import asyncio
 
-        def transient_failure_function():
-            nonlocal call_count
-            call_count += 1
-            if call_count <= 2:  # Fail first 2 times
-                raise Exception("Transient failure")
-            return MagicMock(id="success_id")
+        async def async_test():
+            # Mock the Meshtastic client to allow message sending
+            with patch("mmrelay.meshtastic_utils.meshtastic_client", MagicMock(is_connected=True)):
+                with patch("mmrelay.meshtastic_utils.reconnecting", False):
+                    call_count = 0
 
-        queue = MessageQueue()
-        queue.start(message_delay=0.1)
+                    def transient_failure_function():
+                        nonlocal call_count
+                        call_count += 1
+                        if call_count <= 2:  # Fail first 2 times
+                            raise Exception("Transient failure")
+                        return MagicMock(id="success_id")
 
-        try:
-            # Queue the same function multiple times
-            for i in range(5):
-                queue.enqueue(
-                    transient_failure_function, description=f"Transient test {i}"
-                )
+                    queue = MessageQueue()
+                    queue.start(message_delay=0.01)  # Will be enforced to 2.0s minimum
+                    queue.ensure_processor_started()
 
-            # Wait for processing
-            import time
+                    try:
+                        # Queue the same function multiple times
+                        message_count = 5
+                        for i in range(message_count):
+                            queue.enqueue(
+                                transient_failure_function, description=f"Transient test {i}"
+                            )
 
-            time.sleep(1)
+                        # Wait for processing to complete
+                        import time
+                        start_time = time.time()
+                        timeout = 20  # 20 second timeout
+                        while call_count < message_count and time.time() - start_time < timeout:
+                            await asyncio.sleep(0.5)  # Check every 0.5 seconds
 
-            # Should have attempted all calls
-            self.assertEqual(call_count, 5)
+                        # Should have attempted all calls
+                        self.assertEqual(call_count, message_count)
 
-        finally:
-            queue.stop()
+                    finally:
+                        queue.stop()
+
+        asyncio.run(async_test())
 
     def test_error_propagation_limits(self):
         """Test that errors are contained and don't propagate beyond boundaries."""

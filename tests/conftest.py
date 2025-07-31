@@ -119,11 +119,13 @@ sys.modules["certifi"] = MagicMock()
 sys.modules["serial"] = MagicMock()
 sys.modules["serial.tools"] = MagicMock()
 sys.modules["serial.tools.list_ports"] = MagicMock()
-# Create proper exception classes for bleak
+# Create proper exception classes for bleak that inherit from Exception
 class BleakError(Exception):
+    """Mock BleakError exception for testing."""
     pass
 
 class BleakDBusError(BleakError):
+    """Mock BleakDBusError exception for testing."""
     pass
 
 # Create a proper module-like object for bleak.exc
@@ -133,6 +135,11 @@ class BleakExcModule:
 
 sys.modules["bleak"] = MagicMock()
 sys.modules["bleak.exc"] = BleakExcModule()
+
+# Also make the exceptions available globally for imports
+import builtins
+builtins.BleakError = BleakError
+builtins.BleakDBusError = BleakDBusError
 sys.modules["pubsub"] = MagicMock()
 sys.modules["matplotlib"] = MagicMock()
 sys.modules["matplotlib.pyplot"] = MagicMock()
