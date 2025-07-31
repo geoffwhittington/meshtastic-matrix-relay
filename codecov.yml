@@ -7,12 +7,16 @@ coverage:
     patch:
       default:
         target: 60%
+        threshold: 1%
 
 component_management:
   default_rules:
     statuses:
       - type: project
         target: auto
+        threshold: 1%
+      - type: patch
+        target: 60%
         threshold: 1%
   individual_components:
     - component_id: plugins
@@ -23,6 +27,9 @@ component_management:
         - type: project
           target: 70%
           threshold: 2%
+        - type: patch
+          target: 75%
+          threshold: 2%
     - component_id: configuration
       name: Configuration
       paths:
@@ -31,6 +38,9 @@ component_management:
       statuses:
         - type: project
           target: 90%
+          threshold: 1%
+        - type: patch
+          target: 85%
           threshold: 1%
     - component_id: core_utils
       name: Core Utils
@@ -41,6 +51,9 @@ component_management:
         - type: project
           target: 60%
           threshold: 2%
+        - type: patch
+          target: 65%
+          threshold: 2%
     - component_id: cli_main
       name: CLI & Main
       paths:
@@ -50,12 +63,31 @@ component_management:
         - type: project
           target: 80%
           threshold: 2%
-    - component_id: tests
-      name: Tests
+        - type: patch
+          target: 75%
+          threshold: 2%
+    - component_id: database
+      name: Database
       paths:
-        - tests/**
+        - src/mmrelay/db_utils.py
+      statuses:
+        - type: project
+          target: 85%
+          threshold: 1%
+        - type: patch
+          target: 80%
+          threshold: 1%
+    - component_id: setup_tools
+      name: Setup & Tools
+      paths:
+        - src/mmrelay/setup_utils.py
+        - src/mmrelay/tools/**
+      statuses:
+        - type: project
+          target: 50%
+          threshold: 2%
 
 comment:
-  layout: reach,diff,flags,components,tree
+  layout: "header, diff, flags, components"
   behavior: default
   require_changes: false
