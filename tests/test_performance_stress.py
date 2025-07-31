@@ -119,51 +119,56 @@ class TestPerformanceStress(unittest.TestCase):
         import asyncio
 
         async def run_test():
-            queue = MessageQueue()
-            queue.start(message_delay=0.01)  # Very fast processing (will be enforced to 2.0s minimum)
+            # Mock Meshtastic client to allow message sending
+            with patch("mmrelay.meshtastic_utils.meshtastic_client", MagicMock(is_connected=True)):
+                with patch("mmrelay.meshtastic_utils.reconnecting", False):
+                    queue = MessageQueue()
+                    queue.start(message_delay=0.01)  # Very fast processing (will be enforced to 2.0s minimum)
+                    # Ensure processor starts now that event loop is running
+                    queue.ensure_processor_started()
 
-            message_count = 5  # Small number due to 2.0s minimum delay
-            processed_count = 0
+                    message_count = 50  # Can use larger numbers with 500 queue limit
+                    processed_count = 0
 
-            def mock_send_function():
-                nonlocal processed_count
-                processed_count += 1
-                return MagicMock(id="test_id")
+                    def mock_send_function():
+                        nonlocal processed_count
+                        processed_count += 1
+                        return MagicMock(id="test_id")
 
-            try:
-                start_time = time.time()
+                    try:
+                        start_time = time.time()
 
-                # Queue many messages rapidly
-                for i in range(message_count):
-                    success = queue.enqueue(
-                        mock_send_function, description=f"Performance test message {i}"
-                    )
-                    self.assertTrue(success, f"Failed to enqueue message {i}")
+                        # Queue many messages rapidly
+                        for i in range(message_count):
+                            success = queue.enqueue(
+                                mock_send_function, description=f"Performance test message {i}"
+                            )
+                            self.assertTrue(success, f"Failed to enqueue message {i}")
 
-                # Wait for processing to complete (5 messages * 2s = 10s + buffer)
-                timeout = 15  # 15 second timeout
-                while (
-                    processed_count < message_count and time.time() - start_time < timeout
-                ):
-                    await asyncio.sleep(0.1)
+                        # Wait for processing to complete (50 messages * 2s = 100s + buffer)
+                        timeout = 120  # 120 second timeout
+                        while (
+                            processed_count < message_count and time.time() - start_time < timeout
+                        ):
+                            await asyncio.sleep(0.1)
 
-                end_time = time.time()
-                processing_time = end_time - start_time
+                        end_time = time.time()
+                        processing_time = end_time - start_time
 
-                # Verify all messages were processed
-                self.assertEqual(processed_count, message_count)
+                        # Verify all messages were processed
+                        self.assertEqual(processed_count, message_count)
 
-                # Performance assertions (adjusted for 2s minimum delay)
-                expected_min_time = message_count * 2.0  # 2s per message minimum
-                self.assertGreaterEqual(processing_time, expected_min_time - 1.0, "Processing too fast (below firmware minimum)")
+                        # Performance assertions (adjusted for 2s minimum delay)
+                        expected_min_time = message_count * 2.0  # 2s per message minimum
+                        self.assertGreaterEqual(processing_time, expected_min_time - 5.0, "Processing too fast (below firmware minimum)")
 
-                messages_per_second = message_count / processing_time
-                self.assertGreater(
-                    messages_per_second, 0.1, "Queue processing rate too slow"
-                )
+                        messages_per_second = message_count / processing_time
+                        self.assertGreater(
+                            messages_per_second, 0.3, "Queue processing rate too slow"
+                        )
 
-            finally:
-                queue.stop()
+                    finally:
+                        queue.stop()
 
         # Run the async test
         asyncio.run(run_test())
@@ -278,70 +283,75 @@ class TestPerformanceStress(unittest.TestCase):
         """Test message queue performance under concurrent access."""
         import asyncio
 
-        # Set up event loop for MessageQueue
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        async def run_concurrent_test():
+            # Mock Meshtastic client to allow message sending
+            with patch("mmrelay.meshtastic_utils.meshtastic_client", MagicMock(is_connected=True)):
+                with patch("mmrelay.meshtastic_utils.reconnecting", False):
+                    queue = MessageQueue()
+                    queue.start(message_delay=0.01)
+                    # Ensure processor starts now that event loop is running
+                    queue.ensure_processor_started()
 
-        queue = MessageQueue()
-        queue.start(message_delay=0.01)
+                    thread_count = 5
+                    messages_per_thread = 3  # Small number due to 2s minimum delay (15 messages = 30s)
+                    total_messages = thread_count * messages_per_thread
 
-        thread_count = 5
-        messages_per_thread = 10  # Reduced to stay within queue limit
-        total_messages = thread_count * messages_per_thread
+                    processed_count = 0
+                    lock = threading.Lock()
 
-        processed_count = 0
-        lock = threading.Lock()
+                    def mock_send_function():
+                        nonlocal processed_count
+                        with lock:
+                            processed_count += 1
+                        return MagicMock(id="test_id")
 
-        def mock_send_function():
-            nonlocal processed_count
-            with lock:
-                processed_count += 1
-            return MagicMock(id="test_id")
+                    def worker_thread(thread_id):
+                        for i in range(messages_per_thread):
+                            queue.enqueue(
+                                mock_send_function, description=f"Thread {thread_id} message {i}"
+                            )
 
-        def worker_thread(thread_id):
-            for i in range(messages_per_thread):
-                queue.enqueue(
-                    mock_send_function, description=f"Thread {thread_id} message {i}"
-                )
+                    try:
+                        start_time = time.time()
 
-        try:
-            start_time = time.time()
+                        # Start multiple threads
+                        threads = []
+                        for i in range(thread_count):
+                            thread = threading.Thread(target=worker_thread, args=(i,))
+                            threads.append(thread)
+                            thread.start()
 
-            # Start multiple threads
-            threads = []
-            for i in range(thread_count):
-                thread = threading.Thread(target=worker_thread, args=(i,))
-                threads.append(thread)
-                thread.start()
+                        # Wait for all threads to complete
+                        for thread in threads:
+                            thread.join()
 
-            # Wait for all threads to complete
-            for thread in threads:
-                thread.join()
+                        # Wait for queue processing to complete (15 messages * 2s = 30s + buffer)
+                        timeout = 40
+                        while (
+                            processed_count < total_messages and time.time() - start_time < timeout
+                        ):
+                            await asyncio.sleep(0.1)
 
-            # Wait for queue processing to complete
-            timeout = 30
-            while (
-                processed_count < total_messages and time.time() - start_time < timeout
-            ):
-                time.sleep(0.1)
+                        end_time = time.time()
+                        processing_time = end_time - start_time
 
-            end_time = time.time()
-            processing_time = end_time - start_time
+                        # Verify all messages were processed
+                        self.assertEqual(processed_count, total_messages)
 
-            # Verify all messages were processed
-            self.assertEqual(processed_count, total_messages)
+                        # Performance assertions (adjusted for 2s minimum delay)
+                        expected_min_time = total_messages * 2.0  # 2s per message minimum
+                        self.assertLess(processing_time, expected_min_time + 10.0, "Concurrent processing too slow")
 
-            # Performance assertions
-            self.assertLess(processing_time, 20.0, "Concurrent processing too slow")
+                        messages_per_second = total_messages / processing_time
+                        self.assertGreater(
+                            messages_per_second, 0.3, "Concurrent processing rate too slow"
+                        )
 
-            messages_per_second = total_messages / processing_time
-            self.assertGreater(
-                messages_per_second, 10, "Concurrent processing rate too slow"
-            )
+                    finally:
+                        queue.stop()
 
-        finally:
-            queue.stop()
-            loop.close()
+        # Run the async test
+        asyncio.run(run_concurrent_test())
 
     def test_memory_usage_stability(self):
         """Test memory usage stability over extended operation."""
@@ -406,7 +416,7 @@ class TestPerformanceStress(unittest.TestCase):
         message_delay = 0.1  # 100ms delay between messages (will be enforced to 2.0s minimum)
         queue.start(message_delay=message_delay)
 
-        message_count = 3  # Reduced due to 2.0s minimum delay
+        message_count = 5  # Reasonable number for rate limiting test
         send_times = []
 
         def mock_send_function():
@@ -418,7 +428,7 @@ class TestPerformanceStress(unittest.TestCase):
             for i in range(message_count):
                 queue.enqueue(mock_send_function, description=f"Rate limit test {i}")
 
-            # Wait for all messages to be processed (3 messages * 2s = 6s + buffer)
+            # Wait for all messages to be processed (5 messages * 2s = 10s + buffer)
             timeout = message_count * 2.0 + 5  # Extra buffer for 2s minimum delay
             start_wait = time.time()
             while (
