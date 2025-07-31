@@ -84,7 +84,7 @@ class TestMeshtasticUtils(unittest.TestCase):
         ) as mock_get_shortname, patch(
             "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
         ) as mock_run_coro, patch(
-            "mmrelay.matrix_utils.matrix_relay"
+            "mmrelay.matrix_utils.matrix_relay", return_value=None
         ), patch(
             "mmrelay.matrix_utils.get_interaction_settings"
         ) as mock_get_interactions, patch(
@@ -330,6 +330,8 @@ class TestMeshtasticUtils(unittest.TestCase):
         ), patch(
             "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
         ) as mock_run_coro, patch(
+            "mmrelay.matrix_utils.matrix_relay", return_value=None
+        ), patch(
             "mmrelay.meshtastic_utils.get_longname"
         ) as mock_get_longname, patch(
             "mmrelay.meshtastic_utils.get_shortname"

@@ -20,6 +20,10 @@ from mmrelay.constants.messages import (
     EMOJI_FLAG_VALUE,
     PORTNUM_NUMERIC_VALUE,
 )
+from mmrelay.constants.config import (
+    CONFIG_SECTION_MESHTASTIC,
+    CONFIG_KEY_MESHNET_NAME,
+)
 from mmrelay.constants.network import (
     CONNECTION_TYPE_BLE,
     CONNECTION_TYPE_NETWORK,
@@ -33,6 +37,7 @@ from mmrelay.constants.network import (
     CONFIG_KEY_BLE_ADDRESS,
     CONFIG_KEY_SERIAL_PORT,
     CONFIG_KEY_HOST,
+    CONFIG_KEY_CONNECTION_TYPE,
 )
 
 # Import BLE exceptions conditionally
@@ -166,7 +171,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
             return None
 
         # Check if meshtastic config section exists
-        if "meshtastic" not in config or config["meshtastic"] is None:
+        if CONFIG_SECTION_MESHTASTIC not in config or config[CONFIG_SECTION_MESHTASTIC] is None:
             logger.error(
                 "No Meshtastic configuration section found. Cannot connect to Meshtastic."
             )
@@ -174,8 +179,8 @@ def connect_meshtastic(passed_config=None, force_connect=False):
 
         # Check if connection_type is specified
         if (
-            "connection_type" not in config["meshtastic"]
-            or config["meshtastic"]["connection_type"] is None
+            CONFIG_KEY_CONNECTION_TYPE not in config[CONFIG_SECTION_MESHTASTIC]
+            or config[CONFIG_SECTION_MESHTASTIC][CONFIG_KEY_CONNECTION_TYPE] is None
         ):
             logger.error(
                 "No connection type specified in Meshtastic configuration. Cannot connect to Meshtastic."
@@ -183,7 +188,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
             return None
 
         # Determine connection type and attempt connection
-        connection_type = config["meshtastic"]["connection_type"]
+        connection_type = config[CONFIG_SECTION_MESHTASTIC][CONFIG_KEY_CONNECTION_TYPE]
 
         # Support legacy "network" connection type (now "tcp")
         if connection_type == CONNECTION_TYPE_NETWORK:
@@ -503,7 +508,7 @@ def on_meshtastic_message(packet, interface):
         # Message to someone else; ignoring for broadcasting logic
         is_direct_message = False
 
-    meshnet_name = config["meshtastic"]["meshnet_name"]
+    meshnet_name = config[CONFIG_SECTION_MESHTASTIC][CONFIG_KEY_MESHNET_NAME]
 
     # Reaction handling (Meshtastic -> Matrix)
     # If replyId and emoji_flag are present and reactions are enabled, we relay as text reactions in Matrix
@@ -767,7 +772,7 @@ async def check_connection():
         logger.error("No configuration available. Cannot check connection.")
         return
 
-    connection_type = config["meshtastic"]["connection_type"]
+    connection_type = config[CONFIG_SECTION_MESHTASTIC][CONFIG_KEY_CONNECTION_TYPE]
 
     # Get health check configuration
     health_config = config["meshtastic"].get("health_check", {})

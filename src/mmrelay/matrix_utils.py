@@ -21,6 +21,11 @@ from nio import (
 from nio.events.room_events import RoomMemberEvent
 from PIL import Image
 
+from mmrelay.constants.config import (
+    CONFIG_SECTION_MATRIX,
+    CONFIG_KEY_HOMESERVER,
+    CONFIG_KEY_ACCESS_TOKEN,
+)
 from mmrelay.constants.database import DEFAULT_MSGS_TO_KEEP
 from mmrelay.constants.formats import (
     DEFAULT_MATRIX_PREFIX,
@@ -267,7 +272,7 @@ def get_matrix_prefix(config, longname, shortname, meshnet_name):
             get_matrix_prefix(config, "Alice", "Ali", "MyMesh")
             # Returns: "(Alic): "
     """
-    matrix_config = config.get("matrix", {})
+    matrix_config = config.get(CONFIG_SECTION_MATRIX, {})
 
     # Enhanced debug logging for configuration troubleshooting
     logger.debug(
@@ -390,9 +395,9 @@ async def connect_matrix(passed_config=None):
         return None
 
     # Extract Matrix configuration
-    matrix_homeserver = config["matrix"]["homeserver"]
+    matrix_homeserver = config[CONFIG_SECTION_MATRIX][CONFIG_KEY_HOMESERVER]
     matrix_rooms = config["matrix_rooms"]
-    matrix_access_token = config["matrix"]["access_token"]
+    matrix_access_token = config[CONFIG_SECTION_MATRIX][CONFIG_KEY_ACCESS_TOKEN]
     bot_user_id = config["matrix"]["bot_user_id"]
 
     # Check if client already exists

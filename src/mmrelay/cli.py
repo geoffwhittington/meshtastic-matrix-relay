@@ -14,6 +14,7 @@ from yaml.loader import SafeLoader
 from mmrelay import __version__
 from mmrelay.config import get_config_paths
 from mmrelay.constants.app import WINDOWS_PLATFORM
+from mmrelay.constants.config import CONFIG_SECTION_MATRIX, CONFIG_SECTION_MESHTASTIC
 from mmrelay.constants.network import (
     CONNECTION_TYPE_BLE,
     CONNECTION_TYPE_NETWORK,
@@ -154,11 +155,11 @@ def check_config(args=None):
                     return False
 
                 # Check matrix section
-                if "matrix" not in config:
+                if CONFIG_SECTION_MATRIX not in config:
                     print("Error: Missing 'matrix' section in config")
                     return False
 
-                matrix_section = config["matrix"]
+                matrix_section = config[CONFIG_SECTION_MATRIX]
                 required_matrix_fields = ["homeserver", "access_token", "bot_user_id"]
                 missing_matrix_fields = [
                     field
@@ -195,11 +196,11 @@ def check_config(args=None):
                         return False
 
                 # Check meshtastic section
-                if "meshtastic" not in config:
+                if CONFIG_SECTION_MESHTASTIC not in config:
                     print("Error: Missing 'meshtastic' section in config")
                     return False
 
-                meshtastic_section = config["meshtastic"]
+                meshtastic_section = config[CONFIG_SECTION_MESHTASTIC]
                 if "connection_type" not in meshtastic_section:
                     print("Error: Missing 'connection_type' in 'meshtastic' section")
                     return False
