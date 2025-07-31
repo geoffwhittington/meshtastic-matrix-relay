@@ -15,6 +15,7 @@ Tests error boundaries and recovery including:
 import asyncio
 import os
 import sys
+import time
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -352,9 +353,14 @@ class TestErrorBoundaries(unittest.TestCase):
             mock_room = MagicMock()
             mock_room.room_id = "!room:matrix.org"
 
-            mock_event = MagicMock()
+            # Import the mock class from conftest
+            from nio import RoomMessageText
+
+            mock_event = MagicMock(spec=RoomMessageText)
             mock_event.sender = "@user:matrix.org"
             mock_event.body = "test message"
+            mock_event.server_timestamp = int(time.time() * 1000) + 1000  # Future timestamp
+            mock_event.source = {"content": {}}
 
             # Mock plugin that raises exception
             mock_plugin = MagicMock()
@@ -370,6 +376,11 @@ class TestErrorBoundaries(unittest.TestCase):
                     import mmrelay.matrix_utils
 
                     mmrelay.matrix_utils.config = {
+                        "meshtastic": {
+                            "connection_type": "serial",
+                            "serial_port": "/dev/ttyUSB0",
+                            "meshnet_name": "TestMesh"
+                        },
                         "matrix_rooms": [
                             {"id": "!room:matrix.org", "meshtastic_channel": 0}
                         ]

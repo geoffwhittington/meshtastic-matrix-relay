@@ -161,23 +161,29 @@ def initialize_database():
 
 
 def store_plugin_data(plugin_name, meshtastic_id, data):
-    with sqlite3.connect(get_db_path()) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT OR REPLACE INTO plugin_data (plugin_name, meshtastic_id, data) VALUES (?, ?, ?) ON CONFLICT (plugin_name, meshtastic_id) DO UPDATE SET data = ?",
-            (plugin_name, meshtastic_id, json.dumps(data), json.dumps(data)),
-        )
-        conn.commit()
+    try:
+        with sqlite3.connect(get_db_path()) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT OR REPLACE INTO plugin_data (plugin_name, meshtastic_id, data) VALUES (?, ?, ?) ON CONFLICT (plugin_name, meshtastic_id) DO UPDATE SET data = ?",
+                (plugin_name, meshtastic_id, json.dumps(data), json.dumps(data)),
+            )
+            conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error storing plugin data for {plugin_name}, {meshtastic_id}: {e}")
 
 
 def delete_plugin_data(plugin_name, meshtastic_id):
-    with sqlite3.connect(get_db_path()) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "DELETE FROM plugin_data WHERE plugin_name=? AND meshtastic_id=?",
-            (plugin_name, meshtastic_id),
-        )
-        conn.commit()
+    try:
+        with sqlite3.connect(get_db_path()) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "DELETE FROM plugin_data WHERE plugin_name=? AND meshtastic_id=?",
+                (plugin_name, meshtastic_id),
+            )
+            conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error deleting plugin data for {plugin_name}, {meshtastic_id}: {e}")
 
 
 # Get the data for a given plugin and Meshtastic ID
@@ -216,23 +222,30 @@ def get_plugin_data(plugin_name):
 
 # Get the longname for a given Meshtastic ID
 def get_longname(meshtastic_id):
-    with sqlite3.connect(get_db_path()) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT longname FROM longnames WHERE meshtastic_id=?", (meshtastic_id,)
-        )
-        result = cursor.fetchone()
-    return result[0] if result else None
+    try:
+        with sqlite3.connect(get_db_path()) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT longname FROM longnames WHERE meshtastic_id=?", (meshtastic_id,)
+            )
+            result = cursor.fetchone()
+        return result[0] if result else None
+    except sqlite3.Error as e:
+        logger.error(f"Database error retrieving longname for {meshtastic_id}: {e}")
+        return None
 
 
 def save_longname(meshtastic_id, longname):
-    with sqlite3.connect(get_db_path()) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT OR REPLACE INTO longnames (meshtastic_id, longname) VALUES (?, ?)",
-            (meshtastic_id, longname),
-        )
-        conn.commit()
+    try:
+        with sqlite3.connect(get_db_path()) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT OR REPLACE INTO longnames (meshtastic_id, longname) VALUES (?, ?)",
+                (meshtastic_id, longname),
+            )
+            conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error saving longname for {meshtastic_id}: {e}")
 
 
 def update_longnames(nodes):
@@ -246,23 +259,30 @@ def update_longnames(nodes):
 
 
 def get_shortname(meshtastic_id):
-    with sqlite3.connect(get_db_path()) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT shortname FROM shortnames WHERE meshtastic_id=?", (meshtastic_id,)
-        )
-        result = cursor.fetchone()
-    return result[0] if result else None
+    try:
+        with sqlite3.connect(get_db_path()) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT shortname FROM shortnames WHERE meshtastic_id=?", (meshtastic_id,)
+            )
+            result = cursor.fetchone()
+        return result[0] if result else None
+    except sqlite3.Error as e:
+        logger.error(f"Database error retrieving shortname for {meshtastic_id}: {e}")
+        return None
 
 
 def save_shortname(meshtastic_id, shortname):
-    with sqlite3.connect(get_db_path()) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT OR REPLACE INTO shortnames (meshtastic_id, shortname) VALUES (?, ?)",
-            (meshtastic_id, shortname),
-        )
-        conn.commit()
+    try:
+        with sqlite3.connect(get_db_path()) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT OR REPLACE INTO shortnames (meshtastic_id, shortname) VALUES (?, ?)",
+                (meshtastic_id, shortname),
+            )
+            conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error saving shortname for {meshtastic_id}: {e}")
 
 
 def update_shortnames(nodes):
@@ -292,42 +312,49 @@ def store_message_map(
     :param meshtastic_meshnet: The name of the meshnet this message originated from.
                                This helps us identify remote vs local mesh origins.
     """
-    with sqlite3.connect(get_db_path()) as conn:
-        cursor = conn.cursor()
-        logger.debug(
-            f"Storing message map: meshtastic_id={meshtastic_id}, matrix_event_id={matrix_event_id}, matrix_room_id={matrix_room_id}, meshtastic_text={meshtastic_text}, meshtastic_meshnet={meshtastic_meshnet}"
-        )
-        cursor.execute(
-            "INSERT OR REPLACE INTO message_map (meshtastic_id, matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet) VALUES (?, ?, ?, ?, ?)",
-            (
-                meshtastic_id,
-                matrix_event_id,
-                matrix_room_id,
-                meshtastic_text,
-                meshtastic_meshnet,
-            ),
-        )
-        conn.commit()
+    try:
+        with sqlite3.connect(get_db_path()) as conn:
+            cursor = conn.cursor()
+            logger.debug(
+                f"Storing message map: meshtastic_id={meshtastic_id}, matrix_event_id={matrix_event_id}, matrix_room_id={matrix_room_id}, meshtastic_text={meshtastic_text}, meshtastic_meshnet={meshtastic_meshnet}"
+            )
+            cursor.execute(
+                "INSERT OR REPLACE INTO message_map (meshtastic_id, matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet) VALUES (?, ?, ?, ?, ?)",
+                (
+                    meshtastic_id,
+                    matrix_event_id,
+                    matrix_room_id,
+                    meshtastic_text,
+                    meshtastic_meshnet,
+                ),
+            )
+            conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error storing message map for {matrix_event_id}: {e}")
 
 
 def get_message_map_by_meshtastic_id(meshtastic_id):
-    with sqlite3.connect(get_db_path()) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet FROM message_map WHERE meshtastic_id=?",
-            (meshtastic_id,),
-        )
-        result = cursor.fetchone()
-        logger.debug(
-            f"Retrieved message map by meshtastic_id={meshtastic_id}: {result}"
-        )
-        if result:
-            try:
-                # result = (matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
-                return result[0], result[1], result[2], result[3]
-            except (IndexError, TypeError) as e:
-                logger.error(f"Malformed data in message_map for meshtastic_id {meshtastic_id}: {e}")
-                return None
+    try:
+        with sqlite3.connect(get_db_path()) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet FROM message_map WHERE meshtastic_id=?",
+                (meshtastic_id,),
+            )
+            result = cursor.fetchone()
+            logger.debug(
+                f"Retrieved message map by meshtastic_id={meshtastic_id}: {result}"
+            )
+            if result:
+                try:
+                    # result = (matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet)
+                    return result[0], result[1], result[2], result[3]
+                except (IndexError, TypeError) as e:
+                    logger.error(f"Malformed data in message_map for meshtastic_id {meshtastic_id}: {e}")
+                    return None
+            return None
+    except sqlite3.Error as e:
+        logger.error(f"Database error retrieving message map for meshtastic_id {meshtastic_id}: {e}")
         return None
 
 
