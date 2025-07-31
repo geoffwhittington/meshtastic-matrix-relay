@@ -261,9 +261,9 @@ class TestIntegrationScenarios(unittest.TestCase):
 
     def test_plugin_chain_processing(self):
         """
-        Test that multiple plugins process a Meshtastic message in priority order, with message interception by the highest priority plugin.
-
-        This test verifies that all loaded plugins are invoked in order of their priority when handling a Meshtastic message, and that message processing stops when a plugin intercepts the message.
+        Test that multiple plugins process a Meshtastic message in priority order and that processing stops when a plugin intercepts the message.
+        
+        This test verifies that all loaded plugins are invoked in order of their priority when handling a Meshtastic message, and that message processing halts when a plugin returns an intercept signal.
         """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
@@ -294,14 +294,12 @@ class TestIntegrationScenarios(unittest.TestCase):
                     # Mock the async execution
                     def mock_run_coro(coro, loop):
                         """
-                        Synchronously executes an asynchronous coroutine and returns a mock future with the result.
-
-                        Parameters:
-                            coro: The coroutine to execute.
-                            loop: The event loop (unused).
-
+                        Synchronously executes a coroutine and returns a MagicMock future whose result mimics the coroutine's return value.
+                        
+                        If the input is not a coroutine or an error occurs during execution, the mock future's result is set to None.
+                        
                         Returns:
-                            A MagicMock object mimicking a future, with its result() method returning the coroutine's return value.
+                            MagicMock: A mock future with its result() method returning the coroutine's result or None on failure.
                         """
                         mock_future = MagicMock()
                         try:
@@ -359,9 +357,9 @@ class TestIntegrationScenarios(unittest.TestCase):
 
     def test_configuration_loading_and_validation_flow(self):
         """
-        Test loading a configuration file and validating its structure and correctness.
-
-        This test writes a sample configuration to a temporary YAML file, loads it using the application's configuration loader, and verifies the presence of required sections. It then invokes the CLI configuration validation function to ensure the loaded configuration passes validation.
+        Test loading and validating a configuration file for correct structure and content.
+        
+        This test writes a sample YAML configuration to a temporary file, loads it using the application's configuration loader, verifies the presence of required configuration sections, and checks that the CLI configuration validation function accepts the loaded configuration.
         """
         # Create temporary config file
         config_data = """
@@ -630,7 +628,9 @@ plugins:
 
     def test_concurrent_message_processing(self):
         """
-        Test processing of multiple Meshtastic messages concurrently to ensure isolation and correct handling when no Matrix rooms are configured.
+        Tests concurrent processing of multiple Meshtastic messages when no Matrix rooms are configured.
+        
+        Verifies that each message is handled in isolation and that no messages are relayed to Matrix when the configuration lacks Matrix rooms.
         """
         packets = []
         for i in range(10):
@@ -663,10 +663,9 @@ plugins:
 
     def test_plugin_chain_with_weather_processing(self):
         """
-        Test complete plugin chain processing with weather plugin handling a weather message.
-
-        Simulates a weather sensor message flowing through the plugin chain,
-        verifying that the weather plugin processes it and Matrix relay is called.
+        Tests plugin chain processing of a Meshtastic weather telemetry message, ensuring the telemetry plugin handles the message and that it is not relayed to Matrix.
+        
+        Simulates a weather sensor packet processed through the plugin chain, verifies the telemetry plugin's handler is called, and confirms that Matrix relay is not invoked for telemetry messages.
         """
         # Create weather sensor packet
         packet = {
@@ -706,6 +705,16 @@ plugins:
 
                     # Mock async execution
                     def mock_run_coro(coro, loop):
+                        """
+                        Synchronously runs an asynchronous coroutine and returns a mock future with the result.
+                        
+                        Parameters:
+                        	coro: The coroutine to execute.
+                        	loop: The event loop (unused).
+                        
+                        Returns:
+                        	A MagicMock object mimicking a future, with its result set to the coroutine's return value or None if an exception occurred.
+                        """
                         mock_future = MagicMock()
                         try:
                             result = asyncio.run(coro)
@@ -738,10 +747,9 @@ plugins:
 
     def test_config_hot_reload_scenario(self):
         """
-        Test behavior when configuration changes during runtime.
-
-        Simulates configuration file changes and verifies that the system
-        can detect and handle configuration updates appropriately.
+        Test dynamic reloading of configuration during runtime.
+        
+        Simulates modifying the configuration file while the system is running and verifies that new Matrix rooms and plugins are detected and loaded correctly after a reload.
         """
         # Create initial config
         initial_config = {
@@ -799,10 +807,9 @@ plugins:
 
     def test_database_cleanup_during_operation(self):
         """
-        Test database cleanup operations while system is processing messages.
-
-        Ensures that database maintenance doesn't interfere with active
-        message processing and that data integrity is maintained.
+        Test that database cleanup operations do not disrupt active message processing.
+        
+        Verifies that pruning old message mappings during operation maintains database accessibility and does not raise exceptions, ensuring data integrity is preserved.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = os.path.join(temp_dir, "test_cleanup.sqlite")
