@@ -169,18 +169,27 @@ class TestMeshtasticUtils(unittest.TestCase):
         self, mock_tcp, mock_ble, mock_serial, mock_port_exists
     ):
         """
-        Test that the Meshtastic client connects successfully using a serial interface when the serial port exists.
+        Test that the Meshtastic client connects via serial interface when the serial port exists.
 
-        Verifies that the serial interface is instantiated with the configured port and that the returned client matches the mock.
+        Verifies that the serial interface is instantiated with the configured port and that the returned client matches the mock client.
         """
         mock_client = MagicMock()
-        mock_client.getMyNodeInfo.return_value = {"user": {"id": "test"}}
+        mock_client.getMyNodeInfo.return_value = {
+            "user": {"shortName": "test", "hwModel": "test"}
+        }
         mock_serial.return_value = mock_client
         mock_port_exists.return_value = True
 
         config = {
             "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"}
         }
+
+        # Reset global state
+        import mmrelay.meshtastic_utils
+
+        mmrelay.meshtastic_utils.meshtastic_client = None
+        mmrelay.meshtastic_utils.shutting_down = False
+        mmrelay.meshtastic_utils.reconnecting = False
 
         result = connect_meshtastic(passed_config=config)
 
@@ -192,12 +201,14 @@ class TestMeshtasticUtils(unittest.TestCase):
     @patch("mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface")
     def test_connect_meshtastic_tcp(self, mock_tcp, mock_ble, mock_serial):
         """
-        Test that the Meshtastic client connects using the TCP interface with the specified host.
+        Tests that the Meshtastic client connects via the TCP interface using the configured host.
 
         Verifies that the TCP interface is instantiated with the correct hostname and that the returned client matches the mocked instance.
         """
         mock_client = MagicMock()
-        mock_client.getMyNodeInfo.return_value = {"user": {"id": "test"}}
+        mock_client.getMyNodeInfo.return_value = {
+            "user": {"shortName": "test", "hwModel": "test"}
+        }
         mock_tcp.return_value = mock_client
 
         config = {
@@ -206,6 +217,13 @@ class TestMeshtasticUtils(unittest.TestCase):
                 "host": "192.168.1.100",  # Use 'host' not 'tcp_host'
             }
         }
+
+        # Reset global state
+        import mmrelay.meshtastic_utils
+
+        mmrelay.meshtastic_utils.meshtastic_client = None
+        mmrelay.meshtastic_utils.shutting_down = False
+        mmrelay.meshtastic_utils.reconnecting = False
 
         result = connect_meshtastic(passed_config=config)
 
@@ -219,22 +237,33 @@ class TestMeshtasticUtils(unittest.TestCase):
         """
         Test that the Meshtastic client connects via BLE using the configured BLE address.
 
-        Verifies that the BLE interface is instantiated with the correct parameters and that the returned client matches the mocked BLE client.
+        Verifies that the BLE interface is instantiated with the expected parameters and that the returned client matches the mocked BLE client.
         """
         mock_client = MagicMock()
-        mock_client.getMyNodeInfo.return_value = {"user": {"id": "test"}}
+        mock_client.getMyNodeInfo.return_value = {
+            "user": {"shortName": "test", "hwModel": "test"}
+        }
         mock_ble.return_value = mock_client
 
         config = {
             "meshtastic": {"connection_type": "ble", "ble_address": "AA:BB:CC:DD:EE:FF"}
         }
 
+        # Reset global state
+        import mmrelay.meshtastic_utils
+
+        mmrelay.meshtastic_utils.meshtastic_client = None
+        mmrelay.meshtastic_utils.shutting_down = False
+        mmrelay.meshtastic_utils.reconnecting = False
+
         result = connect_meshtastic(passed_config=config)
 
         self.assertEqual(result, mock_client)
-        # Check the actual call parameters
         mock_ble.assert_called_once_with(
-            address="AA:BB:CC:DD:EE:FF", noProto=False, debugOut=None, noNodes=False
+            address="AA:BB:CC:DD:EE:FF",
+            noProto=False,
+            debugOut=None,
+            noNodes=False,
         )
 
     @patch("mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface")

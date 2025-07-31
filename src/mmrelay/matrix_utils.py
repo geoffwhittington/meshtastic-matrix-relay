@@ -372,11 +372,9 @@ def bot_command(command, event):
 
 async def connect_matrix(passed_config=None):
     """
-    Establish a connection to the Matrix homeserver.
-    Sets global matrix_client and detects the bot's display name.
+    Asynchronously establishes and initializes a connection to the Matrix homeserver using the provided or global configuration.
 
-    Args:
-        passed_config: The configuration dictionary to use (will update global config)
+    If a configuration dictionary is supplied, it updates the global configuration. The function sets up the Matrix client with a secure SSL context, retrieves the bot's device ID and display name, and returns the initialized client instance. Returns `None` if configuration is missing. Raises a `ConnectionError` if SSL context creation fails.
     """
     global matrix_client, bot_user_name, matrix_homeserver, matrix_rooms, matrix_access_token, bot_user_id, config
 
@@ -400,7 +398,11 @@ async def connect_matrix(passed_config=None):
         return matrix_client
 
     # Create SSL context using certifi's certificates
-    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    try:
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+    except Exception as e:
+        logger.error(f"Failed to create SSL context: {e}")
+        raise ConnectionError(f"SSL context creation failed: {e}") from e
 
     # Initialize the Matrix client with custom SSL context
     client_config = AsyncClientConfig(encryption_enabled=False)

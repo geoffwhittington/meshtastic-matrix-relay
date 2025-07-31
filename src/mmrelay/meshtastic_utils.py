@@ -11,9 +11,20 @@ import meshtastic.serial_interface
 import meshtastic.tcp_interface
 import serial  # For serial port exceptions
 import serial.tools.list_ports  # Import serial tools for port listing
-from bleak.exc import BleakDBusError, BleakError
 from meshtastic.protobuf import mesh_pb2, portnums_pb2
 from pubsub import pub
+
+# Import BLE exceptions conditionally
+try:
+    from bleak.exc import BleakDBusError, BleakError
+except ImportError:
+    # Define dummy exception classes if bleak is not available
+    class BleakDBusError(Exception):
+        pass
+
+    class BleakError(Exception):
+        pass
+
 
 from mmrelay.db_utils import (
     get_longname,
@@ -88,20 +99,24 @@ def serial_port_exists(port_name):
 
 def connect_meshtastic(passed_config=None, force_connect=False):
     """
-    Establishes a connection to a Meshtastic device using serial, BLE, or TCP, with automatic retries and event subscriptions.
+    Connects to a Meshtastic device using serial, BLE, or TCP, with automatic retries and event subscriptions.
 
-    If a configuration is provided, updates the global configuration and Matrix room mappings. If already connected and not forced, returns the existing client. Handles reconnection with exponential backoff, verifies serial port existence, and subscribes to message and connection lost events upon successful connection.
+    If a configuration is provided, updates the global configuration and Matrix room mappings. Prevents concurrent or duplicate connection attempts, and validates required configuration fields before connecting. Supports legacy and current connection types, verifies serial port existence, and handles connection failures with exponential backoff. Subscribes to message and connection lost events upon successful connection.
 
     Parameters:
-        passed_config (dict, optional): Configuration dictionary to use for the connection.
+        passed_config (dict, optional): Configuration dictionary for the connection.
         force_connect (bool, optional): If True, forces a new connection even if one already exists.
 
     Returns:
         The connected Meshtastic client instance, or None if connection fails or shutdown is in progress.
     """
-    global meshtastic_client, shutting_down, config, matrix_rooms
+    global meshtastic_client, shutting_down, reconnecting, config, matrix_rooms
     if shutting_down:
         logger.debug("Shutdown in progress. Not attempting to connect.")
+        return None
+
+    if reconnecting:
+        logger.debug("Reconnection already in progress. Not attempting new connection.")
         return None
 
     # Update the global config if a config is passed
@@ -129,6 +144,23 @@ def connect_meshtastic(passed_config=None, force_connect=False):
             logger.error("No configuration available. Cannot connect to Meshtastic.")
             return None
 
+        # Check if meshtastic config section exists
+        if "meshtastic" not in config or config["meshtastic"] is None:
+            logger.error(
+                "No Meshtastic configuration section found. Cannot connect to Meshtastic."
+            )
+            return None
+
+        # Check if connection_type is specified
+        if (
+            "connection_type" not in config["meshtastic"]
+            or config["meshtastic"]["connection_type"] is None
+        ):
+            logger.error(
+                "No connection type specified in Meshtastic configuration. Cannot connect to Meshtastic."
+            )
+            return None
+
         # Determine connection type and attempt connection
         connection_type = config["meshtastic"]["connection_type"]
 
@@ -150,7 +182,13 @@ def connect_meshtastic(passed_config=None, force_connect=False):
             try:
                 if connection_type == "serial":
                     # Serial connection
-                    serial_port = config["meshtastic"]["serial_port"]
+                    serial_port = config["meshtastic"].get("serial_port")
+                    if not serial_port:
+                        logger.error(
+                            "No serial port specified in Meshtastic configuration."
+                        )
+                        return None
+
                     logger.info(f"Connecting to serial port {serial_port}")
 
                     # Check if serial port exists before connecting
@@ -185,7 +223,13 @@ def connect_meshtastic(passed_config=None, force_connect=False):
 
                 elif connection_type == "tcp":
                     # TCP connection
-                    target_host = config["meshtastic"]["host"]
+                    target_host = config["meshtastic"].get("host")
+                    if not target_host:
+                        logger.error(
+                            "No host specified in Meshtastic configuration for TCP connection."
+                        )
+                        return None
+
                     logger.info(f"Connecting to host {target_host}")
 
                     # Connect without progress indicator
@@ -219,6 +263,10 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                     subscribed_to_connection_lost = True
                     logger.debug("Subscribed to meshtastic.connection.lost")
 
+            except (TimeoutError, ConnectionRefusedError, MemoryError) as e:
+                # Handle critical errors that should not be retried
+                logger.error(f"Critical connection error: {e}")
+                return None
             except (serial.SerialException, BleakDBusError, BleakError) as e:
                 # Handle specific connection errors
                 if shutting_down:
@@ -355,17 +403,21 @@ async def reconnect():
 
 def on_meshtastic_message(packet, interface):
     """
-    Processes incoming Meshtastic messages and relays them to Matrix rooms or plugins based on message type and configuration.
+    Process an incoming Meshtastic message and relay it to Matrix rooms or plugins according to message type and configuration.
 
-    Handles reactions and replies by relaying them to Matrix if enabled. Normal text messages are relayed to all mapped Matrix rooms unless handled by a plugin or directed to the relay node. Non-text messages are passed to plugins for processing. Messages from unmapped channels or disabled detection sensors are ignored. Ensures sender information is retrieved or stored as needed.
+    Handles reactions and replies by relaying them to Matrix if enabled. Normal text messages are relayed to all mapped Matrix rooms unless handled by a plugin or directed to the relay node. Non-text messages are passed to plugins for processing. Messages from unmapped channels, disabled detection sensors, or during shutdown are ignored. Ensures sender information is retrieved or stored as needed.
     """
     global config, matrix_rooms
 
+    # Validate packet structure
+    if not packet or not isinstance(packet, dict):
+        logger.error("Received malformed packet: packet is None or not a dict")
+        return
+
     # Log that we received a message (without the full packet details)
-    if packet.get("decoded", {}).get("text"):
-        logger.info(
-            f"Received Meshtastic message: {packet.get('decoded', {}).get('text')}"
-        )
+    decoded = packet.get("decoded")
+    if decoded and isinstance(decoded, dict) and decoded.get("text"):
+        logger.info(f"Received Meshtastic message: {decoded.get('text')}")
     else:
         logger.debug("Received non-text Meshtastic message")
 
@@ -600,15 +652,19 @@ def on_meshtastic_message(packet, interface):
         found_matching_plugin = False
         for plugin in plugins:
             if not found_matching_plugin:
-                result = asyncio.run_coroutine_threadsafe(
-                    plugin.handle_meshtastic_message(
-                        packet, formatted_message, longname, meshnet_name
-                    ),
-                    loop=loop,
-                )
-                found_matching_plugin = result.result()
-                if found_matching_plugin:
-                    logger.debug(f"Processed by plugin {plugin.plugin_name}")
+                try:
+                    result = asyncio.run_coroutine_threadsafe(
+                        plugin.handle_meshtastic_message(
+                            packet, formatted_message, longname, meshnet_name
+                        ),
+                        loop=loop,
+                    )
+                    found_matching_plugin = result.result()
+                    if found_matching_plugin:
+                        logger.debug(f"Processed by plugin {plugin.plugin_name}")
+                except Exception as e:
+                    logger.error(f"Plugin {plugin.plugin_name} failed: {e}")
+                    # Continue processing other plugins
 
         # If message is a DM or handled by plugin, do not relay further
         if is_direct_message:
@@ -657,36 +713,31 @@ def on_meshtastic_message(packet, interface):
         found_matching_plugin = False
         for plugin in plugins:
             if not found_matching_plugin:
-                result = asyncio.run_coroutine_threadsafe(
-                    plugin.handle_meshtastic_message(
-                        packet,
-                        formatted_message=None,
-                        longname=None,
-                        meshnet_name=None,
-                    ),
-                    loop=loop,
-                )
-                found_matching_plugin = result.result()
-                if found_matching_plugin:
-                    logger.debug(
-                        f"Processed {portnum} with plugin {plugin.plugin_name}"
+                try:
+                    result = asyncio.run_coroutine_threadsafe(
+                        plugin.handle_meshtastic_message(
+                            packet,
+                            formatted_message=None,
+                            longname=None,
+                            meshnet_name=None,
+                        ),
+                        loop=loop,
                     )
+                    found_matching_plugin = result.result()
+                    if found_matching_plugin:
+                        logger.debug(
+                            f"Processed {portnum} with plugin {plugin.plugin_name}"
+                        )
+                except Exception as e:
+                    logger.error(f"Plugin {plugin.plugin_name} failed: {e}")
+                    # Continue processing other plugins
 
 
 async def check_connection():
     """
-    Periodically checks the health of the Meshtastic connection and triggers reconnection if the connection is lost.
+    Periodically verifies the health of the Meshtastic connection and initiates reconnection if connectivity is lost.
 
-    Health checks can be enabled/disabled via configuration. When enabled, for non-BLE connections,
-    invokes `localNode.getMetadata()` at configurable intervals (default 60 seconds) to verify connectivity.
-    If the check fails or the firmware version is missing, initiates reconnection logic.
-
-    BLE connections rely on real-time disconnection detection and skip periodic health checks.
-    The function runs continuously until shutdown is requested.
-
-    Configuration:
-        health_check.enabled: Enable/disable health checks (default: true)
-        health_check.heartbeat_interval: Interval between checks in seconds (default: 60)
+    For non-BLE connections, performs a metadata check at configurable intervals to confirm device responsiveness. If the check fails or the firmware version is missing, triggers reconnection unless already in progress. BLE connections are excluded from periodic checks due to real-time disconnection detection. The function runs continuously until shutdown is requested, with health check behavior controlled by configuration options.
     """
     global meshtastic_client, shutting_down, config
 
@@ -766,9 +817,7 @@ def sendTextReply(
     channelIndex: int = 0,
 ):
     """
-    Send a Meshtastic text message as a reply to a specific previous message.
-
-    Creates and sends a reply message by setting the `reply_id` field in the Meshtastic Data protobuf, enabling proper reply threading. Returns the sent packet with its ID populated.
+    Sends a text message as a reply to a specific previous message via the Meshtastic interface.
 
     Parameters:
         interface: The Meshtastic interface to send through.
@@ -779,9 +828,14 @@ def sendTextReply(
         channelIndex (int): The channel index to send the message on.
 
     Returns:
-        The sent MeshPacket with its ID field populated.
+        The sent MeshPacket with its ID field populated, or None if sending fails or the interface is unavailable.
     """
     logger.debug(f"Sending text reply: '{text}' replying to message ID {reply_id}")
+
+    # Check if interface is available
+    if interface is None:
+        logger.error("No Meshtastic interface available for sending reply")
+        return None
 
     # Create the Data protobuf message with reply_id set
     data_msg = mesh_pb2.Data()
@@ -796,9 +850,13 @@ def sendTextReply(
     mesh_packet.id = interface._generatePacketId()
 
     # Send the packet using the existing infrastructure
-    return interface._sendPacket(
-        mesh_packet, destinationId=destinationId, wantAck=wantAck
-    )
+    try:
+        return interface._sendPacket(
+            mesh_packet, destinationId=destinationId, wantAck=wantAck
+        )
+    except Exception as e:
+        logger.error(f"Failed to send text reply: {e}")
+        return None
 
 
 if __name__ == "__main__":

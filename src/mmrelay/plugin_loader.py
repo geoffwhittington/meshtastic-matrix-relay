@@ -661,9 +661,9 @@ def load_plugins_from_directory(directory, recursive=False):
 
 def load_plugins(passed_config=None):
     """
-    Load and initialize all active plugins according to the configuration.
+    Discovers, loads, and initializes all active plugins according to the configuration.
 
-    This function discovers, loads, and starts core, custom, and community plugins based on the provided or global configuration. It ensures only plugins marked as active are loaded, handles cloning and updating of community plugin repositories, installs dependencies as needed, and sorts active plugins by priority.
+    This function manages the full plugin lifecycle: it loads core, custom, and community plugins as specified in the configuration, handles cloning and updating of community plugin repositories, installs dependencies as needed, and starts each active plugin. Plugins are filtered and sorted by priority before being returned. If plugins have already been loaded, returns the cached list.
 
     Parameters:
         passed_config (dict, optional): Configuration dictionary to use instead of the global config.
@@ -741,11 +741,15 @@ def load_plugins(passed_config=None):
             plugin_path = os.path.join(custom_dir, plugin_name)
             if os.path.exists(plugin_path):
                 logger.debug(f"Loading custom plugin from: {plugin_path}")
-                plugins.extend(
-                    load_plugins_from_directory(plugin_path, recursive=False)
-                )
-                plugin_found = True
-                break
+                try:
+                    plugins.extend(
+                        load_plugins_from_directory(plugin_path, recursive=False)
+                    )
+                    plugin_found = True
+                    break
+                except Exception as e:
+                    logger.error(f"Failed to load custom plugin {plugin_name}: {e}")
+                    continue
 
         if not plugin_found:
             logger.warning(
@@ -833,11 +837,17 @@ def load_plugins(passed_config=None):
                 plugin_path = os.path.join(dir_path, repo_name)
                 if os.path.exists(plugin_path):
                     logger.info(f"Loading community plugin from: {plugin_path}")
-                    plugins.extend(
-                        load_plugins_from_directory(plugin_path, recursive=True)
-                    )
-                    plugin_found = True
-                    break
+                    try:
+                        plugins.extend(
+                            load_plugins_from_directory(plugin_path, recursive=True)
+                        )
+                        plugin_found = True
+                        break
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to load community plugin {repo_name}: {e}"
+                        )
+                        continue
 
             if not plugin_found:
                 logger.warning(

@@ -12,6 +12,7 @@ from yaml.loader import SafeLoader
 
 # Import version from package
 from mmrelay import __version__
+from mmrelay.config import get_config_paths
 from mmrelay.tools import get_sample_config_path
 
 
@@ -119,7 +120,6 @@ def check_config(args=None):
     Returns:
         bool: True if the configuration is valid, False otherwise.
     """
-    from mmrelay.config import get_config_paths
 
     # If args is None, parse them now
     if args is None:
@@ -254,36 +254,50 @@ def check_config(args=None):
 
 
 def main():
-    """Entry point for CLI commands.
+    """
+    Runs the Meshtastic Matrix Relay CLI, handling argument parsing, command execution, and error reporting.
 
     Returns:
-        int: Exit code (0 for success, non-zero for failure)
+        int: Exit code indicating success (0) or failure (non-zero).
     """
-    args = parse_arguments()
+    try:
+        args = parse_arguments()
 
-    # Handle --check-config
-    if args.check_config:
-        return 0 if check_config(args) else 1
+        # Handle --check-config
+        if args.check_config:
+            return 0 if check_config(args) else 1
 
-    # Handle --install-service
-    if args.install_service:
-        from mmrelay.setup_utils import install_service
+        # Handle --install-service
+        if args.install_service:
+            try:
+                from mmrelay.setup_utils import install_service
 
-        return 0 if install_service() else 1
+                return 0 if install_service() else 1
+            except ImportError as e:
+                print(f"Error importing setup utilities: {e}")
+                return 1
 
-    # Handle --generate-config
-    if args.generate_config:
-        return 0 if generate_sample_config() else 1
+        # Handle --generate-config
+        if args.generate_config:
+            return 0 if generate_sample_config() else 1
 
-    # Handle --version
-    if args.version:
-        print_version()
-        return 0
+        # Handle --version
+        if args.version:
+            print_version()
+            return 0
 
-    # If no command was specified, run the main functionality
-    from mmrelay.main import run_main
+        # If no command was specified, run the main functionality
+        try:
+            from mmrelay.main import run_main
 
-    return run_main(args)
+            return run_main(args)
+        except ImportError as e:
+            print(f"Error importing main module: {e}")
+            return 1
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return 1
 
 
 if __name__ == "__main__":
@@ -338,15 +352,16 @@ def handle_cli_commands(args):
 
 
 def generate_sample_config():
-    """Generate a sample config.yaml file.
+    """
+    Generate a sample configuration file (`config.yaml`) in the default location if one does not already exist.
+
+    Attempts to copy a sample config from various sources, handling directory creation and file system errors gracefully. Prints informative messages on success or failure.
 
     Returns:
-        bool: True if the config was generated successfully, False otherwise.
+        bool: True if the sample config was generated successfully, False otherwise.
     """
 
     import shutil
-
-    from mmrelay.config import get_config_paths
 
     # Get the first config path (highest priority)
     config_paths = get_config_paths()
@@ -368,8 +383,7 @@ def generate_sample_config():
     # No config file exists, generate one in the first location
     target_path = config_paths[0]
 
-    # Ensure the directory exists
-    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+    # Directory should already exist from get_config_paths() call
 
     # Use the helper function to get the sample config path
     sample_config_path = get_sample_config_path()
@@ -378,12 +392,16 @@ def generate_sample_config():
         # Copy the sample config file to the target path
         import shutil
 
-        shutil.copy2(sample_config_path, target_path)
-        print(f"Generated sample config file at: {target_path}")
-        print(
-            "\nEdit this file with your Matrix and Meshtastic settings before running mmrelay."
-        )
-        return True
+        try:
+            shutil.copy2(sample_config_path, target_path)
+            print(f"Generated sample config file at: {target_path}")
+            print(
+                "\nEdit this file with your Matrix and Meshtastic settings before running mmrelay."
+            )
+            return True
+        except (IOError, OSError) as e:
+            print(f"Error copying sample config file: {e}")
+            return False
 
     # If the helper function failed, try using importlib.resources directly
     try:
@@ -424,12 +442,16 @@ def generate_sample_config():
 
         for path in sample_config_paths:
             if os.path.exists(path):
-                shutil.copy(path, target_path)
-                print(f"Generated sample config file at: {target_path}")
-                print(
-                    "\nEdit this file with your Matrix and Meshtastic settings before running mmrelay."
-                )
-                return True
+                try:
+                    shutil.copy(path, target_path)
+                    print(f"Generated sample config file at: {target_path}")
+                    print(
+                        "\nEdit this file with your Matrix and Meshtastic settings before running mmrelay."
+                    )
+                    return True
+                except (IOError, OSError) as e:
+                    print(f"Error copying sample config file from {path}: {e}")
+                    return False
 
         print("Error: Could not find sample_config.yaml")
         return False

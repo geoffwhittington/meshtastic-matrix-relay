@@ -49,14 +49,15 @@ def get_app_path():
 
 def get_config_paths(args=None):
     """
-    Returns a list of possible config file paths in order of priority:
-    1. Command line argument (if provided)
-    2. User config directory (~/.mmrelay/config/ on Linux)
-    3. Current directory (for backward compatibility)
-    4. Application directory (for backward compatibility)
+    Return a prioritized list of possible configuration file paths for the application.
 
-    Args:
-        args: The parsed command-line arguments
+    The search order is: a command-line specified path (if provided), the user config directory, the current working directory, and the application directory. The user config directory is skipped if it cannot be created due to permission or OS errors.
+
+    Parameters:
+        args: Parsed command-line arguments, expected to have a 'config' attribute specifying a config file path.
+
+    Returns:
+        List of absolute paths to candidate configuration files, ordered by priority.
     """
     paths = []
 
@@ -72,9 +73,13 @@ def get_config_paths(args=None):
         # Use platformdirs default for Windows
         user_config_dir = platformdirs.user_config_dir(APP_NAME, APP_AUTHOR)
 
-    os.makedirs(user_config_dir, exist_ok=True)
-    user_config_path = os.path.join(user_config_dir, "config.yaml")
-    paths.append(user_config_path)
+    try:
+        os.makedirs(user_config_dir, exist_ok=True)
+        user_config_path = os.path.join(user_config_dir, "config.yaml")
+        paths.append(user_config_path)
+    except (OSError, PermissionError):
+        # If we can't create the user config directory, skip it
+        pass
 
     # Check current directory (for backward compatibility)
     current_dir_config = os.path.join(os.getcwd(), "config.yaml")
@@ -200,24 +205,31 @@ def set_config(module, passed_config):
 
 
 def load_config(config_file=None, args=None):
-    """Load the configuration from the specified file or search for it.
+    """
+    Load the application configuration from a specified file or by searching standard locations.
 
-    Args:
-        config_file (str, optional): Path to the config file. If None, search for it.
-        args: The parsed command-line arguments
+    If a config file path is provided and valid, attempts to load and parse it as YAML. If not, searches for a configuration file in prioritized locations and loads the first valid one found. Returns an empty dictionary if no valid configuration is found or if loading fails due to file or YAML errors.
+
+    Parameters:
+        config_file (str, optional): Path to a specific configuration file. If None, searches default locations.
+        args: Parsed command-line arguments, used to determine config search order.
 
     Returns:
-        dict: The loaded configuration
+        dict: The loaded configuration dictionary, or an empty dictionary if loading fails.
     """
     global relay_config, config_path
 
     # If a specific config file was provided, use it
     if config_file and os.path.isfile(config_file):
         # Store the config path but don't log it yet - will be logged by main.py
-        with open(config_file, "r") as f:
-            relay_config = yaml.load(f, Loader=SafeLoader)
-        config_path = config_file
-        return relay_config
+        try:
+            with open(config_file, "r") as f:
+                relay_config = yaml.load(f, Loader=SafeLoader)
+            config_path = config_file
+            return relay_config
+        except (yaml.YAMLError, PermissionError, OSError) as e:
+            logger.error(f"Error loading config file {config_file}: {e}")
+            return {}
 
     # Otherwise, search for a config file
     config_paths = get_config_paths(args)
@@ -227,9 +239,13 @@ def load_config(config_file=None, args=None):
         if os.path.isfile(path):
             config_path = path
             # Store the config path but don't log it yet - will be logged by main.py
-            with open(config_path, "r") as f:
-                relay_config = yaml.load(f, Loader=SafeLoader)
-            return relay_config
+            try:
+                with open(config_path, "r") as f:
+                    relay_config = yaml.load(f, Loader=SafeLoader)
+                return relay_config
+            except (yaml.YAMLError, PermissionError, OSError) as e:
+                logger.error(f"Error loading config file {path}: {e}")
+                continue  # Try the next config path
 
     # No config file found
     logger.error("Configuration file not found in any of the following locations:")

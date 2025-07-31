@@ -1,3 +1,6 @@
+# Virtual environments - different agents use different locations
+venv/
+.venv/
 .pyenv
 .vscode
 config.yaml
