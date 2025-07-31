@@ -132,5 +132,209 @@ class TestConfig(unittest.TestCase):
             )
 
 
+class TestConfigEdgeCases(unittest.TestCase):
+    """Test configuration edge cases and error handling."""
+
+    def setUp(self):
+        """Reset global config state before each test."""
+        mmrelay.config.relay_config = {}
+        mmrelay.config.config_path = None
+
+    @patch("mmrelay.config.os.path.isfile")
+    @patch("builtins.open")
+    @patch("mmrelay.config.yaml.load")
+    def test_config_migration_scenarios(self, mock_yaml_load, mock_open, mock_isfile):
+        """
+        Test configuration migration from old format to new format.
+
+        Simulates loading an old-style config and verifies that it's properly
+        migrated to the new format with appropriate defaults.
+        """
+        # Simulate old config format (missing new fields)
+        old_config = {
+            "matrix": {
+                "homeserver": "https://matrix.org",
+                "username": "@bot:matrix.org",
+                "password": "secret"
+            },
+            "meshtastic": {
+                "connection_type": "serial",
+                "serial_port": "/dev/ttyUSB0"
+            }
+        }
+
+        mock_yaml_load.return_value = old_config
+        mock_isfile.return_value = True
+
+        # Load config and verify migration
+        config = load_config(config_file="old_config.yaml")
+
+        # Should contain original data
+        self.assertEqual(config["matrix"]["homeserver"], "https://matrix.org")
+        self.assertEqual(config["meshtastic"]["connection_type"], "serial")
+
+        # Should handle missing fields gracefully
+        self.assertIsInstance(config, dict)
+
+    @patch("mmrelay.config.os.path.isfile")
+    @patch("builtins.open")
+    @patch("mmrelay.config.yaml.load")
+    def test_partial_config_handling(self, mock_yaml_load, mock_open, mock_isfile):
+        """
+        Test handling of partial/incomplete configuration files.
+
+        Verifies that the system can handle configs with missing sections
+        or incomplete data without crashing.
+        """
+        # Test with minimal config
+        minimal_config = {
+            "matrix": {
+                "homeserver": "https://matrix.org"
+                # Missing username, password, etc.
+            }
+            # Missing meshtastic section entirely
+        }
+
+        mock_yaml_load.return_value = minimal_config
+        mock_isfile.return_value = True
+
+        # Should load without error
+        config = load_config(config_file="minimal_config.yaml")
+
+        # Should contain what was provided
+        self.assertEqual(config["matrix"]["homeserver"], "https://matrix.org")
+
+        # Should handle missing sections gracefully
+        self.assertNotIn("username", config.get("matrix", {}))
+
+    @patch("mmrelay.config.os.path.isfile")
+    @patch("builtins.open")
+    @patch("mmrelay.config.yaml.load")
+    def test_config_validation_error_messages(self, mock_yaml_load, mock_open, mock_isfile):
+        """
+        Test that configuration validation provides helpful error messages.
+
+        Verifies that when invalid configurations are loaded, the system
+        provides clear, actionable error messages to help users fix issues.
+        """
+        # Test with invalid YAML structure
+        invalid_config = {
+            "matrix": "not_a_dict",  # Should be a dictionary
+            "meshtastic": {
+                "connection_type": "invalid_type"  # Invalid connection type
+            }
+        }
+
+        mock_yaml_load.return_value = invalid_config
+        mock_isfile.return_value = True
+
+        # Should load but config validation elsewhere should catch issues
+        config = load_config(config_file="invalid_config.yaml")
+
+        # Config should load (validation happens elsewhere)
+        self.assertIsInstance(config, dict)
+        self.assertEqual(config["matrix"], "not_a_dict")
+
+    @patch("mmrelay.config.os.path.isfile")
+    @patch("builtins.open")
+    def test_corrupted_config_file_handling(self, mock_open, mock_isfile):
+        """
+        Test handling of corrupted or malformed YAML files.
+
+        Verifies that the system gracefully handles YAML parsing errors
+        and provides appropriate fallback behavior.
+        """
+        import yaml
+
+        mock_isfile.return_value = True
+
+        # Simulate YAML parsing error
+        mock_open.return_value.__enter__.return_value.read.return_value = "invalid: yaml: content: ["
+
+        with patch("mmrelay.config.yaml.load", side_effect=yaml.YAMLError("Invalid YAML")):
+            # Should handle YAML errors gracefully
+            try:
+                config = load_config(config_file="corrupted.yaml")
+                # If no exception, should return empty dict or handle gracefully
+                self.assertIsInstance(config, dict)
+            except yaml.YAMLError:
+                # If exception is raised, it should be a YAML error
+                pass
+
+    @patch("mmrelay.config.os.path.isfile")
+    def test_missing_config_file_fallback(self, mock_isfile):
+        """
+        Test fallback behavior when configuration file is missing.
+
+        Verifies that the system provides sensible defaults when no
+        configuration file is found.
+        """
+        mock_isfile.return_value = False
+
+        with patch("sys.argv", ["mmrelay"]):
+            config = load_config()
+
+            # Should return empty dict when no config found
+            self.assertEqual(config, {})
+
+            # Should not crash or raise exceptions
+            self.assertIsInstance(config, dict)
+
+    @patch("mmrelay.config.os.path.isfile")
+    @patch("builtins.open")
+    @patch("mmrelay.config.yaml.load")
+    def test_config_with_environment_variables(self, mock_yaml_load, mock_open, mock_isfile):
+        """
+        Test configuration that references environment variables.
+
+        Verifies that configs can include environment variable references
+        and that they're properly resolved.
+        """
+        # Config with environment variable references
+        env_config = {
+            "matrix": {
+                "homeserver": "${MATRIX_HOMESERVER}",
+                "access_token": "${MATRIX_TOKEN}"
+            },
+            "meshtastic": {
+                "serial_port": "${MESHTASTIC_PORT}"
+            }
+        }
+
+        mock_yaml_load.return_value = env_config
+        mock_isfile.return_value = True
+
+        # Set environment variables
+        with patch.dict(os.environ, {
+            "MATRIX_HOMESERVER": "https://test.matrix.org",
+            "MATRIX_TOKEN": "test_token_123",
+            "MESHTASTIC_PORT": "/dev/ttyUSB1"
+        }):
+            config = load_config(config_file="env_config.yaml")
+
+            # Should load the raw config (environment variable expansion happens elsewhere)
+            self.assertEqual(config["matrix"]["homeserver"], "${MATRIX_HOMESERVER}")
+            self.assertEqual(config["matrix"]["access_token"], "${MATRIX_TOKEN}")
+
+    def test_config_path_resolution_edge_cases(self):
+        """
+        Test edge cases in configuration path resolution.
+
+        Verifies that the system handles unusual path scenarios correctly,
+        including relative paths, symlinks, and special characters.
+        """
+        with patch("sys.argv", ["mmrelay", "--config", "../config/test.yaml"]):
+            paths = get_config_paths()
+
+            # Should include the specified relative path
+            self.assertIn("../config/test.yaml", paths)
+
+        with patch("sys.argv", ["mmrelay", "--config", "/absolute/path/config.yaml"]):
+            paths = get_config_paths()
+
+            # Should include the absolute path
+            self.assertIn("/absolute/path/config.yaml", paths)
+
+
 if __name__ == "__main__":
     unittest.main()

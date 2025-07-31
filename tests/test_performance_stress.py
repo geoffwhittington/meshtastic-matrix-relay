@@ -76,7 +76,7 @@ class TestPerformanceStress(unittest.TestCase):
         # Force garbage collection after each test
         gc.collect()
 
-    @pytest.mark.slow
+    @pytest.mark.performance  # Changed from slow to performance
     def test_high_volume_message_processing(self):
         """
         Test processing of 1000 messages through the Meshtastic message handler to ensure high throughput and absence of memory leaks.
@@ -170,7 +170,7 @@ class TestPerformanceStress(unittest.TestCase):
         finally:
             loop.close()
 
-    @pytest.mark.slow
+    @pytest.mark.performance  # Changed from slow to performance
     def test_message_queue_performance_under_load(self):
         """
         Test the performance of the MessageQueue under rapid enqueueing and high load.
@@ -252,7 +252,7 @@ class TestPerformanceStress(unittest.TestCase):
         # Run the async test
         asyncio.run(run_test())
 
-    @pytest.mark.slow
+    @pytest.mark.performance  # Changed from slow to performance
     def test_database_performance_large_dataset(self):
         """
         Test database operations with large datasets, including bulk insertions, retrievals, message map storage, and pruning.
@@ -318,7 +318,7 @@ class TestPerformanceStress(unittest.TestCase):
 
                 self.assertLess(prune_time, 5.0, "Message map pruning too slow")
 
-    @pytest.mark.slow
+    @pytest.mark.performance  # Changed from slow to performance
     def test_plugin_processing_performance(self):
         """
         Measures the performance of processing messages through multiple plugins, ensuring all plugins are invoked for each message and overall processing meets speed requirements.
@@ -441,7 +441,7 @@ class TestPerformanceStress(unittest.TestCase):
                                                 message_count,
                                             )
 
-    @pytest.mark.slow
+    @pytest.mark.performance  # Changed from slow to performance
     def test_concurrent_message_queue_access(self):
         """
         Test the MessageQueue's ability to handle concurrent enqueuing and processing of messages from multiple threads.
@@ -540,7 +540,7 @@ class TestPerformanceStress(unittest.TestCase):
         # Run the async test
         asyncio.run(run_concurrent_test())
 
-    @pytest.mark.slow
+    @pytest.mark.performance  # Changed from slow to performance
     def test_memory_usage_stability(self):
         """
         Verifies that processing a large number of messages does not cause excessive memory growth.
@@ -596,7 +596,7 @@ class TestPerformanceStress(unittest.TestCase):
             f"Memory usage increased by {memory_increase / 1024 / 1024:.2f}MB",
         )
 
-    @pytest.mark.slow
+    @pytest.mark.performance  # Changed from slow to performance
     def test_rate_limiting_effectiveness(self):
         """
         Test that the MessageQueue enforces rate limiting by ensuring a minimum delay between message sends.
@@ -716,6 +716,115 @@ class TestPerformanceStress(unittest.TestCase):
 
         # Plugin should be garbage collected
         self.assertIsNone(plugin_ref(), "Plugin not properly cleaned up")
+
+    @pytest.mark.performance  # New realistic throughput benchmark
+    def test_realistic_throughput_benchmark(self):
+        """
+        Benchmark realistic message throughput under production-like conditions.
+
+        Tests the system's ability to handle a realistic mix of message types
+        (text, telemetry, position) with proper rate limiting and plugin processing.
+        Measures and validates throughput against expected production performance.
+        """
+        import asyncio
+        import random
+
+        async def run_throughput_test():
+            """
+            Run a comprehensive throughput test with mixed message types.
+
+            Simulates a realistic mesh network with various message types,
+            multiple nodes, and proper rate limiting to benchmark real-world performance.
+            """
+            with patch("mmrelay.meshtastic_utils.meshtastic_client", MagicMock(is_connected=True)):
+                with patch("mmrelay.meshtastic_utils.reconnecting", False):
+                    queue = MessageQueue()
+                    queue.start(message_delay=2.0)  # Use realistic 2s delay
+                    queue.ensure_processor_started()
+
+                    # Realistic test parameters
+                    test_duration = 30  # 30 second test
+                    message_types = ["TEXT_MESSAGE_APP", "TELEMETRY_APP", "POSITION_APP"]
+                    node_ids = [f"!{i:08x}" for i in range(1, 11)]  # 10 nodes
+
+                    processed_messages = []
+                    start_time = time.time()
+
+                    def mock_send_function(msg_type, node_id):
+                        processed_messages.append({
+                            "type": msg_type,
+                            "node": node_id,
+                            "timestamp": time.time()
+                        })
+                        return MagicMock(id=f"msg_{len(processed_messages)}")
+
+                    try:
+                        # Generate realistic message load
+                        messages_queued = 0
+                        while time.time() - start_time < test_duration:
+                            # Randomly select message type and node
+                            msg_type = random.choice(message_types)
+                            node_id = random.choice(node_ids)
+
+                            # Queue message with realistic frequency
+                            success = queue.enqueue(
+                                lambda mt=msg_type, nid=node_id: mock_send_function(mt, nid),
+                                description=f"{msg_type} from {node_id}"
+                            )
+
+                            if success:
+                                messages_queued += 1
+
+                            # Realistic inter-message delay (0.5-3 seconds)
+                            await asyncio.sleep(random.uniform(0.5, 3.0))
+
+                        # Wait for queue to process remaining messages
+                        await asyncio.sleep(10)  # Allow processing to complete
+
+                        end_time = time.time()
+                        total_time = end_time - start_time
+
+                        # Calculate throughput metrics
+                        messages_processed = len(processed_messages)
+                        throughput = messages_processed / total_time
+
+                        # Validate realistic performance expectations
+                        self.assertGreater(messages_queued, 5, "Should queue multiple messages")
+                        self.assertGreater(messages_processed, 0, "Should process some messages")
+
+                        # Throughput should be reasonable for 2s minimum delay
+                        # With 2s delay, max theoretical throughput is 0.5 msg/s
+                        self.assertLessEqual(throughput, 0.6, "Throughput should respect rate limiting")
+
+                        # Should achieve at least 80% of theoretical maximum
+                        min_expected_throughput = 0.4  # 80% of 0.5 msg/s
+                        self.assertGreaterEqual(
+                            throughput,
+                            min_expected_throughput,
+                            f"Throughput {throughput:.3f} msg/s below minimum {min_expected_throughput}"
+                        )
+
+                        # Verify message type distribution
+                        type_counts = {}
+                        for msg in processed_messages:
+                            msg_type = msg["type"]
+                            type_counts[msg_type] = type_counts.get(msg_type, 0) + 1
+
+                        # Should have processed multiple message types
+                        self.assertGreater(len(type_counts), 0, "Should process various message types")
+
+                        print(f"\nThroughput Benchmark Results:")
+                        print(f"  Duration: {total_time:.1f}s")
+                        print(f"  Messages Queued: {messages_queued}")
+                        print(f"  Messages Processed: {messages_processed}")
+                        print(f"  Throughput: {throughput:.3f} msg/s")
+                        print(f"  Message Types: {type_counts}")
+
+                    finally:
+                        queue.stop()
+
+        # Run the async throughput test
+        asyncio.run(run_throughput_test())
 
 
 if __name__ == "__main__":

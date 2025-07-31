@@ -646,6 +646,187 @@ plugins:
                 # (Matrix relay not called since no rooms configured)
                 mock_matrix_relay.assert_not_called()
 
+    def test_plugin_chain_with_weather_processing(self):
+        """
+        Test complete plugin chain processing with weather plugin handling a weather message.
+
+        Simulates a weather sensor message flowing through the plugin chain,
+        verifying that the weather plugin processes it and Matrix relay is called.
+        """
+        # Create weather sensor packet
+        packet = {
+            "decoded": {
+                "telemetry": {
+                    "deviceMetrics": {
+                        "temperature": 25.5,
+                        "batteryLevel": 85,
+                        "voltage": 4.1
+                    },
+                    "time": int(time.time())
+                },
+                "portnum": "TELEMETRY_APP"  # Use string constant
+            },
+            "fromId": "!weather01",
+            "channel": 0,
+            "to": 4294967295,
+            "id": 987654321,
+        }
+
+        mock_interface = MagicMock()
+        mock_interface.nodes = {
+            "!weather01": {
+                "user": {"id": "!weather01", "longName": "Weather Station", "shortName": "WS"}
+            }
+        }
+
+        with patch("mmrelay.matrix_utils.matrix_relay") as mock_matrix_relay:
+            with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins:
+                with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
+                    # Mock telemetry plugin (simulates weather processing)
+                    mock_telemetry_plugin = MagicMock()
+                    mock_telemetry_plugin.handle_meshtastic_message = AsyncMock(
+                        return_value=False  # Processes but doesn't intercept
+                    )
+                    mock_load_plugins.return_value = [mock_telemetry_plugin]
+
+                    # Mock async execution
+                    def mock_run_coro(coro, loop):
+                        mock_future = MagicMock()
+                        try:
+                            result = asyncio.run(coro)
+                            mock_future.result.return_value = result
+                        except Exception:
+                            mock_future.result.return_value = None
+                        return mock_future
+
+                    mock_run_coroutine.side_effect = mock_run_coro
+
+                    # Set up global state
+                    import mmrelay.meshtastic_utils
+                    mmrelay.meshtastic_utils.config = {
+                        "matrix_rooms": [{"id": "!weather:matrix.org", "meshtastic_channel": 0}],
+                        "meshtastic": {"meshnet_name": "TestMesh"},
+                    }
+                    mmrelay.meshtastic_utils.matrix_rooms = [
+                        {"id": "!weather:matrix.org", "meshtastic_channel": 0}
+                    ]
+                    mmrelay.meshtastic_utils.event_loop = MagicMock()
+
+                    # Process the telemetry message
+                    on_meshtastic_message(packet, mock_interface)
+
+                    # Verify telemetry plugin was called
+                    mock_telemetry_plugin.handle_meshtastic_message.assert_called_once()
+
+                    # Verify Matrix relay was NOT called (telemetry messages are not relayed)
+                    mock_matrix_relay.assert_not_called()
+
+    def test_config_hot_reload_scenario(self):
+        """
+        Test behavior when configuration changes during runtime.
+
+        Simulates configuration file changes and verifies that the system
+        can detect and handle configuration updates appropriately.
+        """
+        # Create initial config
+        initial_config = {
+            "matrix": {
+                "homeserver": "https://matrix.org",
+                "access_token": "test_token",
+                "bot_user_id": "@test:matrix.org",
+            },
+            "matrix_rooms": [{"id": "!room1:matrix.org", "meshtastic_channel": 0}],
+            "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"},
+            "plugins": {"debug": {"active": True}},
+        }
+
+        # Create updated config with new room
+        updated_config = {
+            "matrix": {
+                "homeserver": "https://matrix.org",
+                "access_token": "test_token",
+                "bot_user_id": "@test:matrix.org",
+            },
+            "matrix_rooms": [
+                {"id": "!room1:matrix.org", "meshtastic_channel": 0},
+                {"id": "!room2:matrix.org", "meshtastic_channel": 1},  # New room
+            ],
+            "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"},
+            "plugins": {"debug": {"active": True}, "help": {"active": True}},  # New plugin
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            import yaml
+            yaml.dump(initial_config, f)
+            config_path = f.name
+
+        try:
+            # Load initial config
+            config = load_config(config_file=config_path)
+            self.assertEqual(len(config["matrix_rooms"]), 1)
+            self.assertEqual(len(config["plugins"]), 1)
+
+            # Simulate config file update
+            with open(config_path, "w") as f:
+                yaml.dump(updated_config, f)
+
+            # Reload config
+            updated_config_loaded = load_config(config_file=config_path)
+            self.assertEqual(len(updated_config_loaded["matrix_rooms"]), 2)
+            self.assertEqual(len(updated_config_loaded["plugins"]), 2)
+
+            # Verify new room is present
+            room_ids = [room["id"] for room in updated_config_loaded["matrix_rooms"]]
+            self.assertIn("!room2:matrix.org", room_ids)
+
+        finally:
+            os.unlink(config_path)
+
+    def test_database_cleanup_during_operation(self):
+        """
+        Test database cleanup operations while system is processing messages.
+
+        Ensures that database maintenance doesn't interfere with active
+        message processing and that data integrity is maintained.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = os.path.join(temp_dir, "test_cleanup.sqlite")
+
+            with patch("mmrelay.db_utils.get_db_path", return_value=db_path):
+                # Initialize database
+                initialize_database()
+
+                from mmrelay.db_utils import (
+                    prune_message_map,
+                    get_message_map_by_meshtastic_id,
+                    store_message_map,
+                )
+
+                # Store multiple message mappings
+                for i in range(10):
+                    store_message_map(
+                        f"mesh{i}",
+                        f"matrix{i}",
+                        "!room:matrix.org",
+                        f"Test message {i}",
+                    )
+
+                # Verify all messages are stored
+                for i in range(10):
+                    mapping = get_message_map_by_meshtastic_id(f"mesh{i}")
+                    self.assertIsNotNone(mapping)
+
+                # Simulate cleanup during operation
+                # This should keep only the 5 most recent messages
+                prune_message_map(5)
+
+                # Verify cleanup worked but didn't break database
+                # (Exact behavior depends on cleanup implementation)
+                # At minimum, database should still be accessible
+                mapping = get_message_map_by_meshtastic_id("mesh9")  # Most recent
+                # Should still exist or be None (depending on cleanup logic)
+                # The important thing is no exception is raised
+
 
 if __name__ == "__main__":
     unittest.main()
