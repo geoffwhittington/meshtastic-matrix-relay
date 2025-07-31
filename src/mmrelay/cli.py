@@ -206,7 +206,7 @@ def check_config(args=None):
                         "\nWarning: 'network' connection_type is deprecated. Please use 'tcp' instead."
                     )
                     print(
-                        "See ANNOUNCEMENT.md for more information about deprecated options.\n"
+                        "This option still works but may be removed in future versions.\n"
                     )
 
                 # Check connection-specific fields
@@ -234,7 +234,7 @@ def check_config(args=None):
                         "\nWarning: 'db' section is deprecated. Please use 'database' instead."
                     )
                     print(
-                        "See ANNOUNCEMENT.md for more information about deprecated options.\n"
+                        "This option still works but may be removed in future versions.\n"
                     )
 
                 print("Configuration file is valid!")
