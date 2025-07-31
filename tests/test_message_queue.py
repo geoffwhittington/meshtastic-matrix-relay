@@ -100,6 +100,9 @@ class TestMessageQueue(unittest.TestCase):
             current_loop = asyncio.get_event_loop()
             if hasattr(self, "original_run_in_executor"):
                 current_loop.run_in_executor = self.original_run_in_executor
+            # Close the event loop to prevent ResourceWarnings
+            if not current_loop.is_closed():
+                current_loop.close()
         except RuntimeError:
             # No current event loop, which is fine
             pass

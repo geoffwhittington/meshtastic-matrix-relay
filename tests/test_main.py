@@ -183,7 +183,9 @@ class TestMain(unittest.TestCase):
         mock_load_config.return_value = self.mock_config
 
         # Mock main to complete successfully (async function)
-        mock_main.side_effect = AsyncMock(return_value=None)
+        async def mock_main_func(*args, **kwargs):
+            return None
+        mock_main.side_effect = mock_main_func
 
         result = run_main(mock_args)
 
@@ -233,7 +235,9 @@ class TestMain(unittest.TestCase):
         mock_load_config.return_value = self.mock_config
 
         # Mock main to raise KeyboardInterrupt (async function)
-        mock_main.side_effect = AsyncMock(side_effect=KeyboardInterrupt())
+        async def mock_main_func(*args, **kwargs):
+            raise KeyboardInterrupt()
+        mock_main.side_effect = mock_main_func
 
         result = run_main(None)
 
