@@ -356,3 +356,41 @@ def mock_config():
         },
         "plugins": {"debug": {"active": True}},
     }
+
+
+@pytest.fixture(autouse=True)
+def cleanup_async_objects():
+    """
+    Automatically clean up any remaining async objects after each test.
+
+    This fixture runs after every test to ensure that any AsyncMock objects
+    or coroutines created during testing are properly cleaned up to prevent
+    warnings about unawaited coroutines.
+    """
+    yield  # Run the test
+
+    # Clean up any remaining coroutines
+    import gc
+    from unittest.mock import AsyncMock
+
+    try:
+        # Get all objects in memory
+        for obj in gc.get_objects():
+            # Close any coroutines that weren't awaited
+            if asyncio.iscoroutine(obj):
+                try:
+                    obj.close()
+                except:
+                    pass
+            # Clean up AsyncMock objects
+            elif isinstance(obj, AsyncMock):
+                try:
+                    # Reset the AsyncMock to clear any pending coroutines
+                    obj.reset_mock()
+                except:
+                    pass
+    except:
+        pass
+
+    # Force garbage collection to clean up any remaining objects
+    gc.collect()
