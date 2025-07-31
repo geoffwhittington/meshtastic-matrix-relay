@@ -7,6 +7,9 @@ to ensure tests can run without requiring actual hardware or network connections
 
 import asyncio
 import logging
+import os
+import tempfile
+import pytest
 
 # Preserve references to built-in modules that should NOT be mocked
 import queue
@@ -131,3 +134,101 @@ except ImportError:
 
 # Ensure built-in modules are not accidentally mocked
 ensure_builtins_not_mocked()
+
+
+# Test fixtures for configuration and temporary resources
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_config():
+    """Create a test configuration file for CI environment."""
+    # Define config paths
+    ci_config_path = "/home/runner/.mmrelay/config.yaml"
+    local_config_path = os.path.expanduser("~/.mmrelay/config.yaml")
+
+    # Create test config content
+    test_config = """# Test configuration for MMRelay
+matrix:
+  homeserver: "https://matrix.example.org"
+  username: "@testbot:example.org"
+  password: "test_password"
+
+meshtastic:
+  connection_type: "serial"
+  serial_port: "/dev/ttyUSB0"
+  meshnet_name: "TestMesh"
+
+matrix_rooms:
+  general:
+    id: "!testroom:example.org"
+    meshtastic_channel: 0
+
+plugins:
+  debug:
+    active: true
+"""
+
+    # Try to create config in CI environment first
+    try:
+        os.makedirs(os.path.dirname(ci_config_path), exist_ok=True)
+        with open(ci_config_path, 'w') as f:
+            f.write(test_config)
+        print(f"Created test config at {ci_config_path}")
+    except (OSError, PermissionError):
+        # Fall back to local config path
+        try:
+            os.makedirs(os.path.dirname(local_config_path), exist_ok=True)
+            with open(local_config_path, 'w') as f:
+                f.write(test_config)
+            print(f"Created test config at {local_config_path}")
+        except (OSError, PermissionError):
+            print("Could not create test config file")
+
+
+@pytest.fixture
+def temp_dir():
+    """Provide a temporary directory for tests that need file system access."""
+    with tempfile.TemporaryDirectory() as temp_path:
+        yield temp_path
+
+
+@pytest.fixture
+def temp_db():
+    """Provide a temporary database file for database tests."""
+    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as temp_file:
+        db_path = temp_file.name
+
+    yield db_path
+
+    # Clean up
+    try:
+        os.unlink(db_path)
+    except OSError:
+        pass
+
+
+@pytest.fixture
+def mock_config():
+    """Provide a mock configuration dictionary for tests."""
+    return {
+        "matrix": {
+            "homeserver": "https://matrix.example.org",
+            "username": "@testbot:example.org",
+            "password": "test_password"
+        },
+        "meshtastic": {
+            "connection_type": "serial",
+            "serial_port": "/dev/ttyUSB0",
+            "meshnet_name": "TestMesh"
+        },
+        "matrix_rooms": {
+            "general": {
+                "id": "!testroom:example.org",
+                "meshtastic_channel": 0
+            }
+        },
+        "plugins": {
+            "debug": {
+                "active": True
+            }
+        }
+    }
