@@ -117,12 +117,12 @@ class Plugin:
                 self.assertEqual(plugins, [])
                 mock_logger.error.assert_called()
 
-    @unittest.skip("Plugin dependency installation needs further investigation")
     def test_load_plugins_from_directory_import_error_with_dependency_install(self):
         """
-        Test that plugins with missing dependencies trigger installation attempts and log warnings.
+        Test that plugins with missing dependencies trigger installation attempts.
 
-        Creates a plugin file that imports a nonexistent module, simulates successful dependency installation, and verifies that the plugin loader logs a warning and does not load the plugin.
+        Creates a plugin file that imports a nonexistent module and verifies that the plugin loader
+        attempts to install the missing dependency via subprocess call.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             plugin_file = os.path.join(temp_dir, "dependency_plugin.py")
@@ -143,11 +143,27 @@ class Plugin:
                     # Mock successful installation
                     mock_check_call.return_value = None
                     with patch("mmrelay.plugin_loader.logger") as mock_logger:
+                        # The plugin loader will catch the ModuleNotFoundError and attempt installation
+                        # but the second import will still fail, which should be handled gracefully
                         plugins = load_plugins_from_directory(temp_dir)
-                        # Should return empty list since plugin failed to load initially
+
+                        # Should return empty list since plugin failed to load
                         self.assertEqual(plugins, [])
-                        # Should have logged the missing dependency
-                        mock_logger.warning.assert_called()
+
+                        # Should have attempted to install the dependency
+                        mock_check_call.assert_called()
+                        install_call = mock_check_call.call_args_list[0]
+                        self.assertIn("nonexistent_module", str(install_call))
+
+                        # Should have logged the missing dependency warning
+                        warning_calls = [call for call in mock_logger.warning.call_args_list
+                                       if "Missing dependency" in str(call)]
+                        self.assertTrue(len(warning_calls) > 0, "Should have logged missing dependency warning")
+
+                        # Should have logged the installation attempt
+                        info_calls = [call for call in mock_logger.info.call_args_list
+                                    if "Attempting to install missing dependency" in str(call)]
+                        self.assertTrue(len(info_calls) > 0, "Should have logged installation attempt")
 
     def test_load_plugins_from_directory_dependency_install_failure(self):
         """

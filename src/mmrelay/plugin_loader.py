@@ -626,13 +626,23 @@ def load_plugins_from_directory(directory, recursive=False):
                             )
 
                             # Try to load the module again
-                            spec.loader.exec_module(plugin_module)
+                            try:
+                                spec.loader.exec_module(plugin_module)
 
-                            if hasattr(plugin_module, "Plugin"):
-                                plugins.append(plugin_module.Plugin())
-                            else:
-                                logger.warning(
-                                    f"{plugin_path} does not define a Plugin class."
+                                if hasattr(plugin_module, "Plugin"):
+                                    plugins.append(plugin_module.Plugin())
+                                else:
+                                    logger.warning(
+                                        f"{plugin_path} does not define a Plugin class."
+                                    )
+                            except ModuleNotFoundError:
+                                logger.error(
+                                    f"Module {missing_module} still not available after installation. "
+                                    f"The package name might be different from the import name."
+                                )
+                            except Exception as retry_error:
+                                logger.error(
+                                    f"Error loading plugin {plugin_path} after dependency installation: {retry_error}"
                                 )
 
                         except subprocess.CalledProcessError:

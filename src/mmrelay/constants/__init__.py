@@ -8,6 +8,7 @@ This package organizes all application constants by functional area:
 - formats: Message format templates and prefixes
 - messages: User-facing strings and templates
 - database: Database-related constants
+- config: Configuration section and key constants
 
 Usage:
     from mmrelay.constants import queue
@@ -17,6 +18,13 @@ Usage:
 
 # Re-export commonly used constants for convenience
 from .app import APP_AUTHOR, APP_NAME
+from .config import (
+    CONFIG_SECTION_MATRIX,
+    CONFIG_SECTION_MESHTASTIC,
+    CONFIG_SECTION_LOGGING,
+    CONFIG_KEY_LEVEL,
+    DEFAULT_LOG_LEVEL,
+)
 from .formats import DEFAULT_MATRIX_PREFIX, DEFAULT_MESHTASTIC_PREFIX
 from .queue import (
     DEFAULT_MESSAGE_DELAY,
@@ -29,6 +37,12 @@ __all__ = [
     # App constants
     "APP_NAME",
     "APP_AUTHOR",
+    # Config constants
+    "CONFIG_SECTION_MATRIX",
+    "CONFIG_SECTION_MESHTASTIC",
+    "CONFIG_SECTION_LOGGING",
+    "CONFIG_KEY_LEVEL",
+    "DEFAULT_LOG_LEVEL",
     # Queue constants
     "DEFAULT_MESSAGE_DELAY",
     "MAX_QUEUE_SIZE",
