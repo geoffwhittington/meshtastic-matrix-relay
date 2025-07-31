@@ -160,18 +160,18 @@ class TestMain(unittest.TestCase):
             # Verify message map was wiped when configured
             mock_wipe_map.assert_called_once()
 
+    @patch("asyncio.run")
     @patch("mmrelay.config.load_config")
     @patch("mmrelay.config.set_config")
     @patch("mmrelay.log_utils.configure_component_debug_logging")
     @patch("mmrelay.main.print_banner")
-    @patch("mmrelay.main.main")
     def test_run_main(
         self,
-        mock_main,
         mock_print_banner,
         mock_configure_debug,
         mock_set_config,
         mock_load_config,
+        mock_asyncio_run,
     ):
         """
         Verify that run_main loads configuration, sets logging, prints the banner, configures debug logging, calls the main function, and returns 0 on success.
@@ -183,11 +183,8 @@ class TestMain(unittest.TestCase):
         # Mock config loading
         mock_load_config.return_value = self.mock_config
 
-        # Mock main to complete successfully (async function)
-        async def mock_main_func(*args, **kwargs):
-            return None
-
-        mock_main.side_effect = mock_main_func
+        # Mock asyncio.run to return None
+        mock_asyncio_run.return_value = None
 
         result = run_main(mock_args)
 
@@ -204,8 +201,8 @@ class TestMain(unittest.TestCase):
         # Verify component debug logging was configured
         mock_configure_debug.assert_called_once()
 
-        # Verify main was called
-        mock_main.assert_called_once()
+        # Verify asyncio.run was called
+        mock_asyncio_run.assert_called_once()
 
         # Should return 0 for success
         self.assertEqual(result, 0)
@@ -219,11 +216,8 @@ class TestMain(unittest.TestCase):
         # Mock config loading
         mock_load_config.return_value = self.mock_config
 
-        # Mock main to raise an exception (async function)
-        async def mock_main_func(*args, **kwargs):
-            raise Exception("Test error")
-
-        mock_main.side_effect = mock_main_func
+        # Mock main to raise an exception
+        mock_main.side_effect = Exception("Test error")
 
         result = run_main(None)
 
@@ -239,11 +233,8 @@ class TestMain(unittest.TestCase):
         # Mock config loading
         mock_load_config.return_value = self.mock_config
 
-        # Mock main to raise KeyboardInterrupt (async function)
-        async def mock_main_func(*args, **kwargs):
-            raise KeyboardInterrupt()
-
-        mock_main.side_effect = mock_main_func
+        # Mock main to raise KeyboardInterrupt
+        mock_main.side_effect = KeyboardInterrupt()
 
         result = run_main(None)
 
