@@ -276,15 +276,15 @@ class TestIntegrationScenarios(unittest.TestCase):
         # Create plugins with different priorities
         mock_plugin1 = MagicMock()
         mock_plugin1.priority = 1
-        mock_plugin1.handle_meshtastic_message = MagicMock(return_value=False)
+        mock_plugin1.handle_meshtastic_message = AsyncMock(return_value=False)
 
         mock_plugin2 = MagicMock()
         mock_plugin2.priority = 5
-        mock_plugin2.handle_meshtastic_message = MagicMock(return_value=False)
+        mock_plugin2.handle_meshtastic_message = AsyncMock(return_value=False)
 
         mock_plugin3 = MagicMock()
         mock_plugin3.priority = 10
-        mock_plugin3.handle_meshtastic_message = MagicMock(
+        mock_plugin3.handle_meshtastic_message = AsyncMock(
             return_value=True
         )  # Intercepts
 
@@ -309,21 +309,19 @@ class TestIntegrationScenarios(unittest.TestCase):
 
                         # Check if it's actually a coroutine
                         if inspect.iscoroutine(coro):
+                            # Run the coroutine and get the result
                             result = asyncio.run(coro)
                             mock_future.result.return_value = result
                         else:
-                            # If it's not a coroutine, just close it to prevent warnings
+                            # If it's not a coroutine, just return None
+                            mock_future.result.return_value = None
+                    except Exception as e:
+                        # If there's an error, ensure coroutine is closed
+                        if inspect.iscoroutine(coro):
                             try:
                                 coro.close()
                             except:
                                 pass
-                            mock_future.result.return_value = None
-                    except Exception:
-                        # Close the coroutine to prevent warnings
-                        try:
-                            coro.close()
-                        except:
-                            pass
                         mock_future.result.return_value = None
                     return mock_future
 
