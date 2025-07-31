@@ -24,16 +24,22 @@ class TestDebugPlugin(unittest.TestCase):
     """Test cases for the debug plugin functionality."""
 
     def setUp(self):
-        """Set up test fixtures before each test method."""
+        """
+        Initialize a Plugin instance and replace its logger with a MagicMock before each test.
+        """
         self.plugin = Plugin()
         self.plugin.logger = MagicMock()
 
     def test_plugin_name(self):
-        """Test that the plugin has the correct name."""
+        """
+        Verify that the plugin's name is set to "debug".
+        """
         self.assertEqual(self.plugin.plugin_name, "debug")
 
     def test_plugin_priority(self):
-        """Test that the plugin has the correct priority (should be 1 for early execution)."""
+        """
+        Verify that the debug plugin's priority is set to 1, ensuring it executes early in the plugin chain.
+        """
         self.assertEqual(self.plugin.priority, 1)
 
     def test_description_property(self):
@@ -45,7 +51,11 @@ class TestDebugPlugin(unittest.TestCase):
 
     @patch.object(Plugin, "strip_raw")
     def test_handle_meshtastic_message_logs_packet(self, mock_strip_raw):
-        """Test that handle_meshtastic_message logs the packet after stripping raw data."""
+        """
+        Verify that handle_meshtastic_message logs the cleaned packet after stripping raw data and returns False.
+        
+        This test mocks the strip_raw method to ensure the cleaned packet is logged and confirms that the message handler does not intercept messages.
+        """
         # Mock the strip_raw method to return a cleaned packet
         cleaned_packet = {"decoded": {"text": "test message"}, "fromId": "!12345678"}
         mock_strip_raw.return_value = cleaned_packet
@@ -57,6 +67,9 @@ class TestDebugPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Execute an asynchronous test for the debug plugin's Meshtastic message handler, verifying packet processing, logging, and return value.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 original_packet, "formatted_message", "TestNode", "TestMesh"
             )
@@ -77,10 +90,15 @@ class TestDebugPlugin(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_handle_meshtastic_message_returns_false(self):
-        """Test that handle_meshtastic_message always returns False (never intercepts)."""
+        """
+        Test that handle_meshtastic_message always returns False, confirming the plugin never intercepts messages.
+        """
         packet = {"decoded": {"text": "test message"}, "fromId": "!12345678"}
 
         async def run_test():
+            """
+            Run an asynchronous test to verify that the plugin's handle_meshtastic_message method returns False for a given packet.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "TestNode", "TestMesh"
             )
@@ -91,12 +109,20 @@ class TestDebugPlugin(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_handle_room_message_returns_false(self):
-        """Test that handle_room_message always returns False (never intercepts)."""
+        """
+        Test that the debug plugin's handle_room_message method always returns False, confirming it never intercepts room messages.
+        """
         room = MagicMock()
         event = MagicMock()
         full_message = "test message"
 
         async def run_test():
+            """
+            Asynchronously tests that the plugin's handle_room_message method does not intercept messages.
+            
+            Returns:
+                None
+            """
             result = await self.plugin.handle_room_message(room, event, full_message)
             self.assertFalse(result)
 
@@ -105,10 +131,17 @@ class TestDebugPlugin(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_handle_meshtastic_message_with_empty_packet(self):
-        """Test that the plugin handles empty or minimal packets gracefully."""
+        """
+        Test that the plugin processes an empty packet without errors and logs it.
+        
+        Verifies that `handle_meshtastic_message` logs empty packets and returns False, ensuring graceful handling of minimal input.
+        """
         empty_packet = {}
 
         async def run_test():
+            """
+            Asynchronously tests that handling an empty packet logs the packet and returns False.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 empty_packet, "", "", ""
             )
@@ -124,7 +157,9 @@ class TestDebugPlugin(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_handle_meshtastic_message_with_complex_packet(self):
-        """Test that the plugin handles complex packets with nested data."""
+        """
+        Verify that the plugin correctly logs and processes a complex Meshtastic packet with nested and binary data, and always returns False to indicate no message interception.
+        """
         complex_packet = {
             "decoded": {
                 "text": "complex message",
@@ -143,6 +178,11 @@ class TestDebugPlugin(unittest.TestCase):
         }
 
         async def run_test():
+            """
+            Asynchronously tests that the debug plugin logs a complex Meshtastic packet and does not intercept the message.
+            
+            This function verifies that the plugin's logger is called when handling a complex packet and that the method returns False, indicating the message is not intercepted.
+            """
             result = await self.plugin.handle_meshtastic_message(
                 complex_packet, "formatted_message", "TestNode", "TestMesh"
             )
@@ -158,7 +198,9 @@ class TestDebugPlugin(unittest.TestCase):
         asyncio.run(run_test())
 
     def test_plugin_never_intercepts_messages(self):
-        """Test that the debug plugin never intercepts messages, allowing other plugins to process them."""
+        """
+        Verify that the debug plugin's message handling methods always return False, ensuring the plugin never intercepts messages and allows further processing by other plugins.
+        """
         # This is a behavioral test to ensure the plugin always returns False
         # from both message handling methods, which is critical for its role as a debug tool
 
@@ -168,6 +210,11 @@ class TestDebugPlugin(unittest.TestCase):
 
         async def run_test():
             # Test meshtastic message handling
+            """
+            Asynchronously tests that the plugin's message handling methods do not intercept messages.
+            
+            Runs both Meshtastic and Matrix room message handling methods and asserts that they always return False, ensuring the plugin allows message processing to continue.
+            """
             meshtastic_result = await self.plugin.handle_meshtastic_message(
                 packet, "formatted_message", "TestNode", "TestMesh"
             )

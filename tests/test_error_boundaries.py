@@ -30,16 +30,24 @@ class TestErrorBoundaries(unittest.TestCase):
     """Test cases for error boundaries and recovery scenarios."""
 
     def setUp(self):
-        """Set up test fixtures before each test method."""
+        """
+        Prepare the test environment by resetting global state before each test method.
+        """
         # Reset global state
         self._reset_global_state()
 
     def tearDown(self):
-        """Clean up after each test method."""
+        """
+        Clean up global state after each test to ensure test isolation.
+        """
         self._reset_global_state()
 
     def _reset_global_state(self):
-        """Reset global state across modules."""
+        """
+        Reset global variables in key MMRelay modules to ensure test isolation.
+        
+        This method clears configuration, client, event loop, and subscription state in the `mmrelay.meshtastic_utils`, `mmrelay.matrix_utils`, and `mmrelay.plugin_loader` modules, restoring them to default values between tests.
+        """
         # Reset meshtastic_utils globals
         if "mmrelay.meshtastic_utils" in sys.modules:
             module = sys.modules["mmrelay.meshtastic_utils"]
@@ -68,7 +76,11 @@ class TestErrorBoundaries(unittest.TestCase):
                 module.config = None
 
     def test_plugin_failure_isolation(self):
-        """Test that plugin failures don't affect other plugins or core functionality."""
+        """
+        Verify that a plugin failure during message handling does not prevent other plugins or the core Matrix relay functionality from executing.
+        
+        This test ensures that exceptions raised by one plugin are isolated, allowing other plugins and the main message relay to continue processing without interruption.
+        """
         # Create plugins with different failure modes
         failing_plugin = MagicMock()
         failing_plugin.priority = 1
@@ -99,6 +111,11 @@ class TestErrorBoundaries(unittest.TestCase):
                     with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
                         # Mock the async execution
                         def mock_run_coro(coro, loop):
+                            """
+                            Synchronously executes a coroutine and returns a mock future whose result mimics the coroutine's outcome.
+                            
+                            If the coroutine raises an exception, calling `result()` on the returned mock future will re-raise that exception.
+                            """
                             mock_future = MagicMock()
                             try:
                                 import asyncio
@@ -139,7 +156,11 @@ class TestErrorBoundaries(unittest.TestCase):
                     mock_matrix_relay.assert_called_once()
 
     def test_database_failure_graceful_degradation(self):
-        """Test graceful degradation when database operations fail."""
+        """
+        Verify that message relay to Matrix proceeds and fallback names are used when database operations fail during message processing.
+        
+        This test simulates failures in database lookups for node names and ensures that the system degrades gracefully by using available fallback information from the interface, maintaining core relay functionality.
+        """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
             "fromId": "!12345678",
@@ -169,6 +190,16 @@ class TestErrorBoundaries(unittest.TestCase):
                             with patch("mmrelay.meshtastic_utils.logger"):
                                 # Mock the async execution
                                 def mock_run_coro(coro, loop):
+                                    """
+                                    Synchronously executes a coroutine and returns a mock future with the result.
+                                    
+                                    Parameters:
+                                        coro: The coroutine to execute.
+                                        loop: The event loop (unused).
+                                    
+                                    Returns:
+                                        A MagicMock object simulating a future, with its `result()` method returning the coroutine's result or None if an exception occurs.
+                                    """
                                     mock_future = MagicMock()
                                     try:
                                         import asyncio
@@ -207,7 +238,9 @@ class TestErrorBoundaries(unittest.TestCase):
                             )  # Should use interface longName
 
     def test_matrix_relay_failure_recovery(self):
-        """Test recovery when Matrix relay fails."""
+        """
+        Verify that the system attempts to recover when the Matrix relay function fails, ensuring subsequent messages are still processed after an initial failure.
+        """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
             "fromId": "!12345678",
@@ -222,6 +255,12 @@ class TestErrorBoundaries(unittest.TestCase):
         matrix_relay_calls = 0
 
         def matrix_relay_side_effect(*args, **kwargs):
+            """
+            Simulates a Matrix relay function that fails on the first call and succeeds on subsequent calls.
+            
+            Raises:
+                Exception: On the first invocation to simulate a relay failure.
+            """
             nonlocal matrix_relay_calls
             matrix_relay_calls += 1
             if matrix_relay_calls == 1:
@@ -237,6 +276,11 @@ class TestErrorBoundaries(unittest.TestCase):
                     with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
                         # Mock the async execution
                         def mock_run_coro(coro, loop):
+                            """
+                            Synchronously executes a coroutine and returns a mock future whose result mimics the coroutine's outcome.
+                            
+                            If the coroutine raises an exception, calling `result()` on the returned mock future will re-raise that exception.
+                            """
                             mock_future = MagicMock()
                             try:
                                 import asyncio
@@ -273,11 +317,20 @@ class TestErrorBoundaries(unittest.TestCase):
                     self.assertEqual(matrix_relay_calls, 2)
 
     def test_message_queue_error_boundary(self):
-        """Test message queue error boundaries and recovery."""
+        """
+        Test that the MessageQueue processes both failing and successful tasks without interruption.
+        
+        Verifies that exceptions in enqueued functions do not halt the queue, all tasks are attempted, and successful tasks are processed even when others fail.
+        """
         import asyncio
 
         async def run_queue_test():
             # Mock the Meshtastic client to allow message sending
+            """
+            Asynchronously tests that the message queue processes both failing and successful functions without interruption.
+            
+            This function enqueues a mix of functions that raise exceptions and functions that succeed, then verifies that all are processed and that failures do not prevent successful executions. It also ensures the queue is properly started and stopped within the test.
+            """
             with patch("mmrelay.meshtastic_utils.meshtastic_client", MagicMock(is_connected=True)):
                 with patch("mmrelay.meshtastic_utils.reconnecting", False):
                     queue = MessageQueue()
@@ -338,7 +391,11 @@ class TestErrorBoundaries(unittest.TestCase):
         asyncio.run(run_queue_test())
 
     def test_cascading_failure_prevention(self):
-        """Test prevention of cascading failures across components."""
+        """
+        Verify that the system prevents cascading failures by isolating and handling multiple simultaneous exceptions across components during message processing.
+        
+        This test simulates concurrent failures in the database, plugin loader, and Matrix relay, ensuring that no exceptions propagate out of the error boundaries and that errors are logged appropriately.
+        """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
             "fromId": "!12345678",
@@ -386,11 +443,20 @@ class TestErrorBoundaries(unittest.TestCase):
                             self.assertGreater(mock_logger.error.call_count, 0)
 
     def test_transient_failure_recovery(self):
-        """Test recovery from transient failures."""
+        """
+        Test that the message queue recovers from transient failures and continues processing subsequent tasks.
+        
+        This test enqueues multiple tasks where the first two attempts fail and subsequent attempts succeed, verifying that all tasks are eventually processed despite initial transient errors.
+        """
         import asyncio
 
         async def async_test():
             # Mock the Meshtastic client to allow message sending
+            """
+            Asynchronously tests recovery from transient failures in queued message processing.
+            
+            This function enqueues multiple calls to a function that fails on its first two invocations and succeeds thereafter, verifying that the message queue retries and eventually processes all messages despite initial transient errors.
+            """
             with patch("mmrelay.meshtastic_utils.meshtastic_client", MagicMock(is_connected=True)):
                 with patch("mmrelay.meshtastic_utils.reconnecting", False):
                     call_count = 0
@@ -430,10 +496,17 @@ class TestErrorBoundaries(unittest.TestCase):
         asyncio.run(async_test())
 
     def test_error_propagation_limits(self):
-        """Test that errors are contained and don't propagate beyond boundaries."""
+        """
+        Verify that exceptions raised by plugins during Matrix room message handling are contained within error boundaries and do not propagate, ensuring errors are logged but do not disrupt overall processing.
+        """
 
         async def async_test():
             # Test Matrix message handling error containment
+            """
+            Asynchronously tests that exceptions in Matrix room message plugins are contained and do not propagate beyond the error boundary.
+            
+            Verifies that errors raised by plugin handlers during Matrix room message processing are logged and do not cause unhandled exceptions.
+            """
             from mmrelay.matrix_utils import on_room_message
 
             mock_room = MagicMock()
@@ -487,12 +560,25 @@ class TestErrorBoundaries(unittest.TestCase):
         asyncio.run(async_test())
 
     def test_resource_exhaustion_handling(self):
-        """Test handling of resource exhaustion scenarios."""
+        """
+        Test that the message queue continues operating under resource exhaustion by enqueuing multiple memory-intensive tasks.
+        
+        Verifies that some tasks are accepted up to the queue's capacity, and that the queue remains operational despite high memory usage.
+        """
         queue = MessageQueue()
         queue.start(message_delay=0.01)
 
         def memory_intensive_function():
             # Simulate memory-intensive operation
+            """
+            Simulates a memory-intensive operation by allocating a large list.
+            
+            Returns:
+                MagicMock: A mock object with an 'id' attribute if allocation succeeds.
+            
+            Raises:
+                Exception: If a MemoryError occurs during allocation.
+            """
             try:
                 # Try to allocate large amount of memory
                 [0] * (10**6)  # 1 million integers
@@ -528,7 +614,9 @@ class TestErrorBoundaries(unittest.TestCase):
             queue.stop()
 
     def test_configuration_error_fallbacks(self):
-        """Test fallback behavior when configuration is invalid or missing."""
+        """
+        Verify that the system handles missing or malformed configuration data gracefully without raising exceptions.
+        """
         # Test with completely missing config
         with patch("mmrelay.meshtastic_utils.logger"):
             import mmrelay.meshtastic_utils

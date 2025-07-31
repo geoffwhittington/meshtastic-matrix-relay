@@ -94,6 +94,12 @@ class MockMatrixRoom:
 
 class MockWhoamiError:
     def __init__(self, message="Whoami error"):
+        """
+        Initialize the MockWhoamiError with an optional error message.
+        
+        Parameters:
+            message (str): The error message to associate with the exception. Defaults to "Whoami error".
+        """
         self.message = message
 
 nio_mock.AsyncClient = MagicMock()
@@ -176,19 +182,30 @@ ensure_builtins_not_mocked()
 
 
 def pytest_addoption(parser):
-    """Add custom pytest command line options."""
+    """
+    Adds the --runslow command-line option to pytest to enable running tests marked as slow.
+    
+    Parameters:
+        parser: The pytest parser object used to add custom command-line options.
+    """
     parser.addoption(
         "--runslow", action="store_true", default=False, help="run slow tests"
     )
 
 
 def pytest_configure(config):
-    """Configure pytest with custom markers."""
+    """
+    Registers the 'slow' marker with pytest to label tests that are slow to run.
+    """
     config.addinivalue_line("markers", "slow: mark test as slow to run")
 
 
 def pytest_collection_modifyitems(config, items):
-    """Modify test collection to skip slow tests by default."""
+    """
+    Skips tests marked as 'slow' unless the --runslow option is specified.
+    
+    Tests with the 'slow' marker are automatically skipped during collection unless the user provides the --runslow command-line option.
+    """
     if config.getoption("--runslow"):
         # --runslow given in cli: do not skip slow tests
         return
@@ -202,7 +219,11 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_config():
-    """Create a test configuration file for CI environment."""
+    """
+    Creates a test configuration YAML file for MMRelay in either a CI-specific or local user path.
+    
+    Attempts to write a predefined configuration to `/home/runner/.mmrelay/config.yaml` for CI environments, falling back to `~/.mmrelay/config.yaml` if necessary. The configuration includes matrix, meshtastic, and plugin settings for use in tests.
+    """
     # Define config paths
     ci_config_path = "/home/runner/.mmrelay/config.yaml"
     local_config_path = os.path.expanduser("~/.mmrelay/config.yaml")
@@ -248,14 +269,26 @@ plugins:
 
 @pytest.fixture
 def temp_dir():
-    """Provide a temporary directory for tests that need file system access."""
+    """
+    Yields a temporary directory path for use during tests requiring filesystem access.
+    
+    The directory and its contents are automatically cleaned up after the test completes.
+    
+    Yields:
+        temp_path (str): Path to the temporary directory.
+    """
     with tempfile.TemporaryDirectory() as temp_path:
         yield temp_path
 
 
 @pytest.fixture
 def temp_db():
-    """Provide a temporary database file for database tests."""
+    """
+    Yields the path to a temporary database file for use in tests, ensuring the file is deleted after the test completes.
+    
+    Returns:
+        db_path (str): The filesystem path to the temporary database file.
+    """
     with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as temp_file:
         db_path = temp_file.name
 
@@ -270,7 +303,12 @@ def temp_db():
 
 @pytest.fixture
 def mock_config():
-    """Provide a mock configuration dictionary for tests."""
+    """
+    Return a mock configuration dictionary emulating MMRelay settings for use in tests.
+    
+    Returns:
+        dict: A dictionary containing mock Matrix, Meshtastic, room, and plugin configuration data.
+    """
     return {
         "matrix": {
             "homeserver": "https://matrix.example.org",

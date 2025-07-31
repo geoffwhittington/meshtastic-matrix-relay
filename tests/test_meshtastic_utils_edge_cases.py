@@ -34,7 +34,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     """Test cases for Meshtastic utilities edge cases and error handling."""
 
     def setUp(self):
-        """Set up test fixtures before each test method."""
+        """
+        Reset global state in mmrelay.meshtastic_utils before each test to ensure test isolation.
+        """
         # Reset global state
         import mmrelay.meshtastic_utils
 
@@ -49,7 +51,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         mmrelay.meshtastic_utils.subscribed_to_connection_lost = False
 
     def tearDown(self):
-        """Clean up after each test method."""
+        """
+        Reset global state variables in mmrelay.meshtastic_utils after each test to ensure test isolation.
+        """
         # Reset global state
         import mmrelay.meshtastic_utils
 
@@ -64,19 +68,27 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         mmrelay.meshtastic_utils.subscribed_to_connection_lost = False
 
     def test_serial_port_exists_permission_error(self):
-        """Test serial_port_exists when port access is denied."""
+        """
+        Test that serial_port_exists returns False when a PermissionError occurs due to denied access to the serial port.
+        """
         with patch("serial.Serial", side_effect=PermissionError("Permission denied")):
             result = serial_port_exists("/dev/ttyUSB0")
             self.assertFalse(result)
 
     def test_serial_port_exists_device_not_found(self):
-        """Test serial_port_exists when device doesn't exist."""
+        """
+        Test that serial_port_exists returns False when the specified device is not found.
+        """
         with patch("serial.Serial", side_effect=FileNotFoundError("Device not found")):
             result = serial_port_exists("/dev/nonexistent")
             self.assertFalse(result)
 
     def test_serial_port_exists_device_busy(self):
-        """Test serial_port_exists when device is busy."""
+        """
+        Test that serial_port_exists returns False when the serial device is busy.
+        
+        Simulates a busy device by patching serial.Serial to raise SerialException.
+        """
         import serial
 
         with patch("serial.Serial", side_effect=serial.SerialException("Device busy")):
@@ -84,7 +96,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
             self.assertFalse(result)
 
     def test_connect_meshtastic_serial_connection_timeout(self):
-        """Test connect_meshtastic with serial connection timeout."""
+        """
+        Verifies that connect_meshtastic returns None and logs an error when a serial connection attempt times out.
+        """
         config = {
             "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"}
         }
@@ -100,7 +114,11 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                     mock_logger.error.assert_called()
 
     def test_connect_meshtastic_ble_device_not_found(self):
-        """Test connect_meshtastic with BLE device not found."""
+        """
+        Test that connect_meshtastic returns None and logs an error when a BLE device is not found.
+        
+        Simulates a BLE connection attempt where the device is unavailable, verifying graceful failure and error logging.
+        """
         config = {
             "meshtastic": {"connection_type": "ble", "ble_address": "00:11:22:33:44:55"}
         }
@@ -118,7 +136,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                     mock_logger.error.assert_called()
 
     def test_connect_meshtastic_tcp_connection_refused(self):
-        """Test connect_meshtastic with TCP connection refused."""
+        """
+        Verifies that connect_meshtastic returns None and logs an error when a TCP connection is refused.
+        """
         config = {"meshtastic": {"connection_type": "tcp", "host": "192.168.1.100"}}
 
         with patch(
@@ -131,7 +151,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                 mock_logger.error.assert_called()
 
     def test_connect_meshtastic_invalid_connection_type(self):
-        """Test connect_meshtastic with invalid connection type."""
+        """
+        Test that connect_meshtastic returns None and logs an error when given an invalid connection type in the configuration.
+        """
         config = {"meshtastic": {"connection_type": "invalid_type"}}
 
         with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
@@ -140,7 +162,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
             mock_logger.error.assert_called()
 
     def test_connect_meshtastic_exponential_backoff_max_retries(self):
-        """Test connect_meshtastic exponential backoff reaching maximum retries."""
+        """
+        Verify that connect_meshtastic returns None and logs an error when repeated connection attempts with exponential backoff reach the maximum retries due to persistent MemoryError exceptions.
+        """
         config = {
             "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"}
         }
@@ -158,7 +182,11 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                         mock_logger.error.assert_called()
 
     def test_on_meshtastic_message_malformed_packet(self):
-        """Test on_meshtastic_message with malformed packet data."""
+        """
+        Verifies that on_meshtastic_message handles various malformed packet inputs without raising exceptions.
+        
+        Tests the function's robustness against empty packets, missing or None fields, and invalid channel types.
+        """
         malformed_packets = [
             {},  # Empty packet
             {"decoded": None},  # None decoded
@@ -175,7 +203,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                     on_meshtastic_message(packet, mock_interface)
 
     def test_on_meshtastic_message_plugin_processing_failure(self):
-        """Test on_meshtastic_message when plugin processing fails."""
+        """
+        Verify that on_meshtastic_message logs an error when a plugin raises an exception during message processing.
+        """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
             "fromId": "!12345678",
@@ -196,7 +226,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                 mock_logger.error.assert_called()
 
     def test_on_meshtastic_message_matrix_relay_failure(self):
-        """Test on_meshtastic_message when Matrix relay fails."""
+        """
+        Verify that on_meshtastic_message logs an error when the Matrix relay integration fails during message processing.
+        """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
             "fromId": "!12345678",
@@ -222,7 +254,11 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                     mock_logger.error.assert_called()
 
     def test_on_meshtastic_message_database_error(self):
-        """Test on_meshtastic_message when database operations fail."""
+        """
+        Test that on_meshtastic_message handles database errors gracefully during message processing.
+        
+        Simulates a failure in the database utility function when processing a Meshtastic message and verifies that no unhandled exceptions occur.
+        """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
             "fromId": "!12345678",
@@ -239,7 +275,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                 # Should handle database errors gracefully
 
     def test_on_lost_meshtastic_connection_reconnection_failure(self):
-        """Test on_lost_meshtastic_connection when reconnection fails."""
+        """
+        Verifies that on_lost_meshtastic_connection logs an error when reconnection fails.
+        """
         mock_interface = MagicMock()
 
         with patch("mmrelay.meshtastic_utils.connect_meshtastic", return_value=None):
@@ -249,7 +287,11 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                     mock_logger.error.assert_called()
 
     def test_on_lost_meshtastic_connection_detection_source_edge_cases(self):
-        """Test on_lost_meshtastic_connection with various detection sources."""
+        """
+        Verify that on_lost_meshtastic_connection handles edge cases for the detection_source parameter without raising exceptions.
+        
+        Tests the function with various invalid or unusual detection_source values to ensure robust and graceful handling.
+        """
         mock_interface = MagicMock()
 
         detection_sources = [
@@ -272,7 +314,11 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                         )
 
     def test_sendTextReply_no_client(self):
-        """Test sendTextReply when no Meshtastic client is available."""
+        """
+        Test the behavior of sendTextReply when no Meshtastic client is set.
+        
+        Verifies that sendTextReply returns None and logs an error if the Meshtastic client is unavailable.
+        """
         import mmrelay.meshtastic_utils
 
         mmrelay.meshtastic_utils.meshtastic_client = None
@@ -283,7 +329,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
             mock_logger.error.assert_called()
 
     def test_sendTextReply_client_send_failure(self):
-        """Test sendTextReply when client send operation fails."""
+        """
+        Test that sendTextReply returns None and logs an error when the client's send operation raises an exception.
+        """
         mock_client = MagicMock()
         mock_client._sendPacket.side_effect = Exception("Send failed")
 
@@ -297,7 +345,11 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
             mock_logger.error.assert_called()
 
     def test_is_running_as_service_detection_failure(self):
-        """Test is_running_as_service when detection methods fail."""
+        """
+        Test that is_running_as_service returns a boolean when process detection methods fail.
+        
+        Simulates failures in retrieving the parent process ID and process information to verify that is_running_as_service handles these errors gracefully without raising exceptions.
+        """
         with patch("os.getppid", side_effect=OSError("Cannot get parent PID")):
             with patch(
                 "psutil.Process", side_effect=Exception("Process info unavailable")
@@ -307,7 +359,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                 self.assertIsInstance(result, bool)
 
     def test_connect_meshtastic_concurrent_access(self):
-        """Test connect_meshtastic with concurrent access scenarios."""
+        """
+        Verify that connect_meshtastic returns None and handles concurrent connection attempts gracefully when a reconnection is already in progress.
+        """
         config = {
             "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"}
         }
@@ -321,7 +375,11 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         self.assertIsNone(result)
 
     def test_connect_meshtastic_memory_constraint(self):
-        """Test connect_meshtastic under memory constraints."""
+        """
+        Test that connect_meshtastic handles MemoryError exceptions gracefully during serial connection attempts.
+        
+        Simulates a memory constraint scenario by forcing SerialInterface to raise MemoryError, and verifies that connect_meshtastic returns None and logs an error.
+        """
         config = {
             "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"}
         }
@@ -337,7 +395,11 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                     mock_logger.error.assert_called()
 
     def test_on_meshtastic_message_large_node_list(self):
-        """Test on_meshtastic_message with very large node lists."""
+        """
+        Verifies that on_meshtastic_message can process a packet when the interface contains a very large node list without crashing.
+        
+        This test ensures robustness and scalability of message handling with extensive node data.
+        """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
             "fromId": "!12345678",
@@ -362,7 +424,11 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
             on_meshtastic_message(packet, mock_interface)
 
     def test_connect_meshtastic_config_validation_edge_cases(self):
-        """Test connect_meshtastic with various invalid configurations."""
+        """
+        Test that connect_meshtastic gracefully handles various invalid or incomplete configuration inputs.
+        
+        Verifies that the function returns None without raising exceptions when provided with None, empty, or malformed configuration dictionaries.
+        """
         invalid_configs = [
             None,  # None config
             {},  # Empty config

@@ -31,12 +31,9 @@ def clear_db_path_cache():
 # Get the database path
 def get_db_path():
     """
-    Resolve and return the file path to the SQLite database, using configuration overrides if provided.
-
-    By default, returns the path to `meshtastic.sqlite` in the standard data directory (`~/.mmrelay/data`).
-    If a custom path is specified in the configuration under `database.path` (preferred) or `db.path` (legacy),
-    that path is used instead. The resolved path is cached for subsequent calls, and the directory is created
-    if it does not exist. Cache is automatically invalidated if the relevant configuration changes.
+    Resolves and returns the file path to the SQLite database, using configuration overrides if provided.
+    
+    Prefers the path specified in `config["database"]["path"]`, falls back to `config["db"]["path"]` (legacy), and defaults to `meshtastic.sqlite` in the standard data directory if neither is set. The resolved path is cached and the cache is invalidated if relevant configuration changes. Attempts to create the directory for the database path if it does not exist.
     """
     global config, _cached_db_path, _db_path_logged, _cached_config_hash
 
@@ -108,6 +105,11 @@ def get_db_path():
 
 # Initialize SQLite database
 def initialize_database():
+    """
+    Initializes the SQLite database schema for the relay application.
+    
+    Creates required tables (`longnames`, `shortnames`, `plugin_data`, and `message_map`) if they do not exist, and ensures the `meshtastic_meshnet` column is present in `message_map`. Raises an exception if database initialization fails.
+    """
     db_path = get_db_path()
     # Check if database exists
     if os.path.exists(db_path):
@@ -150,6 +152,14 @@ def initialize_database():
 
 
 def store_plugin_data(plugin_name, meshtastic_id, data):
+    """
+    Store or update JSON-serialized plugin data for a specific plugin and Meshtastic ID in the database.
+    
+    Parameters:
+        plugin_name (str): The name of the plugin.
+        meshtastic_id (str): The Meshtastic node identifier.
+        data (Any): The plugin data to be serialized and stored.
+    """
     try:
         with sqlite3.connect(get_db_path()) as conn:
             cursor = conn.cursor()
@@ -163,6 +173,13 @@ def store_plugin_data(plugin_name, meshtastic_id, data):
 
 
 def delete_plugin_data(plugin_name, meshtastic_id):
+    """
+    Deletes the plugin data entry for the specified plugin and Meshtastic ID from the database.
+    
+    Parameters:
+        plugin_name (str): The name of the plugin whose data should be deleted.
+        meshtastic_id (str): The Meshtastic node ID associated with the plugin data.
+    """
     try:
         with sqlite3.connect(get_db_path()) as conn:
             cursor = conn.cursor()
@@ -177,6 +194,12 @@ def delete_plugin_data(plugin_name, meshtastic_id):
 
 # Get the data for a given plugin and Meshtastic ID
 def get_plugin_data_for_node(plugin_name, meshtastic_id):
+    """
+    Retrieve and decode plugin data for a specific plugin and Meshtastic node.
+    
+    Returns:
+        list: The deserialized plugin data as a list, or an empty list if no data is found or on error.
+    """
     try:
         with sqlite3.connect(get_db_path()) as conn:
             cursor = conn.cursor()
@@ -211,6 +234,15 @@ def get_plugin_data(plugin_name):
 
 # Get the longname for a given Meshtastic ID
 def get_longname(meshtastic_id):
+    """
+    Retrieve the long name associated with a given Meshtastic ID.
+    
+    Parameters:
+        meshtastic_id (str): The Meshtastic node identifier.
+    
+    Returns:
+        str or None: The long name if found, otherwise None.
+    """
     try:
         with sqlite3.connect(get_db_path()) as conn:
             cursor = conn.cursor()
@@ -225,6 +257,11 @@ def get_longname(meshtastic_id):
 
 
 def save_longname(meshtastic_id, longname):
+    """
+    Insert or update the long name for a given Meshtastic ID in the database.
+    
+    If an entry for the Meshtastic ID already exists, its long name is updated; otherwise, a new entry is created.
+    """
     try:
         with sqlite3.connect(get_db_path()) as conn:
             cursor = conn.cursor()
@@ -238,6 +275,12 @@ def save_longname(meshtastic_id, longname):
 
 
 def update_longnames(nodes):
+    """
+    Updates the long names for all users in the provided nodes dictionary.
+    
+    Parameters:
+        nodes (dict): A dictionary of nodes, each containing user information with Meshtastic IDs and long names.
+    """
     if nodes:
         for node in nodes.values():
             user = node.get("user")
@@ -248,6 +291,15 @@ def update_longnames(nodes):
 
 
 def get_shortname(meshtastic_id):
+    """
+    Retrieve the short name associated with a given Meshtastic ID.
+    
+    Parameters:
+    	meshtastic_id (str): The Meshtastic node ID to look up.
+    
+    Returns:
+    	str or None: The short name if found, or None if not found or on database error.
+    """
     try:
         with sqlite3.connect(get_db_path()) as conn:
             cursor = conn.cursor()
@@ -262,6 +314,11 @@ def get_shortname(meshtastic_id):
 
 
 def save_shortname(meshtastic_id, shortname):
+    """
+    Insert or update the short name for a given Meshtastic ID in the database.
+    
+    If an entry for the Meshtastic ID already exists, its short name is updated; otherwise, a new entry is created.
+    """
     try:
         with sqlite3.connect(get_db_path()) as conn:
             cursor = conn.cursor()
@@ -275,6 +332,12 @@ def save_shortname(meshtastic_id, shortname):
 
 
 def update_shortnames(nodes):
+    """
+    Updates the short names for all users in the provided nodes dictionary.
+    
+    Parameters:
+        nodes (dict): A dictionary of nodes, each containing user information with Meshtastic IDs and short names.
+    """
     if nodes:
         for node in nodes.values():
             user = node.get("user")
@@ -292,14 +355,14 @@ def store_message_map(
     meshtastic_meshnet=None,
 ):
     """
-    Stores a message map in the database.
-
-    :param meshtastic_id: The Meshtastic message ID (integer or None)
-    :param matrix_event_id: The Matrix event ID (string, primary key)
-    :param matrix_room_id: The Matrix room ID (string)
-    :param meshtastic_text: The text of the Meshtastic message
-    :param meshtastic_meshnet: The name of the meshnet this message originated from.
-                               This helps us identify remote vs local mesh origins.
+    Stores or updates a mapping between a Meshtastic message and its corresponding Matrix event in the database.
+    
+    Parameters:
+        meshtastic_id: The Meshtastic message ID.
+        matrix_event_id: The Matrix event ID (primary key).
+        matrix_room_id: The Matrix room ID.
+        meshtastic_text: The text content of the Meshtastic message.
+        meshtastic_meshnet: Optional name of the meshnet where the message originated, used to distinguish remote from local mesh origins.
     """
     try:
         with sqlite3.connect(get_db_path()) as conn:
@@ -323,6 +386,12 @@ def store_message_map(
 
 
 def get_message_map_by_meshtastic_id(meshtastic_id):
+    """
+    Retrieve the message mapping entry for a given Meshtastic ID.
+    
+    Returns:
+        tuple or None: A tuple (matrix_event_id, matrix_room_id, meshtastic_text, meshtastic_meshnet) if found and valid, or None if not found, on malformed data, or if a database error occurs.
+    """
     try:
         with sqlite3.connect(get_db_path()) as conn:
             cursor = conn.cursor()
@@ -348,6 +417,12 @@ def get_message_map_by_meshtastic_id(meshtastic_id):
 
 
 def get_message_map_by_matrix_event_id(matrix_event_id):
+    """
+    Retrieve the message mapping entry for a given Matrix event ID.
+    
+    Returns:
+        tuple or None: A tuple (meshtastic_id, matrix_room_id, meshtastic_text, meshtastic_meshnet) if found, or None if not found or on error.
+    """
     try:
         with sqlite3.connect(get_db_path()) as conn:
             cursor = conn.cursor()

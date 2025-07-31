@@ -39,7 +39,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
     """Test cases for Setup utilities edge cases and error handling."""
 
     def test_get_user_service_path_permission_error(self):
-        """Test get_user_service_path when directory creation fails."""
+        """
+        Test that get_user_service_path returns a Path object without raising an exception when directory creation fails due to a PermissionError.
+        """
         with patch(
             "pathlib.Path.mkdir", side_effect=PermissionError("Permission denied")
         ):
@@ -48,7 +50,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
             self.assertIsInstance(result, Path)
 
     def test_get_executable_path_not_found(self):
-        """Test get_executable_path when mmrelay executable is not found."""
+        """
+        Test that get_executable_path returns the system Python executable when the "mmrelay" executable is not found.
+        """
         with patch("shutil.which", return_value=None):
             with patch("builtins.print"):  # Suppress warning print
                 result = get_executable_path()
@@ -56,9 +60,22 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                 self.assertEqual(result, sys.executable)
 
     def test_get_executable_path_multiple_locations(self):
-        """Test get_executable_path priority order."""
+        """
+        Test that get_executable_path returns the correct path when multiple executable locations exist.
+        
+        Verifies that get_executable_path prioritizes the expected location when multiple possible paths are available.
+        """
 
         def mock_which(cmd):
+            """
+            Mock implementation of shutil.which that returns a fixed path for the "mmrelay" command.
+            
+            Parameters:
+                cmd (str): The command to search for.
+            
+            Returns:
+                str or None: The mocked path to "mmrelay" if requested, otherwise None.
+            """
             if cmd == "mmrelay":
                 return "/usr/local/bin/mmrelay"
             return None
@@ -68,7 +85,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
             self.assertEqual(result, "/usr/local/bin/mmrelay")
 
     def test_get_template_service_content_file_not_found(self):
-        """Test get_template_service_content when template file doesn't exist."""
+        """
+        Test that get_template_service_content returns the default template when the template file is not found.
+        """
         with patch("mmrelay.setup_utils.get_template_service_path", return_value=None):
             result = get_template_service_content()
             # Should return default template
@@ -76,7 +95,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
             self.assertIn("Description=A Meshtastic", result)
 
     def test_get_template_service_content_read_error(self):
-        """Test get_template_service_content when template file can't be read."""
+        """
+        Test that get_template_service_content returns the default template and prints an error when reading the template file raises an IOError.
+        """
         with patch("mmrelay.setup_utils.get_template_service_path", return_value="/test/service.template"):
             with patch("builtins.open", side_effect=IOError("Read error")):
                 with patch("builtins.print") as mock_print:
@@ -86,7 +107,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                     mock_print.assert_called()
 
     def test_create_service_file_write_permission_error(self):
-        """Test create_service_file when writing fails due to permissions."""
+        """
+        Test that create_service_file returns False and prints an error when file writing fails due to a PermissionError.
+        """
         with patch("mmrelay.setup_utils.get_user_service_path") as mock_get_path:
             mock_path = MagicMock()
             mock_path.write_text.side_effect = PermissionError("Permission denied")
@@ -105,7 +128,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                         mock_print.assert_called()
 
     def test_create_service_file_no_executable(self):
-        """Test create_service_file when executable path is not found."""
+        """
+        Test that create_service_file returns False and prints an error when the executable path cannot be found.
+        """
         with patch("mmrelay.setup_utils.get_executable_path", return_value=None):
             with patch("builtins.print") as mock_print:
                 result = create_service_file()
@@ -113,7 +138,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                 mock_print.assert_called()
 
     def test_reload_daemon_command_failure(self):
-        """Test reload_daemon when systemctl command fails."""
+        """
+        Test that reload_daemon returns False and prints an error when the systemctl command fails with a CalledProcessError.
+        """
         with patch("subprocess.run") as mock_run:
             # Mock subprocess.run to raise CalledProcessError (since check=True is used)
             mock_run.side_effect = subprocess.CalledProcessError(1, "systemctl", "Command failed")
@@ -124,7 +151,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                 mock_print.assert_called()
 
     def test_reload_daemon_exception(self):
-        """Test reload_daemon when subprocess raises exception."""
+        """
+        Test that reload_daemon returns False and prints an error when subprocess.run raises a FileNotFoundError.
+        """
         with patch(
             "subprocess.run", side_effect=FileNotFoundError("systemctl not found")
         ):
@@ -134,14 +163,18 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                 mock_print.assert_called()
 
     def test_check_loginctl_available_not_found(self):
-        """Test check_loginctl_available when loginctl is not available."""
+        """
+        Test that check_loginctl_available returns False when the loginctl command is not found.
+        """
         with patch("subprocess.run") as mock_run:
             mock_run.return_value.returncode = 1
             result = check_loginctl_available()
             self.assertFalse(result)
 
     def test_check_loginctl_available_command_failure(self):
-        """Test check_loginctl_available when loginctl command fails."""
+        """
+        Test that check_loginctl_available returns False when subprocess.run raises an exception during the loginctl availability check.
+        """
         with patch("shutil.which", return_value="/usr/bin/loginctl"):
             with patch("subprocess.run") as mock_run:
                 mock_run.side_effect = Exception("Command failed")
@@ -149,7 +182,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                 self.assertFalse(result)
 
     def test_check_lingering_enabled_command_failure(self):
-        """Test check_lingering_enabled when loginctl command fails."""
+        """
+        Test that check_lingering_enabled returns False and prints an error when the loginctl command raises an exception.
+        """
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = Exception("Command failed")
             with patch("builtins.print") as mock_print:
@@ -158,7 +193,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                 mock_print.assert_called()
 
     def test_check_lingering_enabled_parsing_error(self):
-        """Test check_lingering_enabled when output parsing fails."""
+        """
+        Test that check_lingering_enabled returns False when the loginctl output cannot be parsed correctly.
+        """
         with patch("subprocess.run") as mock_run:
             mock_run.return_value.returncode = 0
             mock_run.return_value.stdout = "invalid output format"
@@ -168,7 +205,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                 self.assertFalse(result)
 
     def test_enable_lingering_command_failure(self):
-        """Test enable_lingering when loginctl command fails."""
+        """
+        Test that enable_lingering returns False and prints an error when the loginctl command fails with a non-zero exit code.
+        """
         with patch("subprocess.run") as mock_run:
             mock_run.return_value.returncode = 1
             mock_run.return_value.stderr = "Permission denied"
@@ -179,7 +218,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                 mock_print.assert_called()
 
     def test_enable_lingering_exception(self):
-        """Test enable_lingering when subprocess raises exception."""
+        """
+        Test that enable_lingering returns False and prints an error when subprocess.run raises an exception.
+        """
         with patch("subprocess.run", side_effect=Exception("Command failed")):
             with patch("builtins.print") as mock_print:
                 result = enable_lingering()
@@ -187,7 +228,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                 mock_print.assert_called()
 
     def test_install_service_no_executable(self):
-        """Test install_service when executable is not found."""
+        """
+        Test that install_service returns False and prints an error when the executable path cannot be found.
+        """
         with patch("mmrelay.setup_utils.get_executable_path", return_value=None):
             with patch("builtins.print") as mock_print:
                 result = install_service()
@@ -195,7 +238,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                 mock_print.assert_called()
 
     def test_install_service_create_file_failure(self):
-        """Test install_service when service file creation fails."""
+        """
+        Test that install_service returns False when service file creation fails.
+        """
         with patch(
             "mmrelay.setup_utils.get_executable_path", return_value="/usr/bin/mmrelay"
         ):
@@ -205,7 +250,11 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                     self.assertFalse(result)
 
     def test_install_service_daemon_reload_failure(self):
-        """Test install_service when daemon reload fails."""
+        """
+        Test that install_service returns True even if daemon reload fails.
+        
+        This test simulates a failure in the daemon reload step during service installation and verifies that install_service still returns True, reflecting user choice to decline further action.
+        """
         with patch(
             "mmrelay.setup_utils.get_executable_path", return_value="/usr/bin/mmrelay"
         ):
@@ -223,7 +272,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                                         self.assertTrue(result)
 
     def test_install_service_lingering_check_failure(self):
-        """Test install_service when lingering check fails."""
+        """
+        Test that install_service returns True and prints a message when lingering check fails and the user declines to enable lingering.
+        """
         with patch(
             "mmrelay.setup_utils.get_executable_path", return_value="/usr/bin/mmrelay"
         ):
@@ -246,7 +297,11 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                                     mock_print.assert_called()
 
     def test_install_service_enable_lingering_failure(self):
-        """Test install_service when enabling lingering fails."""
+        """
+        Test that install_service returns True when enabling lingering fails after user consents.
+        
+        Simulates the scenario where the user agrees to enable lingering, but the operation fails, and verifies that install_service still reports success.
+        """
         with patch(
             "mmrelay.setup_utils.get_executable_path", return_value="/usr/bin/mmrelay"
         ):
@@ -272,7 +327,11 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                                         self.assertTrue(result)  # Should still succeed
 
     def test_install_service_user_interaction_eof(self):
-        """Test install_service when user input raises EOFError."""
+        """
+        Test that install_service returns True when user input raises EOFError during lingering enabling prompt.
+        
+        Simulates an EOFError occurring when prompting the user to enable lingering, verifying that install_service completes successfully without raising an exception.
+        """
         with patch(
             "mmrelay.setup_utils.get_executable_path", return_value="/usr/bin/mmrelay"
         ):
@@ -294,7 +353,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                                     self.assertTrue(result)
 
     def test_install_service_user_interaction_keyboard_interrupt(self):
-        """Test install_service when user input raises KeyboardInterrupt."""
+        """
+        Test that install_service returns True when user input raises KeyboardInterrupt during the lingering enable prompt.
+        """
         with patch(
             "mmrelay.setup_utils.get_executable_path", return_value="/usr/bin/mmrelay"
         ):
@@ -318,7 +379,9 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                                     self.assertTrue(result)
 
     def test_service_template_placeholder_replacement(self):
-        """Test that service template placeholders are properly replaced."""
+        """
+        Verify that service template placeholders are correctly replaced with actual executable paths and user home directory expansions during service file creation.
+        """
         template = """
         WorkingDirectory=%h/meshtastic-matrix-relay
         ExecStart=%h/meshtastic-matrix-relay/.pyenv/bin/python %h/meshtastic-matrix-relay/main.py
