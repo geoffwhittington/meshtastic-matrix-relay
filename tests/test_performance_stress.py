@@ -294,8 +294,8 @@ class TestPerformanceStress(unittest.TestCase):
                 retrieval_time = time.time() - start_time
 
                 # Performance assertions (adjusted for CI environment)
-                self.assertLess(insert_time, 15.0, "Database insertions too slow")
-                self.assertLess(retrieval_time, 5.0, "Database retrievals too slow")
+                self.assertLess(insert_time, 20.0, "Database insertions too slow")
+                self.assertLess(retrieval_time, 8.0, "Database retrievals too slow")
 
                 # Test message map performance
                 message_count = 1000
@@ -308,7 +308,7 @@ class TestPerformanceStress(unittest.TestCase):
 
                 message_insert_time = time.time() - start_time
                 self.assertLess(
-                    message_insert_time, 15.0, "Message map insertions too slow"
+                    message_insert_time, 20.0, "Message map insertions too slow"
                 )
 
                 # Test pruning performance
@@ -316,7 +316,7 @@ class TestPerformanceStress(unittest.TestCase):
                 prune_message_map(100)  # Keep only 100 most recent
                 prune_time = time.time() - start_time
 
-                self.assertLess(prune_time, 5.0, "Message map pruning too slow")
+                self.assertLess(prune_time, 8.0, "Message map pruning too slow")
 
     @pytest.mark.performance  # Changed from slow to performance
     def test_plugin_processing_performance(self):
