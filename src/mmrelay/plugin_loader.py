@@ -649,7 +649,7 @@ def load_plugins_from_directory(directory, recursive=False):
                             logger.error(
                                 f"Plugin directory: {os.path.dirname(plugin_path)}"
                             )
-                    except BaseException as e:
+                    except Exception as e:
                         logger.error(f"Error loading plugin {plugin_path}: {e}")
             if not recursive:
                 break

@@ -20,6 +20,8 @@ import time
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -68,6 +70,7 @@ class TestPerformanceStress(unittest.TestCase):
         # Force garbage collection after each test
         gc.collect()
 
+    @pytest.mark.slow
     def test_high_volume_message_processing(self):
         """Test processing high volume of messages without memory leaks."""
         message_count = 1000
@@ -142,6 +145,7 @@ class TestPerformanceStress(unittest.TestCase):
         finally:
             loop.close()
 
+    @pytest.mark.slow
     def test_message_queue_performance_under_load(self):
         """Test message queue performance under high load."""
         import asyncio
@@ -201,6 +205,7 @@ class TestPerformanceStress(unittest.TestCase):
         # Run the async test
         asyncio.run(run_test())
 
+    @pytest.mark.slow
     def test_database_performance_large_dataset(self):
         """Test database performance with large datasets."""
         import tempfile
@@ -262,6 +267,7 @@ class TestPerformanceStress(unittest.TestCase):
 
                 self.assertLess(prune_time, 5.0, "Message map pruning too slow")
 
+    @pytest.mark.slow
     def test_plugin_processing_performance(self):
         """Test plugin processing performance with multiple plugins."""
         plugin_count = 10
@@ -352,6 +358,7 @@ class TestPerformanceStress(unittest.TestCase):
                                                 plugin.handle_meshtastic_message.call_count, message_count
                                             )
 
+    @pytest.mark.slow
     def test_concurrent_message_queue_access(self):
         """Test message queue performance under concurrent access."""
         import asyncio
@@ -426,6 +433,7 @@ class TestPerformanceStress(unittest.TestCase):
         # Run the async test
         asyncio.run(run_concurrent_test())
 
+    @pytest.mark.slow
     def test_memory_usage_stability(self):
         """Test memory usage stability over extended operation."""
         import os
@@ -477,6 +485,7 @@ class TestPerformanceStress(unittest.TestCase):
             f"Memory usage increased by {memory_increase / 1024 / 1024:.2f}MB",
         )
 
+    @pytest.mark.slow
     def test_rate_limiting_effectiveness(self):
         """Test that rate limiting effectively controls message flow."""
         import asyncio

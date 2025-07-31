@@ -114,36 +114,21 @@ def initialize_database():
         with sqlite3.connect(db_path) as conn:
             cursor = conn.cursor()
             # Updated table schema: matrix_event_id is now PRIMARY KEY, meshtastic_id is not necessarily unique
-            try:
-                cursor.execute(
-                    "CREATE TABLE IF NOT EXISTS longnames (meshtastic_id TEXT PRIMARY KEY, longname TEXT)"
-                )
-            except sqlite3.Error as e:
-                logger.error(f"Failed to create longnames table: {e}")
-
-            try:
-                cursor.execute(
-                    "CREATE TABLE IF NOT EXISTS shortnames (meshtastic_id TEXT PRIMARY KEY, shortname TEXT)"
-                )
-            except sqlite3.Error as e:
-                logger.error(f"Failed to create shortnames table: {e}")
-
-            try:
-                cursor.execute(
-                    "CREATE TABLE IF NOT EXISTS plugin_data (plugin_name TEXT, meshtastic_id TEXT, data TEXT, PRIMARY KEY (plugin_name, meshtastic_id))"
-                )
-            except sqlite3.Error as e:
-                logger.error(f"Failed to create plugin_data table: {e}")
-
+            cursor.execute(
+                "CREATE TABLE IF NOT EXISTS longnames (meshtastic_id TEXT PRIMARY KEY, longname TEXT)"
+            )
+            cursor.execute(
+                "CREATE TABLE IF NOT EXISTS shortnames (meshtastic_id TEXT PRIMARY KEY, shortname TEXT)"
+            )
+            cursor.execute(
+                "CREATE TABLE IF NOT EXISTS plugin_data (plugin_name TEXT, meshtastic_id TEXT, data TEXT, PRIMARY KEY (plugin_name, meshtastic_id))"
+            )
             # Changed the schema for message_map: matrix_event_id is now primary key
             # Added a new column 'meshtastic_meshnet' to store the meshnet origin of the message.
             # If table already exists, we try adding the column if it doesn't exist.
-            try:
-                cursor.execute(
-                    "CREATE TABLE IF NOT EXISTS message_map (meshtastic_id INTEGER, matrix_event_id TEXT PRIMARY KEY, matrix_room_id TEXT, meshtastic_text TEXT, meshtastic_meshnet TEXT)"
-                )
-            except sqlite3.Error as e:
-                logger.error(f"Failed to create message_map table: {e}")
+            cursor.execute(
+                "CREATE TABLE IF NOT EXISTS message_map (meshtastic_id INTEGER, matrix_event_id TEXT PRIMARY KEY, matrix_room_id TEXT, meshtastic_text TEXT, meshtastic_meshnet TEXT)"
+            )
     except sqlite3.Error as e:
         logger.error(f"Database initialization failed: {e}")
         raise
