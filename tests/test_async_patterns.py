@@ -50,24 +50,31 @@ class TestAsyncPatterns(unittest.TestCase):
         """
         async def test_coroutine():
             """Test coroutine that simulates Matrix connection."""
-            # Mock SSL context creation
-            with patch("ssl.create_default_context") as mock_ssl:
-                mock_ssl.return_value = MagicMock()
+            # Ensure matrix_client is None to avoid early return
+            with patch("mmrelay.matrix_utils.matrix_client", None):
+                # Mock SSL context creation
+                with patch("ssl.create_default_context") as mock_ssl:
+                    mock_ssl.return_value = MagicMock()
 
-                # Mock Matrix client connection
-                with patch("mmrelay.matrix_utils.AsyncClient") as mock_client_class:
-                    mock_client = AsyncMock()
-                    mock_client.whoami.return_value = MagicMock(user_id="@test:matrix.org")
-                    mock_client_class.return_value = mock_client
+                    # Mock certifi.where()
+                    with patch("certifi.where", return_value="/fake/cert/path"):
+                        # Mock Matrix client connection
+                        with patch("mmrelay.matrix_utils.AsyncClient") as mock_client_class:
+                            mock_client = AsyncMock()
+                            # Mock successful whoami response
+                            mock_whoami_response = MagicMock()
+                            mock_whoami_response.device_id = "test_device"
+                            mock_client.whoami.return_value = mock_whoami_response
+                            mock_client_class.return_value = mock_client
 
-                    # Test that connect_matrix properly awaits
-                    result = await connect_matrix(self.config)
+                            # Test that connect_matrix properly awaits
+                            result = await connect_matrix(self.config)
 
-                    # Should return the client
-                    self.assertIsNotNone(result)
+                            # Should return the client
+                            self.assertIsNotNone(result)
 
-                    # Verify whoami was called (awaited)
-                    mock_client.whoami.assert_called_once()
+                            # Verify whoami was called (awaited)
+                            mock_client.whoami.assert_called_once()
 
         # Run the async test
         asyncio.run(test_coroutine())
@@ -115,29 +122,33 @@ class TestAsyncPatterns(unittest.TestCase):
         """
         async def test_timeout():
             """Test timeout handling in async operations."""
-            # Mock SSL context creation
-            with patch("ssl.create_default_context") as mock_ssl:
-                mock_ssl.return_value = MagicMock()
+            # Ensure matrix_client is None to avoid early return
+            with patch("mmrelay.matrix_utils.matrix_client", None):
+                # Mock SSL context creation
+                with patch("ssl.create_default_context") as mock_ssl:
+                    mock_ssl.return_value = MagicMock()
 
-                # Mock a slow Matrix operation
-                with patch("mmrelay.matrix_utils.AsyncClient") as mock_client_class:
-                    mock_client = AsyncMock()
+                    # Mock certifi.where()
+                    with patch("certifi.where", return_value="/fake/cert/path"):
+                        # Mock a slow Matrix operation
+                        with patch("mmrelay.matrix_utils.AsyncClient") as mock_client_class:
+                            mock_client = AsyncMock()
 
-                    # Make whoami take longer than timeout
-                    async def slow_whoami():
-                        await asyncio.sleep(2)  # 2 second delay
-                        return MagicMock(user_id="@test:matrix.org")
+                            # Make whoami take longer than timeout
+                            async def slow_whoami():
+                                await asyncio.sleep(2)  # 2 second delay
+                                return MagicMock(device_id="test_device")
 
-                    mock_client.whoami = slow_whoami
-                    mock_client_class.return_value = mock_client
+                            mock_client.whoami = slow_whoami
+                            mock_client_class.return_value = mock_client
 
-                    # Test with short timeout
-                    try:
-                        await asyncio.wait_for(connect_matrix(self.config), timeout=0.5)
-                        self.fail("Should have timed out")
-                    except asyncio.TimeoutError:
-                        # Expected timeout
-                        pass
+                            # Test with short timeout
+                            try:
+                                await asyncio.wait_for(connect_matrix(self.config), timeout=0.5)
+                                self.fail("Should have timed out")
+                            except asyncio.TimeoutError:
+                                # Expected timeout
+                                pass
 
         # Run the timeout test
         asyncio.run(test_timeout())
@@ -366,14 +377,12 @@ class TestAsyncPatterns(unittest.TestCase):
             # Test 3: Exception in async generator
             async def failing_generator():
                 yield "first"
-                raise StopAsyncIteration("Generator stopped")
+                # In Python 3.7+, StopAsyncIteration in async generators becomes RuntimeError
+                return  # Proper way to stop async generator
 
             results = []
-            try:
-                async for item in failing_generator():
-                    results.append(item)
-            except StopAsyncIteration:
-                pass  # Expected
+            async for item in failing_generator():
+                results.append(item)
 
             self.assertEqual(results, ["first"])
 

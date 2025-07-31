@@ -1,7 +1,7 @@
 import os
 import sys
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -323,17 +323,23 @@ class TestConfigEdgeCases(unittest.TestCase):
         Verifies that the system handles unusual path scenarios correctly,
         including relative paths, symlinks, and special characters.
         """
-        with patch("sys.argv", ["mmrelay", "--config", "../config/test.yaml"]):
-            paths = get_config_paths()
+        # Mock argparse Namespace object for relative path
+        mock_args = MagicMock()
+        mock_args.config = "../config/test.yaml"
 
-            # Should include the specified relative path
-            self.assertIn("../config/test.yaml", paths)
+        paths = get_config_paths(args=mock_args)
 
-        with patch("sys.argv", ["mmrelay", "--config", "/absolute/path/config.yaml"]):
-            paths = get_config_paths()
+        # Should include the absolute version of the relative path
+        expected_path = os.path.abspath("../config/test.yaml")
+        self.assertIn(expected_path, paths)
 
-            # Should include the absolute path
-            self.assertIn("/absolute/path/config.yaml", paths)
+        # Mock argparse Namespace object for absolute path
+        mock_args.config = "/absolute/path/config.yaml"
+
+        paths = get_config_paths(args=mock_args)
+
+        # Should include the absolute path
+        self.assertIn("/absolute/path/config.yaml", paths)
 
 
 if __name__ == "__main__":
