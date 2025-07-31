@@ -13,6 +13,7 @@ Tests edge cases and error handling including:
 """
 
 import os
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -114,8 +115,8 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
     def test_reload_daemon_command_failure(self):
         """Test reload_daemon when systemctl command fails."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value.returncode = 1
-            mock_run.return_value.stderr = "Command failed"
+            # Mock subprocess.run to raise CalledProcessError (since check=True is used)
+            mock_run.side_effect = subprocess.CalledProcessError(1, "systemctl", "Command failed")
 
             with patch("builtins.print") as mock_print:
                 result = reload_daemon()

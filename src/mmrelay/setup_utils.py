@@ -481,12 +481,12 @@ def install_service():
                 user_input = input(
                     "Do you want to enable lingering for your user? (requires sudo) (y/n): "
                 )
-                enable_lingering = user_input.lower().startswith("y")
+                should_enable_lingering = user_input.lower().startswith("y")
             except (EOFError, KeyboardInterrupt):
                 print("\nInput cancelled. Skipping lingering setup.")
-                enable_lingering = False
+                should_enable_lingering = False
 
-            if enable_lingering:
+            if should_enable_lingering:
                 enable_lingering()
 
     # Check if the service is already enabled
