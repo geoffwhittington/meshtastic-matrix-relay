@@ -249,15 +249,38 @@ class TestIntegrationScenarios(unittest.TestCase):
         )  # Intercepts
 
         with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins:
-            # Return plugins in random order (should be sorted by priority)
-            mock_load_plugins.return_value = [mock_plugin2, mock_plugin1, mock_plugin3]
+            with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
+                # Mock the async execution
+                def mock_run_coro(coro, loop):
+                    mock_future = MagicMock()
+                    try:
+                        import asyncio
+                        result = asyncio.run(coro)
+                        mock_future.result.return_value = result
+                    except Exception:
+                        mock_future.result.return_value = None
+                    return mock_future
 
-            on_meshtastic_message(packet, mock_interface)
+                mock_run_coroutine.side_effect = mock_run_coro
 
-            # Verify all plugins were called in priority order
-            mock_plugin1.handle_meshtastic_message.assert_called_once()
-            mock_plugin2.handle_meshtastic_message.assert_called_once()
-            mock_plugin3.handle_meshtastic_message.assert_called_once()
+                # Return plugins in random order (should be sorted by priority)
+                mock_load_plugins.return_value = [mock_plugin2, mock_plugin1, mock_plugin3]
+
+                # Set up minimal config
+                import mmrelay.meshtastic_utils
+                mmrelay.meshtastic_utils.config = {
+                    "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}],
+                    "meshtastic": {"meshnet_name": "TestMesh"}
+                }
+                mmrelay.meshtastic_utils.matrix_rooms = [{"id": "!room:matrix.org", "meshtastic_channel": 0}]
+                mmrelay.meshtastic_utils.event_loop = MagicMock()
+
+                on_meshtastic_message(packet, mock_interface)
+
+                # Verify all plugins were called in priority order
+                mock_plugin1.handle_meshtastic_message.assert_called_once()
+                mock_plugin2.handle_meshtastic_message.assert_called_once()
+                mock_plugin3.handle_meshtastic_message.assert_called_once()
 
     def test_configuration_loading_and_validation_flow(self):
         """Test complete configuration loading and validation flow."""

@@ -260,31 +260,42 @@ def main():
     Returns:
         int: Exit code (0 for success, non-zero for failure)
     """
-    args = parse_arguments()
+    try:
+        args = parse_arguments()
 
-    # Handle --check-config
-    if args.check_config:
-        return 0 if check_config(args) else 1
+        # Handle --check-config
+        if args.check_config:
+            return 0 if check_config(args) else 1
 
-    # Handle --install-service
-    if args.install_service:
-        from mmrelay.setup_utils import install_service
+        # Handle --install-service
+        if args.install_service:
+            try:
+                from mmrelay.setup_utils import install_service
+                return 0 if install_service() else 1
+            except ImportError as e:
+                print(f"Error importing setup utilities: {e}")
+                return 1
 
-        return 0 if install_service() else 1
+        # Handle --generate-config
+        if args.generate_config:
+            return 0 if generate_sample_config() else 1
 
-    # Handle --generate-config
-    if args.generate_config:
-        return 0 if generate_sample_config() else 1
+        # Handle --version
+        if args.version:
+            print_version()
+            return 0
 
-    # Handle --version
-    if args.version:
-        print_version()
-        return 0
+        # If no command was specified, run the main functionality
+        try:
+            from mmrelay.main import run_main
+            return run_main(args)
+        except ImportError as e:
+            print(f"Error importing main module: {e}")
+            return 1
 
-    # If no command was specified, run the main functionality
-    from mmrelay.main import run_main
-
-    return run_main(args)
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return 1
 
 
 if __name__ == "__main__":

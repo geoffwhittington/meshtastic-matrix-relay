@@ -85,8 +85,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
         """Test initialize_database when database connection fails."""
         with patch("sqlite3.connect", side_effect=sqlite3.Error("Connection failed")):
             with patch("mmrelay.db_utils.logger") as mock_logger:
-                # Should handle connection failure gracefully
-                initialize_database()
+                # Should raise exception on connection failure (fail fast)
+                with self.assertRaises(sqlite3.Error):
+                    initialize_database()
                 mock_logger.error.assert_called()
 
     def test_initialize_database_corrupted_database(self):
@@ -99,9 +100,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
         try:
             with patch("mmrelay.db_utils.get_db_path", return_value=temp_db_path):
                 with patch("mmrelay.db_utils.logger"):
-                    # Should handle corrupted database
-                    initialize_database()
-                    # May log errors about corruption
+                    # Should raise exception on corrupted database (fail fast)
+                    with self.assertRaises(sqlite3.DatabaseError):
+                        initialize_database()
         finally:
             os.unlink(temp_db_path)
 

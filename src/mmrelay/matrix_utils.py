@@ -400,7 +400,11 @@ async def connect_matrix(passed_config=None):
         return matrix_client
 
     # Create SSL context using certifi's certificates
-    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    try:
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+    except Exception as e:
+        logger.error(f"Failed to create SSL context: {e}")
+        raise ConnectionError(f"SSL context creation failed: {e}") from e
 
     # Initialize the Matrix client with custom SSL context
     client_config = AsyncClientConfig(encryption_enabled=False)
