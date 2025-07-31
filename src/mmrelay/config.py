@@ -72,9 +72,13 @@ def get_config_paths(args=None):
         # Use platformdirs default for Windows
         user_config_dir = platformdirs.user_config_dir(APP_NAME, APP_AUTHOR)
 
-    os.makedirs(user_config_dir, exist_ok=True)
-    user_config_path = os.path.join(user_config_dir, "config.yaml")
-    paths.append(user_config_path)
+    try:
+        os.makedirs(user_config_dir, exist_ok=True)
+        user_config_path = os.path.join(user_config_dir, "config.yaml")
+        paths.append(user_config_path)
+    except (OSError, PermissionError):
+        # If we can't create the user config directory, skip it
+        pass
 
     # Check current directory (for backward compatibility)
     current_dir_config = os.path.join(os.getcwd(), "config.yaml")
@@ -214,10 +218,14 @@ def load_config(config_file=None, args=None):
     # If a specific config file was provided, use it
     if config_file and os.path.isfile(config_file):
         # Store the config path but don't log it yet - will be logged by main.py
-        with open(config_file, "r") as f:
-            relay_config = yaml.load(f, Loader=SafeLoader)
-        config_path = config_file
-        return relay_config
+        try:
+            with open(config_file, "r") as f:
+                relay_config = yaml.load(f, Loader=SafeLoader)
+            config_path = config_file
+            return relay_config
+        except (yaml.YAMLError, PermissionError, OSError) as e:
+            logger.error(f"Error loading config file {config_file}: {e}")
+            return {}
 
     # Otherwise, search for a config file
     config_paths = get_config_paths(args)
@@ -227,9 +235,13 @@ def load_config(config_file=None, args=None):
         if os.path.isfile(path):
             config_path = path
             # Store the config path but don't log it yet - will be logged by main.py
-            with open(config_path, "r") as f:
-                relay_config = yaml.load(f, Loader=SafeLoader)
-            return relay_config
+            try:
+                with open(config_path, "r") as f:
+                    relay_config = yaml.load(f, Loader=SafeLoader)
+                return relay_config
+            except (yaml.YAMLError, PermissionError, OSError) as e:
+                logger.error(f"Error loading config file {path}: {e}")
+                continue  # Try the next config path
 
     # No config file found
     logger.error("Configuration file not found in any of the following locations:")

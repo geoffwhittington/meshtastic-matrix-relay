@@ -16,6 +16,7 @@ import asyncio
 import os
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -152,6 +153,7 @@ class TestIntegrationScenarios(unittest.TestCase):
                 "meshtastic": {
                     "connection_type": "serial",
                     "serial_port": "/dev/ttyUSB0",
+                    "meshnet_name": "TestMesh",
                 },
                 "plugins": {"help": {"active": True}},
             }
@@ -160,9 +162,14 @@ class TestIntegrationScenarios(unittest.TestCase):
             mock_room = MagicMock()
             mock_room.room_id = "!room1:matrix.org"
 
-            mock_event = MagicMock()
+            # Import the mock class from conftest
+            from nio import RoomMessageText
+
+            mock_event = MagicMock(spec=RoomMessageText)
             mock_event.sender = "@user:matrix.org"
             mock_event.body = "!help"
+            mock_event.server_timestamp = int(time.time() * 1000) + 1000  # Future timestamp
+            mock_event.source = {"content": {}}
 
             # Mock Meshtastic client
             mock_meshtastic_client = MagicMock()
