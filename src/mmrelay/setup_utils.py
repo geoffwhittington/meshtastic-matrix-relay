@@ -432,11 +432,14 @@ def install_service():
 
         if update_needed:
             print(f"The service file needs to be updated: {reason}")
-            if (
-                not input("Do you want to update the service file? (y/n): ")
-                .lower()
-                .startswith("y")
-            ):
+            try:
+                user_input = input("Do you want to update the service file? (y/n): ")
+                if not user_input.lower().startswith("y"):
+                    print("Service update cancelled.")
+                    print_service_commands()
+                    return True
+            except (EOFError, KeyboardInterrupt):
+                print("\nInput cancelled. Proceeding with default behavior.")
                 print("Service update cancelled.")
                 print_service_commands()
                 return True
@@ -474,13 +477,16 @@ def install_service():
             print(
                 "Lingering allows user services to run even when you're not logged in."
             )
-            if (
-                input(
+            try:
+                user_input = input(
                     "Do you want to enable lingering for your user? (requires sudo) (y/n): "
                 )
-                .lower()
-                .startswith("y")
-            ):
+                enable_lingering = user_input.lower().startswith("y")
+            except (EOFError, KeyboardInterrupt):
+                print("\nInput cancelled. Skipping lingering setup.")
+                enable_lingering = False
+
+            if enable_lingering:
                 enable_lingering()
 
     # Check if the service is already enabled
@@ -489,11 +495,14 @@ def install_service():
         print("The service is already enabled to start at boot.")
     else:
         print("The service is not currently enabled to start at boot.")
-        if (
-            input("Do you want to enable the service to start at boot? (y/n): ")
-            .lower()
-            .startswith("y")
-        ):
+        try:
+            user_input = input("Do you want to enable the service to start at boot? (y/n): ")
+            enable_service = user_input.lower().startswith("y")
+        except (EOFError, KeyboardInterrupt):
+            print("\nInput cancelled. Skipping service enable.")
+            enable_service = False
+
+        if enable_service:
             try:
                 subprocess.run(
                     ["/usr/bin/systemctl", "--user", "enable", "mmrelay.service"],
@@ -510,7 +519,14 @@ def install_service():
     service_active = is_service_active()
     if service_active:
         print("The service is already running.")
-        if input("Do you want to restart the service? (y/n): ").lower().startswith("y"):
+        try:
+            user_input = input("Do you want to restart the service? (y/n): ")
+            restart_service = user_input.lower().startswith("y")
+        except (EOFError, KeyboardInterrupt):
+            print("\nInput cancelled. Skipping service restart.")
+            restart_service = False
+
+        if restart_service:
             try:
                 subprocess.run(
                     ["/usr/bin/systemctl", "--user", "restart", "mmrelay.service"],
@@ -527,11 +543,14 @@ def install_service():
                 print(f"Error: {e}")
     else:
         print("The service is not currently running.")
-        if (
-            input("Do you want to start the service now? (y/n): ")
-            .lower()
-            .startswith("y")
-        ):
+        try:
+            user_input = input("Do you want to start the service now? (y/n): ")
+            start_now = user_input.lower().startswith("y")
+        except (EOFError, KeyboardInterrupt):
+            print("\nInput cancelled. Skipping service start.")
+            start_now = False
+
+        if start_now:
             if start_service():
                 # Wait for the service to start
                 wait_for_service_start()
