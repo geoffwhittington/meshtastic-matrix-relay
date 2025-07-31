@@ -172,19 +172,16 @@ class Plugin:
 
     def test_get_custom_plugin_dirs_broken_symlinks(self):
         """Test get_custom_plugin_dirs with broken symbolic links."""
-        with patch("mmrelay.config.get_base_dir", return_value="/test"):
-            with patch("os.path.exists", return_value=True):
-                with patch("os.listdir", return_value=["broken_link", "valid_dir"]):
-
-                    def mock_isdir(path):
-                        if "broken_link" in path:
-                            raise OSError("Broken symlink")
-                        return "valid_dir" in path
-
-                    with patch("os.path.isdir", side_effect=mock_isdir):
-                        dirs = get_custom_plugin_dirs()
-                        self.assertEqual(len(dirs), 1)
-                        self.assertIn("valid_dir", dirs[0])
+        with patch("mmrelay.plugin_loader.get_base_dir", return_value="/test"):
+            with patch("mmrelay.plugin_loader.get_app_path", return_value="/test/app"):
+                with patch("os.makedirs") as mock_makedirs:
+                    dirs = get_custom_plugin_dirs()
+                    # Should have called makedirs for the user directory
+                    mock_makedirs.assert_called()
+                    # Should return both directories
+                    self.assertEqual(len(dirs), 2)
+                    self.assertIn("/test/plugins/custom", dirs)
+                    self.assertIn("/test/app/plugins/custom", dirs)
 
     def test_get_community_plugin_dirs_git_clone_failure(self):
         """Test get_community_plugin_dirs when git clone fails."""

@@ -323,9 +323,14 @@ plugins:
 
             # Test configuration validation
             from mmrelay.cli import check_config
+            from unittest.mock import MagicMock
+
+            # Create mock args
+            mock_args = MagicMock()
+            mock_args.config = temp_config_path
 
             with patch("mmrelay.cli.get_config_paths", return_value=[temp_config_path]):
-                result = check_config()
+                result = check_config(mock_args)
                 self.assertTrue(result)
 
         finally:
