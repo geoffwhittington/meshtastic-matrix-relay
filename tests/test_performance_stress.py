@@ -130,6 +130,7 @@ class TestPerformanceStress(unittest.TestCase):
                         with patch("mmrelay.db_utils.get_shortname", return_value="TN"):
                             with patch(
                                 "mmrelay.matrix_utils.matrix_relay",
+                                new_callable=AsyncMock,
                                 side_effect=mock_matrix_relay,
                             ):
                                 start_time = time.time()
@@ -393,9 +394,7 @@ class TestPerformanceStress(unittest.TestCase):
                                         try:
                                             import asyncio
 
-                                            asyncio.get_event_loop().run_until_complete(
-                                                coro
-                                            )
+                                            asyncio.run(coro)
                                         except:
                                             pass  # Ignore any errors from running the mock coroutine
                                         return mock_future
@@ -559,7 +558,7 @@ class TestPerformanceStress(unittest.TestCase):
         mock_interface = MagicMock()
 
         with patch("mmrelay.plugin_loader.load_plugins", return_value=[]):
-            with patch("mmrelay.matrix_utils.matrix_relay"):
+            with patch("mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock):
                 # Set up minimal config
                 import mmrelay.meshtastic_utils
 

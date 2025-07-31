@@ -14,7 +14,7 @@ import asyncio
 import os
 import sys
 import unittest
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -84,7 +84,7 @@ class TestMeshtasticUtils(unittest.TestCase):
         ) as mock_get_shortname, patch(
             "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
         ) as mock_run_coro, patch(
-            "mmrelay.matrix_utils.matrix_relay", return_value=None
+            "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
         ), patch(
             "mmrelay.matrix_utils.get_interaction_settings"
         ) as mock_get_interactions, patch(
@@ -330,7 +330,7 @@ class TestMeshtasticUtils(unittest.TestCase):
         ), patch(
             "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
         ) as mock_run_coro, patch(
-            "mmrelay.matrix_utils.matrix_relay", return_value=None
+            "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
         ), patch(
             "mmrelay.meshtastic_utils.get_longname"
         ) as mock_get_longname, patch(

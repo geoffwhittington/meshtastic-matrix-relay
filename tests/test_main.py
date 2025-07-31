@@ -16,7 +16,7 @@ import asyncio
 import os
 import sys
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -225,7 +225,7 @@ class TestMain(unittest.TestCase):
         self.assertEqual(result, 1)
 
     @patch("mmrelay.config.load_config")
-    @patch("mmrelay.main.main")
+    @patch("mmrelay.main.main", new_callable=AsyncMock)
     def test_run_main_keyboard_interrupt(self, mock_main, mock_load_config):
         """
         Test that run_main returns 0 when a KeyboardInterrupt is raised during execution, indicating a graceful shutdown.
