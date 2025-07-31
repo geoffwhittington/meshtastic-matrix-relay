@@ -451,9 +451,9 @@ def install_service():
         if not create_service_file():
             return False
 
-        # Reload daemon
+        # Reload daemon (continue even if this fails)
         if not reload_daemon():
-            return False
+            print("Warning: Failed to reload systemd daemon. You may need to run 'systemctl --user daemon-reload' manually.")
 
         if existing_service:
             print("Service file updated successfully")

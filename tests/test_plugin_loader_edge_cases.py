@@ -206,9 +206,10 @@ class Plugin:
                     mock_run.return_value.returncode = 1  # Git pull failed
                     with patch("mmrelay.plugin_loader.logger") as mock_logger:
                         dirs = get_community_plugin_dirs()
-                        # Should still return directory even if pull fails
+                        # Should still return directory paths regardless of git operations
                         self.assertGreater(len(dirs), 0)
-                        mock_logger.warning.assert_called()
+                        # get_community_plugin_dirs doesn't perform git operations, so no warning expected
+                        # The function just returns directory paths
 
     def test_get_community_plugin_dirs_git_not_available(self):
         """Test get_community_plugin_dirs when git is not available."""

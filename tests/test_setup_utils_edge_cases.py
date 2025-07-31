@@ -212,10 +212,14 @@ class TestSetupUtilsEdgeCases(unittest.TestCase):
                 with patch(
                     "mmrelay.setup_utils.reload_daemon", return_value=False
                 ):
-                    with patch("builtins.print"):
-                        result = install_service()
-                        # Should still return True even if reload fails
-                        self.assertTrue(result)
+                    with patch("mmrelay.setup_utils.read_service_file", return_value=None):
+                        with patch("mmrelay.setup_utils.service_needs_update", return_value=(True, "test")):
+                            with patch("mmrelay.setup_utils.check_loginctl_available", return_value=False):
+                                with patch("builtins.input", return_value="n"):  # Mock all input prompts to return "n"
+                                    with patch("builtins.print"):
+                                        result = install_service()
+                                        # Should still return True even if reload fails
+                                        self.assertTrue(result)
 
     def test_install_service_lingering_check_failure(self):
         """Test install_service when lingering check fails."""
