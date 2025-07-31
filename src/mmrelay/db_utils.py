@@ -135,18 +135,18 @@ def initialize_database():
             cursor.execute(
                 "CREATE TABLE IF NOT EXISTS message_map (meshtastic_id INTEGER, matrix_event_id TEXT PRIMARY KEY, matrix_room_id TEXT, meshtastic_text TEXT, meshtastic_meshnet TEXT)"
             )
+
+            # Attempt to add meshtastic_meshnet column if it's missing (for upgrades)
+            # This is a no-op if the column already exists.
+            # If user runs fresh, it will already be there from CREATE TABLE IF NOT EXISTS.
+            try:
+                cursor.execute("ALTER TABLE message_map ADD COLUMN meshtastic_meshnet TEXT")
+            except sqlite3.OperationalError:
+                # Column already exists, or table just created with it
+                pass
     except sqlite3.Error as e:
         logger.error(f"Database initialization failed: {e}")
         raise
-
-        # Attempt to add meshtastic_meshnet column if it's missing (for upgrades)
-        # This is a no-op if the column already exists.
-        # If user runs fresh, it will already be there from CREATE TABLE IF NOT EXISTS.
-        try:
-            cursor.execute("ALTER TABLE message_map ADD COLUMN meshtastic_meshnet TEXT")
-        except sqlite3.OperationalError:
-            # Column already exists, or table just created with it
-            pass
 
         conn.commit()
 
