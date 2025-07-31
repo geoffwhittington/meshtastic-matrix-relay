@@ -289,71 +289,73 @@ class TestIntegrationScenarios(unittest.TestCase):
         )  # Intercepts
 
         with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins:
-            with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
-                # Mock the async execution
-                def mock_run_coro(coro, loop):
-                    """
-                    Synchronously executes an asynchronous coroutine and returns a mock future with the result.
+            with patch("mmrelay.matrix_utils.matrix_relay") as mock_matrix_relay:
+                with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
+                    # Mock the async execution
+                    def mock_run_coro(coro, loop):
+                        """
+                        Synchronously executes an asynchronous coroutine and returns a mock future with the result.
 
-                    Parameters:
-                        coro: The coroutine to execute.
-                        loop: The event loop (unused).
+                        Parameters:
+                            coro: The coroutine to execute.
+                            loop: The event loop (unused).
 
-                    Returns:
-                        A MagicMock object mimicking a future, with its result set to the coroutine's return value or None if execution fails.
-                    """
-                    mock_future = MagicMock()
-                    try:
-                        import asyncio
-                        import inspect
+                        Returns:
+                            A MagicMock object mimicking a future, with its result() method returning the coroutine's return value.
+                        """
+                        mock_future = MagicMock()
+                        try:
+                            import asyncio
+                            import inspect
 
-                        # Check if it's actually a coroutine
-                        if inspect.iscoroutine(coro):
-                            # Run the coroutine and get the result
-                            result = asyncio.run(coro)
-                            mock_future.result.return_value = result
-                        else:
-                            # If it's not a coroutine, just return None
+                            # Check if it's actually a coroutine
+                            if inspect.iscoroutine(coro):
+                                # Run the coroutine and get the result
+                                result = asyncio.run(coro)
+                                # Set up the mock to return the result when .result() is called
+                                mock_future.result.return_value = result
+                            else:
+                                # If it's not a coroutine, just return None
+                                mock_future.result.return_value = None
+                        except Exception as e:
+                            # If there's an error, ensure coroutine is closed
+                            if inspect.iscoroutine(coro):
+                                try:
+                                    coro.close()
+                                except:
+                                    pass
                             mock_future.result.return_value = None
-                    except Exception as e:
-                        # If there's an error, ensure coroutine is closed
-                        if inspect.iscoroutine(coro):
-                            try:
-                                coro.close()
-                            except:
-                                pass
-                        mock_future.result.return_value = None
-                    return mock_future
+                        return mock_future
 
-                mock_run_coroutine.side_effect = mock_run_coro
+                    mock_run_coroutine.side_effect = mock_run_coro
 
-                # Return plugins in random order (should be sorted by priority)
-                mock_load_plugins.return_value = [
-                    mock_plugin2,
-                    mock_plugin1,
-                    mock_plugin3,
-                ]
+                    # Return plugins in random order (should be sorted by priority)
+                    mock_load_plugins.return_value = [
+                        mock_plugin2,
+                        mock_plugin1,
+                        mock_plugin3,
+                    ]
 
-                # Set up minimal config
-                import mmrelay.meshtastic_utils
+                    # Set up minimal config
+                    import mmrelay.meshtastic_utils
 
-                mmrelay.meshtastic_utils.config = {
-                    "matrix_rooms": [
+                    mmrelay.meshtastic_utils.config = {
+                        "matrix_rooms": [
+                            {"id": "!room:matrix.org", "meshtastic_channel": 0}
+                        ],
+                        "meshtastic": {"meshnet_name": "TestMesh"},
+                    }
+                    mmrelay.meshtastic_utils.matrix_rooms = [
                         {"id": "!room:matrix.org", "meshtastic_channel": 0}
-                    ],
-                    "meshtastic": {"meshnet_name": "TestMesh"},
-                }
-                mmrelay.meshtastic_utils.matrix_rooms = [
-                    {"id": "!room:matrix.org", "meshtastic_channel": 0}
-                ]
-                mmrelay.meshtastic_utils.event_loop = MagicMock()
+                    ]
+                    mmrelay.meshtastic_utils.event_loop = MagicMock()
 
-                on_meshtastic_message(packet, mock_interface)
+                    on_meshtastic_message(packet, mock_interface)
 
-                # Verify all plugins were called in priority order
-                mock_plugin1.handle_meshtastic_message.assert_called_once()
-                mock_plugin2.handle_meshtastic_message.assert_called_once()
-                mock_plugin3.handle_meshtastic_message.assert_called_once()
+                    # Verify all plugins were called in priority order
+                    mock_plugin1.handle_meshtastic_message.assert_called_once()
+                    mock_plugin2.handle_meshtastic_message.assert_called_once()
+                    mock_plugin3.handle_meshtastic_message.assert_called_once()
 
     def test_configuration_loading_and_validation_flow(self):
         """

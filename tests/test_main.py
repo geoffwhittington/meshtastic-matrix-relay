@@ -208,7 +208,7 @@ class TestMain(unittest.TestCase):
         self.assertEqual(result, 0)
 
     @patch("mmrelay.config.load_config")
-    @patch("mmrelay.main.main")
+    @patch("mmrelay.main.main", new_callable=AsyncMock)
     def test_run_main_exception_handling(self, mock_main, mock_load_config):
         """
         Test that run_main returns 1 when an exception is raised during execution.
