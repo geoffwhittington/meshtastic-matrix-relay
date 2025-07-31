@@ -130,9 +130,9 @@ class TestMain(unittest.TestCase):
 
     def test_main_with_message_map_wipe(self):
         """
-        Test that the message map wipe logic is triggered when configured.
-
-        This test focuses on the specific configuration parsing logic without running the full async main function.
+        Test that the message map wipe function is called when the configuration enables wiping on restart.
+        
+        Verifies that the wipe logic correctly parses both new and legacy configuration formats and triggers the wipe when appropriate.
         """
         # Enable message map wiping
         config_with_wipe = self.mock_config.copy()
@@ -174,7 +174,7 @@ class TestMain(unittest.TestCase):
         mock_asyncio_run,
     ):
         """
-        Verify that run_main loads configuration, sets logging, prints the banner, configures debug logging, calls the main function, and returns 0 on success.
+        Tests that run_main loads configuration, sets logging, prints the banner, configures debug logging, runs the main async function, and returns 0 on successful execution.
         """
         # Mock arguments
         mock_args = MagicMock()
@@ -211,7 +211,7 @@ class TestMain(unittest.TestCase):
     @patch("mmrelay.main.main", new_callable=AsyncMock)
     def test_run_main_exception_handling(self, mock_main, mock_load_config):
         """
-        Test that run_main returns 1 when an exception is raised during execution.
+        Test that run_main returns 1 if an exception occurs during execution.
         """
         # Mock config loading
         mock_load_config.return_value = self.mock_config
@@ -228,7 +228,7 @@ class TestMain(unittest.TestCase):
     @patch("asyncio.run")
     def test_run_main_keyboard_interrupt(self, mock_asyncio_run, mock_load_config):
         """
-        Test that run_main returns 0 when a KeyboardInterrupt is raised during execution, indicating a graceful shutdown.
+        Test that run_main returns 0 when a KeyboardInterrupt occurs during execution, indicating graceful shutdown.
         """
         # Mock config loading
         mock_load_config.return_value = self.mock_config
@@ -369,9 +369,9 @@ class TestRunMain(unittest.TestCase):
         mock_asyncio_run,
     ):
         """
-        Test that run_main completes successfully with valid configuration and returns 0.
-
-        Verifies that the banner is printed, configuration is loaded, and the main async function is executed when provided with correct arguments.
+        Test that `run_main` executes successfully with valid configuration and returns 0.
+        
+        Ensures that the banner is printed, configuration is loaded, and the main asynchronous function is run when correct arguments are provided.
         """
         # Mock configuration
         mock_config = {
@@ -384,6 +384,12 @@ class TestRunMain(unittest.TestCase):
         # Configure asyncio.run mock to properly handle coroutines
         def mock_run(coro):
             # Close the coroutine to prevent warnings
+            """
+            Mocks the execution of an asynchronous coroutine by closing it if possible and returning None.
+            
+            Parameters:
+                coro: The coroutine object to be closed.
+            """
             if hasattr(coro, "close"):
                 coro.close()
             return None
@@ -550,9 +556,9 @@ class TestRunMain(unittest.TestCase):
         mock_asyncio_run,
     ):
         """
-        Test that run_main applies a custom log level from arguments and returns success.
-
-        Ensures that when a log level is specified in the arguments, it overrides the configuration's logging level, and run_main completes successfully.
+        Test that run_main uses a custom log level from arguments and completes successfully.
+        
+        Verifies that specifying a log level in the arguments overrides the logging level in the configuration and that run_main returns 0 to indicate success.
         """
         mock_config = {
             "matrix": {"homeserver": "https://matrix.org"},
@@ -562,6 +568,15 @@ class TestRunMain(unittest.TestCase):
         mock_load_config.return_value = mock_config
         # Mock asyncio.run to consume the coroutine to prevent warnings
         def mock_run(coro):
+            """
+            Closes the given coroutine to suppress "never awaited" warnings during testing.
+            
+            Parameters:
+                coro: The coroutine object to be closed.
+            
+            Returns:
+                None
+            """
             try:
                 # Close the coroutine to prevent "never awaited" warning
                 coro.close()
@@ -600,9 +615,9 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
 
     def test_main_with_database_wipe_new_format(self):
         """
-        Test that the database wipe logic is triggered by the new configuration format.
-
-        This test focuses on the specific configuration parsing logic without running the full async main function.
+        Test that the database wipe logic is triggered when `wipe_on_restart` is set in the new configuration format.
+        
+        Verifies that the `wipe_message_map` function is called if the `database.msg_map.wipe_on_restart` flag is enabled in the configuration.
         """
         # Add database config with wipe_on_restart
         config_with_wipe = self.mock_config.copy()
@@ -632,9 +647,9 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
 
     def test_main_with_database_wipe_legacy_format(self):
         """
-        Test that the database wipe logic is triggered by the legacy configuration format.
-
-        This test focuses on the specific configuration parsing logic without running the full async main function.
+        Test that the database wipe logic is triggered when the legacy configuration format specifies `wipe_on_restart`.
+        
+        Verifies that the application correctly detects the legacy `db.msg_map.wipe_on_restart` setting and calls the database wipe function.
         """
         # Add legacy database config with wipe_on_restart
         config_with_wipe = self.mock_config.copy()
@@ -664,9 +679,7 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
 
     def test_main_with_custom_message_delay(self):
         """
-        Verifies that the message delay configuration is properly extracted and used.
-
-        This test focuses on testing the message delay configuration parsing without running the async main function.
+        Test that a custom message delay in the Meshtastic configuration is correctly extracted and passed to the message queue starter.
         """
         # Add custom message delay
         config_with_delay = self.mock_config.copy()
@@ -688,9 +701,9 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
 
     def test_main_no_meshtastic_client_warning(self):
         """
-        Test that the main function logic handles None Meshtastic client correctly.
-
-        This test verifies the behavior without running the complex async main function.
+        Verify that update functions are not called when the Meshtastic client is None.
+        
+        This test ensures that, if the Meshtastic client is not initialized, the main logic does not attempt to update longnames or shortnames.
         """
         # This test is simplified to avoid async complexity while still testing the core logic
         # The actual behavior is tested through integration tests

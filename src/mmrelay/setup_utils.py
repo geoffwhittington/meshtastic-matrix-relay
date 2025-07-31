@@ -55,7 +55,11 @@ def print_service_commands():
 
 
 def wait_for_service_start():
-    """Wait for the service to start with a Rich progress indicator."""
+    """
+    Displays a progress spinner while waiting up to 10 seconds for the mmrelay service to become active.
+    
+    The function checks the service status after 5 seconds and completes early if the service is detected as active.
+    """
     import time
 
     from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn

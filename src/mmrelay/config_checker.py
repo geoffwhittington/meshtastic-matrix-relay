@@ -19,10 +19,10 @@ from mmrelay.constants.network import (
 
 def get_config_paths():
     """
-    Get a list of possible configuration file paths.
-
+    Return a list of possible file paths where the mmrelay configuration file may be located.
+    
     Returns:
-        list: A list of possible configuration file paths
+        list: Paths to potential configuration files.
     """
     from mmrelay.config import get_config_paths as get_paths
 
@@ -31,10 +31,10 @@ def get_config_paths():
 
 def check_config():
     """
-    Check if the configuration file is valid.
-
+    Validates the mmrelay configuration file by checking for required sections and fields.
+    
     Returns:
-        bool: True if the configuration is valid, False otherwise.
+        bool: True if a valid configuration file is found and passes all checks; False otherwise.
     """
     config_paths = get_config_paths()
     config_path = None

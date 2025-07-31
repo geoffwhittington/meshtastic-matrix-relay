@@ -237,10 +237,9 @@ def pytest_collection_modifyitems(config, items):
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_environment():
     """
-    Set up a safe test environment that doesn't interfere with user configs.
-
-    This fixture ensures that tests use temporary directories instead of real user directories,
-    preventing accidental overwriting of production configs.
+    Pytest fixture that sets up an isolated test environment using a temporary configuration directory.
+    
+    This fixture overrides the MMRelay configuration directory to a temporary location, writes a test configuration file, and ensures cleanup after tests complete. It prevents tests from modifying or interfering with real user configuration files.
     """
     import tempfile
     import mmrelay.config
@@ -301,12 +300,10 @@ plugins:
 @pytest.fixture
 def temp_dir():
     """
-    Yields a temporary directory path for use during tests requiring filesystem access.
-
-    The directory and its contents are automatically cleaned up after the test completes.
-
+    Provide a temporary directory path for use during a test, ensuring automatic cleanup after the test finishes.
+    
     Yields:
-        temp_path (str): Path to the temporary directory.
+        str: Path to the temporary directory.
     """
     with tempfile.TemporaryDirectory() as temp_path:
         yield temp_path
@@ -335,10 +332,10 @@ def temp_db():
 @pytest.fixture
 def mock_config():
     """
-    Return a mock configuration dictionary emulating MMRelay settings for use in tests.
-
+    Return a mock configuration dictionary representing typical MMRelay settings for testing purposes.
+    
     Returns:
-        dict: A dictionary containing mock Matrix, Meshtastic, room, and plugin configuration data.
+        dict: Mock configuration data including Matrix, Meshtastic, room, and plugin settings.
     """
     return {
         "matrix": {
@@ -361,11 +358,7 @@ def mock_config():
 @pytest.fixture(autouse=True)
 def cleanup_async_objects():
     """
-    Automatically clean up any remaining async objects after each test.
-
-    This fixture runs after every test to ensure that any AsyncMock objects
-    or coroutines created during testing are properly cleaned up to prevent
-    warnings about unawaited coroutines.
+    Automatically cleans up unawaited coroutines and AsyncMock objects after each test to prevent resource warnings and side effects.
     """
     yield  # Run the test
 

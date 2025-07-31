@@ -57,7 +57,7 @@ class TestPerformanceStress(unittest.TestCase):
 
     def tearDown(self):
         """
-        Reset global state and force garbage collection after each test to ensure test isolation.
+        Cleans up and resets global state after each test to maintain test isolation.
         """
         # Reset global state
         import mmrelay.meshtastic_utils
@@ -79,9 +79,9 @@ class TestPerformanceStress(unittest.TestCase):
     @pytest.mark.performance  # Changed from slow to performance
     def test_high_volume_message_processing(self):
         """
-        Test processing of 1000 messages through the Meshtastic message handler to ensure high throughput and absence of memory leaks.
-
-        Simulates message reception by mocking dependencies and measures total processing time and throughput. Asserts that all messages are processed, processing completes within 10 seconds, and the rate exceeds 50 messages per second.
+        Tests high-throughput processing of 1000 Meshtastic messages to ensure all are handled within 10 seconds and at a rate exceeding 50 messages per second.
+        
+        Simulates message reception by mocking dependencies and measures total processing time and throughput. Verifies that all messages are processed and that performance criteria are met.
         """
         message_count = 1000
         processed_messages = []
@@ -174,9 +174,9 @@ class TestPerformanceStress(unittest.TestCase):
     @pytest.mark.performance  # Changed from slow to performance
     def test_message_queue_performance_under_load(self):
         """
-        Test the performance of the MessageQueue under rapid enqueueing and high load.
-
-        Enqueues 50 messages into the MessageQueue with a minimal delay, verifies all messages are processed within a 120-second timeout, and asserts that the processing rate and timing meet expected thresholds.
+        Test MessageQueue performance under rapid enqueueing and enforced minimum delay.
+        
+        Enqueues 50 messages into the MessageQueue with a minimal requested delay, verifies all messages are processed within 120 seconds, and asserts that the enforced minimum delay and processing rate thresholds are met.
         """
         import asyncio
 
@@ -256,9 +256,9 @@ class TestPerformanceStress(unittest.TestCase):
     @pytest.mark.performance  # Changed from slow to performance
     def test_database_performance_large_dataset(self):
         """
-        Test database operations with large datasets, including bulk insertions, retrievals, message map storage, and pruning.
-
-        This test measures the performance of inserting and retrieving 1000 node longnames, storing 1000 message map entries, and pruning the message map to retain only the 100 most recent entries. It asserts that each operation completes within specified time limits to ensure acceptable database performance under load.
+        Test database performance for bulk operations and pruning under load.
+        
+        Measures the time required to insert and retrieve 1000 node longnames, store 1000 message map entries, and prune the message map to retain only the 100 most recent entries. Asserts that each operation completes within specified time limits to validate database efficiency during high-volume scenarios.
         """
         import tempfile
 
@@ -322,9 +322,9 @@ class TestPerformanceStress(unittest.TestCase):
     @pytest.mark.performance  # Changed from slow to performance
     def test_plugin_processing_performance(self):
         """
-        Measures the performance of processing messages through multiple plugins, ensuring all plugins are invoked for each message and overall processing meets speed requirements.
-
-        Asserts that 100 messages are processed through 10 mock plugins in under 5 seconds, with each plugin's handler called for every message and a minimum call rate maintained.
+        Test the performance of processing messages through multiple plugins, ensuring timely invocation and correct call counts.
+        
+        Simulates processing 100 messages through 10 mock plugins, asserting that all plugin handlers are called for each message, total processing completes in under 5 seconds, and the aggregate plugin call rate exceeds 100 calls per second.
         """
         plugin_count = 10
         message_count = 100
@@ -379,14 +379,13 @@ class TestPerformanceStress(unittest.TestCase):
                                     def mock_run_coroutine_threadsafe(coro, loop):
                                         # Create a mock future that returns False (plugin didn't handle message)
                                         """
-                                        Synchronously executes a coroutine for testing purposes and returns a mock future with a preset result.
-
+                                        Synchronously executes a coroutine for testing and returns a mock future whose `result()` method returns False.
+                                        
                                         Parameters:
-                                                coro: The coroutine to execute.
-                                                loop: The event loop (unused, included for interface compatibility).
-
+                                            coro: The coroutine to execute.
+                                        
                                         Returns:
-                                                A mock future whose `result()` method returns False.
+                                            A mock future object with `result()` preset to False.
                                         """
                                         mock_future = MagicMock()
                                         mock_future.result.return_value = False
@@ -443,9 +442,9 @@ class TestPerformanceStress(unittest.TestCase):
     @pytest.mark.performance  # Changed from slow to performance
     def test_concurrent_message_queue_access(self):
         """
-        Test the MessageQueue's ability to handle concurrent enqueuing and processing of messages from multiple threads.
-
-        Spawns several threads, each enqueuing multiple messages into the queue, and verifies that all messages are processed within expected timing constraints. Asserts that processing rate and total processing time meet minimum performance requirements under concurrent load.
+        Test concurrent enqueuing and processing of messages in MessageQueue from multiple threads.
+        
+        Spawns several threads to enqueue messages concurrently into the MessageQueue and verifies that all messages are processed within expected timing constraints. Asserts that the total processing time and processing rate meet minimum performance requirements under concurrent load.
         """
         import asyncio
 
@@ -542,9 +541,9 @@ class TestPerformanceStress(unittest.TestCase):
     @pytest.mark.performance  # Changed from slow to performance
     def test_memory_usage_stability(self):
         """
-        Verifies that processing a large number of messages does not cause excessive memory growth.
-
-        Simulates extended operation by processing 1,000 messages in batches, periodically forcing garbage collection, and asserts that the increase in process memory usage remains below 50 MB.
+        Test that processing 1,000 messages in batches does not cause excessive memory growth.
+        
+        Simulates extended operation by processing messages and periodically forcing garbage collection, then asserts that the increase in process memory usage remains below 50 MB.
         """
         import os
 
@@ -598,9 +597,9 @@ class TestPerformanceStress(unittest.TestCase):
     @pytest.mark.performance  # Changed from slow to performance
     def test_rate_limiting_effectiveness(self):
         """
-        Test that the MessageQueue enforces rate limiting by ensuring a minimum delay between message sends.
-
-        This test rapidly enqueues multiple messages with a requested short delay, verifies that the enforced delay between sends is at least 80% of the minimum rate limit (2 seconds), and asserts all messages are sent within the expected timeframe.
+        Tests that the MessageQueue enforces a minimum delay between message sends, verifying that rate limiting is effective by measuring the intervals between processed messages.
+        
+        The test rapidly enqueues multiple messages with a short requested delay, then asserts that the actual delay between sends is at least 80% of the enforced 2-second minimum. All messages must be sent within the expected timeframe.
         """
         import asyncio
 
@@ -669,7 +668,7 @@ class TestPerformanceStress(unittest.TestCase):
 
     def test_resource_cleanup_effectiveness(self):
         """
-        Verify that MessageQueue and plugin objects are properly garbage collected after use, ensuring no lingering references remain following typical operation and cleanup.
+        Test that MessageQueue and plugin objects are properly garbage collected after use, confirming no lingering references remain after typical operation and cleanup.
         """
         import weakref
 
@@ -719,21 +718,18 @@ class TestPerformanceStress(unittest.TestCase):
     @pytest.mark.performance  # New realistic throughput benchmark
     def test_realistic_throughput_benchmark(self):
         """
-        Benchmark realistic message throughput under production-like conditions.
-
-        Tests the system's ability to handle a realistic mix of message types
-        (text, telemetry, position) with proper rate limiting and plugin processing.
-        Measures and validates throughput against expected production performance.
+        Benchmarks message throughput under realistic production-like conditions with mixed message types and enforced rate limiting.
+        
+        Simulates a mesh network environment by asynchronously queuing and processing messages of various types (text, telemetry, position) from multiple nodes over a fixed duration. Validates that throughput respects a 2-second minimum delay, achieves a reasonable percentage of theoretical maximum throughput, and processes multiple message types. Prints detailed throughput statistics after completion.
         """
         import asyncio
         import random
 
         async def run_throughput_test():
             """
-            Run a comprehensive throughput test with mixed message types.
-
-            Simulates a realistic mesh network with various message types,
-            multiple nodes, and proper rate limiting to benchmark real-world performance.
+            Run a realistic throughput benchmark simulating mixed message types and nodes.
+            
+            Simulates a mesh network environment by queuing messages of various types from multiple nodes at randomized intervals, enforcing a 2-second minimum delay between sends. Measures and prints throughput, message distribution, and validates that rate limiting and minimum throughput requirements are met.
             """
             with patch("mmrelay.meshtastic_utils.meshtastic_client", MagicMock(is_connected=True)):
                 with patch("mmrelay.meshtastic_utils.reconnecting", False):
@@ -750,6 +746,16 @@ class TestPerformanceStress(unittest.TestCase):
                     start_time = time.time()
 
                     def mock_send_function(msg_type, node_id):
+                        """
+                        Simulates sending a message by recording its type, node, and timestamp, and returns a mock message object.
+                        
+                        Parameters:
+                            msg_type: The type of the message being sent.
+                            node_id: The identifier of the node sending the message.
+                        
+                        Returns:
+                            MagicMock: A mock object representing the sent message, with a unique ID.
+                        """
                         processed_messages.append({
                             "type": msg_type,
                             "node": node_id,

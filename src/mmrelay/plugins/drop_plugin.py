@@ -27,6 +27,14 @@ class Plugin(BasePlugin):
     async def handle_meshtastic_message(
         self, packet, formatted_message, longname, meshnet_name
     ):
+        """
+        Handles incoming Meshtastic packets for the drop message plugin, delivering or storing dropped messages based on packet content and node location.
+        
+        When a packet is received, attempts to deliver any stored dropped messages to the sender if they are within a configured radius of the message's location and are not the original dropper. If the packet contains a properly formatted drop command, extracts the message and stores it with the sender's current location for future delivery.
+        
+        Returns:
+            True if a drop command was processed and stored, False otherwise.
+        """
         meshtastic_client = connect_meshtastic()
         nodeInfo = meshtastic_client.getMyNodeInfo()
 

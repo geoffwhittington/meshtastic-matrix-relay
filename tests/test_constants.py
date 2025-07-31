@@ -20,7 +20,9 @@ class TestConstantsValidity:
     """Test that all constants are properly defined and valid."""
 
     def test_config_keys_are_strings(self):
-        """All config keys must be non-empty strings."""
+        """
+        Verifies that all configuration keys in the config module are non-empty strings without leading or trailing whitespace, and that at least 20 such keys are defined.
+        """
         config_keys = [
             getattr(config, attr)
             for attr in dir(config)
@@ -33,7 +35,9 @@ class TestConstantsValidity:
             assert key.strip() == key  # No leading/trailing whitespace
 
     def test_config_sections_are_strings(self):
-        """All config sections must be non-empty strings."""
+        """
+        Verify that all configuration section constants in the config module are non-empty strings without leading or trailing whitespace, and that at least five such sections are defined.
+        """
         config_sections = [
             getattr(config, attr)
             for attr in dir(config)
@@ -46,7 +50,9 @@ class TestConstantsValidity:
             assert section.strip() == section
 
     def test_connection_types_consistency(self):
-        """Connection types must be valid and consistent."""
+        """
+        Validates that connection type constants are non-empty strings, mostly unique, and that the legacy 'network' type is a valid alias for TCP.
+        """
         types = [
             network.CONNECTION_TYPE_TCP,
             network.CONNECTION_TYPE_SERIAL,
@@ -67,7 +73,9 @@ class TestConstantsValidity:
         assert network.CONNECTION_TYPE_NETWORK in ["tcp", "network"]
 
     def test_queue_constants_relationships(self):
-        """Queue constants must have logical relationships."""
+        """
+        Verify that queue-related constants maintain logical ordering and represent reasonable proportions of the maximum queue size.
+        """
         assert queue.QUEUE_HIGH_WATER_MARK < queue.MAX_QUEUE_SIZE
         assert queue.QUEUE_MEDIUM_WATER_MARK < queue.QUEUE_HIGH_WATER_MARK
         assert queue.QUEUE_LOG_THRESHOLD >= 1
@@ -80,7 +88,9 @@ class TestConstantsValidity:
         assert 0.3 <= medium_percentage <= 0.7  # 30-70%
 
     def test_database_limits_reasonable(self):
-        """Database limits should be reasonable values."""
+        """
+        Verify that database-related constants have values within sensible and safe numeric ranges.
+        """
         assert 10 <= database.DEFAULT_MSGS_TO_KEEP <= 10000
         assert 10 <= database.DEFAULT_MAX_DATA_ROWS_PER_NODE_BASE <= 1000
         assert database.DEFAULT_TEXT_TRUNCATION_LENGTH >= 10
@@ -90,7 +100,9 @@ class TestConstantsValidity:
         assert database.PROGRESS_COMPLETE <= database.PROGRESS_TOTAL_STEPS
 
     def test_app_metadata_valid(self):
-        """App metadata should be properly formatted."""
+        """
+        Verify that application metadata constants are non-empty strings and that the Windows platform identifier is set to "win32".
+        """
         assert isinstance(app.APP_NAME, str)
         assert len(app.APP_NAME) > 0
         assert isinstance(app.APP_DISPLAY_NAME, str)
@@ -98,7 +110,11 @@ class TestConstantsValidity:
         assert app.WINDOWS_PLATFORM == "win32"
 
     def test_format_constants_valid(self):
-        """Message format constants should be valid."""
+        """
+        Validates that message format prefix constants are non-empty strings containing format placeholders.
+        
+        Ensures that `DEFAULT_MESHTASTIC_PREFIX` and `DEFAULT_MATRIX_PREFIX` in the `formats` module are valid strings and include curly brace placeholders for formatting.
+        """
         assert isinstance(formats.DEFAULT_MESHTASTIC_PREFIX, str)
         assert isinstance(formats.DEFAULT_MATRIX_PREFIX, str)
         assert len(formats.DEFAULT_MESHTASTIC_PREFIX) > 0
@@ -109,14 +125,18 @@ class TestConstantsValidity:
         assert "{" in formats.DEFAULT_MATRIX_PREFIX
 
     def test_network_timeouts_reasonable(self):
-        """Network timeout constants should be reasonable."""
+        """
+        Verify that network timeout and error code constants have reasonable and expected values.
+        """
         assert network.DEFAULT_BACKOFF_TIME > 0
         assert network.MINIMUM_MESSAGE_DELAY >= 0
         assert network.MILLISECONDS_PER_SECOND == 1000
         assert network.ERRNO_BAD_FILE_DESCRIPTOR == 9
 
     def test_message_constants_valid(self):
-        """Message constants should be valid."""
+        """
+        Validate that message-related constants have positive or non-negative values and correct multipliers, and that the emoji flag value is defined and non-negative in the formats module.
+        """
         assert messages.DEFAULT_LOG_SIZE_MB > 0
         assert messages.DEFAULT_LOG_BACKUP_COUNT >= 0
         assert messages.LOG_SIZE_BYTES_MULTIPLIER == 1024 * 1024
@@ -131,7 +151,9 @@ class TestConstantsImports:
     """Test that constants can be imported correctly."""
 
     def test_constants_package_imports(self):
-        """Test that all constants modules can be imported."""
+        """
+        Verify that all submodules in the mmrelay.constants package can be imported without ImportError.
+        """
         # These should not raise ImportError
         from mmrelay.constants import app  # noqa: F401
         from mmrelay.constants import config  # noqa: F401
@@ -142,7 +164,9 @@ class TestConstantsImports:
         from mmrelay.constants import queue  # noqa: F401
 
     def test_common_constants_available_from_init(self):
-        """Test that commonly used constants are re-exported from __init__.py."""
+        """
+        Verify that commonly used constants are accessible directly from the mmrelay.constants package's __init__.py.
+        """
         from mmrelay.constants import (  # noqa: F401
             APP_NAME,
             CONFIG_SECTION_MATRIX,
@@ -154,7 +178,9 @@ class TestConstantsImports:
         )
 
     def test_constants_used_in_codebase_are_accessible(self):
-        """Test that constants actually used in the codebase are accessible."""
+        """
+        Verify that a representative sample of constants used in the main codebase are importable and have the expected types.
+        """
         # Test a sampling of constants that are imported in the main codebase
         from mmrelay.constants.config import CONFIG_SECTION_MATRIX
         from mmrelay.constants.network import CONNECTION_TYPE_TCP
@@ -171,7 +197,9 @@ class TestConstantsConsistency:
     """Test consistency between related constants."""
 
     def test_config_keys_match_expected_patterns(self):
-        """Config keys should follow consistent naming patterns."""
+        """
+        Verify that configuration key values in the config module follow consistent naming patterns, requiring them to be lowercase or contain underscores.
+        """
         config_keys = [
             attr
             for attr in dir(config)
@@ -184,7 +212,11 @@ class TestConstantsConsistency:
             assert key_value.islower() or "_" in key_value
 
     def test_connection_types_used_consistently(self):
-        """Connection types should be used consistently across modules."""
+        """
+        Verify that connection type constants are lowercase and match expected string values.
+        
+        Ensures that TCP, serial, and BLE connection type constants in the network module are consistently defined as lowercase strings and correspond to their expected identifiers.
+        """
         # Test that connection types are defined and used consistently
         tcp_type = network.CONNECTION_TYPE_TCP
         serial_type = network.CONNECTION_TYPE_SERIAL
@@ -201,7 +233,11 @@ class TestConstantsConsistency:
         assert ble_type == "ble"
 
     def test_queue_size_calculations_correct(self):
-        """Queue size calculations should be mathematically correct."""
+        """
+        Verify that queue water marks are correctly calculated as integer percentages of the maximum queue size.
+        
+        Asserts that `QUEUE_HIGH_WATER_MARK` is 75% and `QUEUE_MEDIUM_WATER_MARK` is 50% of `MAX_QUEUE_SIZE`.
+        """
         # Test that water marks are calculated as percentages
         max_size = queue.MAX_QUEUE_SIZE
         high_mark = queue.QUEUE_HIGH_WATER_MARK
@@ -215,7 +251,9 @@ class TestConstantsConsistency:
         assert medium_mark == expected_medium
 
     def test_default_values_are_sensible(self):
-        """Default values should be sensible for production use."""
+        """
+        Verify that default values for message delay, queue size, database retention, and log size fall within reasonable ranges suitable for production environments.
+        """
         # Message delay should be at least the firmware minimum
         assert queue.DEFAULT_MESSAGE_DELAY >= network.MINIMUM_MESSAGE_DELAY
 
