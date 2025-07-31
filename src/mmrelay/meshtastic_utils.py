@@ -15,6 +15,23 @@ from meshtastic.protobuf import mesh_pb2, portnums_pb2
 from pubsub import pub
 
 from mmrelay.constants.formats import TEXT_MESSAGE_APP, DETECTION_SENSOR_APP
+from mmrelay.constants.network import (
+    CONNECTION_TYPE_TCP,
+    CONNECTION_TYPE_SERIAL,
+    CONNECTION_TYPE_BLE,
+    CONNECTION_TYPE_NETWORK,
+    DEFAULT_BACKOFF_TIME,
+    DEFAULT_RETRY_ATTEMPTS,
+    INFINITE_RETRIES,
+    ERRNO_BAD_FILE_DESCRIPTOR,
+    SYSTEMD_INIT_SYSTEM,
+    MILLISECONDS_PER_SECOND,
+)
+from mmrelay.constants.messages import (
+    EMOJI_FLAG_VALUE,
+    PORTNUM_NUMERIC_VALUE,
+    DEFAULT_CHANNEL_VALUE,
+)
 
 # Import BLE exceptions conditionally
 try:
@@ -83,7 +100,7 @@ def is_running_as_service():
                 if line.startswith("PPid:"):
                     ppid = int(line.split()[1])
                     with open(f"/proc/{ppid}/comm") as p:
-                        return p.read().strip() == "systemd"
+                        return p.read().strip() == SYSTEMD_INIT_SYSTEM
     except (FileNotFoundError, PermissionError, ValueError):
         pass
 
@@ -167,13 +184,13 @@ def connect_meshtastic(passed_config=None, force_connect=False):
         connection_type = config["meshtastic"]["connection_type"]
 
         # Support legacy "network" connection type (now "tcp")
-        if connection_type == "network":
-            connection_type = "tcp"
+        if connection_type == CONNECTION_TYPE_NETWORK:
+            connection_type = CONNECTION_TYPE_TCP
             logger.warning(
                 "Using 'network' connection type (legacy). 'tcp' is now the preferred name and 'network' will be deprecated in a future version."
             )
-        retry_limit = 0  # 0 means infinite retries
-        attempts = 1
+        retry_limit = INFINITE_RETRIES  # 0 means infinite retries
+        attempts = DEFAULT_RETRY_ATTEMPTS
         successful = False
 
         while (
@@ -182,7 +199,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
             and not shutting_down
         ):
             try:
-                if connection_type == "serial":
+                if connection_type == CONNECTION_TYPE_SERIAL:
                     # Serial connection
                     serial_port = config["meshtastic"].get("serial_port")
                     if not serial_port:
@@ -206,7 +223,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                         serial_port
                     )
 
-                elif connection_type == "ble":
+                elif connection_type == CONNECTION_TYPE_BLE:
                     # BLE connection
                     ble_address = config["meshtastic"].get("ble_address")
                     if ble_address:
@@ -223,7 +240,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
                         logger.error("No BLE address provided.")
                         return None
 
-                elif connection_type == "tcp":
+                elif connection_type == CONNECTION_TYPE_TCP:
                     # TCP connection
                     target_host = config["meshtastic"].get("host")
                     if not target_host:
@@ -331,7 +348,7 @@ def on_lost_meshtastic_connection(interface=None, detection_source="unknown"):
             try:
                 meshtastic_client.close()
             except OSError as e:
-                if e.errno == 9:
+                if e.errno == ERRNO_BAD_FILE_DESCRIPTOR:
                     # Bad file descriptor, already closed
                     pass
                 else:
@@ -351,7 +368,7 @@ async def reconnect():
     Reconnection attempts start with a 10-second delay, doubling up to a maximum of 5 minutes between attempts. If not running as a service, a progress bar is displayed during the wait. The process stops immediately if `shutting_down` is set to True or upon successful reconnection.
     """
     global meshtastic_client, reconnecting, shutting_down
-    backoff_time = 10
+    backoff_time = DEFAULT_BACKOFF_TIME
     try:
         while not shutting_down:
             try:
@@ -442,7 +459,7 @@ def on_meshtastic_message(packet, interface):
         if (
             not interactions["reactions"]
             and "emoji" in decoded
-            and decoded.get("emoji") == 1
+            and decoded.get("emoji") == EMOJI_FLAG_VALUE
         ):
             logger.debug(
                 "Filtered out reaction packet due to reactions being disabled."
@@ -469,7 +486,7 @@ def on_meshtastic_message(packet, interface):
     decoded = packet.get("decoded", {})
     text = decoded.get("text")
     replyId = decoded.get("replyId")
-    emoji_flag = "emoji" in decoded and decoded["emoji"] == 1
+    emoji_flag = "emoji" in decoded and decoded["emoji"] == EMOJI_FLAG_VALUE
 
     # Determine if this is a direct message to the relay node
     from meshtastic.mesh_interface import BROADCAST_NUM
@@ -580,11 +597,11 @@ def on_meshtastic_message(packet, interface):
             # If channel not specified, deduce from portnum
             if (
                 decoded.get("portnum") == TEXT_MESSAGE_APP
-                or decoded.get("portnum") == 1
+                or decoded.get("portnum") == PORTNUM_NUMERIC_VALUE
             ):
-                channel = 0
+                channel = DEFAULT_CHANNEL_VALUE
             elif decoded.get("portnum") == DETECTION_SENSOR_APP:
-                channel = 0
+                channel = DEFAULT_CHANNEL_VALUE
             else:
                 logger.debug(
                     f"Unknown portnum {decoded.get('portnum')}, cannot determine channel"
@@ -770,7 +787,7 @@ async def check_connection():
         if meshtastic_client and not reconnecting:
             # BLE has real-time disconnection detection in the library
             # Skip periodic health checks to avoid duplicate reconnection attempts
-            if connection_type == "ble":
+            if connection_type == CONNECTION_TYPE_BLE:
                 if not ble_skip_logged:
                     logger.info(
                         "BLE connection uses real-time disconnection detection - health checks disabled"

@@ -44,7 +44,7 @@ def _get_msgs_to_keep_config():
     """
     global config
     if not config:
-        return 500
+        return DEFAULT_MSGS_TO_KEEP
 
     msg_map_config = config.get("database", {}).get("msg_map", {})
 
@@ -58,7 +58,7 @@ def _get_msgs_to_keep_config():
                 "Using 'db.msg_map' configuration (legacy). 'database.msg_map' is now the preferred format and 'db.msg_map' will be deprecated in a future version."
             )
 
-    return msg_map_config.get("msgs_to_keep", 500)
+    return msg_map_config.get("msgs_to_keep", DEFAULT_MSGS_TO_KEEP)
 
 
 def _create_mapping_info(
@@ -100,6 +100,8 @@ from mmrelay.constants.formats import (
     DEFAULT_MATRIX_PREFIX,
     DETECTION_SENSOR_APP,
 )
+from mmrelay.constants.database import DEFAULT_MSGS_TO_KEEP
+from mmrelay.constants.network import MILLISECONDS_PER_SECOND
 
 
 def get_interaction_settings(config):
@@ -330,7 +332,7 @@ matrix_access_token = None
 bot_user_id = None
 bot_user_name = None  # Detected upon logon
 bot_start_time = int(
-    time.time() * 1000
+    time.time() * MILLISECONDS_PER_SECOND
 )  # Timestamp when the bot starts, used to filter out old messages
 
 logger = get_logger(name="Matrix")
@@ -545,8 +547,8 @@ async def matrix_relay(
                 "Using 'db.msg_map' configuration (legacy). 'database.msg_map' is now the preferred format and 'db.msg_map' will be deprecated in a future version."
             )
     msgs_to_keep = msg_map_config.get(
-        "msgs_to_keep", 500
-    )  # Default is 500 if not specified
+        "msgs_to_keep", DEFAULT_MSGS_TO_KEEP
+    )  # Default from constants
 
     try:
         # Always use our own local meshnet_name for outgoing events

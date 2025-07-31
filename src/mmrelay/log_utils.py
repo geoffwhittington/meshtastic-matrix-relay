@@ -7,6 +7,11 @@ from rich.logging import RichHandler
 # Import parse_arguments only when needed to avoid conflicts with pytest
 from mmrelay.config import get_log_dir
 from mmrelay.constants.app import APP_DISPLAY_NAME
+from mmrelay.constants.messages import (
+    DEFAULT_LOG_SIZE_MB,
+    DEFAULT_LOG_BACKUP_COUNT,
+    LOG_SIZE_BYTES_MULTIPLIER,
+)
 
 # Initialize Rich console
 console = Console()
@@ -179,8 +184,8 @@ def get_logger(name):
         # Create a file handler for logging
         try:
             # Set up size-based log rotation
-            max_bytes = 5 * 1024 * 1024  # Default 5 MB
-            backup_count = 1  # Default to 1 backup
+            max_bytes = DEFAULT_LOG_SIZE_MB * LOG_SIZE_BYTES_MULTIPLIER
+            backup_count = DEFAULT_LOG_BACKUP_COUNT
 
             if config is not None and "logging" in config:
                 max_bytes = config["logging"].get("max_log_size", max_bytes)

@@ -14,6 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from mmrelay.constants.database import PROGRESS_TOTAL_STEPS, PROGRESS_COMPLETE
 from mmrelay.tools import get_service_template_path
 
 
@@ -67,7 +68,7 @@ def wait_for_service_start():
         transient=True,
     ) as progress:
         # Add a task that will run for approximately 10 seconds
-        task = progress.add_task("Starting", total=100)
+        task = progress.add_task("Starting", total=PROGRESS_TOTAL_STEPS)
 
         # Update progress over 10 seconds
         for i in range(10):
@@ -76,7 +77,7 @@ def wait_for_service_start():
 
             # Check if service is active after 5 seconds to potentially finish early
             if i >= 5 and is_service_active():
-                progress.update(task, completed=100)
+                progress.update(task, completed=PROGRESS_COMPLETE)
                 break
 
 

@@ -24,6 +24,8 @@ from mmrelay.constants.queue import (
     QUEUE_HIGH_WATER_MARK,
     QUEUE_MEDIUM_WATER_MARK,
 )
+from mmrelay.constants.database import DEFAULT_MSGS_TO_KEEP
+from mmrelay.constants.network import MINIMUM_MESSAGE_DELAY
 
 
 @dataclass
@@ -63,18 +65,18 @@ class MessageQueue:
         """
         Starts the message queue processor with the specified minimum delay between messages.
 
-        Enforces a minimum delay of 2.0 seconds due to firmware requirements. If the event loop is running, the processor task is started immediately; otherwise, startup is deferred until the event loop becomes available.
+        Enforces a minimum delay due to firmware requirements. If the event loop is running, the processor task is started immediately; otherwise, startup is deferred until the event loop becomes available.
         """
         with self._lock:
             if self._running:
                 return
 
             # Validate and enforce firmware minimum
-            if message_delay < 2.0:
+            if message_delay < MINIMUM_MESSAGE_DELAY:
                 logger.warning(
-                    f"Message delay {message_delay}s below firmware minimum (2.0s), using 2.0s"
+                    f"Message delay {message_delay}s below firmware minimum ({MINIMUM_MESSAGE_DELAY}s), using {MINIMUM_MESSAGE_DELAY}s"
                 )
-                self._message_delay = 2.0
+                self._message_delay = MINIMUM_MESSAGE_DELAY
             else:
                 self._message_delay = message_delay
             self._running = True
@@ -402,7 +404,7 @@ class MessageQueue:
                 logger.debug(f"Stored message map for meshtastic_id: {result.id}")
 
                 # Handle pruning if configured
-                msgs_to_keep = mapping_info.get("msgs_to_keep", 500)
+                msgs_to_keep = mapping_info.get("msgs_to_keep", DEFAULT_MSGS_TO_KEEP)
                 if msgs_to_keep > 0:
                     prune_message_map(msgs_to_keep)
 

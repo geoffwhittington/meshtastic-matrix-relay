@@ -6,6 +6,7 @@ import re
 
 from meshtastic import mesh_pb2
 
+from mmrelay.constants.database import DEFAULT_MAX_DATA_ROWS_PER_NODE_MESH_RELAY
 from mmrelay.plugins.base_plugin import BasePlugin, config
 
 
@@ -25,7 +26,7 @@ class Plugin(BasePlugin):
     """
 
     plugin_name = "mesh_relay"
-    max_data_rows_per_node = 50
+    max_data_rows_per_node = DEFAULT_MAX_DATA_ROWS_PER_NODE_MESH_RELAY
 
     def normalize(self, dict_obj):
         """Normalize packet data to consistent dictionary format.

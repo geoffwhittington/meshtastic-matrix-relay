@@ -15,6 +15,10 @@ from mmrelay.db_utils import (
 )
 from mmrelay.log_utils import get_logger
 from mmrelay.constants.queue import DEFAULT_MESSAGE_DELAY
+from mmrelay.constants.database import (
+    DEFAULT_MAX_DATA_ROWS_PER_NODE_BASE,
+    DEFAULT_TEXT_TRUNCATION_LENGTH,
+)
 from mmrelay.message_queue import queue_message
 
 # Global config variable that will be set from main.py
@@ -48,7 +52,7 @@ class BasePlugin(ABC):
 
     # Class-level default attributes
     plugin_name = None  # Must be overridden in subclasses
-    max_data_rows_per_node = 100
+    max_data_rows_per_node = DEFAULT_MAX_DATA_ROWS_PER_NODE_BASE
     priority = 10
 
     @property
@@ -274,7 +278,7 @@ class BasePlugin(ABC):
             return False
 
         description = (
-            f"Plugin {self.plugin_name}: {text[:50]}{'...' if len(text) > 50 else ''}"
+            f"Plugin {self.plugin_name}: {text[:DEFAULT_TEXT_TRUNCATION_LENGTH]}{'...' if len(text) > DEFAULT_TEXT_TRUNCATION_LENGTH else ''}"
         )
 
         send_kwargs = {
