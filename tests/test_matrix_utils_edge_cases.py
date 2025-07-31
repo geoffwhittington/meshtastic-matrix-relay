@@ -35,7 +35,11 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
     """Test cases for Matrix utilities edge cases and error handling."""
 
     def setUp(self):
-        """Set up test fixtures before each test method."""
+        """
+        Resets global state in the mmrelay.matrix_utils module before each test.
+        
+        Ensures that the matrix_client and config variables are cleared to prevent test interference.
+        """
         # Reset global state
         import mmrelay.matrix_utils
 
@@ -43,7 +47,9 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         mmrelay.matrix_utils.config = None
 
     def test_truncate_message_with_unicode(self):
-        """Test message truncation with Unicode characters that span multiple bytes."""
+        """
+        Tests that the truncate_message function correctly handles Unicode strings with multi-byte characters, ensuring the result is a string and does not exceed the specified byte limit, even with very small limits.
+        """
         # Test with emoji and multi-byte characters
         unicode_text = "Hello 🌍 世界 🚀 Testing"
 
@@ -63,7 +69,9 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         self.assertTrue(len(result.encode("utf-8")) <= 1)
 
     def test_truncate_message_edge_cases(self):
-        """Test message truncation with edge cases."""
+        """
+        Tests the truncate_message function with empty strings, short strings, zero, and negative byte limits to ensure correct handling and no crashes.
+        """
         # Empty string
         result = truncate_message("", max_bytes=100)
         self.assertEqual(result, "")
@@ -83,7 +91,9 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         self.assertIsInstance(result, str)  # Just ensure it returns a string
 
     def test_validate_prefix_format_edge_cases(self):
-        """Test prefix format validation with various edge cases."""
+        """
+        Tests the validate_prefix_format function with various edge cases, including valid and invalid formats, missing variables, invalid syntax, empty strings, and static text without variables.
+        """
         # Valid format
         is_valid, error = validate_prefix_format("{display}: ", {"display": "Test"})
         self.assertTrue(is_valid)
@@ -110,7 +120,11 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         self.assertIsNone(error)
 
     def test_get_matrix_prefix_with_invalid_format(self):
-        """Test matrix prefix generation with invalid format strings."""
+        """
+        Test that get_matrix_prefix falls back to the default format when given an invalid prefix format in the configuration.
+        
+        Verifies that the generated prefix includes the username and mesh name when the custom format string is invalid.
+        """
         config = {
             "matrix": {"prefix_enabled": True, "prefix_format": "{invalid_var}: "}
         }
@@ -122,7 +136,11 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         self.assertIn("TestMesh", result)
 
     def test_get_meshtastic_prefix_with_invalid_format(self):
-        """Test meshtastic prefix generation with invalid format strings."""
+        """
+        Test that get_meshtastic_prefix falls back to the default format when given an invalid prefix format string.
+        
+        Verifies that when the custom prefix format is invalid, the generated prefix uses the default format based on the display name.
+        """
         config = {
             "meshtastic": {"prefix_enabled": True, "prefix_format": "{invalid_var}: "}
         }
@@ -133,7 +151,9 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         self.assertIn("TestU", result)  # Default uses display5
 
     def test_get_matrix_prefix_with_none_values(self):
-        """Test matrix prefix generation with None values."""
+        """
+        Test that get_matrix_prefix returns a string when provided with None or empty string values for user and mesh names.
+        """
         config = {"matrix": {"prefix_enabled": True}}
 
         # Test with None values
@@ -145,7 +165,11 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         self.assertIsInstance(result, str)
 
     def test_get_meshtastic_prefix_with_malformed_user_id(self):
-        """Test meshtastic prefix generation with malformed user IDs."""
+        """
+        Test that meshtastic prefix generation returns a string when provided with malformed, empty, or None user IDs.
+        
+        Verifies that the prefix function handles user IDs missing expected delimiters or values without raising errors.
+        """
         config = {"meshtastic": {"prefix_enabled": True}}
 
         # Test with malformed user ID (no @)
@@ -166,9 +190,14 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
 
     @patch("mmrelay.matrix_utils.logger")
     def test_connect_matrix_with_no_config(self, mock_logger):
-        """Test connect_matrix behavior when no configuration is available."""
+        """
+        Test that connect_matrix returns None and logs an error when called without configuration.
+        """
 
         async def run_test():
+            """
+            Asynchronously tests that connect_matrix returns None and logs an error when called with no configuration.
+            """
             result = await connect_matrix(None)
             self.assertIsNone(result)
             mock_logger.error.assert_called_with(
@@ -180,7 +209,11 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
     @patch("mmrelay.matrix_utils.logger")
     @patch("ssl.create_default_context")
     def test_connect_matrix_ssl_context_failure(self, mock_ssl_context, mock_logger):
-        """Test connect_matrix behavior when SSL context creation fails."""
+        """
+        Test that connect_matrix raises an exception when SSL context creation fails.
+        
+        Simulates an SSL context creation failure and verifies that connect_matrix raises a connection-related exception.
+        """
         mock_ssl_context.side_effect = Exception("SSL context creation failed")
 
         config = {
@@ -194,6 +227,9 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
 
         async def run_test():
             # This should raise an exception due to SSL context failure
+            """
+            Asynchronously runs a test to verify that connect_matrix raises an exception when SSL context creation fails.
+            """
             with self.assertRaises((ConnectionError, OSError, ValueError)):
                 await connect_matrix(config)
 
@@ -201,7 +237,11 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
 
     @patch("mmrelay.matrix_utils.logger")
     def test_join_matrix_room_with_invalid_alias(self, mock_logger):
-        """Test join_matrix_room behavior with invalid room alias."""
+        """
+        Test that join_matrix_room logs an error when attempting to join a Matrix room with an invalid alias.
+        
+        Verifies that an error is logged if the room alias cannot be resolved to a room ID.
+        """
         mock_client = AsyncMock()
         mock_response = MagicMock()
         mock_response.room_id = None
@@ -209,6 +249,9 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         mock_client.room_resolve_alias.return_value = mock_response
 
         async def run_test():
+            """
+            Asynchronously attempts to join a Matrix room with an invalid alias and verifies that an error is logged.
+            """
             await join_matrix_room(mock_client, "#invalid:matrix.org")
             mock_logger.error.assert_called()
 
@@ -216,18 +259,29 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
 
     @patch("mmrelay.matrix_utils.logger")
     def test_join_matrix_room_exception_handling(self, mock_logger):
-        """Test join_matrix_room exception handling."""
+        """
+        Test that join_matrix_room logs an error when an exception occurs during room alias resolution.
+        """
         mock_client = AsyncMock()
         mock_client.room_resolve_alias.side_effect = Exception("Network error")
 
         async def run_test():
+            """
+            Asynchronously attempts to join a Matrix room and verifies that an error is logged.
+            
+            This function calls `join_matrix_room` with a mocked Matrix client and room alias, then asserts that an error was logged via the mock logger.
+            """
             await join_matrix_room(mock_client, "#test:matrix.org")
             mock_logger.error.assert_called()
 
         asyncio.run(run_test())
 
     def test_prefix_generation_with_extreme_lengths(self):
-        """Test prefix generation with extremely long input values."""
+        """
+        Test that prefix generation functions handle extremely long input strings without errors.
+        
+        Verifies that both Matrix and Meshtastic prefix generation return string outputs when provided with input values of excessive length.
+        """
         config = {"matrix": {"prefix_enabled": True}}
 
         # Very long names
@@ -241,7 +295,9 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         self.assertIsInstance(result, str)
 
     def test_prefix_disabled_scenarios(self):
-        """Test prefix generation when prefixes are disabled."""
+        """
+        Test that prefix generation functions return an empty string when prefixing is disabled in the configuration for both Matrix and Meshtastic.
+        """
         # Matrix prefix disabled
         config = {"matrix": {"prefix_enabled": False}}
         result = get_matrix_prefix(config, "User", "U", "Mesh")

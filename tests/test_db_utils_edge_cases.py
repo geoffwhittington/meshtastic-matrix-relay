@@ -48,7 +48,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
     """Test cases for Database utilities edge cases and error handling."""
 
     def setUp(self):
-        """Set up test fixtures before each test method."""
+        """
+        Prepares the test environment before each test by clearing the cached database path and resetting the global configuration.
+        """
         # Clear any cached database path
         clear_db_path_cache()
         # Reset global config
@@ -57,11 +59,15 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
         mmrelay.db_utils.config = None
 
     def tearDown(self):
-        """Clean up after each test method."""
+        """
+        Cleans up test environment after each test by clearing the cached database path.
+        """
         clear_db_path_cache()
 
     def test_get_db_path_permission_error(self):
-        """Test get_db_path when directory creation fails due to permissions."""
+        """
+        Test that get_db_path returns a valid database path even if directory creation fails due to permission errors.
+        """
         with patch("mmrelay.db_utils.get_data_dir", return_value="/readonly/data"):
             with patch("os.makedirs", side_effect=PermissionError("Permission denied")):
                 # Should still return a path even if directory creation fails
@@ -69,7 +75,11 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
                 self.assertIn("meshtastic.sqlite", result)
 
     def test_get_db_path_custom_config_invalid_path(self):
-        """Test get_db_path with custom config pointing to invalid path."""
+        """
+        Test that get_db_path returns a string path when a custom config specifies an invalid database path and directory creation fails.
+        
+        Simulates an OSError during directory creation and verifies that get_db_path handles the error gracefully by still returning a string path.
+        """
         import mmrelay.db_utils
 
         mmrelay.db_utils.config = {
@@ -82,7 +92,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             self.assertIsInstance(result, str)
 
     def test_initialize_database_connection_failure(self):
-        """Test initialize_database when database connection fails."""
+        """
+        Test that initialize_database raises an exception and logs an error when the database connection fails.
+        """
         with patch("sqlite3.connect", side_effect=sqlite3.Error("Connection failed")):
             with patch("mmrelay.db_utils.logger") as mock_logger:
                 # Should raise exception on connection failure (fail fast)
@@ -91,7 +103,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
                 mock_logger.error.assert_called()
 
     def test_initialize_database_corrupted_database(self):
-        """Test initialize_database with corrupted database file."""
+        """
+        Test that initialize_database raises sqlite3.DatabaseError when attempting to initialize a corrupted database file.
+        """
         with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as temp_db:
             # Write invalid data to simulate corruption
             temp_db.write(b"corrupted database content")
@@ -107,7 +121,11 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             os.unlink(temp_db_path)
 
     def test_save_longname_database_locked(self):
-        """Test save_longname when database is locked."""
+        """
+        Test that save_longname handles a locked database by simulating a database lock error.
+        
+        Verifies that the function does not crash or raise unhandled exceptions when an OperationalError indicating "database is locked" occurs during execution.
+        """
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_conn.cursor.return_value.execute.side_effect = (
@@ -119,7 +137,11 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             save_longname("test_id", "test_name")
 
     def test_save_shortname_constraint_violation(self):
-        """Test save_shortname with database constraint violation."""
+        """
+        Test that save_shortname handles database constraint violations gracefully.
+        
+        Simulates a constraint violation during the save_shortname operation and verifies that the function does not raise an exception.
+        """
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_conn.cursor.return_value.execute.side_effect = sqlite3.IntegrityError(
@@ -131,13 +153,17 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             save_shortname("test_id", "test_name")
 
     def test_get_longname_connection_error(self):
-        """Test get_longname when database connection fails."""
+        """
+        Test that get_longname returns None when a database connection error occurs.
+        """
         with patch("sqlite3.connect", side_effect=sqlite3.Error("Connection failed")):
             result = get_longname("test_id")
             self.assertIsNone(result)
 
     def test_get_shortname_table_not_exists(self):
-        """Test get_shortname when table doesn't exist."""
+        """
+        Test that get_shortname returns None when the database table does not exist.
+        """
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_conn.cursor.return_value.execute.side_effect = (
@@ -149,7 +175,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             self.assertIsNone(result)
 
     def test_store_message_map_disk_full(self):
-        """Test store_message_map when disk is full."""
+        """
+        Test that store_message_map handles disk full (disk I/O error) conditions gracefully.
+        """
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_conn.cursor.return_value.execute.side_effect = (
@@ -161,7 +189,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             store_message_map("mesh_id", "matrix_id", "room_id", "text")
 
     def test_get_message_map_by_meshtastic_id_malformed_data(self):
-        """Test get_message_map_by_meshtastic_id with malformed database data."""
+        """
+        Test that get_message_map_by_meshtastic_id returns None when the database returns malformed or incomplete data.
+        """
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_cursor = mock_conn.cursor.return_value
@@ -174,7 +204,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             self.assertIsNone(result)
 
     def test_get_message_map_by_matrix_event_id_unicode_error(self):
-        """Test get_message_map_by_matrix_event_id with unicode handling issues."""
+        """
+        Test that get_message_map_by_matrix_event_id returns None when a UnicodeDecodeError occurs during database query execution.
+        """
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_cursor = mock_conn.cursor.return_value
@@ -188,7 +220,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             self.assertIsNone(result)
 
     def test_prune_message_map_large_dataset(self):
-        """Test prune_message_map with very large dataset."""
+        """
+        Test that prune_message_map can handle pruning operations when the database contains a very large number of records.
+        """
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_cursor = mock_conn.cursor.return_value
@@ -200,7 +234,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             prune_message_map(100)
 
     def test_wipe_message_map_transaction_rollback(self):
-        """Test wipe_message_map when transaction needs to be rolled back."""
+        """
+        Test that wipe_message_map properly handles transaction rollback when a database error occurs during execution.
+        """
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_conn.cursor.return_value.execute.side_effect = [
@@ -213,7 +249,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             wipe_message_map()
 
     def test_store_plugin_data_concurrent_access(self):
-        """Test store_plugin_data with concurrent access issues."""
+        """
+        Test that store_plugin_data handles database locking due to concurrent access without crashing.
+        """
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_conn.cursor.return_value.execute.side_effect = (
@@ -225,7 +263,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             store_plugin_data("test_plugin", "test_node", {"key": "value"})
 
     def test_get_plugin_data_json_decode_error(self):
-        """Test get_plugin_data_for_node when JSON decoding fails."""
+        """
+        Test that get_plugin_data_for_node returns an empty list when JSON decoding of plugin data fails.
+        """
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_cursor = mock_conn.cursor.return_value
@@ -237,7 +277,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             self.assertEqual(result, [])
 
     def test_get_plugin_data_for_node_memory_error(self):
-        """Test get_plugin_data_for_node when memory is exhausted."""
+        """
+        Test that get_plugin_data_for_node returns an empty list when a MemoryError occurs during data retrieval.
+        """
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_conn.cursor.return_value.fetchone.side_effect = MemoryError(
@@ -249,7 +291,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             self.assertEqual(result, [])
 
     def test_delete_plugin_data_foreign_key_constraint(self):
-        """Test delete_plugin_data with foreign key constraint issues."""
+        """
+        Test that delete_plugin_data handles foreign key constraint violations gracefully when deleting plugin data.
+        """
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_conn.cursor.return_value.execute.side_effect = sqlite3.IntegrityError(
@@ -261,7 +305,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             delete_plugin_data("test_plugin", "test_node")
 
     def test_update_longnames_empty_nodes(self):
-        """Test update_longnames with empty or None nodes."""
+        """
+        Test that update_longnames handles None and empty list inputs without error.
+        """
         # Should handle None gracefully
         update_longnames(None)
 
@@ -269,7 +315,11 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
         update_longnames([])
 
     def test_update_shortnames_malformed_node_data(self):
-        """Test update_shortnames with malformed node data."""
+        """
+        Test that update_shortnames handles malformed node data without raising exceptions.
+        
+        This test verifies that update_shortnames can process node data with missing or None fields gracefully, ensuring robustness against incomplete or invalid input.
+        """
         malformed_nodes = MagicMock()
         malformed_nodes.values.return_value = [
             {"user": {}},  # Missing 'id' in user
@@ -281,11 +331,19 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
         update_shortnames(malformed_nodes)
 
     def test_database_path_caching_race_condition(self):
-        """Test database path caching with potential race conditions."""
+        """
+        Verify that database path caching remains consistent and robust when the cache is cleared between calls, simulating a race condition.
+        """
         import mmrelay.db_utils
 
         # Simulate race condition by clearing cache between calls
         def side_effect_clear_cache(*args, **kwargs):
+            """
+            Clears the cached database path and returns a test database path.
+            
+            Returns:
+                str: The test database path "/test/path/meshtastic.sqlite".
+            """
             mmrelay.db_utils._cached_db_path = None
             return "/test/path/meshtastic.sqlite"
 
@@ -299,7 +357,11 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             self.assertIsInstance(path2, str)
 
     def test_database_initialization_partial_failure(self):
-        """Test database initialization when some tables fail to create."""
+        """
+        Test that `initialize_database` raises an exception if a table creation fails during initialization.
+        
+        Simulates partial failure by causing one table creation to raise an error, and asserts that the function fails fast by raising the exception.
+        """
         with patch("sqlite3.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_cursor = mock_conn.cursor.return_value

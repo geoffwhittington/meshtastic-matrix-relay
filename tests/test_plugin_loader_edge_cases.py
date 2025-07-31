@@ -33,7 +33,9 @@ class TestPluginLoaderEdgeCases(unittest.TestCase):
     """Test cases for Plugin Loader edge cases and error handling."""
 
     def setUp(self):
-        """Set up test fixtures before each test method."""
+        """
+        Reset the global plugin loader state before each test to ensure test isolation.
+        """
         # Reset global plugin state
         import mmrelay.plugin_loader
 
@@ -42,7 +44,9 @@ class TestPluginLoaderEdgeCases(unittest.TestCase):
         mmrelay.plugin_loader.config = None
 
     def tearDown(self):
-        """Clean up after each test method."""
+        """
+        Resets global plugin loader state after each test to ensure test isolation.
+        """
         # Reset global plugin state
         import mmrelay.plugin_loader
 
@@ -50,7 +54,9 @@ class TestPluginLoaderEdgeCases(unittest.TestCase):
         mmrelay.plugin_loader.plugins_loaded = False
 
     def test_load_plugins_from_directory_permission_error(self):
-        """Test load_plugins_from_directory when directory access is denied."""
+        """
+        Test that load_plugins_from_directory raises PermissionError when directory access is denied.
+        """
         with patch("os.path.isdir", return_value=True):
             with patch("os.walk", side_effect=PermissionError("Permission denied")):
                 with patch("mmrelay.plugin_loader.logger") as mock_logger:
@@ -59,7 +65,9 @@ class TestPluginLoaderEdgeCases(unittest.TestCase):
                         load_plugins_from_directory("/restricted/plugins")
 
     def test_load_plugins_from_directory_corrupted_python_file(self):
-        """Test load_plugins_from_directory with corrupted Python files."""
+        """
+        Verify that loading plugins from a directory containing a corrupted Python file results in no plugins being loaded and an error being logged.
+        """
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create a corrupted Python file
             corrupted_file = os.path.join(temp_dir, "corrupted_plugin.py")
@@ -72,7 +80,9 @@ class TestPluginLoaderEdgeCases(unittest.TestCase):
                 mock_logger.error.assert_called()
 
     def test_load_plugins_from_directory_missing_plugin_class(self):
-        """Test load_plugins_from_directory with files missing Plugin class."""
+        """
+        Test that loading plugins from a directory with Python files missing the required Plugin class results in no plugins being loaded and a warning being logged.
+        """
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create a valid Python file without Plugin class
             valid_file = os.path.join(temp_dir, "no_plugin_class.py")
@@ -85,7 +95,11 @@ class TestPluginLoaderEdgeCases(unittest.TestCase):
                 mock_logger.warning.assert_called()
 
     def test_load_plugins_from_directory_plugin_initialization_failure(self):
-        """Test load_plugins_from_directory when plugin initialization fails."""
+        """
+        Test that plugins with failing initialization are not loaded.
+        
+        Creates a plugin file whose `Plugin` class raises an exception during initialization, then verifies that `load_plugins_from_directory` returns an empty list and logs an error.
+        """
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create a plugin file with failing initialization
             plugin_file = os.path.join(temp_dir, "failing_plugin.py")
@@ -105,7 +119,11 @@ class Plugin:
 
     @unittest.skip("Plugin dependency installation needs further investigation")
     def test_load_plugins_from_directory_import_error_with_dependency_install(self):
-        """Test load_plugins_from_directory with missing dependencies that can be installed."""
+        """
+        Test that plugins with missing dependencies trigger installation attempts and log warnings.
+        
+        Creates a plugin file that imports a nonexistent module, simulates successful dependency installation, and verifies that the plugin loader logs a warning and does not load the plugin.
+        """
         with tempfile.TemporaryDirectory() as temp_dir:
             plugin_file = os.path.join(temp_dir, "dependency_plugin.py")
             with open(plugin_file, "w") as f:
@@ -130,7 +148,11 @@ class Plugin:
                         mock_logger.warning.assert_called()
 
     def test_load_plugins_from_directory_dependency_install_failure(self):
-        """Test load_plugins_from_directory when dependency installation fails."""
+        """
+        Test that plugin loading fails gracefully when a plugin's missing dependency cannot be installed.
+        
+        Creates a plugin file that imports a nonexistent module, simulates a failed dependency installation, and verifies that no plugins are loaded and an error is logged.
+        """
         with tempfile.TemporaryDirectory() as temp_dir:
             plugin_file = os.path.join(temp_dir, "dependency_plugin.py")
             with open(plugin_file, "w") as f:
@@ -150,7 +172,9 @@ class Plugin:
                     mock_logger.error.assert_called()
 
     def test_load_plugins_from_directory_sys_path_manipulation_error(self):
-        """Test load_plugins_from_directory when sys.path manipulation fails."""
+        """
+        Verify that load_plugins_from_directory returns an empty list when sys.path insertion raises an exception during plugin loading.
+        """
         with patch("os.path.isdir", return_value=True):
             with patch("os.walk", return_value=[("/test", [], ["plugin.py"])]):
                 # Create a mock sys.path that raises an exception when insert is called
@@ -162,7 +186,9 @@ class Plugin:
                         self.assertEqual(plugins, [])
 
     def test_get_custom_plugin_dirs_permission_error(self):
-        """Test get_custom_plugin_dirs when directory access fails."""
+        """
+        Verify that get_custom_plugin_dirs returns plugin directories even when directory listing raises a PermissionError.
+        """
         with patch(
             "mmrelay.config.get_base_dir", return_value="/restricted"
         ):
@@ -177,7 +203,11 @@ class Plugin:
                         # The function itself doesn't perform directory listing, so no error logging expected
 
     def test_get_custom_plugin_dirs_broken_symlinks(self):
-        """Test get_custom_plugin_dirs with broken symbolic links."""
+        """
+        Test that get_custom_plugin_dirs returns both user and app plugin directories when symbolic links are broken.
+        
+        Verifies that the function attempts to create the user plugin directory and includes both expected directories in the result.
+        """
         with patch("mmrelay.plugin_loader.get_base_dir", return_value="/test"):
             with patch("mmrelay.plugin_loader.get_app_path", return_value="/test/app"):
                 with patch("os.makedirs") as mock_makedirs:
@@ -190,7 +220,11 @@ class Plugin:
                     self.assertIn("/test/app/plugins/custom", dirs)
 
     def test_get_community_plugin_dirs_git_clone_failure(self):
-        """Test get_community_plugin_dirs when git clone fails."""
+        """
+        Test that get_community_plugin_dirs returns plugin directories even if a git clone operation fails.
+        
+        Simulates a failure during the git clone process and verifies that the function still returns a non-empty list of directories without logging errors.
+        """
         with patch("mmrelay.config.get_base_dir", return_value="/test"):
             with patch("os.path.exists", return_value=False):
                 with patch("subprocess.run") as mock_run:
@@ -202,7 +236,11 @@ class Plugin:
                         # The function itself doesn't perform git operations, so no error logging expected
 
     def test_get_community_plugin_dirs_git_pull_failure(self):
-        """Test get_community_plugin_dirs when git pull fails."""
+        """
+        Test that get_community_plugin_dirs returns directory paths even if a git pull operation fails.
+        
+        Simulates a git pull failure and verifies that the function still returns the expected plugin directories without logging warnings or errors.
+        """
         with patch("mmrelay.config.get_base_dir", return_value="/test"):
             with patch("os.path.exists", return_value=True):
                 with patch("subprocess.run") as mock_run:
@@ -215,7 +253,11 @@ class Plugin:
                         # The function just returns directory paths
 
     def test_get_community_plugin_dirs_git_not_available(self):
-        """Test get_community_plugin_dirs when git is not available."""
+        """
+        Test that get_community_plugin_dirs returns plugin directories when git is not available.
+        
+        Simulates the absence of the git command and verifies that the function still returns a list of directories without logging errors.
+        """
         with patch("mmrelay.config.get_base_dir", return_value="/test"):
             with patch("os.path.exists", return_value=False):
                 with patch(
@@ -228,20 +270,28 @@ class Plugin:
                         # The function itself doesn't perform git operations, so no error logging expected
 
     def test_load_plugins_config_none(self):
-        """Test load_plugins when config is None."""
+        """
+        Test that load_plugins returns an empty list and logs an error when given a None configuration.
+        """
         with patch("mmrelay.plugin_loader.logger") as mock_logger:
             plugins = load_plugins(None)
             self.assertEqual(plugins, [])
             mock_logger.error.assert_called()
 
     def test_load_plugins_empty_config(self):
-        """Test load_plugins with empty configuration."""
+        """
+        Test that loading plugins with an empty configuration returns an empty plugin list.
+        """
         empty_config = {}
         plugins = load_plugins(empty_config)
         self.assertEqual(plugins, [])
 
     def test_load_plugins_plugin_priority_conflict(self):
-        """Test load_plugins with plugins having conflicting priorities."""
+        """
+        Test that load_plugins handles plugins with conflicting priorities.
+        
+        Verifies that when multiple plugins have the same priority, load_plugins loads them without error and includes both in the result.
+        """
         mock_plugin1 = MagicMock()
         mock_plugin1.priority = 5
         mock_plugin1.plugin_name = "plugin1"
@@ -263,7 +313,9 @@ class Plugin:
                     self.assertGreaterEqual(len(plugins), 2)
 
     def test_load_plugins_plugin_start_failure(self):
-        """Test load_plugins when plugin start() method fails."""
+        """
+        Test that plugins are still loaded when a plugin's start() method raises an exception, and that the error is logged.
+        """
         mock_plugin = MagicMock()
         mock_plugin.priority = 10
         mock_plugin.plugin_name = "failing_plugin"
@@ -290,7 +342,9 @@ class Plugin:
                     mock_logger.error.assert_called()
 
     def test_load_plugins_memory_constraint(self):
-        """Test load_plugins under memory constraints."""
+        """
+        Test that load_plugins handles MemoryError exceptions during plugin loading and logs an error.
+        """
         config = {"custom-plugins": {"memory_plugin": {"active": True}}}
 
         # Reset global state
@@ -311,7 +365,11 @@ class Plugin:
                     mock_logger.error.assert_called()
 
     def test_load_plugins_circular_dependency(self):
-        """Test load_plugins with circular plugin dependencies."""
+        """
+        Test that load_plugins can handle scenarios where plugins may have circular dependencies.
+        
+        This test simulates loading two custom plugins with the same priority, representing a potential circular dependency situation. It verifies that load_plugins loads both plugins without errors, ensuring robustness even though explicit dependency resolution is not implemented.
+        """
         # This is more of a conceptual test since the current implementation
         # doesn't handle plugin dependencies, but it tests robustness
         config = {
@@ -337,7 +395,11 @@ class Plugin:
                     self.assertGreaterEqual(len(plugins), 2)
 
     def test_load_plugins_duplicate_plugin_names(self):
-        """Test load_plugins with duplicate plugin names from different directories."""
+        """
+        Test that load_plugins correctly handles plugins with duplicate names from different directories.
+        
+        Ensures that when multiple plugins with the same name but different priorities are present, load_plugins loads at least one instance and does not fail due to the duplication.
+        """
         mock_plugin1 = MagicMock()
         mock_plugin1.priority = 10
         mock_plugin1.plugin_name = "duplicate"

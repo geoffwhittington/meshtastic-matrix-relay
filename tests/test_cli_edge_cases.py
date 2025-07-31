@@ -33,17 +33,23 @@ class TestCLIEdgeCases(unittest.TestCase):
     """Test cases for CLI module edge cases and error handling."""
 
     def setUp(self):
-        """Set up test fixtures before each test method."""
+        """
+        Saves the current state of sys.argv before each test to allow restoration after test execution.
+        """
         # Store original sys.argv to restore later
         self.original_argv = sys.argv.copy()
 
     def tearDown(self):
-        """Clean up after each test method."""
+        """
+        Restores the original sys.argv after each test to maintain test isolation.
+        """
         # Restore original sys.argv
         sys.argv = self.original_argv
 
     def test_parse_arguments_windows_positional_config(self):
-        """Test Windows-specific positional config argument handling."""
+        """
+        Tests that on Windows, providing a positional config argument sets the config path and triggers a deprecation warning.
+        """
         with patch("sys.platform", "win32"):
             with patch("sys.argv", ["mmrelay", "config.yaml"]):
                 with patch("builtins.print") as mock_print:
@@ -53,7 +59,9 @@ class TestCLIEdgeCases(unittest.TestCase):
                     mock_print.assert_called()
 
     def test_parse_arguments_windows_both_positional_and_flag(self):
-        """Test Windows handling when both positional and --config are provided."""
+        """
+        Test that on Windows, the --config flag takes precedence over a positional config argument when both are provided.
+        """
         with patch("sys.platform", "win32"):
             with patch(
                 "sys.argv",
@@ -64,13 +72,17 @@ class TestCLIEdgeCases(unittest.TestCase):
                 self.assertEqual(args.config, "flag_config.yaml")
 
     def test_parse_arguments_invalid_log_level(self):
-        """Test argument parsing with invalid log level."""
+        """
+        Test that providing an invalid log level argument causes argument parsing to exit with SystemExit.
+        """
         with patch("sys.argv", ["mmrelay", "--log-level", "invalid"]):
             with self.assertRaises(SystemExit):
                 parse_arguments()
 
     def test_parse_arguments_pytest_environment(self):
-        """Test that unknown arguments are ignored in pytest environment."""
+        """
+        Verify that unknown CLI arguments do not trigger warnings when running in a pytest environment.
+        """
         with patch("sys.argv", ["mmrelay", "--unknown-arg", "pytest"]):
             with patch("builtins.print") as mock_print:
                 parse_arguments()
@@ -78,7 +90,9 @@ class TestCLIEdgeCases(unittest.TestCase):
                 mock_print.assert_not_called()
 
     def test_check_config_file_permission_error(self):
-        """Test check_config behavior with file permission errors."""
+        """
+        Test that check_config returns False and prints an error when a file permission error occurs while opening the config file.
+        """
         with patch("mmrelay.cli.get_config_paths") as mock_get_paths:
             mock_get_paths.return_value = ["/test/config.yaml"]
             with patch("os.path.isfile", return_value=True):
@@ -91,7 +105,9 @@ class TestCLIEdgeCases(unittest.TestCase):
                         mock_print.assert_called()
 
     def test_check_config_yaml_syntax_error(self):
-        """Test check_config behavior with YAML syntax errors."""
+        """
+        Test that check_config returns False and prints an error when the config file contains invalid YAML syntax.
+        """
         with patch("mmrelay.cli.get_config_paths") as mock_get_paths:
             mock_get_paths.return_value = ["/test/config.yaml"]
             with patch("os.path.isfile", return_value=True):
@@ -103,7 +119,9 @@ class TestCLIEdgeCases(unittest.TestCase):
                         mock_print.assert_called()
 
     def test_check_config_empty_file(self):
-        """Test check_config behavior with empty configuration file."""
+        """
+        Test that check_config returns False and prints an error when the configuration file is empty.
+        """
         with patch("mmrelay.cli.get_config_paths") as mock_get_paths:
             mock_get_paths.return_value = ["/test/config.yaml"]
             with patch("os.path.isfile", return_value=True):
@@ -115,7 +133,11 @@ class TestCLIEdgeCases(unittest.TestCase):
                             mock_print.assert_called()
 
     def test_check_config_missing_required_sections(self):
-        """Test check_config with missing required configuration sections."""
+        """
+        Test that check_config returns False when required configuration sections or fields are missing.
+        
+        Verifies that various incomplete or malformed configuration dictionaries cause check_config to fail validation.
+        """
         invalid_configs = [
             {},  # Empty config
             {"matrix": {}},  # Missing matrix fields
@@ -144,7 +166,9 @@ class TestCLIEdgeCases(unittest.TestCase):
                                     self.assertFalse(result)
 
     def test_check_config_invalid_connection_types(self):
-        """Test check_config with invalid Meshtastic connection types."""
+        """
+        Test that check_config returns False and prints an error when the Meshtastic connection type is invalid.
+        """
         config = {
             "matrix": {
                 "homeserver": "https://matrix.org",
@@ -166,7 +190,11 @@ class TestCLIEdgeCases(unittest.TestCase):
                             mock_print.assert_called()
 
     def test_check_config_missing_connection_specific_fields(self):
-        """Test check_config with missing connection-specific fields."""
+        """
+        Test that `check_config` returns False when required connection-specific fields are missing from the Meshtastic configuration.
+        
+        Verifies that the function correctly identifies missing fields for each connection type (serial, tcp, ble) and fails validation as expected.
+        """
         test_cases = [
             {"connection_type": "serial"},  # Missing serial_port
             {"connection_type": "tcp"},  # Missing host
@@ -195,7 +223,9 @@ class TestCLIEdgeCases(unittest.TestCase):
                                     self.assertFalse(result)
 
     def test_generate_sample_config_existing_file(self):
-        """Test generate_sample_config when config file already exists."""
+        """
+        Test that generate_sample_config returns False and prints an error when the config file already exists.
+        """
         with patch("mmrelay.cli.get_config_paths") as mock_get_paths:
             mock_get_paths.return_value = ["/test/config.yaml"]
             with patch("os.path.isfile", return_value=True):
@@ -205,7 +235,9 @@ class TestCLIEdgeCases(unittest.TestCase):
                     mock_print.assert_called()
 
     def test_generate_sample_config_directory_creation_failure(self):
-        """Test generate_sample_config when directory creation fails."""
+        """
+        Test that generate_sample_config returns False and prints an error when directory creation fails due to permission errors.
+        """
         with patch("mmrelay.cli.get_config_paths") as mock_get_paths:
             mock_get_paths.return_value = ["/readonly/config.yaml"]
             with patch("os.path.isfile", return_value=False):
@@ -218,7 +250,9 @@ class TestCLIEdgeCases(unittest.TestCase):
                         mock_print.assert_called()
 
     def test_generate_sample_config_missing_sample_file(self):
-        """Test generate_sample_config when sample config file is missing."""
+        """
+        Test that generate_sample_config returns False and prints an error when the sample config resource file is missing.
+        """
         with patch("mmrelay.cli.get_config_paths") as mock_get_paths:
             mock_get_paths.return_value = ["/test/config.yaml"]
             with patch("os.path.isfile", return_value=False):
@@ -236,7 +270,9 @@ class TestCLIEdgeCases(unittest.TestCase):
                                     mock_print.assert_called()
 
     def test_generate_sample_config_copy_failure(self):
-        """Test generate_sample_config when file copy fails."""
+        """
+        Test that generate_sample_config returns False and prints an error when file copying fails due to an IOError.
+        """
         with patch("mmrelay.cli.get_config_paths") as mock_get_paths:
             mock_get_paths.return_value = ["/test/config.yaml"]
             with patch("os.path.isfile", return_value=False):
@@ -253,7 +289,9 @@ class TestCLIEdgeCases(unittest.TestCase):
                                     mock_print.assert_called()
 
     def test_main_import_error_handling(self):
-        """Test main function behavior when imports fail."""
+        """
+        Test that the main function returns exit code 1 when an ImportError occurs during module import.
+        """
         with patch("mmrelay.cli.parse_arguments") as mock_parse:
             args = MagicMock()
             args.check_config = False
@@ -270,7 +308,11 @@ class TestCLIEdgeCases(unittest.TestCase):
                 self.assertEqual(result, 1)
 
     def test_handle_cli_commands_service_installation_failure(self):
-        """Test handle_cli_commands when service installation fails."""
+        """
+        Test that handle_cli_commands exits with code 1 when service installation fails.
+        
+        Simulates a failure in the service installation process and verifies that the CLI handler triggers a system exit with the appropriate error code.
+        """
         args = MagicMock()
         args.version = False
         args.install_service = True
@@ -283,7 +325,11 @@ class TestCLIEdgeCases(unittest.TestCase):
                 mock_exit.assert_called_once_with(1)
 
     def test_handle_cli_commands_config_generation_failure(self):
-        """Test handle_cli_commands when config generation fails."""
+        """
+        Test that handle_cli_commands exits with code 1 when configuration generation fails.
+        
+        Simulates a failure in generate_sample_config and verifies that handle_cli_commands calls sys.exit(1).
+        """
         args = MagicMock()
         args.version = False
         args.install_service = False

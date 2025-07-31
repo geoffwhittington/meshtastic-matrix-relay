@@ -169,9 +169,9 @@ class TestMeshtasticUtils(unittest.TestCase):
         self, mock_tcp, mock_ble, mock_serial, mock_port_exists
     ):
         """
-        Test that the Meshtastic client connects successfully using a serial interface when the serial port exists.
-
-        Verifies that the serial interface is instantiated with the configured port and that the returned client matches the mock.
+        Test that the Meshtastic client connects via serial interface when the serial port exists.
+        
+        Verifies that the serial interface is instantiated with the configured port and that the returned client matches the mock client.
         """
         mock_client = MagicMock()
         mock_client.getMyNodeInfo.return_value = {"user": {"shortName": "test", "hwModel": "test"}}
@@ -199,8 +199,8 @@ class TestMeshtasticUtils(unittest.TestCase):
     @patch("mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface")
     def test_connect_meshtastic_tcp(self, mock_tcp, mock_ble, mock_serial):
         """
-        Test that the Meshtastic client connects using the TCP interface with the specified host.
-
+        Tests that the Meshtastic client connects via the TCP interface using the configured host.
+        
         Verifies that the TCP interface is instantiated with the correct hostname and that the returned client matches the mocked instance.
         """
         mock_client = MagicMock()
@@ -232,8 +232,8 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_connect_meshtastic_ble(self, mock_tcp, mock_ble, mock_serial):
         """
         Test that the Meshtastic client connects via BLE using the configured BLE address.
-
-        Verifies that the BLE interface is instantiated with the correct parameters and that the returned client matches the mocked BLE client.
+        
+        Verifies that the BLE interface is instantiated with the expected parameters and that the returned client matches the mocked BLE client.
         """
         mock_client = MagicMock()
         mock_client.getMyNodeInfo.return_value = {"user": {"shortName": "test", "hwModel": "test"}}

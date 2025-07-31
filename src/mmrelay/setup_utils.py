@@ -372,10 +372,11 @@ def check_loginctl_available():
 
 
 def check_lingering_enabled():
-    """Check if user lingering is enabled.
-
+    """
+    Determine whether user lingering is enabled for the current user.
+    
     Returns:
-        bool: True if lingering is enabled, False otherwise.
+        bool: True if user lingering is enabled, False otherwise.
     """
     try:
         username = os.environ.get("USER", os.environ.get("USERNAME"))
@@ -418,7 +419,14 @@ def enable_lingering():
 
 
 def install_service():
-    """Install or update the MMRelay user service."""
+    """
+    Install or update the MMRelay systemd user service, guiding the user through creation, updating, enabling, and starting the service as needed.
+    
+    Prompts the user for confirmation before updating an existing service file, enabling user lingering, enabling the service to start at boot, and starting or restarting the service. Handles user interruptions gracefully and prints a summary of the service status and management commands upon completion.
+    
+    Returns:
+        bool: True if the installation or update process completes successfully, False otherwise.
+    """
     # Check if service already exists
     existing_service = read_service_file()
     service_path = get_user_service_path()

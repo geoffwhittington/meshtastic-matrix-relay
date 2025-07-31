@@ -255,10 +255,11 @@ def check_config(args=None):
 
 
 def main():
-    """Entry point for CLI commands.
-
+    """
+    Runs the Meshtastic Matrix Relay CLI, handling argument parsing, command execution, and error reporting.
+    
     Returns:
-        int: Exit code (0 for success, non-zero for failure)
+        int: Exit code indicating success (0) or failure (non-zero).
     """
     try:
         args = parse_arguments()
@@ -350,10 +351,13 @@ def handle_cli_commands(args):
 
 
 def generate_sample_config():
-    """Generate a sample config.yaml file.
-
+    """
+    Generate a sample configuration file (`config.yaml`) in the default location if one does not already exist.
+    
+    Attempts to copy a sample config from various sources, handling directory creation and file system errors gracefully. Prints informative messages on success or failure.
+    
     Returns:
-        bool: True if the config was generated successfully, False otherwise.
+        bool: True if the sample config was generated successfully, False otherwise.
     """
 
     import shutil

@@ -97,14 +97,14 @@ def serial_port_exists(port_name):
 
 def connect_meshtastic(passed_config=None, force_connect=False):
     """
-    Establishes a connection to a Meshtastic device using serial, BLE, or TCP, with automatic retries and event subscriptions.
-
-    If a configuration is provided, updates the global configuration and Matrix room mappings. If already connected and not forced, returns the existing client. Handles reconnection with exponential backoff, verifies serial port existence, and subscribes to message and connection lost events upon successful connection.
-
+    Connects to a Meshtastic device using serial, BLE, or TCP, with automatic retries and event subscriptions.
+    
+    If a configuration is provided, updates the global configuration and Matrix room mappings. Prevents concurrent or duplicate connection attempts, and validates required configuration fields before connecting. Supports legacy and current connection types, verifies serial port existence, and handles connection failures with exponential backoff. Subscribes to message and connection lost events upon successful connection.
+    
     Parameters:
-        passed_config (dict, optional): Configuration dictionary to use for the connection.
+        passed_config (dict, optional): Configuration dictionary for the connection.
         force_connect (bool, optional): If True, forces a new connection even if one already exists.
-
+    
     Returns:
         The connected Meshtastic client instance, or None if connection fails or shutdown is in progress.
     """
@@ -390,9 +390,9 @@ async def reconnect():
 
 def on_meshtastic_message(packet, interface):
     """
-    Processes incoming Meshtastic messages and relays them to Matrix rooms or plugins based on message type and configuration.
-
-    Handles reactions and replies by relaying them to Matrix if enabled. Normal text messages are relayed to all mapped Matrix rooms unless handled by a plugin or directed to the relay node. Non-text messages are passed to plugins for processing. Messages from unmapped channels or disabled detection sensors are ignored. Ensures sender information is retrieved or stored as needed.
+    Process an incoming Meshtastic message and relay it to Matrix rooms or plugins according to message type and configuration.
+    
+    Handles reactions and replies by relaying them to Matrix if enabled. Normal text messages are relayed to all mapped Matrix rooms unless handled by a plugin or directed to the relay node. Non-text messages are passed to plugins for processing. Messages from unmapped channels, disabled detection sensors, or during shutdown are ignored. Ensures sender information is retrieved or stored as needed.
     """
     global config, matrix_rooms
 
@@ -724,18 +724,9 @@ def on_meshtastic_message(packet, interface):
 
 async def check_connection():
     """
-    Periodically checks the health of the Meshtastic connection and triggers reconnection if the connection is lost.
-
-    Health checks can be enabled/disabled via configuration. When enabled, for non-BLE connections,
-    invokes `localNode.getMetadata()` at configurable intervals (default 60 seconds) to verify connectivity.
-    If the check fails or the firmware version is missing, initiates reconnection logic.
-
-    BLE connections rely on real-time disconnection detection and skip periodic health checks.
-    The function runs continuously until shutdown is requested.
-
-    Configuration:
-        health_check.enabled: Enable/disable health checks (default: true)
-        health_check.heartbeat_interval: Interval between checks in seconds (default: 60)
+    Periodically verifies the health of the Meshtastic connection and initiates reconnection if connectivity is lost.
+    
+    For non-BLE connections, performs a metadata check at configurable intervals to confirm device responsiveness. If the check fails or the firmware version is missing, triggers reconnection unless already in progress. BLE connections are excluded from periodic checks due to real-time disconnection detection. The function runs continuously until shutdown is requested, with health check behavior controlled by configuration options.
     """
     global meshtastic_client, shutting_down, config
 
@@ -815,20 +806,17 @@ def sendTextReply(
     channelIndex: int = 0,
 ):
     """
-    Send a Meshtastic text message as a reply to a specific previous message.
-
-    Creates and sends a reply message by setting the `reply_id` field in the Meshtastic Data protobuf, enabling proper reply threading. Returns the sent packet with its ID populated.
-
+    Sends a text message as a reply to a specific previous message via the Meshtastic interface.
+    
     Parameters:
-        interface: The Meshtastic interface to send through.
         text (str): The message content to send.
         reply_id (int): The ID of the message being replied to.
         destinationId: The recipient address (defaults to broadcast).
         wantAck (bool): Whether to request acknowledgment for the message.
         channelIndex (int): The channel index to send the message on.
-
+    
     Returns:
-        The sent MeshPacket with its ID field populated.
+        The sent MeshPacket with its ID field populated, or None if sending fails or the interface is unavailable.
     """
     logger.debug(f"Sending text reply: '{text}' replying to message ID {reply_id}")
 
