@@ -408,50 +408,54 @@ class TestPerformanceStress(unittest.TestCase):
         """Test that rate limiting effectively controls message flow."""
         import asyncio
 
-        # Set up event loop for MessageQueue
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        async def run_rate_limit_test():
+            # Mock Meshtastic client to allow message sending
+            with patch("mmrelay.meshtastic_utils.meshtastic_client", MagicMock(is_connected=True)):
+                with patch("mmrelay.meshtastic_utils.reconnecting", False):
+                    queue = MessageQueue()
+                    message_delay = 0.1  # 100ms delay between messages (will be enforced to 2.0s minimum)
+                    queue.start(message_delay=message_delay)
+                    # Ensure processor starts now that event loop is running
+                    queue.ensure_processor_started()
 
-        queue = MessageQueue()
-        message_delay = 0.1  # 100ms delay between messages (will be enforced to 2.0s minimum)
-        queue.start(message_delay=message_delay)
+                    message_count = 5  # Reasonable number for rate limiting test
+                    send_times = []
 
-        message_count = 5  # Reasonable number for rate limiting test
-        send_times = []
+                    def mock_send_function():
+                        send_times.append(time.time())
+                        return MagicMock(id="test_id")
 
-        def mock_send_function():
-            send_times.append(time.time())
-            return MagicMock(id="test_id")
+                    try:
+                        # Queue messages rapidly
+                        for i in range(message_count):
+                            queue.enqueue(mock_send_function, description=f"Rate limit test {i}")
 
-        try:
-            # Queue messages rapidly
-            for i in range(message_count):
-                queue.enqueue(mock_send_function, description=f"Rate limit test {i}")
+                        # Wait for all messages to be processed (5 messages * 2s = 10s + buffer)
+                        timeout = message_count * 2.0 + 5  # Extra buffer for 2s minimum delay
+                        start_wait = time.time()
+                        while (
+                            len(send_times) < message_count and time.time() - start_wait < timeout
+                        ):
+                            await asyncio.sleep(0.1)
 
-            # Wait for all messages to be processed (5 messages * 2s = 10s + buffer)
-            timeout = message_count * 2.0 + 5  # Extra buffer for 2s minimum delay
-            start_wait = time.time()
-            while (
-                len(send_times) < message_count and time.time() - start_wait < timeout
-            ):
-                time.sleep(0.1)
+                        # Verify all messages were sent
+                        self.assertEqual(len(send_times), message_count)
 
-            # Verify all messages were sent
-            self.assertEqual(len(send_times), message_count)
+                        # Verify rate limiting was effective (2s minimum delay)
+                        for i in range(1, len(send_times)):
+                            time_diff = send_times[i] - send_times[i - 1]
+                            # Allow some tolerance for timing variations
+                            self.assertGreaterEqual(
+                                time_diff,
+                                2.0 * 0.8,  # 80% of 2s minimum delay
+                                f"Rate limiting not effective between messages {i-1} and {i}",
+                            )
 
-            # Verify rate limiting was effective (2s minimum delay)
-            for i in range(1, len(send_times)):
-                time_diff = send_times[i] - send_times[i - 1]
-                # Allow some tolerance for timing variations
-                self.assertGreaterEqual(
-                    time_diff,
-                    2.0 * 0.8,  # 80% of 2s minimum delay
-                    f"Rate limiting not effective between messages {i-1} and {i}",
-                )
+                    finally:
+                        queue.stop()
 
-        finally:
-            queue.stop()
-            loop.close()
+        # Run the async test
+        asyncio.run(run_rate_limit_test())
 
     def test_resource_cleanup_effectiveness(self):
         """Test that resources are properly cleaned up after operations."""
