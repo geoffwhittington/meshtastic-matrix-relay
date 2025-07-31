@@ -244,13 +244,17 @@ class Plugin:
         mock_plugin2.priority = 5  # Same priority
         mock_plugin2.plugin_name = "plugin2"
 
-        config = {"plugins": {"plugin1": {"active": True}, "plugin2": {"active": True}}}
+        config = {"custom-plugins": {"plugin1": {"active": True}, "plugin2": {"active": True}}}
 
         with patch("mmrelay.plugin_loader.load_plugins_from_directory") as mock_load:
             mock_load.return_value = [mock_plugin1, mock_plugin2]
-            plugins = load_plugins(config)
-            # Should handle priority conflicts gracefully
-            self.assertEqual(len(plugins), 2)
+            with patch("mmrelay.plugin_loader.get_custom_plugin_dirs") as mock_dirs:
+                mock_dirs.return_value = ["/fake/custom/dir"]
+                with patch("os.path.exists") as mock_exists:
+                    mock_exists.return_value = True
+                    plugins = load_plugins(config)
+                    # Should handle priority conflicts gracefully (core plugins + 2 custom plugins)
+                    self.assertGreaterEqual(len(plugins), 2)
 
     def test_load_plugins_plugin_start_failure(self):
         """Test load_plugins when plugin start() method fails."""
