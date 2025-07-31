@@ -11,9 +11,18 @@ import meshtastic.serial_interface
 import meshtastic.tcp_interface
 import serial  # For serial port exceptions
 import serial.tools.list_ports  # Import serial tools for port listing
-from bleak.exc import BleakDBusError, BleakError
 from meshtastic.protobuf import mesh_pb2, portnums_pb2
 from pubsub import pub
+
+# Import BLE exceptions conditionally
+try:
+    from bleak.exc import BleakDBusError, BleakError
+except ImportError:
+    # Define dummy exception classes if bleak is not available
+    class BleakDBusError(Exception):
+        pass
+    class BleakError(Exception):
+        pass
 
 from mmrelay.db_utils import (
     get_longname,
@@ -99,9 +108,13 @@ def connect_meshtastic(passed_config=None, force_connect=False):
     Returns:
         The connected Meshtastic client instance, or None if connection fails or shutdown is in progress.
     """
-    global meshtastic_client, shutting_down, config, matrix_rooms
+    global meshtastic_client, shutting_down, reconnecting, config, matrix_rooms
     if shutting_down:
         logger.debug("Shutdown in progress. Not attempting to connect.")
+        return None
+
+    if reconnecting:
+        logger.debug("Reconnection already in progress. Not attempting new connection.")
         return None
 
     # Update the global config if a config is passed
@@ -129,6 +142,16 @@ def connect_meshtastic(passed_config=None, force_connect=False):
             logger.error("No configuration available. Cannot connect to Meshtastic.")
             return None
 
+        # Check if meshtastic config section exists
+        if "meshtastic" not in config or config["meshtastic"] is None:
+            logger.error("No Meshtastic configuration section found. Cannot connect to Meshtastic.")
+            return None
+
+        # Check if connection_type is specified
+        if "connection_type" not in config["meshtastic"] or config["meshtastic"]["connection_type"] is None:
+            logger.error("No connection type specified in Meshtastic configuration. Cannot connect to Meshtastic.")
+            return None
+
         # Determine connection type and attempt connection
         connection_type = config["meshtastic"]["connection_type"]
 
@@ -150,7 +173,11 @@ def connect_meshtastic(passed_config=None, force_connect=False):
             try:
                 if connection_type == "serial":
                     # Serial connection
-                    serial_port = config["meshtastic"]["serial_port"]
+                    serial_port = config["meshtastic"].get("serial_port")
+                    if not serial_port:
+                        logger.error("No serial port specified in Meshtastic configuration.")
+                        return None
+
                     logger.info(f"Connecting to serial port {serial_port}")
 
                     # Check if serial port exists before connecting
@@ -185,7 +212,11 @@ def connect_meshtastic(passed_config=None, force_connect=False):
 
                 elif connection_type == "tcp":
                     # TCP connection
-                    target_host = config["meshtastic"]["host"]
+                    target_host = config["meshtastic"].get("host")
+                    if not target_host:
+                        logger.error("No host specified in Meshtastic configuration for TCP connection.")
+                        return None
+
                     logger.info(f"Connecting to host {target_host}")
 
                     # Connect without progress indicator
