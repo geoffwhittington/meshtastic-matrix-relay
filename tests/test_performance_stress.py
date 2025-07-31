@@ -680,6 +680,16 @@ class TestPerformanceStress(unittest.TestCase):
 
         queue.start(message_delay=0.1)
         queue.stop()
+
+        # Ensure any event loops are properly closed
+        try:
+            import asyncio
+            loop = asyncio.get_event_loop()
+            if not loop.is_closed():
+                loop.close()
+        except RuntimeError:
+            pass  # No event loop running
+
         del queue
         gc.collect()
 

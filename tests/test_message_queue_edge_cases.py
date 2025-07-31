@@ -54,6 +54,15 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
         if self.queue.is_running():
             self.queue.stop()
 
+        # Clean up any remaining event loops to prevent ResourceWarnings
+        try:
+            import asyncio
+            loop = asyncio.get_event_loop()
+            if not loop.is_closed():
+                loop.close()
+        except RuntimeError:
+            pass  # No event loop running
+
         # Reset global state
         import mmrelay.meshtastic_utils
         import mmrelay.message_queue
