@@ -312,8 +312,9 @@ class TestDBUtilsEdgeCases(unittest.TestCase):
             ]
             mock_connect.return_value.__enter__.return_value = mock_conn
 
-            # Should handle partial failure gracefully
-            initialize_database()
+            # Should raise exception on table creation failure (fail fast)
+            with self.assertRaises(sqlite3.Error):
+                initialize_database()
 
 
 if __name__ == "__main__":

@@ -641,15 +641,19 @@ def on_meshtastic_message(packet, interface):
         found_matching_plugin = False
         for plugin in plugins:
             if not found_matching_plugin:
-                result = asyncio.run_coroutine_threadsafe(
-                    plugin.handle_meshtastic_message(
-                        packet, formatted_message, longname, meshnet_name
-                    ),
-                    loop=loop,
-                )
-                found_matching_plugin = result.result()
-                if found_matching_plugin:
-                    logger.debug(f"Processed by plugin {plugin.plugin_name}")
+                try:
+                    result = asyncio.run_coroutine_threadsafe(
+                        plugin.handle_meshtastic_message(
+                            packet, formatted_message, longname, meshnet_name
+                        ),
+                        loop=loop,
+                    )
+                    found_matching_plugin = result.result()
+                    if found_matching_plugin:
+                        logger.debug(f"Processed by plugin {plugin.plugin_name}")
+                except Exception as e:
+                    logger.error(f"Plugin {plugin.plugin_name} failed: {e}")
+                    # Continue processing other plugins
 
         # If message is a DM or handled by plugin, do not relay further
         if is_direct_message:
@@ -698,20 +702,24 @@ def on_meshtastic_message(packet, interface):
         found_matching_plugin = False
         for plugin in plugins:
             if not found_matching_plugin:
-                result = asyncio.run_coroutine_threadsafe(
-                    plugin.handle_meshtastic_message(
-                        packet,
-                        formatted_message=None,
-                        longname=None,
-                        meshnet_name=None,
-                    ),
-                    loop=loop,
-                )
-                found_matching_plugin = result.result()
-                if found_matching_plugin:
-                    logger.debug(
-                        f"Processed {portnum} with plugin {plugin.plugin_name}"
+                try:
+                    result = asyncio.run_coroutine_threadsafe(
+                        plugin.handle_meshtastic_message(
+                            packet,
+                            formatted_message=None,
+                            longname=None,
+                            meshnet_name=None,
+                        ),
+                        loop=loop,
                     )
+                    found_matching_plugin = result.result()
+                    if found_matching_plugin:
+                        logger.debug(
+                            f"Processed {portnum} with plugin {plugin.plugin_name}"
+                        )
+                except Exception as e:
+                    logger.error(f"Plugin {plugin.plugin_name} failed: {e}")
+                    # Continue processing other plugins
 
 
 async def check_connection():
