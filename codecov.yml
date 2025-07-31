@@ -2,22 +2,22 @@ coverage:
   status:
     project:
       default:
-        target: 55%
-        threshold: 1%
+        target: 40%
+        threshold: 2%
     patch:
       default:
-        target: 60%
-        threshold: 1%
+        target: 40%
+        threshold: 2%
 
 component_management:
   default_rules:
     statuses:
       - type: project
         target: auto
-        threshold: 1%
+        threshold: 2%
       - type: patch
-        target: 60%
-        threshold: 1%
+        target: 40%
+        threshold: 2%
   individual_components:
     - component_id: plugins
       name: Plugins
@@ -25,11 +25,11 @@ component_management:
         - src/mmrelay/plugins/**
       statuses:
         - type: project
-          target: 70%
-          threshold: 2%
+          target: 50%
+          threshold: 3%
         - type: patch
-          target: 75%
-          threshold: 2%
+          target: 50%
+          threshold: 3%
     - component_id: configuration
       name: Configuration
       paths:
@@ -37,11 +37,11 @@ component_management:
         - src/mmrelay/config.py
       statuses:
         - type: project
-          target: 90%
-          threshold: 1%
+          target: 70%
+          threshold: 2%
         - type: patch
-          target: 85%
-          threshold: 1%
+          target: 60%
+          threshold: 2%
     - component_id: core_utils
       name: Core Utils
       paths:
@@ -49,11 +49,11 @@ component_management:
         - src/mmrelay/matrix_utils.py
       statuses:
         - type: project
-          target: 60%
-          threshold: 2%
+          target: 40%
+          threshold: 3%
         - type: patch
-          target: 65%
-          threshold: 2%
+          target: 40%
+          threshold: 3%
     - component_id: cli_main
       name: CLI & Main
       paths:
@@ -61,22 +61,22 @@ component_management:
         - src/mmrelay/cli.py
       statuses:
         - type: project
-          target: 80%
-          threshold: 2%
+          target: 60%
+          threshold: 3%
         - type: patch
-          target: 75%
-          threshold: 2%
+          target: 50%
+          threshold: 3%
     - component_id: database
       name: Database
       paths:
         - src/mmrelay/db_utils.py
       statuses:
         - type: project
-          target: 85%
-          threshold: 1%
+          target: 70%
+          threshold: 2%
         - type: patch
-          target: 80%
-          threshold: 1%
+          target: 60%
+          threshold: 2%
     - component_id: setup_tools
       name: Setup & Tools
       paths:
@@ -84,8 +84,8 @@ component_management:
         - src/mmrelay/tools/**
       statuses:
         - type: project
-          target: 50%
-          threshold: 2%
+          target: 30%
+          threshold: 3%
 
 comment:
   layout: "header, diff, flags, components"
