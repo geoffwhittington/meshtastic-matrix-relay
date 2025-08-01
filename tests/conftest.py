@@ -93,34 +93,34 @@ def setup_nio_mocks():
     class MockRoomMessageText:
         pass
 
-        class MockRoomMessageNotice:
-            pass
+    class MockRoomMessageNotice:
+        pass
 
-        class MockMatrixRoom:
-            pass
+    class MockMatrixRoom:
+        pass
 
-        class MockWhoamiError:
-            def __init__(self, message="Whoami error"):
-                """
-                Initialize the MockWhoamiError with an optional error message.
+    class MockWhoamiError:
+        def __init__(self, message="Whoami error"):
+            """
+            Initialize the MockWhoamiError with an optional error message.
 
-                Parameters:
-                    message (str): The error message to associate with the exception. Defaults to "Whoami error".
-                """
-                self.message = message
+            Parameters:
+                message (str): The error message to associate with the exception. Defaults to "Whoami error".
+            """
+            self.message = message
 
-        nio_mock.AsyncClient = MagicMock()
-        nio_mock.AsyncClientConfig = MagicMock()
-        nio_mock.MatrixRoom = MockMatrixRoom
-        nio_mock.ReactionEvent = MockReactionEvent
-        nio_mock.RoomMessageEmote = MockRoomMessageEmote
-        nio_mock.RoomMessageNotice = MockRoomMessageNotice
-        nio_mock.RoomMessageText = MockRoomMessageText
-        nio_mock.UploadResponse = MagicMock()
-        nio_mock.WhoamiError = MockWhoamiError
+    nio_mock.AsyncClient = MagicMock()
+    nio_mock.AsyncClientConfig = MagicMock()
+    nio_mock.MatrixRoom = MockMatrixRoom
+    nio_mock.ReactionEvent = MockReactionEvent
+    nio_mock.RoomMessageEmote = MockRoomMessageEmote
+    nio_mock.RoomMessageNotice = MockRoomMessageNotice
+    nio_mock.RoomMessageText = MockRoomMessageText
+    nio_mock.UploadResponse = MagicMock()
+    nio_mock.WhoamiError = MockWhoamiError
 
-        # Mock RoomMemberEvent from nio.events.room_events
-        sys.modules["nio.events.room_events"].RoomMemberEvent = MagicMock()
+    # Mock RoomMemberEvent from nio.events.room_events
+    sys.modules["nio.events.room_events"].RoomMemberEvent = MagicMock()
 
 def setup_optional_dependency_mocks():
     """Set up mocks for optional dependencies that might not be installed."""
