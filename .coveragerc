@@ -13,7 +13,7 @@ omit =
     */setup.py
     */conftest.py
 branch = True
-relative_files = True
+relative_files = False
 
 [report]
 exclude_lines =
@@ -24,7 +24,7 @@ exclude_lines =
     raise AssertionError
     raise NotImplementedError
     if 0:
-    if __name__ == .__main__.:
+    if __name__ == .__main__.
     class .*\bProtocol\):
     @(abc\.)?abstractmethod
 ignore_errors = True
