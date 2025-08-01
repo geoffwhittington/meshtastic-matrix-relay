@@ -1,6 +1,7 @@
+ignore:
+  - "tests/**/*"
+
 coverage:
-  ignore:
-    - "tests/**/*"
   status:
     project:
       default:
