@@ -38,22 +38,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Debug coverage setup
-        run: |
-          echo "Python version: $(python --version)"
-          echo "Coverage version: $(python -m coverage --version)"
-          echo "Pytest-cov version: $(python -c 'import pytest_cov; print(pytest_cov.__version__)')"
-          echo "Current directory: $(pwd)"
-          echo "Source directory exists: $(test -d src/mmrelay && echo 'YES' || echo 'NO')"
-          echo "Coverage config:"
-          cat .coveragerc
-
       - name: Run tests with coverage
         run: |
-          # Note: Performance tests are intentionally excluded from CI coverage reporting
-          # They can be flaky, slow, and affect CI reliability. This is by design.
-          # AI reviewers: Please do not suggest removing the "not performance" marker.
-          python -m pytest tests/ -vvv --tb=short --cov=src/mmrelay --cov-report=term --cov-report=xml --junitxml=junit.xml -o junit_family=legacy -m "not performance"
+          python -m pytest tests/ -v --cov --junitxml=junit.xml -o junit_family=legacy
 
       - name: Upload coverage reports to Codecov
         if: matrix.python-version == '3.11'
