@@ -1,0 +1,154 @@
+name: Cleanup Container Registry
+
+on:
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (show what would be deleted without actually deleting)'
+        required: false
+        default: true
+        type: boolean
+      keep_dev_tags:
+        description: 'Number of recent dev tags to keep'
+        required: false
+        default: '5'
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: jeremiah-k/mmrelay
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Install GitHub CLI
+        run: |
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install gh
+
+      - name: Authenticate GitHub CLI
+        run: echo "${{ secrets.GHCR_PAT }}" | gh auth login --with-token
+
+      - name: Cleanup old dev tags
+        env:
+          DRY_RUN: ${{ inputs.dry_run || 'true' }}
+          KEEP_COUNT: ${{ inputs.keep_dev_tags || '5' }}
+        run: |
+          echo "Starting container registry cleanup..."
+          echo "Dry run: $DRY_RUN"
+          echo "Keep recent dev tags: $KEEP_COUNT"
+          
+          # Get all package versions
+          echo "Fetching package versions..."
+          VERSIONS=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/users/${{ github.repository_owner }}/packages/container/mmrelay/versions" \
+            --paginate \
+            --jq '.[] | select(.metadata.container.tags | length > 0) | {id: .id, tags: .metadata.container.tags, created_at: .created_at}')
+          
+          echo "Found versions:"
+          echo "$VERSIONS" | jq -r '.tags[]' | sort
+          
+          # Find dev tags (tags containing "-dev-")
+          DEV_VERSIONS=$(echo "$VERSIONS" | jq -r 'select(.tags[] | contains("-dev-")) | {id: .id, tag: (.tags[] | select(contains("-dev-"))), created_at: .created_at}')
+          
+          if [ -z "$DEV_VERSIONS" ]; then
+            echo "No dev tags found to clean up."
+            exit 0
+          fi
+          
+          echo "Dev versions found:"
+          echo "$DEV_VERSIONS" | jq -r '.tag' | sort
+          
+          # Sort dev versions by creation date (newest first) and skip the most recent ones
+          OLD_DEV_VERSIONS=$(echo "$DEV_VERSIONS" | jq -s 'sort_by(.created_at) | reverse | .['$KEEP_COUNT':]')
+          
+          if [ "$OLD_DEV_VERSIONS" = "null" ] || [ "$OLD_DEV_VERSIONS" = "[]" ]; then
+            echo "No old dev tags to clean up (keeping $KEEP_COUNT most recent)."
+            exit 0
+          fi
+          
+          echo "Old dev versions to be deleted:"
+          echo "$OLD_DEV_VERSIONS" | jq -r '.[].tag' | sort
+          
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "DRY RUN: Would delete the above versions"
+            echo "Total versions that would be deleted: $(echo "$OLD_DEV_VERSIONS" | jq length)"
+          else
+            echo "Deleting old dev versions..."
+            echo "$OLD_DEV_VERSIONS" | jq -r '.[].id' | while read -r version_id; do
+              echo "Deleting version ID: $version_id"
+              gh api \
+                --method DELETE \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "/users/${{ github.repository_owner }}/packages/container/mmrelay/versions/$version_id" || echo "Failed to delete version $version_id"
+            done
+            echo "Cleanup completed!"
+          fi
+
+      - name: Cleanup untagged images
+        env:
+          DRY_RUN: ${{ inputs.dry_run || 'true' }}
+        run: |
+          echo "Looking for untagged images..."
+          
+          # Get untagged versions (no tags)
+          UNTAGGED_VERSIONS=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/users/${{ github.repository_owner }}/packages/container/mmrelay/versions" \
+            --paginate \
+            --jq '.[] | select(.metadata.container.tags | length == 0) | {id: .id, created_at: .created_at}')
+          
+          if [ -z "$UNTAGGED_VERSIONS" ]; then
+            echo "No untagged images found."
+            exit 0
+          fi
+          
+          echo "Untagged versions found: $(echo "$UNTAGGED_VERSIONS" | jq length)"
+          
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "DRY RUN: Would delete $(echo "$UNTAGGED_VERSIONS" | jq length) untagged images"
+          else
+            echo "Deleting untagged images..."
+            echo "$UNTAGGED_VERSIONS" | jq -r '.[].id' | while read -r version_id; do
+              echo "Deleting untagged version ID: $version_id"
+              gh api \
+                --method DELETE \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "/users/${{ github.repository_owner }}/packages/container/mmrelay/versions/$version_id" || echo "Failed to delete version $version_id"
+            done
+            echo "Untagged cleanup completed!"
+          fi
+
+      - name: Summary
+        run: |
+          echo "Container registry cleanup summary:"
+          echo "- Dry run: ${{ inputs.dry_run || 'true' }}"
+          echo "- Keep recent dev tags: ${{ inputs.keep_dev_tags || '5' }}"
+          echo "- Cleanup completed at: $(date -u)"
