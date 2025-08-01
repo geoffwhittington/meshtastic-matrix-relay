@@ -72,16 +72,38 @@ sys.modules["nio"] = nio_mock
 sys.modules["nio.events"] = MagicMock()
 sys.modules["nio.events.room_events"] = MagicMock()
 
+# Create proper mock classes for nio that can be used with isinstance()
+class MockMatrixRoom:
+    pass
+
+class MockReactionEvent:
+    pass
+
+class MockRoomMessageEmote:
+    pass
+
+class MockRoomMessageNotice:
+    pass
+
+class MockRoomMessageText:
+    pass
+
+class MockWhoamiError(Exception):
+    """Mock WhoamiError that inherits from Exception for isinstance checks."""
+    def __init__(self, message="Whoami error"):
+        super().__init__(message)
+        self.message = message
+
 # Mock specific nio classes that are imported directly
 nio_mock.AsyncClient = MagicMock()
 nio_mock.AsyncClientConfig = MagicMock()
-nio_mock.MatrixRoom = MagicMock()
-nio_mock.ReactionEvent = MagicMock()
-nio_mock.RoomMessageEmote = MagicMock()
-nio_mock.RoomMessageNotice = MagicMock()
-nio_mock.RoomMessageText = MagicMock()
+nio_mock.MatrixRoom = MockMatrixRoom
+nio_mock.ReactionEvent = MockReactionEvent
+nio_mock.RoomMessageEmote = MockRoomMessageEmote
+nio_mock.RoomMessageNotice = MockRoomMessageNotice
+nio_mock.RoomMessageText = MockRoomMessageText
 nio_mock.UploadResponse = MagicMock()
-nio_mock.WhoamiError = MagicMock()
+nio_mock.WhoamiError = MockWhoamiError
 
 # Mock RoomMemberEvent from nio.events.room_events
 sys.modules["nio.events.room_events"].RoomMemberEvent = MagicMock()
@@ -93,11 +115,37 @@ sys.modules["PIL.ImageDraw"] = MagicMock()
 
 # Mock other external dependencies (but avoid Python built-ins)
 sys.modules["certifi"] = MagicMock()
-sys.modules["serial"] = MagicMock()
+# Create proper exception class for serial
+class SerialException(Exception):
+    """Mock SerialException for testing."""
+    pass
+
+# Create serial module with proper exception
+serial_mock = MagicMock()
+serial_mock.SerialException = SerialException
+sys.modules["serial"] = serial_mock
 sys.modules["serial.tools"] = MagicMock()
 sys.modules["serial.tools.list_ports"] = MagicMock()
+# Create proper exception classes for bleak that inherit from Exception
+class BleakError(Exception):
+    """Mock BleakError exception for testing."""
+    pass
+
+class BleakDBusError(BleakError):
+    """Mock BleakDBusError exception for testing."""
+    pass
+
+# Create a proper module-like object for bleak.exc
+class BleakExcModule:
+    BleakError = BleakError
+    BleakDBusError = BleakDBusError
+
 sys.modules["bleak"] = MagicMock()
-sys.modules["bleak.exc"] = MagicMock()
+sys.modules["bleak.exc"] = BleakExcModule()
+
+# Also add the exceptions to the main bleak module for direct import
+sys.modules["bleak"].BleakError = BleakError
+sys.modules["bleak"].BleakDBusError = BleakDBusError
 sys.modules["pubsub"] = MagicMock()
 sys.modules["matplotlib"] = MagicMock()
 sys.modules["matplotlib.pyplot"] = MagicMock()
@@ -107,6 +155,7 @@ sys.modules["haversine"] = MagicMock()
 sys.modules["schedule"] = MagicMock()
 sys.modules["platformdirs"] = MagicMock()
 sys.modules["py_staticmaps"] = MagicMock()
+sys.modules["s2sphere"] = MagicMock()
 
 # Mock Rich modules but preserve rich.logging for proper logging functionality
 # Import the real rich module first to preserve its structure
