@@ -57,51 +57,41 @@ def ensure_builtins_not_mocked():
 # Mock Meshtastic modules only if they don't exist
 # This prevents ImportError while allowing actual code execution
 def setup_meshtastic_mocks():
-    """Set up Meshtastic mocks only if modules aren't already available."""
-    try:
-        import meshtastic
-        # If import succeeds, don't mock - use real module
-        return
-    except ImportError:
-        # Only mock if import fails
-        meshtastic_mock = MagicMock()
-        sys.modules["meshtastic"] = meshtastic_mock
-        sys.modules["meshtastic.protobuf"] = MagicMock()
-        sys.modules["meshtastic.protobuf.portnums_pb2"] = MagicMock()
-        sys.modules["meshtastic.protobuf.portnums_pb2"].PortNum = MagicMock()
-        sys.modules["meshtastic.protobuf.portnums_pb2"].PortNum.DETECTION_SENSOR_APP = 1
-        sys.modules["meshtastic.protobuf.mesh_pb2"] = MagicMock()
-        sys.modules["meshtastic.ble_interface"] = MagicMock()
-        sys.modules["meshtastic.serial_interface"] = MagicMock()
-        sys.modules["meshtastic.tcp_interface"] = MagicMock()
-        sys.modules["meshtastic.mesh_interface"] = MagicMock()
+    """Set up Meshtastic mocks consistently for all test environments."""
+    # Always mock for consistent test behavior across Python versions
+    meshtastic_mock = MagicMock()
+    sys.modules["meshtastic"] = meshtastic_mock
+    sys.modules["meshtastic.protobuf"] = MagicMock()
+    sys.modules["meshtastic.protobuf.portnums_pb2"] = MagicMock()
+    sys.modules["meshtastic.protobuf.portnums_pb2"].PortNum = MagicMock()
+    sys.modules["meshtastic.protobuf.portnums_pb2"].PortNum.DETECTION_SENSOR_APP = 1
+    sys.modules["meshtastic.protobuf.mesh_pb2"] = MagicMock()
+    sys.modules["meshtastic.ble_interface"] = MagicMock()
+    sys.modules["meshtastic.serial_interface"] = MagicMock()
+    sys.modules["meshtastic.tcp_interface"] = MagicMock()
+    sys.modules["meshtastic.mesh_interface"] = MagicMock()
 
-        # Set up meshtastic constants
-        meshtastic_mock.BROADCAST_ADDR = "^all"
+    # Set up meshtastic constants
+    meshtastic_mock.BROADCAST_ADDR = "^all"
 
 def setup_nio_mocks():
-    """Set up Matrix-nio mocks only if modules aren't already available."""
-    try:
-        import nio
-        # If import succeeds, don't mock - use real module
-        return
-    except ImportError:
-        # Only mock if import fails
-        nio_mock = MagicMock()
-        sys.modules["nio"] = nio_mock
-        sys.modules["nio.events"] = MagicMock()
-        sys.modules["nio.events.room_events"] = MagicMock()
+    """Set up Matrix-nio mocks consistently for all test environments."""
+    # Always mock for consistent test behavior across Python versions
+    nio_mock = MagicMock()
+    sys.modules["nio"] = nio_mock
+    sys.modules["nio.events"] = MagicMock()
+    sys.modules["nio.events.room_events"] = MagicMock()
 
-        # Mock specific nio classes that are imported directly
-        # Create proper mock classes that can be used with isinstance()
-        class MockReactionEvent:
-            pass
+    # Mock specific nio classes that are imported directly
+    # Create proper mock classes that can be used with isinstance()
+    class MockReactionEvent:
+        pass
 
-        class MockRoomMessageEmote:
-            pass
+    class MockRoomMessageEmote:
+        pass
 
-        class MockRoomMessageText:
-            pass
+    class MockRoomMessageText:
+        pass
 
         class MockRoomMessageNotice:
             pass
@@ -160,34 +150,32 @@ def setup_optional_dependency_mocks():
 
 
 def setup_bleak_mocks():
-    """Set up Bleak (Bluetooth) mocks only if not available."""
-    try:
-        import bleak
-    except ImportError:
-        # Create proper exception classes for bleak that inherit from Exception
-        class BleakError(Exception):
-            """Mock BleakError exception for testing."""
-            pass
+    """Set up Bleak (Bluetooth) mocks consistently for all test environments."""
+    # Always mock for consistent test behavior across Python versions
+    # Create proper exception classes for bleak that inherit from Exception
+    class BleakError(Exception):
+        """Mock BleakError exception for testing."""
+        pass
 
-        class BleakDBusError(BleakError):
-            """Mock BleakDBusError exception for testing."""
-            pass
+    class BleakDBusError(BleakError):
+        """Mock BleakDBusError exception for testing."""
+        pass
 
-        # Create a proper module-like object for bleak.exc
-        class BleakExcModule:
-            pass
+    # Create a proper module-like object for bleak.exc
+    class BleakExcModule:
+        pass
 
-        # Set the exception classes as attributes
-        BleakExcModule.BleakError = BleakError
-        BleakExcModule.BleakDBusError = BleakDBusError
+    # Set the exception classes as attributes
+    BleakExcModule.BleakError = BleakError
+    BleakExcModule.BleakDBusError = BleakDBusError
 
-        # Create main bleak module mock with exception classes
-        bleak_module = MagicMock()
-        bleak_module.BleakError = BleakError
-        bleak_module.BleakDBusError = BleakDBusError
+    # Create main bleak module mock with exception classes
+    bleak_module = MagicMock()
+    bleak_module.BleakError = BleakError
+    bleak_module.BleakDBusError = BleakDBusError
 
-        sys.modules["bleak"] = bleak_module
-        sys.modules["bleak.exc"] = BleakExcModule()
+    sys.modules["bleak"] = bleak_module
+    sys.modules["bleak.exc"] = BleakExcModule()
 
 def setup_remaining_mocks():
     """Set up mocks for remaining dependencies."""
