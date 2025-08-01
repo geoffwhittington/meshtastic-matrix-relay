@@ -1,4 +1,4 @@
-name: Docker Build
+name: Docker Build and Publish
 
 on:
   workflow_dispatch:
@@ -16,29 +16,47 @@ permissions:
 jobs:
   docker-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract version
+      - name: Extract version and build info
         id: get_version
         run: |
           VERSION=$(python3 -c "import sys; sys.path.insert(0, 'src'); from mmrelay import __version__; print(__version__)")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+          BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
+
+          VCS_REF=$(git rev-parse HEAD)
+          echo "vcs_ref=$VCS_REF" >> $GITHUB_OUTPUT
+
+          GIT_SHA=$(git rev-parse --short HEAD)
+          echo "git_sha=$GIT_SHA" >> $GITHUB_OUTPUT
+
           if [ "${{ github.event_name }}" == "release" ]; then
             echo "docker_tag=$VERSION" >> $GITHUB_OUTPUT
             echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "should_tag_latest=true" >> $GITHUB_OUTPUT
           else
-            GIT_SHA=$(git rev-parse --short HEAD)
             echo "docker_tag=$VERSION-dev-$GIT_SHA" >> $GITHUB_OUTPUT
             echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "should_tag_latest=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: Set up QEMU for multi-platform builds
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            network=host
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -54,7 +72,17 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=${{ steps.get_version.outputs.docker_tag }}
-            type=raw,value=latest,enable=${{ steps.get_version.outputs.is_release == 'true' }}
+            type=raw,value=latest,enable=${{ steps.get_version.outputs.should_tag_latest == 'true' }}
+          labels: |
+            org.opencontainers.image.title=Meshtastic Matrix Relay
+            org.opencontainers.image.description=A bridge between Meshtastic mesh networks and Matrix chat rooms
+            org.opencontainers.image.url=https://github.com/jeremiah-k/meshtastic-matrix-relay
+            org.opencontainers.image.source=https://github.com/jeremiah-k/meshtastic-matrix-relay
+            org.opencontainers.image.documentation=https://github.com/jeremiah-k/meshtastic-matrix-relay/blob/main/README.md
+            org.opencontainers.image.licenses=GPL-3.0-or-later
+            org.opencontainers.image.version=${{ steps.get_version.outputs.version }}
+            org.opencontainers.image.revision=${{ steps.get_version.outputs.vcs_ref }}
+            org.opencontainers.image.created=${{ steps.get_version.outputs.build_date }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -64,5 +92,10 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ steps.get_version.outputs.build_date }}
+            VCS_REF=${{ steps.get_version.outputs.vcs_ref }}
+            VERSION=${{ steps.get_version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: false
