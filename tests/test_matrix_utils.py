@@ -720,14 +720,22 @@ def test_format_reply_message():
     assert "This is a reply" in result
 
 
-# Bot command detection tests - converted from unittest.TestCase to standalone pytest functions
+# Bot command detection tests - refactored to use test class with fixtures for better maintainability
 
-def test_bot_command_direct_mention():
-    """
-    Tests that a message starting with the bot command triggers correct command detection.
-    """
-    with patch("mmrelay.matrix_utils.bot_user_id", "@bot:matrix.org"), \
-         patch("mmrelay.matrix_utils.bot_user_name", "Bot"):
+class TestBotCommand:
+    """Test class for bot command detection functionality."""
+
+    @pytest.fixture(autouse=True)
+    def mock_bot_globals(self):
+        """Fixture to mock bot user globals for all tests in this class."""
+        with patch("mmrelay.matrix_utils.bot_user_id", "@bot:matrix.org"), \
+             patch("mmrelay.matrix_utils.bot_user_name", "Bot"):
+            yield
+
+    def test_direct_mention(self):
+        """
+        Tests that a message starting with the bot command triggers correct command detection.
+        """
         mock_event = MagicMock()
         mock_event.body = "!help"
         mock_event.source = {"content": {"formatted_body": "!help"}}
@@ -735,13 +743,10 @@ def test_bot_command_direct_mention():
         result = bot_command("help", mock_event)
         assert result
 
-
-def test_bot_command_no_match():
-    """
-    Test that a non-command message does not trigger bot command detection.
-    """
-    with patch("mmrelay.matrix_utils.bot_user_id", "@bot:matrix.org"), \
-         patch("mmrelay.matrix_utils.bot_user_name", "Bot"):
+    def test_no_match(self):
+        """
+        Test that a non-command message does not trigger bot command detection.
+        """
         mock_event = MagicMock()
         mock_event.body = "regular message"
         mock_event.source = {"content": {"formatted_body": "regular message"}}
@@ -749,13 +754,10 @@ def test_bot_command_no_match():
         result = bot_command("help", mock_event)
         assert not result
 
-
-def test_bot_command_case_insensitive():
-    """
-    Test that bot command detection is case-insensitive by verifying a command matches regardless of letter case.
-    """
-    with patch("mmrelay.matrix_utils.bot_user_id", "@bot:matrix.org"), \
-         patch("mmrelay.matrix_utils.bot_user_name", "Bot"):
+    def test_case_insensitive(self):
+        """
+        Test that bot command detection is case-insensitive by verifying a command matches regardless of letter case.
+        """
         mock_event = MagicMock()
         mock_event.body = "!HELP"
         mock_event.source = {"content": {"formatted_body": "!HELP"}}
@@ -763,13 +765,10 @@ def test_bot_command_case_insensitive():
         result = bot_command("HELP", mock_event)  # Command should match case
         assert result
 
-
-def test_bot_command_with_args():
-    """
-    Test that the bot command is correctly detected when followed by additional arguments.
-    """
-    with patch("mmrelay.matrix_utils.bot_user_id", "@bot:matrix.org"), \
-         patch("mmrelay.matrix_utils.bot_user_name", "Bot"):
+    def test_with_args(self):
+        """
+        Test that the bot command is correctly detected when followed by additional arguments.
+        """
         mock_event = MagicMock()
         mock_event.body = "!help me please"
         mock_event.source = {"content": {"formatted_body": "!help me please"}}
@@ -797,7 +796,7 @@ async def test_connect_matrix_success(matrix_config):
     """Test successful Matrix connection."""
     with patch("mmrelay.matrix_utils.matrix_client", None), \
          patch("mmrelay.matrix_utils.AsyncClient") as mock_async_client, \
-         patch("mmrelay.matrix_utils.logger") as mock_logger:
+         patch("mmrelay.matrix_utils.logger"):
 
         # Mock the AsyncClient instance
         mock_client_instance = AsyncMock()
@@ -826,7 +825,7 @@ async def test_connect_matrix_whoami_error(matrix_config):
 
     with patch("mmrelay.matrix_utils.matrix_client", None), \
          patch("mmrelay.matrix_utils.AsyncClient") as mock_async_client, \
-         patch("mmrelay.matrix_utils.logger") as mock_logger:
+         patch("mmrelay.matrix_utils.logger"):
 
         mock_client_instance = AsyncMock()
         mock_async_client.return_value = mock_client_instance
