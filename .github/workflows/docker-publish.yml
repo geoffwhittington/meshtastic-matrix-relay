@@ -2,12 +2,6 @@ name: Docker Build and Publish
 
 on:
   workflow_dispatch:
-    inputs:
-      force_latest:
-        description: 'Force tag as latest (for manual builds)'
-        required: false
-        default: false
-        type: boolean
   release:
     types: [published]
 
@@ -47,10 +41,6 @@ jobs:
             echo "docker_tag=$VERSION" >> $GITHUB_OUTPUT
             echo "is_release=true" >> $GITHUB_OUTPUT
             echo "should_tag_latest=true" >> $GITHUB_OUTPUT
-          elif [ "${{ inputs.force_latest }}" == "true" ]; then
-            echo "docker_tag=$VERSION-dev-$GIT_SHA" >> $GITHUB_OUTPUT
-            echo "is_release=false" >> $GITHUB_OUTPUT
-            echo "should_tag_latest=true" >> $GITHUB_OUTPUT
           else
             echo "docker_tag=$VERSION-dev-$GIT_SHA" >> $GITHUB_OUTPUT
             echo "is_release=false" >> $GITHUB_OUTPUT
@@ -60,7 +50,7 @@ jobs:
       - name: Set up QEMU for multi-platform builds
         uses: docker/setup-qemu-action@v3
         with:
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          platforms: linux/amd64,linux/arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -98,7 +88,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
