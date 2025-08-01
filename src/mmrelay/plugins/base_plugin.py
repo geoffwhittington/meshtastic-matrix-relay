@@ -256,6 +256,43 @@ class BasePlugin(ABC):
         """
         return self.response_delay
 
+    def get_my_node_id(self):
+        """Get the relay's Meshtastic node ID.
+
+        Returns:
+            int: The relay's node ID, or None if unavailable
+
+        This method provides access to the relay's own node ID without requiring
+        plugins to call connect_meshtastic() directly. Useful for determining
+        if messages are direct messages or for other node identification needs.
+        """
+        from mmrelay.meshtastic_utils import connect_meshtastic
+
+        meshtastic_client = connect_meshtastic()
+        if meshtastic_client and meshtastic_client.myInfo:
+            return meshtastic_client.myInfo.my_node_num
+        return None
+
+    def is_direct_message(self, packet):
+        """Check if a Meshtastic packet is a direct message to this relay.
+
+        Args:
+            packet (dict): Meshtastic packet data
+
+        Returns:
+            bool: True if the packet is a direct message to this relay, False otherwise
+
+        This method encapsulates the common pattern of checking if a message
+        is addressed directly to the relay node, eliminating the need for plugins
+        to call connect_meshtastic() directly for DM detection.
+        """
+        toId = packet.get("to")
+        if toId is None:
+            return False
+
+        myId = self.get_my_node_id()
+        return toId == myId if myId is not None else False
+
     def send_message(self, text: str, channel: int = 0, destination_id=None) -> bool:
         """
         Send a message to the Meshtastic network using the message queue.

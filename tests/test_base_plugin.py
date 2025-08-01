@@ -453,6 +453,94 @@ class TestBasePlugin(unittest.TestCase):
             self.assertEqual(result, "/path/to/plugin/data")
             mock_get_dir.assert_called_once_with("test_plugin")
 
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
+    def test_get_my_node_id_success(self, mock_connect_meshtastic):
+        """Test that get_my_node_id returns the correct node ID when available."""
+        plugin = MockPlugin()
+
+        # Mock meshtastic client with node info
+        mock_client = MagicMock()
+        mock_client.myInfo.my_node_num = 123456789
+        mock_connect_meshtastic.return_value = mock_client
+
+        result = plugin.get_my_node_id()
+
+        self.assertEqual(result, 123456789)
+        mock_connect_meshtastic.assert_called_once()
+
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
+    def test_get_my_node_id_no_client(self, mock_connect_meshtastic):
+        """Test that get_my_node_id returns None when no client is available."""
+        plugin = MockPlugin()
+
+        mock_connect_meshtastic.return_value = None
+
+        result = plugin.get_my_node_id()
+
+        self.assertIsNone(result)
+
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
+    def test_get_my_node_id_no_myinfo(self, mock_connect_meshtastic):
+        """Test that get_my_node_id returns None when client has no myInfo."""
+        plugin = MockPlugin()
+
+        # Mock client without myInfo
+        mock_client = MagicMock()
+        mock_client.myInfo = None
+        mock_connect_meshtastic.return_value = mock_client
+
+        result = plugin.get_my_node_id()
+
+        self.assertIsNone(result)
+
+    @patch.object(MockPlugin, 'get_my_node_id')
+    def test_is_direct_message_true(self, mock_get_my_node_id):
+        """Test that is_direct_message returns True for direct messages."""
+        plugin = MockPlugin()
+        mock_get_my_node_id.return_value = 123456789
+
+        packet = {"to": 123456789}
+
+        result = plugin.is_direct_message(packet)
+
+        self.assertTrue(result)
+
+    @patch.object(MockPlugin, 'get_my_node_id')
+    def test_is_direct_message_false(self, mock_get_my_node_id):
+        """Test that is_direct_message returns False for broadcast messages."""
+        plugin = MockPlugin()
+        mock_get_my_node_id.return_value = 123456789
+
+        packet = {"to": 987654321}  # Different node ID
+
+        result = plugin.is_direct_message(packet)
+
+        self.assertFalse(result)
+
+    @patch.object(MockPlugin, 'get_my_node_id')
+    def test_is_direct_message_no_to_field(self, mock_get_my_node_id):
+        """Test that is_direct_message returns False when packet has no 'to' field."""
+        plugin = MockPlugin()
+        mock_get_my_node_id.return_value = 123456789
+
+        packet = {}  # No 'to' field
+
+        result = plugin.is_direct_message(packet)
+
+        self.assertFalse(result)
+
+    @patch.object(MockPlugin, 'get_my_node_id')
+    def test_is_direct_message_no_node_id(self, mock_get_my_node_id):
+        """Test that is_direct_message returns False when node ID is unavailable."""
+        plugin = MockPlugin()
+        mock_get_my_node_id.return_value = None
+
+        packet = {"to": 123456789}
+
+        result = plugin.is_direct_message(packet)
+
+        self.assertFalse(result)
+
 
 if __name__ == "__main__":
     unittest.main()
