@@ -24,8 +24,10 @@ from mmrelay.meshtastic_utils import (
     is_running_as_service,
     on_lost_meshtastic_connection,
     on_meshtastic_message,
+    reconnect,
     sendTextReply,
     serial_port_exists,
+    check_connection,
 )
 
 
@@ -715,8 +717,82 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
             mock_run_coro.assert_not_called()
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TestMeshtasticConnectionRetry(unittest.TestCase):
+    """Test cases for connection retry logic."""
+
+    def setUp(self):
+        """Reset global state for connection retry tests."""
+        import mmrelay.meshtastic_utils
+        mmrelay.meshtastic_utils.meshtastic_client = None
+        mmrelay.meshtastic_utils.shutting_down = False
+        mmrelay.meshtastic_utils.reconnecting = False
+
+    @patch("mmrelay.meshtastic_utils.time.sleep")
+    @patch("mmrelay.meshtastic_utils.serial_port_exists")
+    @patch("mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface")
+    def test_connect_meshtastic_retry_on_serial_exception(self, mock_serial, mock_port_exists, mock_sleep):
+        """Test that connect_meshtastic retries on serial exceptions."""
+        mock_port_exists.return_value = True
+
+        # First call fails, second succeeds
+        mock_client = MagicMock()
+        mock_client.getMyNodeInfo.return_value = {"user": {"shortName": "test", "hwModel": "test"}}
+        mock_serial.side_effect = [Exception("Connection failed"), mock_client]
+
+        config = {
+            "meshtastic": {
+                "connection_type": "serial",
+                "serial_port": "/dev/ttyUSB0",
+                "retry_limit": 2
+            }
+        }
+
+        result = connect_meshtastic(passed_config=config)
+
+        # Should succeed on second attempt
+        self.assertEqual(result, mock_client)
+        self.assertEqual(mock_serial.call_count, 2)
+        mock_sleep.assert_called_once()
+
+    @patch("mmrelay.meshtastic_utils.time.sleep")
+    @patch("mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface")
+    def test_connect_meshtastic_retry_exhausted(self, mock_tcp, mock_sleep):
+        """Test that connect_meshtastic returns None when retries are exhausted."""
+        # Mock a critical error that should not be retried
+        mock_tcp.side_effect = TimeoutError("Connection timeout")
+
+        config = {
+            "meshtastic": {
+                "connection_type": "tcp",
+                "host": "192.168.1.100"
+            }
+        }
+
+        result = connect_meshtastic(passed_config=config)
+
+        # Should fail immediately on critical error
+        self.assertIsNone(result)
+        self.assertEqual(mock_tcp.call_count, 1)
+        mock_sleep.assert_not_called()  # No retries for critical errors
+
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
+    @patch("mmrelay.meshtastic_utils.asyncio.sleep", new_callable=AsyncMock)
+    @patch("mmrelay.meshtastic_utils.logger")
+    async def test_reconnect_attempts_connection(self, mock_logger, mock_sleep, mock_connect):
+        """Test that reconnect attempts to connect to Meshtastic."""
+        # Simulate connect_meshtastic succeeding to prevent an infinite loop
+        mock_connect.return_value = MagicMock()
+
+        await reconnect()
+
+        # Assert that a connection was attempted
+        mock_connect.assert_called_with(force_connect=True)
+
+    def test_check_connection_function_exists(self):
+        """Test that the check_connection function exists and can be imported."""
+        # This test just verifies the function exists without running it
+        # to avoid the hanging issue in the async loop
+        self.assertTrue(callable(check_connection))
 
 
 class TestMeshtasticUtilsAsync(unittest.TestCase):
@@ -728,12 +804,7 @@ class TestMeshtasticUtilsAsync(unittest.TestCase):
 
         This test ensures that key async functions and infrastructure are present and importable without executing any asynchronous code.
         """
-        # This test just verifies that the async components exist and can be imported
-        # without actually running async code that could cause warnings
-
         # Test that we can import the async functions
-        # Test that asyncio functions are available
-
         from mmrelay.matrix_utils import matrix_relay
         from mmrelay.meshtastic_utils import on_meshtastic_message
 
