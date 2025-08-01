@@ -557,6 +557,40 @@ class TestBasePlugin(unittest.TestCase):
 
         self.assertFalse(result)
 
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
+    def test_get_my_node_id_no_cache_no_client(self, mock_connect_meshtastic):
+        """Test that get_my_node_id returns None when no client and no cache."""
+        plugin = MockPlugin()
+
+        # Ensure no cache exists
+        if hasattr(plugin, '_my_node_id'):
+            delattr(plugin, '_my_node_id')
+
+        mock_connect_meshtastic.return_value = None
+
+        result = plugin.get_my_node_id()
+
+        self.assertIsNone(result)
+        mock_connect_meshtastic.assert_called_once()
+
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
+    def test_is_direct_message_with_none_node_id(self, mock_connect_meshtastic):
+        """Test is_direct_message when get_my_node_id returns None."""
+        plugin = MockPlugin()
+
+        # Ensure no cache exists
+        if hasattr(plugin, '_my_node_id'):
+            delattr(plugin, '_my_node_id')
+
+        # Mock connect_meshtastic to return None (no client)
+        mock_connect_meshtastic.return_value = None
+
+        packet = {"to": 123456789}
+
+        result = plugin.is_direct_message(packet)
+
+        self.assertFalse(result)
+
 
 if __name__ == "__main__":
     unittest.main()
