@@ -469,6 +469,22 @@ class TestBasePlugin(unittest.TestCase):
         mock_connect_meshtastic.assert_called_once()
 
     @patch("mmrelay.meshtastic_utils.connect_meshtastic")
+    def test_get_my_node_id_caches_on_success(self, mock_connect_meshtastic):
+        """Test that get_my_node_id caches the node ID on a successful call."""
+        plugin = MockPlugin()
+        mock_client = MagicMock()
+        mock_client.myInfo.my_node_num = 123456789
+        mock_connect_meshtastic.return_value = mock_client
+
+        # First call should connect and cache
+        self.assertEqual(plugin.get_my_node_id(), 123456789)
+        mock_connect_meshtastic.assert_called_once()
+
+        # Second call should use the cache
+        self.assertEqual(plugin.get_my_node_id(), 123456789)
+        mock_connect_meshtastic.assert_called_once()  # Still called only once
+
+    @patch("mmrelay.meshtastic_utils.connect_meshtastic")
     def test_get_my_node_id_no_client(self, mock_connect_meshtastic):
         """Test that get_my_node_id returns None when no client is available."""
         plugin = MockPlugin()

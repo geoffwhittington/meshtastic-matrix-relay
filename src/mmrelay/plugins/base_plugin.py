@@ -265,12 +265,19 @@ class BasePlugin(ABC):
         This method provides access to the relay's own node ID without requiring
         plugins to call connect_meshtastic() directly. Useful for determining
         if messages are direct messages or for other node identification needs.
+
+        The node ID is cached after first successful retrieval to avoid repeated
+        connection calls, as the relay's node ID is static during runtime.
         """
+        if hasattr(self, "_my_node_id"):
+            return self._my_node_id
+
         from mmrelay.meshtastic_utils import connect_meshtastic
 
         meshtastic_client = connect_meshtastic()
         if meshtastic_client and meshtastic_client.myInfo:
-            return meshtastic_client.myInfo.my_node_num
+            self._my_node_id = meshtastic_client.myInfo.my_node_num
+            return self._my_node_id
         return None
 
     def is_direct_message(self, packet):
@@ -291,7 +298,7 @@ class BasePlugin(ABC):
             return False
 
         myId = self.get_my_node_id()
-        return toId == myId if myId is not None else False
+        return toId == myId
 
     def send_message(self, text: str, channel: int = 0, destination_id=None) -> bool:
         """
