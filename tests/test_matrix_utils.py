@@ -12,14 +12,20 @@ from mmrelay.matrix_utils import (
     _create_mapping_info,
     _get_msgs_to_keep_config,
     bot_command,
+    connect_matrix,
     format_reply_message,
     get_interaction_settings,
     get_matrix_prefix,
     get_meshtastic_prefix,
+    get_user_display_name,
+    join_matrix_room,
+    matrix_relay,
     message_storage_enabled,
     on_room_message,
+    send_reply_to_meshtastic,
     strip_quoted_lines,
     truncate_message,
+    upload_image,
     validate_prefix_format,
 )
 
@@ -739,6 +745,340 @@ class TestBotCommand(unittest.TestCase):
 
         result = bot_command("help", mock_event)
         self.assertTrue(result)
+
+
+class TestAsyncMatrixFunctions(unittest.TestCase):
+    """Test cases for async Matrix functions."""
+
+    def setUp(self):
+        """Set up test fixtures for async function tests."""
+        self.config = {
+            "matrix": {
+                "homeserver": "https://matrix.org",
+                "access_token": "test_token",
+                "bot_user_id": "@bot:matrix.org",
+                "prefix_enabled": True,
+            },
+            "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}],
+        }
+
+    @patch("mmrelay.matrix_utils.AsyncClient")
+    @patch("mmrelay.matrix_utils.logger")
+    async def test_connect_matrix_success(self, mock_logger, mock_async_client):
+        """Test successful Matrix connection."""
+        # Mock the AsyncClient instance
+        mock_client_instance = AsyncMock()
+        mock_async_client.return_value = mock_client_instance
+
+        # Mock whoami response
+        mock_whoami_response = MagicMock()
+        mock_whoami_response.device_id = "test_device_id"
+        mock_client_instance.whoami.return_value = mock_whoami_response
+
+        # Mock get_displayname response
+        mock_displayname_response = MagicMock()
+        mock_displayname_response.displayname = "Test Bot"
+        mock_client_instance.get_displayname.return_value = mock_displayname_response
+
+        result = await connect_matrix(self.config)
+
+        # Verify client was created and configured
+        mock_async_client.assert_called_once()
+        self.assertEqual(result, mock_client_instance)
+        mock_client_instance.whoami.assert_called_once()
+
+    @patch("mmrelay.matrix_utils.AsyncClient")
+    @patch("mmrelay.matrix_utils.logger")
+    async def test_connect_matrix_whoami_error(self, mock_logger, mock_async_client):
+        """Test Matrix connection when whoami fails."""
+        from nio import WhoamiError
+
+        mock_client_instance = AsyncMock()
+        mock_async_client.return_value = mock_client_instance
+
+        # Mock whoami error
+        mock_whoami_error = WhoamiError("Authentication failed")
+        mock_client_instance.whoami.return_value = mock_whoami_error
+
+        result = await connect_matrix(self.config)
+
+        # Should still return client but with None device_id
+        self.assertEqual(result, mock_client_instance)
+        self.assertIsNone(mock_client_instance.device_id)
+
+    @patch("mmrelay.matrix_utils.matrix_client")
+    @patch("mmrelay.matrix_utils.logger")
+    async def test_join_matrix_room_by_id(self, mock_logger, mock_matrix_client):
+        """Test joining a Matrix room by room ID."""
+        mock_matrix_client.join.return_value = AsyncMock()
+
+        await join_matrix_room(mock_matrix_client, "!room:matrix.org")
+
+        mock_matrix_client.join.assert_called_once_with("!room:matrix.org")
+
+    @patch("mmrelay.matrix_utils.matrix_client")
+    @patch("mmrelay.matrix_utils.matrix_rooms", [])
+    @patch("mmrelay.matrix_utils.logger")
+    async def test_join_matrix_room_by_alias(self, mock_logger, mock_matrix_client):
+        """Test joining a Matrix room by room alias."""
+        # Mock room alias resolution
+        mock_resolve_response = MagicMock()
+        mock_resolve_response.room_id = "!resolved:matrix.org"
+        mock_matrix_client.room_resolve_alias.return_value = mock_resolve_response
+        mock_matrix_client.join.return_value = AsyncMock()
+
+        await join_matrix_room(mock_matrix_client, "#room:matrix.org")
+
+        mock_matrix_client.room_resolve_alias.assert_called_once_with("#room:matrix.org")
+        mock_matrix_client.join.assert_called_once_with("!resolved:matrix.org")
+
+    @patch("mmrelay.matrix_utils.matrix_client")
+    @patch("mmrelay.matrix_utils.logger")
+    async def test_join_matrix_room_alias_resolution_fails(self, mock_logger, mock_matrix_client):
+        """Test joining a Matrix room when alias resolution fails."""
+        # Mock failed alias resolution
+        mock_resolve_response = MagicMock()
+        mock_resolve_response.room_id = None
+        mock_matrix_client.room_resolve_alias.return_value = mock_resolve_response
+
+        await join_matrix_room(mock_matrix_client, "#room:matrix.org")
+
+        # Should not attempt to join if resolution fails
+        mock_matrix_client.join.assert_not_called()
+
+    @patch("mmrelay.matrix_utils.matrix_client")
+    @patch("mmrelay.matrix_utils.get_interaction_settings")
+    @patch("mmrelay.matrix_utils.message_storage_enabled")
+    @patch("mmrelay.matrix_utils.store_message_map")
+    @patch("mmrelay.matrix_utils.prune_message_map")
+    @patch("mmrelay.matrix_utils.logger")
+    async def test_matrix_relay_simple_message(self, mock_logger, mock_prune, mock_store,
+                                               mock_storage_enabled, mock_get_interactions,
+                                               mock_matrix_client):
+        """Test relaying a simple message to Matrix."""
+        # Setup mocks
+        mock_get_interactions.return_value = {"reactions": False, "replies": False}
+        mock_storage_enabled.return_value = False
+
+        # Mock successful message send
+        mock_response = MagicMock()
+        mock_response.event_id = "$event123"
+        mock_matrix_client.room_send.return_value = mock_response
+
+        await matrix_relay(
+            room_id="!room:matrix.org",
+            message="Hello world",
+            longname="Alice",
+            shortname="A",
+            meshnet_name="TestMesh",
+            portnum=1,
+        )
+
+        # Verify message was sent
+        mock_matrix_client.room_send.assert_called_once()
+        call_args = mock_matrix_client.room_send.call_args
+        self.assertEqual(call_args[1]["room_id"], "!room:matrix.org")
+        self.assertEqual(call_args[1]["message_type"], "m.room.message")
+
+    @patch("mmrelay.matrix_utils.matrix_client")
+    @patch("mmrelay.matrix_utils.get_interaction_settings")
+    @patch("mmrelay.matrix_utils.message_storage_enabled")
+    @patch("mmrelay.matrix_utils.logger")
+    async def test_matrix_relay_emote_message(self, mock_logger, mock_storage_enabled,
+                                              mock_get_interactions, mock_matrix_client):
+        """Test relaying an emote message to Matrix."""
+        mock_get_interactions.return_value = {"reactions": False, "replies": False}
+        mock_storage_enabled.return_value = False
+
+        mock_response = MagicMock()
+        mock_response.event_id = "$event123"
+        mock_matrix_client.room_send.return_value = mock_response
+
+        await matrix_relay(
+            room_id="!room:matrix.org",
+            message="waves",
+            longname="Alice",
+            shortname="A",
+            meshnet_name="TestMesh",
+            portnum=1,
+            emote=True,
+        )
+
+        # Verify emote message was sent
+        mock_matrix_client.room_send.assert_called_once()
+        call_args = mock_matrix_client.room_send.call_args
+        content = call_args[1]["content"]
+        self.assertEqual(content["msgtype"], "m.emote")
+
+    @patch("mmrelay.matrix_utils.matrix_client")
+    @patch("mmrelay.matrix_utils.logger")
+    async def test_matrix_relay_client_none(self, mock_logger, mock_matrix_client):
+        """Test matrix_relay when matrix_client is None."""
+        mock_matrix_client = None
+
+        # Should return early without sending
+        await matrix_relay(
+            room_id="!room:matrix.org",
+            message="Hello world",
+            longname="Alice",
+            shortname="A",
+            meshnet_name="TestMesh",
+            portnum=1,
+        )
+
+        # Should log error about None client
+        mock_logger.error.assert_called()
+
+    @patch("mmrelay.matrix_utils.matrix_client")
+    @patch("mmrelay.matrix_utils.logger")
+    async def test_get_user_display_name_room_name(self, mock_logger, mock_matrix_client):
+        """Test getting user display name from room."""
+        mock_room = MagicMock()
+        mock_room.user_name.return_value = "Room Display Name"
+
+        mock_event = MagicMock()
+        mock_event.sender = "@user:matrix.org"
+
+        result = await get_user_display_name(mock_room, mock_event)
+
+        self.assertEqual(result, "Room Display Name")
+        mock_room.user_name.assert_called_once_with("@user:matrix.org")
+
+    @patch("mmrelay.matrix_utils.matrix_client")
+    @patch("mmrelay.matrix_utils.logger")
+    async def test_get_user_display_name_fallback(self, mock_logger, mock_matrix_client):
+        """Test getting user display name with fallback to Matrix API."""
+        mock_room = MagicMock()
+        mock_room.user_name.return_value = None  # No room-specific name
+
+        mock_event = MagicMock()
+        mock_event.sender = "@user:matrix.org"
+
+        # Mock Matrix API response
+        mock_displayname_response = MagicMock()
+        mock_displayname_response.displayname = "Global Display Name"
+        mock_matrix_client.get_displayname.return_value = mock_displayname_response
+
+        result = await get_user_display_name(mock_room, mock_event)
+
+        self.assertEqual(result, "Global Display Name")
+        mock_matrix_client.get_displayname.assert_called_once_with("@user:matrix.org")
+
+    @patch("mmrelay.matrix_utils.matrix_client")
+    @patch("mmrelay.matrix_utils.logger")
+    async def test_get_user_display_name_no_displayname(self, mock_logger, mock_matrix_client):
+        """Test getting user display name when no display name is set."""
+        mock_room = MagicMock()
+        mock_room.user_name.return_value = None
+
+        mock_event = MagicMock()
+        mock_event.sender = "@user:matrix.org"
+
+        # Mock Matrix API response with no display name
+        mock_displayname_response = MagicMock()
+        mock_displayname_response.displayname = None
+        mock_matrix_client.get_displayname.return_value = mock_displayname_response
+
+        result = await get_user_display_name(mock_room, mock_event)
+
+        # Should fallback to sender ID
+        self.assertEqual(result, "@user:matrix.org")
+
+    @patch("mmrelay.matrix_utils.connect_meshtastic")
+    @patch("mmrelay.matrix_utils.queue_message")
+    @patch("mmrelay.matrix_utils.logger")
+    async def test_send_reply_to_meshtastic_with_reply_id(self, mock_logger, mock_queue, mock_connect):
+        """Test sending a reply to Meshtastic with reply_id."""
+        mock_room_config = {"meshtastic_channel": 0}
+        mock_room = MagicMock()
+        mock_event = MagicMock()
+
+        await send_reply_to_meshtastic(
+            reply_message="Test reply",
+            full_display_name="Alice",
+            room_config=mock_room_config,
+            room=mock_room,
+            event=mock_event,
+            text="Original text",
+            storage_enabled=True,
+            local_meshnet_name="TestMesh",
+            reply_id=12345,
+        )
+
+        # Should queue message with reply_id
+        mock_queue.assert_called_once()
+        call_kwargs = mock_queue.call_args[1]
+        self.assertEqual(call_kwargs["reply_id"], 12345)
+
+    @patch("mmrelay.matrix_utils.connect_meshtastic")
+    @patch("mmrelay.matrix_utils.queue_message")
+    @patch("mmrelay.matrix_utils.logger")
+    async def test_send_reply_to_meshtastic_no_reply_id(self, mock_logger, mock_queue, mock_connect):
+        """Test sending a reply to Meshtastic without reply_id."""
+        mock_room_config = {"meshtastic_channel": 0}
+        mock_room = MagicMock()
+        mock_event = MagicMock()
+
+        await send_reply_to_meshtastic(
+            reply_message="Test reply",
+            full_display_name="Alice",
+            room_config=mock_room_config,
+            room=mock_room,
+            event=mock_event,
+            text="Original text",
+            storage_enabled=False,
+            local_meshnet_name="TestMesh",
+            reply_id=None,
+        )
+
+        # Should queue message without reply_id
+        mock_queue.assert_called_once()
+        call_kwargs = mock_queue.call_args[1]
+        self.assertIsNone(call_kwargs.get("reply_id"))
+
+
+class TestImageUploadFunctions(unittest.TestCase):
+    """Test cases for image upload functions."""
+
+    @patch("mmrelay.matrix_utils.io.BytesIO")
+    async def test_upload_image(self, mock_bytesio):
+        """Test uploading an image to Matrix."""
+        from PIL import Image
+
+        # Mock PIL Image
+        mock_image = MagicMock(spec=Image.Image)
+        mock_buffer = MagicMock()
+        mock_bytesio.return_value = mock_buffer
+        mock_buffer.getvalue.return_value = b"fake_image_data"
+
+        # Mock Matrix client
+        mock_client = AsyncMock()
+        mock_upload_response = MagicMock()
+        mock_client.upload.return_value = (mock_upload_response, None)
+
+        result = await upload_image(mock_client, mock_image, "test.png")
+
+        # Verify image was saved and uploaded
+        mock_image.save.assert_called_once()
+        mock_client.upload.assert_called_once()
+        self.assertEqual(result, mock_upload_response)
+
+    async def test_send_room_image(self):
+        """Test sending an uploaded image to a Matrix room."""
+        mock_client = AsyncMock()
+        mock_upload_response = MagicMock()
+        mock_upload_response.content_uri = "mxc://matrix.org/test123"
+
+        await send_room_image(mock_client, "!room:matrix.org", mock_upload_response)
+
+        # Verify room_send was called with correct parameters
+        mock_client.room_send.assert_called_once()
+        call_args = mock_client.room_send.call_args
+        self.assertEqual(call_args[1]["room_id"], "!room:matrix.org")
+        self.assertEqual(call_args[1]["message_type"], "m.room.message")
+        content = call_args[1]["content"]
+        self.assertEqual(content["msgtype"], "m.image")
+        self.assertEqual(content["url"], "mxc://matrix.org/test123")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 [run]
 source = src/mmrelay
 omit =
-    tests/*
     */tests/*
     */test_*
     */__pycache__/*
@@ -13,6 +12,7 @@ omit =
     */setup.py
     */conftest.py
 branch = True
+relative_files = True
 
 [report]
 exclude_lines =
