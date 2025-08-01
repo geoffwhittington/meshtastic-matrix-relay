@@ -23,6 +23,7 @@ from mmrelay.matrix_utils import (
     message_storage_enabled,
     on_room_message,
     send_reply_to_meshtastic,
+    send_room_image,
     strip_quoted_lines,
     truncate_message,
     upload_image,
@@ -910,11 +911,14 @@ class TestAsyncMatrixFunctions(unittest.TestCase):
         content = call_args[1]["content"]
         self.assertEqual(content["msgtype"], "m.emote")
 
-    @patch("mmrelay.matrix_utils.matrix_client")
+    @patch("mmrelay.matrix_utils.matrix_client", None)
+    @patch("mmrelay.matrix_utils.get_interaction_settings")
+    @patch("mmrelay.matrix_utils.message_storage_enabled")
     @patch("mmrelay.matrix_utils.logger")
-    async def test_matrix_relay_client_none(self, mock_logger, mock_matrix_client):
+    async def test_matrix_relay_client_none(self, mock_logger, mock_storage_enabled, mock_get_interactions):
         """Test matrix_relay when matrix_client is None."""
-        mock_matrix_client = None
+        mock_get_interactions.return_value = {"reactions": False, "replies": False}
+        mock_storage_enabled.return_value = False
 
         # Should return early without sending
         await matrix_relay(
@@ -927,7 +931,7 @@ class TestAsyncMatrixFunctions(unittest.TestCase):
         )
 
         # Should log error about None client
-        mock_logger.error.assert_called()
+        mock_logger.error.assert_called_with("Matrix client is None. Cannot send message.")
 
     @patch("mmrelay.matrix_utils.matrix_client")
     @patch("mmrelay.matrix_utils.logger")
