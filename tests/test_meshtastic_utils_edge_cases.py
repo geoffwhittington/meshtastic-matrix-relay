@@ -281,7 +281,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.connect_meshtastic", return_value=None):
             with patch("time.sleep"):  # Speed up test
                 with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
-                    with patch("mmrelay.meshtastic_utils.event_loop", None):  # Prevent async reconnect
+                    with patch(
+                        "mmrelay.meshtastic_utils.event_loop", None
+                    ):  # Prevent async reconnect
                         on_lost_meshtastic_connection(mock_interface)
                         mock_logger.error.assert_called()
 

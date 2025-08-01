@@ -14,16 +14,24 @@ import serial.tools.list_ports  # Import serial tools for port listing
 from meshtastic.protobuf import mesh_pb2, portnums_pb2
 from pubsub import pub
 
-from mmrelay.constants.formats import DETECTION_SENSOR_APP, TEXT_MESSAGE_APP, EMOJI_FLAG_VALUE
+from mmrelay.constants.config import (
+    CONFIG_KEY_MESHNET_NAME,
+    CONFIG_SECTION_MESHTASTIC,
+)
+from mmrelay.constants.formats import (
+    DETECTION_SENSOR_APP,
+    EMOJI_FLAG_VALUE,
+    TEXT_MESSAGE_APP,
+)
 from mmrelay.constants.messages import (
     DEFAULT_CHANNEL_VALUE,
     PORTNUM_NUMERIC_VALUE,
 )
-from mmrelay.constants.config import (
-    CONFIG_SECTION_MESHTASTIC,
-    CONFIG_KEY_MESHNET_NAME,
-)
 from mmrelay.constants.network import (
+    CONFIG_KEY_BLE_ADDRESS,
+    CONFIG_KEY_CONNECTION_TYPE,
+    CONFIG_KEY_HOST,
+    CONFIG_KEY_SERIAL_PORT,
     CONNECTION_TYPE_BLE,
     CONNECTION_TYPE_NETWORK,
     CONNECTION_TYPE_SERIAL,
@@ -33,10 +41,6 @@ from mmrelay.constants.network import (
     ERRNO_BAD_FILE_DESCRIPTOR,
     INFINITE_RETRIES,
     SYSTEMD_INIT_SYSTEM,
-    CONFIG_KEY_BLE_ADDRESS,
-    CONFIG_KEY_SERIAL_PORT,
-    CONFIG_KEY_HOST,
-    CONFIG_KEY_CONNECTION_TYPE,
 )
 
 # Import BLE exceptions conditionally
@@ -91,7 +95,7 @@ subscribed_to_connection_lost = False
 def is_running_as_service():
     """
     Checks whether the application is running as a systemd service.
-    
+
     Returns:
         bool: True if running under systemd (detected via environment variable or parent process), otherwise False.
     """
@@ -125,13 +129,13 @@ def serial_port_exists(port_name):
 def connect_meshtastic(passed_config=None, force_connect=False):
     """
     Establishes a connection to a Meshtastic device using serial, BLE, or TCP, with automatic retries and event subscriptions.
-    
+
     If a configuration is provided, updates the global configuration and Matrix room mappings. Prevents concurrent or duplicate connection attempts, validates required configuration fields, and supports both legacy and current connection types. Verifies serial port existence before connecting and handles connection failures with exponential backoff. Subscribes to message and connection lost events upon successful connection.
-    
+
     Parameters:
         passed_config (dict, optional): Configuration dictionary for the connection.
         force_connect (bool, optional): If True, forces a new connection even if one already exists.
-    
+
     Returns:
         The connected Meshtastic client instance, or None if connection fails or shutdown is in progress.
     """
@@ -170,7 +174,10 @@ def connect_meshtastic(passed_config=None, force_connect=False):
             return None
 
         # Check if meshtastic config section exists
-        if CONFIG_SECTION_MESHTASTIC not in config or config[CONFIG_SECTION_MESHTASTIC] is None:
+        if (
+            CONFIG_SECTION_MESHTASTIC not in config
+            or config[CONFIG_SECTION_MESHTASTIC] is None
+        ):
             logger.error(
                 "No Meshtastic configuration section found. Cannot connect to Meshtastic."
             )
@@ -332,7 +339,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
 def on_lost_meshtastic_connection(interface=None, detection_source="unknown"):
     """
     Initiate a reconnection sequence when the Meshtastic connection is lost, unless a shutdown or reconnection is already in progress.
-    
+
     Parameters:
         interface: Optional Meshtastic interface instance, included for compatibility.
         detection_source (str): Identifier for the source that detected the connection loss, used for debugging.
@@ -370,7 +377,7 @@ def on_lost_meshtastic_connection(interface=None, detection_source="unknown"):
 async def reconnect():
     """
     Asynchronously attempts to reconnect to the Meshtastic device with exponential backoff, stopping if shutdown is initiated.
-    
+
     Reconnection starts with a 10-second delay, doubling up to a maximum of 5 minutes between attempts. If not running as a service, a progress bar is shown during the wait. The process stops immediately if shutdown is triggered or reconnection succeeds.
     """
     global meshtastic_client, reconnecting, shutting_down
@@ -429,7 +436,7 @@ async def reconnect():
 def on_meshtastic_message(packet, interface):
     """
     Processes an incoming Meshtastic message and relays it to Matrix rooms or plugins based on message type and configuration.
-    
+
     Handles reactions and replies by relaying them to Matrix if enabled. Normal text messages are relayed to all mapped Matrix rooms unless handled by a plugin or directed to the relay node. Non-text messages are passed to plugins for processing. Messages from unmapped channels, disabled detection sensors, or during shutdown are ignored. Ensures sender information is retrieved or stored as needed.
     """
     global config, matrix_rooms
@@ -760,7 +767,7 @@ def on_meshtastic_message(packet, interface):
 async def check_connection():
     """
     Periodically checks the health of the Meshtastic connection and triggers reconnection if the device becomes unresponsive.
-    
+
     For non-BLE connections, performs a metadata check at configurable intervals to verify device responsiveness. If the check fails or the firmware version is missing, initiates reconnection unless already in progress. BLE connections are excluded from periodic checks due to real-time disconnection detection. The function runs continuously until shutdown is requested, with health check behavior controlled by configuration.
     """
     global meshtastic_client, shutting_down, config

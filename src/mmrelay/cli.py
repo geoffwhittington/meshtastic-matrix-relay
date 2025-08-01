@@ -15,21 +15,21 @@ from mmrelay import __version__
 from mmrelay.config import get_config_paths
 from mmrelay.constants.app import WINDOWS_PLATFORM
 from mmrelay.constants.config import (
-    CONFIG_SECTION_MATRIX,
-    CONFIG_SECTION_MESHTASTIC,
-    CONFIG_KEY_HOMESERVER,
     CONFIG_KEY_ACCESS_TOKEN,
     CONFIG_KEY_BOT_USER_ID,
+    CONFIG_KEY_HOMESERVER,
+    CONFIG_SECTION_MATRIX,
+    CONFIG_SECTION_MESHTASTIC,
 )
 from mmrelay.constants.network import (
+    CONFIG_KEY_BLE_ADDRESS,
+    CONFIG_KEY_CONNECTION_TYPE,
+    CONFIG_KEY_HOST,
+    CONFIG_KEY_SERIAL_PORT,
     CONNECTION_TYPE_BLE,
     CONNECTION_TYPE_NETWORK,
     CONNECTION_TYPE_SERIAL,
     CONNECTION_TYPE_TCP,
-    CONFIG_KEY_BLE_ADDRESS,
-    CONFIG_KEY_SERIAL_PORT,
-    CONFIG_KEY_HOST,
-    CONFIG_KEY_CONNECTION_TYPE,
 )
 from mmrelay.tools import get_sample_config_path
 
@@ -37,9 +37,9 @@ from mmrelay.tools import get_sample_config_path
 def parse_arguments():
     """
     Parse and validate command-line arguments for the Meshtastic Matrix Relay CLI.
-    
+
     Supports options for specifying configuration file, data directory, logging preferences, version display, sample configuration generation, service installation, and configuration validation. On Windows, also accepts a deprecated positional argument for the config file path with a warning. Ignores unknown arguments outside of test environments and warns if any are present.
-    
+
     Returns:
         argparse.Namespace: Parsed command-line arguments.
     """
@@ -131,12 +131,12 @@ def print_version():
 def check_config(args=None):
     """
     Validates the application's configuration file for required structure and fields.
-    
+
     If a configuration file is found, checks for the presence and correctness of required sections and keys, including Matrix and Meshtastic settings, and validates the format of matrix rooms. Prints errors or warnings for missing or deprecated fields. Returns True if the configuration is valid, otherwise False.
-    
+
     Parameters:
         args: Parsed command-line arguments. If None, arguments are parsed internally.
-    
+
     Returns:
         bool: True if the configuration file is valid, False otherwise.
     """
@@ -168,7 +168,11 @@ def check_config(args=None):
                     return False
 
                 matrix_section = config[CONFIG_SECTION_MATRIX]
-                required_matrix_fields = [CONFIG_KEY_HOMESERVER, CONFIG_KEY_ACCESS_TOKEN, CONFIG_KEY_BOT_USER_ID]
+                required_matrix_fields = [
+                    CONFIG_KEY_HOMESERVER,
+                    CONFIG_KEY_ACCESS_TOKEN,
+                    CONFIG_KEY_BOT_USER_ID,
+                ]
                 missing_matrix_fields = [
                     field
                     for field in required_matrix_fields

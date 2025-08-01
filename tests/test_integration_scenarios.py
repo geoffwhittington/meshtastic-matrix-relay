@@ -262,7 +262,7 @@ class TestIntegrationScenarios(unittest.TestCase):
     def test_plugin_chain_processing(self):
         """
         Test that multiple plugins process a Meshtastic message in priority order and that processing stops when a plugin intercepts the message.
-        
+
         This test verifies that all loaded plugins are invoked in order of their priority when handling a Meshtastic message, and that message processing halts when a plugin returns an intercept signal.
         """
         packet = {
@@ -289,15 +289,15 @@ class TestIntegrationScenarios(unittest.TestCase):
         )  # Intercepts
 
         with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins:
-            with patch("mmrelay.matrix_utils.matrix_relay") as mock_matrix_relay:
+            with patch("mmrelay.matrix_utils.matrix_relay"):
                 with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
                     # Mock the async execution
                     def mock_run_coro(coro, loop):
                         """
                         Synchronously executes a coroutine and returns a MagicMock future whose result mimics the coroutine's return value.
-                        
+
                         If the input is not a coroutine or an error occurs during execution, the mock future's result is set to None.
-                        
+
                         Returns:
                             MagicMock: A mock future with its result() method returning the coroutine's result or None on failure.
                         """
@@ -315,12 +315,12 @@ class TestIntegrationScenarios(unittest.TestCase):
                             else:
                                 # If it's not a coroutine, just return None
                                 mock_future.result.return_value = None
-                        except Exception as e:
+                        except Exception:
                             # If there's an error, ensure coroutine is closed
                             if inspect.iscoroutine(coro):
                                 try:
                                     coro.close()
-                                except:
+                                except Exception:
                                     pass
                             mock_future.result.return_value = None
                         return mock_future
@@ -358,7 +358,7 @@ class TestIntegrationScenarios(unittest.TestCase):
     def test_configuration_loading_and_validation_flow(self):
         """
         Test loading and validating a configuration file for correct structure and content.
-        
+
         This test writes a sample YAML configuration to a temporary file, loads it using the application's configuration loader, verifies the presence of required configuration sections, and checks that the CLI configuration validation function accepts the loaded configuration.
         """
         # Create temporary config file
@@ -629,7 +629,7 @@ plugins:
     def test_concurrent_message_processing(self):
         """
         Tests concurrent processing of multiple Meshtastic messages when no Matrix rooms are configured.
-        
+
         Verifies that each message is handled in isolation and that no messages are relayed to Matrix when the configuration lacks Matrix rooms.
         """
         packets = []
@@ -664,7 +664,7 @@ plugins:
     def test_plugin_chain_with_weather_processing(self):
         """
         Tests plugin chain processing of a Meshtastic weather telemetry message, ensuring the telemetry plugin handles the message and that it is not relayed to Matrix.
-        
+
         Simulates a weather sensor packet processed through the plugin chain, verifies the telemetry plugin's handler is called, and confirms that Matrix relay is not invoked for telemetry messages.
         """
         # Create weather sensor packet
@@ -674,11 +674,11 @@ plugins:
                     "deviceMetrics": {
                         "temperature": 25.5,
                         "batteryLevel": 85,
-                        "voltage": 4.1
+                        "voltage": 4.1,
                     },
-                    "time": int(time.time())
+                    "time": int(time.time()),
                 },
-                "portnum": "TELEMETRY_APP"  # Use string constant
+                "portnum": "TELEMETRY_APP",  # Use string constant
             },
             "fromId": "!weather01",
             "channel": 0,
@@ -689,7 +689,11 @@ plugins:
         mock_interface = MagicMock()
         mock_interface.nodes = {
             "!weather01": {
-                "user": {"id": "!weather01", "longName": "Weather Station", "shortName": "WS"}
+                "user": {
+                    "id": "!weather01",
+                    "longName": "Weather Station",
+                    "shortName": "WS",
+                }
             }
         }
 
@@ -707,13 +711,13 @@ plugins:
                     def mock_run_coro(coro, loop):
                         """
                         Synchronously runs an asynchronous coroutine and returns a mock future with the result.
-                        
+
                         Parameters:
-                        	coro: The coroutine to execute.
-                        	loop: The event loop (unused).
-                        
+                                coro: The coroutine to execute.
+                                loop: The event loop (unused).
+
                         Returns:
-                        	A MagicMock object mimicking a future, with its result set to the coroutine's return value or None if an exception occurred.
+                                A MagicMock object mimicking a future, with its result set to the coroutine's return value or None if an exception occurred.
                         """
                         mock_future = MagicMock()
                         try:
@@ -727,8 +731,11 @@ plugins:
 
                     # Set up global state
                     import mmrelay.meshtastic_utils
+
                     mmrelay.meshtastic_utils.config = {
-                        "matrix_rooms": [{"id": "!weather:matrix.org", "meshtastic_channel": 0}],
+                        "matrix_rooms": [
+                            {"id": "!weather:matrix.org", "meshtastic_channel": 0}
+                        ],
                         "meshtastic": {"meshnet_name": "TestMesh"},
                     }
                     mmrelay.meshtastic_utils.matrix_rooms = [
@@ -748,7 +755,7 @@ plugins:
     def test_config_hot_reload_scenario(self):
         """
         Test dynamic reloading of configuration during runtime.
-        
+
         Simulates modifying the configuration file while the system is running and verifies that new Matrix rooms and plugins are detected and loaded correctly after a reload.
         """
         # Create initial config
@@ -775,11 +782,15 @@ plugins:
                 {"id": "!room2:matrix.org", "meshtastic_channel": 1},  # New room
             ],
             "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"},
-            "plugins": {"debug": {"active": True}, "help": {"active": True}},  # New plugin
+            "plugins": {
+                "debug": {"active": True},
+                "help": {"active": True},
+            },  # New plugin
         }
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             import yaml
+
             yaml.dump(initial_config, f)
             config_path = f.name
 
@@ -808,7 +819,7 @@ plugins:
     def test_database_cleanup_during_operation(self):
         """
         Test that database cleanup operations do not disrupt active message processing.
-        
+
         Verifies that pruning old message mappings during operation maintains database accessibility and does not raise exceptions, ensuring data integrity is preserved.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -819,8 +830,8 @@ plugins:
                 initialize_database()
 
                 from mmrelay.db_utils import (
-                    prune_message_map,
                     get_message_map_by_meshtastic_id,
+                    prune_message_map,
                     store_message_map,
                 )
 

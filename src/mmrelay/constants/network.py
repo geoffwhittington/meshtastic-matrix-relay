@@ -9,7 +9,9 @@ network-related configuration constants.
 CONNECTION_TYPE_TCP = "tcp"
 CONNECTION_TYPE_SERIAL = "serial"
 CONNECTION_TYPE_BLE = "ble"
-CONNECTION_TYPE_NETWORK = "network"  # DEPRECATED: Legacy alias for tcp, use CONNECTION_TYPE_TCP instead
+CONNECTION_TYPE_NETWORK = (
+    "network"  # DEPRECATED: Legacy alias for tcp, use CONNECTION_TYPE_TCP instead
+)
 
 # Configuration keys for connection settings
 CONFIG_KEY_BLE_ADDRESS = "ble_address"

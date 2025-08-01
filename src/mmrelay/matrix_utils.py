@@ -22,9 +22,9 @@ from nio.events.room_events import RoomMemberEvent
 from PIL import Image
 
 from mmrelay.constants.config import (
-    CONFIG_SECTION_MATRIX,
-    CONFIG_KEY_HOMESERVER,
     CONFIG_KEY_ACCESS_TOKEN,
+    CONFIG_KEY_HOMESERVER,
+    CONFIG_SECTION_MATRIX,
 )
 from mmrelay.constants.database import DEFAULT_MSGS_TO_KEEP
 from mmrelay.constants.formats import (
@@ -50,7 +50,7 @@ logger = get_logger(name="matrix_utils")
 def _get_msgs_to_keep_config():
     """
     Returns the configured number of messages to retain for message mapping, supporting both current and legacy configuration sections.
-    
+
     Returns:
         int: Number of messages to keep for message mapping; defaults to the predefined constant if not set.
     """
@@ -78,9 +78,9 @@ def _create_mapping_info(
 ):
     """
     Create a metadata dictionary linking a Matrix event to a Meshtastic message for message mapping.
-    
+
     Removes quoted lines from the message text and includes identifiers and message retention settings. Returns `None` if any required parameter is missing.
-    
+
     Returns:
         dict: Mapping information for the message queue, or `None` if required fields are missing.
     """
@@ -102,7 +102,7 @@ def _create_mapping_info(
 def get_interaction_settings(config):
     """
     Determine if message reactions and replies are enabled in the configuration.
-    
+
     Checks for both the new `message_interactions` structure and the legacy `relay_reactions` flag for backward compatibility. Returns a dictionary with boolean values for `reactions` and `replies`, defaulting to both disabled if not specified.
     """
     if config is None:
@@ -245,14 +245,14 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
 def get_matrix_prefix(config, longname, shortname, meshnet_name):
     """
     Generates a formatted prefix string for Meshtastic messages relayed to Matrix, based on configuration settings and sender/mesh network names.
-    
+
     The prefix format supports variable-length truncation for the sender and mesh network names using template variables (e.g., `{long4}` for the first 4 characters of the sender name). Returns an empty string if prefixing is disabled in the configuration.
-    
+
     Parameters:
         longname (str): Full Meshtastic sender name.
         shortname (str): Short Meshtastic sender name.
         meshnet_name (str): Name of the mesh network.
-    
+
     Returns:
         str: The formatted prefix string, or an empty string if prefixing is disabled.
     """
@@ -364,7 +364,7 @@ def bot_command(command, event):
 async def connect_matrix(passed_config=None):
     """
     Asynchronously connects to the Matrix homeserver, initializes the Matrix client, and retrieves the bot's device ID and display name.
-    
+
     If a configuration dictionary is provided, it updates the global configuration before connecting. Returns the initialized Matrix AsyncClient instance, or `None` if configuration is missing. Raises `ConnectionError` if SSL context creation fails.
     """
     global matrix_client, bot_user_name, matrix_homeserver, matrix_rooms, matrix_access_token, bot_user_id, config
@@ -481,9 +481,9 @@ async def matrix_relay(
 ):
     """
     Relay a message from the Meshtastic network to a Matrix room, supporting replies, emotes, emoji reactions, and message mapping for future interactions.
-    
+
     If a reply target is specified, formats the message as a Matrix reply with quoted original content. When message interactions (reactions or replies) are enabled, stores a mapping between the Meshtastic message ID and the resulting Matrix event ID to support cross-network interactions. Prunes old message mappings according to configuration to limit storage.
-    
+
     Parameters:
         room_id (str): The Matrix room ID to send the message to.
         message (str): The message content to relay.
@@ -866,7 +866,7 @@ async def on_room_message(
 ) -> None:
     """
     Asynchronously handles incoming Matrix room messages, reactions, and replies, relaying them to Meshtastic as appropriate.
-    
+
     Processes Matrix events—including text messages, reactions, and replies—in configured rooms. Relays supported messages to the Meshtastic mesh network if broadcasting is enabled, applying message mapping for cross-referencing when reactions or replies are enabled. Ignores messages from the bot itself, messages sent before the bot started, and reactions to reactions. Integrates with plugins for command and message handling; only messages not handled by plugins or identified as commands are forwarded to Meshtastic, with appropriate formatting and truncation. Handles special cases for relaying messages and reactions from remote mesh networks and detection sensor data.
     """
     # Importing here to avoid circular imports and to keep logic consistent

@@ -78,7 +78,7 @@ class TestErrorBoundaries(unittest.TestCase):
     def test_plugin_failure_isolation(self):
         """
         Test that a plugin failure during Meshtastic message handling does not prevent other plugins or the core Matrix relay from executing.
-        
+
         Simulates one plugin raising an exception and another succeeding, verifying that errors are isolated, logged, and do not disrupt the main relay or other plugins.
         """
         # Create plugins with different failure modes

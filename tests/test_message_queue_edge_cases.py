@@ -92,14 +92,14 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
     def test_queue_overflow_handling(self):
         """
         Test that the message queue enforces its maximum capacity and rejects additional messages when full.
-        
+
         Fills the queue to its defined maximum size, verifies that enqueueing beyond this limit fails, and asserts the queue size does not exceed the allowed maximum.
         """
 
         async def async_test():
             """
             Asynchronously verifies that the message queue enforces its maximum capacity by filling it to the defined limit and confirming that additional enqueue attempts are rejected.
-            
+
             Ensures the queue does not exceed its maximum size and that overflow messages are not accepted.
             """
             self.queue.start(message_delay=0.1)

@@ -44,13 +44,14 @@ class TestAsyncPatterns(unittest.TestCase):
     def test_async_function_proper_awaiting(self):
         """
         Test that async functions are properly awaited without generating coroutine warnings.
-        
+
         Ensures that the `connect_matrix` async function is awaited correctly, returning a client and invoking the `whoami` method as expected.
         """
+
         async def test_coroutine():
             """
             Asynchronously tests the Matrix connection coroutine, ensuring proper awaiting and client initialization.
-            
+
             Simulates the Matrix connection process by mocking SSL context, certificate path, and Matrix AsyncClient. Verifies that the `connect_matrix` function awaits the `whoami` method and returns a valid client instance.
             """
             # Ensure matrix_client is None to avoid early return
@@ -62,7 +63,9 @@ class TestAsyncPatterns(unittest.TestCase):
                     # Mock certifi.where()
                     with patch("certifi.where", return_value="/fake/cert/path"):
                         # Mock Matrix client connection
-                        with patch("mmrelay.matrix_utils.AsyncClient") as mock_client_class:
+                        with patch(
+                            "mmrelay.matrix_utils.AsyncClient"
+                        ) as mock_client_class:
                             mock_client = AsyncMock()
                             # Mock successful whoami response
                             mock_whoami_response = MagicMock()
@@ -85,23 +88,25 @@ class TestAsyncPatterns(unittest.TestCase):
     def test_concurrent_async_operations(self):
         """
         Test that multiple async operations can run concurrently and complete successfully.
-        
+
         Ensures that concurrent async tasks execute without race conditions, deadlocks, or unexpected exceptions.
         """
+
         async def test_concurrent():
             """
             Test that multiple asynchronous tasks execute concurrently and complete successfully.
-            
+
             Runs several mock async operations in parallel using `asyncio.gather` and asserts that each completes without exceptions and returns the expected result.
             """
+
             # Create simple async tasks that simulate concurrent operations
             async def mock_async_operation(task_id):
                 """
                 Simulates an asynchronous operation with a brief delay.
-                
+
                 Parameters:
                     task_id: Identifier for the simulated task.
-                
+
                 Returns:
                     str: A string indicating the completion of the task with its ID.
                 """
@@ -127,10 +132,11 @@ class TestAsyncPatterns(unittest.TestCase):
         """
         Test that async operations correctly handle timeouts and raise TimeoutError when execution exceeds the specified limit.
         """
+
         async def test_timeout():
             """
             Test that a timeout error is raised when an async Matrix operation exceeds the specified timeout duration.
-            
+
             This function mocks a slow Matrix client operation and verifies that `asyncio.wait_for` raises a `TimeoutError` when the operation takes longer than the allowed timeout.
             """
             # Ensure matrix_client is None to avoid early return
@@ -142,14 +148,16 @@ class TestAsyncPatterns(unittest.TestCase):
                     # Mock certifi.where()
                     with patch("certifi.where", return_value="/fake/cert/path"):
                         # Mock a slow Matrix operation
-                        with patch("mmrelay.matrix_utils.AsyncClient") as mock_client_class:
+                        with patch(
+                            "mmrelay.matrix_utils.AsyncClient"
+                        ) as mock_client_class:
                             mock_client = AsyncMock()
 
                             # Make whoami take longer than timeout
                             async def slow_whoami():
                                 """
                                 Simulates a delayed asynchronous retrieval of device identity information.
-                                
+
                                 Returns:
                                     MagicMock: A mock object with a `device_id` attribute set to "test_device".
                                 """
@@ -161,7 +169,9 @@ class TestAsyncPatterns(unittest.TestCase):
 
                             # Test with short timeout
                             try:
-                                await asyncio.wait_for(connect_matrix(self.config), timeout=0.5)
+                                await asyncio.wait_for(
+                                    connect_matrix(self.config), timeout=0.5
+                                )
                                 self.fail("Should have timed out")
                             except asyncio.TimeoutError:
                                 # Expected timeout
@@ -173,13 +183,14 @@ class TestAsyncPatterns(unittest.TestCase):
     def test_async_error_propagation(self):
         """
         Test that exceptions in async operations are correctly propagated and can be handled by the caller.
-        
+
         This test verifies that when an async method raises an exception, the exception is either handled gracefully by the function under test or properly propagated to the caller for handling.
         """
+
         async def test_error_handling():
             """
             Test that exceptions raised during async operations are properly propagated or handled.
-            
+
             Verifies that when an exception occurs in an awaited async method, the error is either caught and asserted or the function under test returns a valid result, ensuring robust error handling in async workflows.
             """
             # Mock SSL context creation
@@ -207,35 +218,38 @@ class TestAsyncPatterns(unittest.TestCase):
     def test_plugin_async_method_handling(self):
         """
         Tests that async plugin methods are correctly awaited and their results are processed as expected.
-        
+
         This test creates a mock plugin with an async method, invokes it with mock room and event objects, and asserts that the method is awaited and returns the expected result.
         """
+
         async def test_plugin_async():
             """
             Test that an async plugin method is properly awaited and returns the expected result.
-            
+
             Creates a mock plugin with an async method, invokes it with mock room and event objects, and asserts that the method is awaited and called exactly once.
             """
             # Create mock plugin with async methods
             mock_plugin = MagicMock()
             mock_plugin.handle_room_message = AsyncMock(return_value=True)
-            
+
             # Mock room and event
             mock_room = MagicMock()
             mock_room.room_id = "!room1:matrix.org"
-            
+
             mock_event = MagicMock()
             mock_event.sender = "@user:matrix.org"
             mock_event.body = "test message"
             mock_event.server_timestamp = int(time.time() * 1000)
             mock_event.source = {"content": {}}
-            
+
             # Test that plugin async method is properly awaited
-            result = await mock_plugin.handle_room_message(mock_room, mock_event, "test message")
-            
+            result = await mock_plugin.handle_room_message(
+                mock_room, mock_event, "test message"
+            )
+
             # Should return the expected result
             self.assertTrue(result)
-            
+
             # Verify the async method was called
             mock_plugin.handle_room_message.assert_called_once()
 
@@ -249,41 +263,43 @@ class TestAsyncPatterns(unittest.TestCase):
         # Test that we can create and manage event loops
         loop1 = asyncio.new_event_loop()
         asyncio.set_event_loop(loop1)
-        
+
         async def simple_task():
             """
             Asynchronously sleeps for a short duration and returns a completion message.
-            
+
             Returns:
                 str: The string "completed" after the sleep finishes.
             """
             await asyncio.sleep(0.01)
             return "completed"
-        
+
         # Run task in first loop
         result1 = loop1.run_until_complete(simple_task())
         self.assertEqual(result1, "completed")
-        
+
         loop1.close()
-        
+
         # Create second loop
         loop2 = asyncio.new_event_loop()
         asyncio.set_event_loop(loop2)
-        
+
         # Run task in second loop
         result2 = loop2.run_until_complete(simple_task())
         self.assertEqual(result2, "completed")
-        
+
         loop2.close()
 
     def test_async_context_manager_usage(self):
         """
         Tests that async context managers are correctly implemented and used for resource management in asynchronous operations.
         """
+
         async def test_context_manager():
             """
             Tests the correct usage of an async context manager by verifying that its methods are properly awaited and return expected results.
             """
+
             # Mock async context manager
             class MockAsyncContextManager:
                 async def __aenter__(self):
@@ -291,22 +307,22 @@ class TestAsyncPatterns(unittest.TestCase):
                     Enter the asynchronous context manager and return the resource instance.
                     """
                     return self
-                
+
                 async def __aexit__(self, exc_type, exc_val, exc_tb):
                     """
                     Exit the asynchronous context manager without suppressing exceptions.
-                    
+
                     Returns:
                         bool: Always returns False, indicating exceptions are not suppressed.
                     """
                     return False
-                
+
                 async def do_something(self):
                     """
                     Asynchronously returns the string "success".
                     """
                     return "success"
-            
+
             # Test proper async context manager usage
             async with MockAsyncContextManager() as manager:
                 result = await manager.do_something()
@@ -319,27 +335,29 @@ class TestAsyncPatterns(unittest.TestCase):
         """
         Tests that async generators yield expected values and that async iteration collects all items as intended.
         """
+
         async def test_async_generator():
             """
             Test that async generators yield expected values and can be iterated over asynchronously.
             """
+
             # Create async generator
             async def async_data_source():
                 """
                 Asynchronously yields a sequence of data items, simulating an async data source.
-                
+
                 Yields:
                     str: Data items labeled as "data_0", "data_1", and "data_2".
                 """
                 for i in range(3):
                     await asyncio.sleep(0.01)  # Simulate async work
                     yield f"data_{i}"
-            
+
             # Test async iteration
             results = []
             async for item in async_data_source():
                 results.append(item)
-            
+
             # Verify all items were yielded
             self.assertEqual(results, ["data_0", "data_1", "data_2"])
 
@@ -349,25 +367,31 @@ class TestAsyncPatterns(unittest.TestCase):
     def test_matrix_relay_async_patterns(self):
         """
         Tests that the matrix_relay function correctly performs asynchronous operations and maintains proper async/await usage.
-        
+
         Ensures that the async room_send method is called as expected when relaying a message to a Matrix room.
         """
+
         async def test_matrix_relay():
             """
             Test the async behavior of the matrix_relay function by verifying that it sends a message to a Matrix room using a mocked Matrix client.
-            
+
             This test ensures that the matrix_relay function correctly awaits the room_send async method and that the method is called exactly once with the expected parameters.
             """
             # Mock Matrix client and room
             mock_client = AsyncMock()
-            mock_client.room_send = AsyncMock(return_value=MagicMock(event_id="$event123"))
+            mock_client.room_send = AsyncMock(
+                return_value=MagicMock(event_id="$event123")
+            )
 
             # Mock room
             mock_room = MagicMock()
             mock_room.room_id = "!room1:matrix.org"
 
             with patch("mmrelay.matrix_utils.matrix_client", mock_client):
-                with patch("mmrelay.matrix_utils.matrix_rooms", [{"id": "!room1:matrix.org", "meshtastic_channel": 0}]):
+                with patch(
+                    "mmrelay.matrix_utils.matrix_rooms",
+                    [{"id": "!room1:matrix.org", "meshtastic_channel": 0}],
+                ):
                     # Test matrix_relay async operation
                     await matrix_relay(
                         room_id="!room1:matrix.org",
@@ -375,7 +399,7 @@ class TestAsyncPatterns(unittest.TestCase):
                         longname="TestNode",
                         shortname="TN",
                         meshnet_name="TestMesh",
-                        portnum=1
+                        portnum=1,
                     )
 
                     # Verify async method was called
@@ -387,13 +411,14 @@ class TestAsyncPatterns(unittest.TestCase):
     def test_async_exception_handling_patterns(self):
         """
         Test handling of exceptions in various asynchronous scenarios.
-        
+
         Covers exception propagation and handling in async functions, async context managers, and async generators to ensure correct behavior in each case.
         """
+
         async def test_exception_patterns():
             """
             Test various async exception handling scenarios, including exceptions in async functions, async context managers, and async generators.
-            
+
             Asserts that exceptions are raised and handled as expected, and that async generators yield expected results before completion.
             """
 
@@ -421,7 +446,7 @@ class TestAsyncPatterns(unittest.TestCase):
                 async def __aexit__(self, exc_type, exc_val, exc_tb):
                     """
                     Exit the asynchronous context manager without suppressing exceptions.
-                    
+
                     Returns:
                         bool: Always returns False, indicating exceptions are not suppressed.
                     """
@@ -438,7 +463,7 @@ class TestAsyncPatterns(unittest.TestCase):
             async def failing_generator():
                 """
                 An async generator that yields a single value and then terminates.
-                
+
                 Yields:
                     str: The string "first" before the generator stops.
                 """
@@ -458,13 +483,14 @@ class TestAsyncPatterns(unittest.TestCase):
     def test_async_resource_cleanup(self):
         """
         Test that async resources are properly cleaned up, including when exceptions occur.
-        
+
         Ensures that asynchronous context managers execute their cleanup logic both during normal operation and when exceptions are raised within the context.
         """
+
         async def test_resource_cleanup():
             """
             Test that async resources are properly cleaned up both during normal operation and when exceptions occur.
-            
+
             Verifies that the async context manager's cleanup logic is executed regardless of whether the block exits normally or due to an exception.
             """
             cleanup_called = False
@@ -485,7 +511,7 @@ class TestAsyncPatterns(unittest.TestCase):
                 async def __aexit__(self, exc_type, exc_val, exc_tb):
                     """
                     Performs cleanup actions when exiting the async context manager, setting cleanup flags.
-                    
+
                     Returns:
                         False: Indicates that any exception raised within the context should not be suppressed.
                     """
@@ -497,10 +523,10 @@ class TestAsyncPatterns(unittest.TestCase):
                 async def do_work(self):
                     """
                     Performs an asynchronous operation if the resource is open.
-                    
+
                     Returns:
                         str: "work done" if the resource is not closed.
-                    
+
                     Raises:
                         RuntimeError: If the resource has already been closed.
                     """
@@ -533,17 +559,18 @@ class TestAsyncPatterns(unittest.TestCase):
         """
         Tests that async tasks can be cancelled and that cancellation is handled gracefully within the task, ensuring proper cleanup and expected return values.
         """
+
         async def test_cancellation():
             """
             Test that an async task can be cancelled and handles cancellation gracefully.
-            
+
             The test starts a long-running async task, cancels it shortly after, and verifies that the task returns "cancelled" if it handles the cancellation internally. If the task is cancelled before handling, the test passes by catching the CancelledError.
             """
 
             async def long_running_task():
                 """
                 Simulates a long-running asynchronous task that can be cancelled.
-                
+
                 Returns:
                     str: "completed" if the task finishes normally, or "cancelled" if it is cancelled before completion.
                 """
@@ -581,16 +608,17 @@ class TestAsyncEdgeCases(unittest.TestCase):
     def test_nested_async_calls(self):
         """
         Tests that deeply nested asynchronous recursive calls execute without causing stack overflows or runtime errors.
-        
+
         Verifies that recursion depth in async functions is handled safely by the event loop.
         """
+
         async def nested_async_call(depth):
             """
             Recursively performs nested asynchronous calls to a specified depth.
-            
+
             Parameters:
                 depth (int): The recursion depth. When zero or less, recursion stops.
-            
+
             Returns:
                 str: A string representing the nested call structure, with each level annotated.
             """
@@ -604,7 +632,7 @@ class TestAsyncEdgeCases(unittest.TestCase):
         async def test_nesting():
             """
             Tests that deeply nested asynchronous calls return expected results.
-            
+
             Asserts that the result of a recursive async call with depth 10 contains the expected markers.
             """
             result = await nested_async_call(10)
@@ -625,13 +653,14 @@ class TestAsyncEdgeCases(unittest.TestCase):
         def thread_worker():
             """
             Runs an asynchronous task within a separate thread using a dedicated event loop.
-            
+
             Appends the result of the async operation to the shared `results` list.
             """
+
             async def async_work():
                 """
                 Performs a brief asynchronous sleep and returns a result string.
-                
+
                 Returns:
                     str: The string "thread_result" after the sleep completes.
                 """

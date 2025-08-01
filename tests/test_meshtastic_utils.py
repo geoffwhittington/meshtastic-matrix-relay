@@ -22,6 +22,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from mmrelay.meshtastic_utils import (
+    check_connection,
     connect_meshtastic,
     is_running_as_service,
     on_lost_meshtastic_connection,
@@ -29,7 +30,6 @@ from mmrelay.meshtastic_utils import (
     reconnect,
     sendTextReply,
     serial_port_exists,
-    check_connection,
 )
 
 
@@ -323,7 +323,7 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_on_meshtastic_message_with_broadcast_config(self):
         """
         Test that Meshtastic-to-Matrix message relaying occurs even when broadcast is disabled in the configuration.
-        
+
         Verifies that disabling `broadcast_enabled` in the configuration does not prevent Meshtastic messages from being relayed to Matrix, confirming that this setting only affects Matrix-to-Meshtastic message direction.
         """
         config_no_broadcast = self.mock_config.copy()
@@ -721,10 +721,12 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
 
 # Meshtastic connection retry tests - converted from unittest.TestCase to standalone pytest functions
 
+
 @pytest.fixture
 def reset_meshtastic_globals():
     """Reset global state for connection retry tests."""
     import mmrelay.meshtastic_utils
+
     mmrelay.meshtastic_utils.meshtastic_client = None
     mmrelay.meshtastic_utils.shutting_down = False
     mmrelay.meshtastic_utils.reconnecting = False
@@ -734,23 +736,28 @@ def reset_meshtastic_globals():
     mmrelay.meshtastic_utils.shutting_down = False
     mmrelay.meshtastic_utils.reconnecting = False
 
+
 @patch("mmrelay.meshtastic_utils.time.sleep")
 @patch("mmrelay.meshtastic_utils.serial_port_exists")
 @patch("mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface")
-def test_connect_meshtastic_retry_on_serial_exception(mock_serial, mock_port_exists, mock_sleep, reset_meshtastic_globals):
+def test_connect_meshtastic_retry_on_serial_exception(
+    mock_serial, mock_port_exists, mock_sleep, reset_meshtastic_globals
+):
     """Test that connect_meshtastic retries on serial exceptions."""
     mock_port_exists.return_value = True
 
     # First call fails, second succeeds
     mock_client = MagicMock()
-    mock_client.getMyNodeInfo.return_value = {"user": {"shortName": "test", "hwModel": "test"}}
+    mock_client.getMyNodeInfo.return_value = {
+        "user": {"shortName": "test", "hwModel": "test"}
+    }
     mock_serial.side_effect = [Exception("Connection failed"), mock_client]
 
     config = {
         "meshtastic": {
             "connection_type": "serial",
             "serial_port": "/dev/ttyUSB0",
-            "retry_limit": 2
+            "retry_limit": 2,
         }
     }
 
@@ -761,19 +768,17 @@ def test_connect_meshtastic_retry_on_serial_exception(mock_serial, mock_port_exi
     assert mock_serial.call_count == 2
     mock_sleep.assert_called_once()
 
+
 @patch("mmrelay.meshtastic_utils.time.sleep")
 @patch("mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface")
-def test_connect_meshtastic_retry_exhausted(mock_tcp, mock_sleep, reset_meshtastic_globals):
+def test_connect_meshtastic_retry_exhausted(
+    mock_tcp, mock_sleep, reset_meshtastic_globals
+):
     """Test that connect_meshtastic returns None when retries are exhausted."""
     # Mock a critical error that should not be retried
     mock_tcp.side_effect = TimeoutError("Connection timeout")
 
-    config = {
-        "meshtastic": {
-            "connection_type": "tcp",
-            "host": "192.168.1.100"
-        }
-    }
+    config = {"meshtastic": {"connection_type": "tcp", "host": "192.168.1.100"}}
 
     result = connect_meshtastic(passed_config=config)
 
@@ -782,10 +787,13 @@ def test_connect_meshtastic_retry_exhausted(mock_tcp, mock_sleep, reset_meshtast
     assert mock_tcp.call_count == 1
     mock_sleep.assert_not_called()  # No retries for critical errors
 
+
 @patch("mmrelay.meshtastic_utils.connect_meshtastic")
 @patch("mmrelay.meshtastic_utils.asyncio.sleep", new_callable=AsyncMock)
 @patch("mmrelay.meshtastic_utils.logger")
-async def test_reconnect_attempts_connection(mock_logger, mock_sleep, mock_connect, reset_meshtastic_globals):
+async def test_reconnect_attempts_connection(
+    mock_logger, mock_sleep, mock_connect, reset_meshtastic_globals
+):
     """Test that reconnect attempts to connect to Meshtastic."""
     # Simulate connect_meshtastic succeeding to prevent an infinite loop
     mock_connect.return_value = MagicMock()
@@ -794,6 +802,7 @@ async def test_reconnect_attempts_connection(mock_logger, mock_sleep, mock_conne
 
     # Assert that a connection was attempted
     mock_connect.assert_called_with(force_connect=True)
+
 
 def test_check_connection_function_exists(reset_meshtastic_globals):
     """Test that the check_connection function exists and can be imported."""

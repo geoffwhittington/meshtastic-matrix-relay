@@ -7,9 +7,10 @@ queuing during network interruptions.
 """
 
 import asyncio
-import pytest
 import time
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from mmrelay.constants.network import (
     CONNECTION_TYPE_BLE,
@@ -29,7 +30,7 @@ class TestConnectionRetryLogic:
     async def test_connection_retry_backoff_timing(self):
         """
         Verify that connection retry logic applies backoff delays between failed attempts and succeeds after the expected number of retries.
-        
+
         This test simulates two consecutive connection failures followed by a successful attempt, ensuring that the retry mechanism waits for the appropriate backoff duration between retries and attempts the correct number of connections.
         """
         with patch("mmrelay.meshtastic_utils.time.sleep"), patch(
@@ -73,7 +74,7 @@ class TestConnectionRetryLogic:
     async def test_exponential_backoff_progression(self):
         """
         Verify that connection retry backoff durations increase exponentially after consecutive failures.
-        
+
         Simulates multiple connection failures and checks that the backoff intervals between retries follow an exponential progression, with each subsequent delay at least as long as the previous one.
         """
         backoff_times = []
@@ -109,7 +110,7 @@ class TestConnectionRetryLogic:
     async def test_infinite_retries_behavior(self):
         """
         Test that the connection retry logic correctly handles infinite retries by continuing to attempt connections until success.
-        
+
         Verifies that when infinite retries are configured, the system keeps retrying after failures and eventually succeeds, as indicated by the retry count.
         """
         retry_count = 0
@@ -124,7 +125,9 @@ class TestConnectionRetryLogic:
                 raise ConnectionError(f"Attempt {retry_count}")
             return MagicMock()  # Success on 10th attempt
 
-        with patch("mmrelay.meshtastic_utils.connect_meshtastic", side_effect=mock_connect):
+        with patch(
+            "mmrelay.meshtastic_utils.connect_meshtastic", side_effect=mock_connect
+        ):
             # Simulate retry logic with INFINITE_RETRIES
             max_attempts = 15  # Reasonable limit for test
             for attempt in range(max_attempts):
@@ -148,7 +151,7 @@ class TestConnectionTypeFallback:
     async def test_connection_type_sequence(self):
         """
         Verifies that connection attempts are made sequentially through TCP, Serial, and BLE, succeeding when BLE is reached.
-        
+
         Ensures each connection type is tried in order, with BLE ultimately succeeding after previous failures.
         """
         connection_attempts = []
@@ -156,13 +159,13 @@ class TestConnectionTypeFallback:
         def mock_connect(connection_type):
             """
             Simulates a connection attempt for the specified connection type, succeeding only for BLE.
-            
+
             Parameters:
                 connection_type (str): The type of connection to attempt.
-            
+
             Returns:
                 MagicMock: A mock connection object if the connection type is BLE.
-            
+
             Raises:
                 ConnectionError: If the connection type is not BLE.
             """
@@ -171,7 +174,11 @@ class TestConnectionTypeFallback:
                 return MagicMock()  # BLE succeeds
             raise ConnectionError(f"{connection_type} failed")
 
-        connection_types = [CONNECTION_TYPE_TCP, CONNECTION_TYPE_SERIAL, CONNECTION_TYPE_BLE]
+        connection_types = [
+            CONNECTION_TYPE_TCP,
+            CONNECTION_TYPE_SERIAL,
+            CONNECTION_TYPE_BLE,
+        ]
 
         # Simulate trying each connection type
         for conn_type in connection_types:
@@ -204,7 +211,11 @@ class TestConnectionTypeFallback:
         Verify that the preferred connection types are ordered by reliability and speed, typically TCP, Serial, then BLE.
         """
         # Typically TCP -> Serial -> BLE for reliability/speed
-        preferred_order = [CONNECTION_TYPE_TCP, CONNECTION_TYPE_SERIAL, CONNECTION_TYPE_BLE]
+        preferred_order = [
+            CONNECTION_TYPE_TCP,
+            CONNECTION_TYPE_SERIAL,
+            CONNECTION_TYPE_BLE,
+        ]
 
         # Verify the order makes sense (this is more of a design test)
         assert CONNECTION_TYPE_TCP in preferred_order
@@ -218,7 +229,7 @@ class TestMessageQueueDuringDisconnection:
     def test_message_queuing_when_disconnected(self):
         """
         Verifies that messages are enqueued in the message queue when the network connection is unavailable.
-        
+
         Ensures that messages are not lost during disconnection and that the queue size reflects all enqueued messages.
         """
         from mmrelay.message_queue import MessageQueue
@@ -250,7 +261,7 @@ class TestMessageQueueDuringDisconnection:
     def test_queue_overflow_protection(self):
         """
         Verify that the message queue enforces its maximum size limit and rejects messages when full.
-        
+
         Ensures that attempting to enqueue more messages than the allowed maximum does not increase the queue size beyond the limit, and that excess messages are not accepted.
         """
         from mmrelay.message_queue import MessageQueue
@@ -286,7 +297,7 @@ class TestMessageQueueDuringDisconnection:
     async def test_message_processing_after_reconnection(self):
         """
         Verify that messages enqueued during network disconnection are processed after reconnection.
-        
+
         This test enqueues messages while the network client is unavailable, then simulates reconnection and checks that the message queue size decreases, indicating that queued messages are being processed.
         """
         from mmrelay.message_queue import MessageQueue
@@ -328,7 +339,7 @@ class TestNetworkErrorRecovery:
     async def test_timeout_error_recovery(self):
         """
         Asynchronously tests that the system recovers from consecutive network timeout errors by retrying connection attempts until successful.
-        
+
         The test simulates two initial `TimeoutError` exceptions before a successful connection, verifying that retries occur and the connection eventually succeeds after brief delays.
         """
         timeout_count = 0
@@ -343,7 +354,9 @@ class TestNetworkErrorRecovery:
                 raise TimeoutError("Network timeout")
             return MagicMock()
 
-        with patch("mmrelay.meshtastic_utils.connect_meshtastic", side_effect=mock_connect):
+        with patch(
+            "mmrelay.meshtastic_utils.connect_meshtastic", side_effect=mock_connect
+        ):
             # Should eventually succeed after timeouts
             for _ in range(5):
                 try:
@@ -365,7 +378,7 @@ class TestNetworkErrorRecovery:
         def mock_connect():
             """
             Simulates a connection attempt that raises a ConnectionResetError on the first call and succeeds on subsequent calls.
-            
+
             Returns:
                 MagicMock: A mock object representing a successful connection after the initial failure.
             """
@@ -375,7 +388,9 @@ class TestNetworkErrorRecovery:
                 raise ConnectionResetError("Connection reset by peer")
             return MagicMock()
 
-        with patch("mmrelay.meshtastic_utils.connect_meshtastic", side_effect=mock_connect):
+        with patch(
+            "mmrelay.meshtastic_utils.connect_meshtastic", side_effect=mock_connect
+        ):
             # Should recover from connection reset
             for _ in range(3):
                 try:

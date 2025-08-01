@@ -172,7 +172,7 @@ class TestBasePlugin(unittest.TestCase):
     def test_config_loading_without_plugin_config(self):
         """
         Test that the plugin uses default settings when no plugin-specific configuration is provided.
-        
+
         Verifies that the plugin is inactive, sets the response delay to 2.0 seconds, and has no enabled channels if its configuration is missing.
         """
         # Remove plugin config
@@ -509,7 +509,7 @@ class TestBasePlugin(unittest.TestCase):
 
         self.assertIsNone(result)
 
-    @patch.object(MockPlugin, 'get_my_node_id')
+    @patch.object(MockPlugin, "get_my_node_id")
     def test_is_direct_message_true(self, mock_get_my_node_id):
         """Test that is_direct_message returns True for direct messages."""
         plugin = MockPlugin()
@@ -521,7 +521,7 @@ class TestBasePlugin(unittest.TestCase):
 
         self.assertTrue(result)
 
-    @patch.object(MockPlugin, 'get_my_node_id')
+    @patch.object(MockPlugin, "get_my_node_id")
     def test_is_direct_message_false(self, mock_get_my_node_id):
         """Test that is_direct_message returns False for broadcast messages."""
         plugin = MockPlugin()
@@ -533,7 +533,7 @@ class TestBasePlugin(unittest.TestCase):
 
         self.assertFalse(result)
 
-    @patch.object(MockPlugin, 'get_my_node_id')
+    @patch.object(MockPlugin, "get_my_node_id")
     def test_is_direct_message_no_to_field(self, mock_get_my_node_id):
         """Test that is_direct_message returns False when packet has no 'to' field."""
         plugin = MockPlugin()
@@ -545,7 +545,7 @@ class TestBasePlugin(unittest.TestCase):
 
         self.assertFalse(result)
 
-    @patch.object(MockPlugin, 'get_my_node_id')
+    @patch.object(MockPlugin, "get_my_node_id")
     def test_is_direct_message_no_node_id(self, mock_get_my_node_id):
         """Test that is_direct_message returns False when node ID is unavailable."""
         plugin = MockPlugin()
@@ -563,8 +563,8 @@ class TestBasePlugin(unittest.TestCase):
         plugin = MockPlugin()
 
         # Ensure no cache exists
-        if hasattr(plugin, '_my_node_id'):
-            delattr(plugin, '_my_node_id')
+        if hasattr(plugin, "_my_node_id"):
+            delattr(plugin, "_my_node_id")
 
         mock_connect_meshtastic.return_value = None
 
@@ -579,8 +579,8 @@ class TestBasePlugin(unittest.TestCase):
         plugin = MockPlugin()
 
         # Ensure no cache exists
-        if hasattr(plugin, '_my_node_id'):
-            delattr(plugin, '_my_node_id')
+        if hasattr(plugin, "_my_node_id"):
+            delattr(plugin, "_my_node_id")
 
         # Mock connect_meshtastic to return None (no client)
         mock_connect_meshtastic.return_value = None
