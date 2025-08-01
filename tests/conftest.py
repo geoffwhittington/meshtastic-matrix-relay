@@ -181,13 +181,13 @@ def setup_bleak_mocks():
         BleakExcModule.BleakError = BleakError
         BleakExcModule.BleakDBusError = BleakDBusError
 
-        sys.modules["bleak"] = MagicMock()
-        sys.modules["bleak.exc"] = BleakExcModule()
+        # Create main bleak module mock with exception classes
+        bleak_module = MagicMock()
+        bleak_module.BleakError = BleakError
+        bleak_module.BleakDBusError = BleakDBusError
 
-        # Also make the exceptions available globally for imports
-        import builtins
-        builtins.BleakError = BleakError
-        builtins.BleakDBusError = BleakDBusError
+        sys.modules["bleak"] = bleak_module
+        sys.modules["bleak.exc"] = BleakExcModule()
 
 def setup_remaining_mocks():
     """Set up mocks for remaining dependencies."""
