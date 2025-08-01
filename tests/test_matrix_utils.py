@@ -33,10 +33,17 @@ from mmrelay.matrix_utils import (
 
 
 # Matrix room message handling tests - converted from unittest.TestCase to standalone pytest functions
+#
+# Conversion rationale:
+# - Improved readability with native assert statements instead of self.assertEqual()
+# - Better integration with pytest fixtures for test setup and teardown
+# - Simplified async test execution without explicit asyncio.run() calls
+# - Enhanced test isolation and maintainability
+# - Alignment with modern Python testing practices
 
 @pytest.fixture
 def mock_room():
-    """Mock Matrix room fixture."""
+    """Mock Matrix room fixture for testing room message handling."""
     mock_room = MagicMock()
     mock_room.room_id = "!room:matrix.org"
     return mock_room
@@ -44,7 +51,7 @@ def mock_room():
 
 @pytest.fixture
 def mock_event():
-    """Mock Matrix event fixture."""
+    """Mock Matrix event fixture for testing message events."""
     mock_event = MagicMock()
     mock_event.sender = "@user:matrix.org"
     mock_event.body = "Hello, world!"
@@ -55,7 +62,7 @@ def mock_event():
 
 @pytest.fixture
 def test_config():
-    """Test configuration fixture."""
+    """Test configuration fixture with Meshtastic and Matrix settings."""
     return {
         "meshtastic": {
             "broadcast_enabled": True,
