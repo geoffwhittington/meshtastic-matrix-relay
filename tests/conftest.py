@@ -175,8 +175,11 @@ def setup_bleak_mocks():
 
         # Create a proper module-like object for bleak.exc
         class BleakExcModule:
-            BleakError = BleakError
-            BleakDBusError = BleakDBusError
+            pass
+
+        # Set the exception classes as attributes
+        BleakExcModule.BleakError = BleakError
+        BleakExcModule.BleakDBusError = BleakDBusError
 
         sys.modules["bleak"] = MagicMock()
         sys.modules["bleak.exc"] = BleakExcModule()
