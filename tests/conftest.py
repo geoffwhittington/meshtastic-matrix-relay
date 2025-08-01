@@ -31,9 +31,9 @@ _BUILTIN_MODULES = {
 
 def ensure_builtins_not_mocked():
     """
-    Restores original Python built-in modules if they have been accidentally mocked during testing.
-
-    This function checks for mocked versions of critical built-in modules and replaces them with their original references. It also reloads the logging module if it was mocked to ensure proper logging functionality is maintained.
+    Restore original built-in modules if they have been replaced by mocks during testing.
+    
+    This function ensures that critical built-in modules such as `queue`, `logging`, `asyncio`, `threading`, and `time` are restored to their original state if they were mocked, maintaining the integrity of the test environment.
     """
     for name, module in _BUILTIN_MODULES.items():
         if name in sys.modules and hasattr(sys.modules[name], "_mock_name"):
@@ -94,10 +94,10 @@ class MockMatrixRoom:
 class MockWhoamiError:
     def __init__(self, message="Whoami error"):
         """
-        Initialize the MockWhoamiError with an optional error message.
-
+        Initialize a MockWhoamiError instance with an optional error message.
+        
         Parameters:
-            message (str): The error message to associate with the exception. Defaults to "Whoami error".
+            message (str): Custom error message for the exception. Defaults to "Whoami error".
         """
         self.message = message
 
