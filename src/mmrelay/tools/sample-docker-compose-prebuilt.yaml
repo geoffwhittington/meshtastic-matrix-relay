@@ -12,7 +12,7 @@ services:
 
     volumes:
       # Configuration - uses standard ~/.mmrelay/config.yaml location
-      # Create this first with: make config
+      # Create this first with: make setup-prebuilt
       - ${MMRELAY_HOME}/.mmrelay/config.yaml:/app/config.yaml:ro
 
       # Data and logs - same locations as standalone installation

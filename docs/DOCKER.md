@@ -135,7 +135,7 @@ services:
     image: ghcr.io/jeremiah-k/mmrelay:latest
     container_name: meshtastic-matrix-relay
     restart: unless-stopped
-    user: "1000:1000"
+    user: "1000:1000"  # May need to match your user's UID/GID. See the Troubleshooting section.
     environment:
       - TZ=UTC
       - PYTHONUNBUFFERED=1

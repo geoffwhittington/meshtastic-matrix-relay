@@ -22,8 +22,8 @@ help:
 	@echo "  shell   - Access container shell"
 	@echo "  clean   - Remove containers and networks"
 
-# Copy sample config to ~/.mmrelay/config.yaml and create Docker files
-config:
+# Internal target for common setup tasks
+_setup_common:
 	@mkdir -p ~/.mmrelay ~/.mmrelay/data ~/.mmrelay/logs
 	@if [ ! -f ~/.mmrelay/config.yaml ]; then \
 		cp src/mmrelay/tools/sample_config.yaml ~/.mmrelay/config.yaml; \
@@ -37,13 +37,16 @@ config:
 	else \
 		echo ".env file already exists"; \
 	fi
+	@echo "Created directories: ~/.mmrelay/data and ~/.mmrelay/logs with proper ownership"
+
+# Copy sample config to ~/.mmrelay/config.yaml and create Docker files
+config: _setup_common
 	@if [ ! -f docker-compose.yaml ]; then \
 		cp src/mmrelay/tools/sample-docker-compose.yaml docker-compose.yaml; \
 		echo "docker-compose.yaml created from sample - edit if needed"; \
 	else \
 		echo "docker-compose.yaml already exists"; \
 	fi
-	@echo "Created directories: ~/.mmrelay/data and ~/.mmrelay/logs with proper ownership"
 
 # Edit the config file with preferred editor
 edit:
@@ -98,27 +101,13 @@ setup:
 	@$(MAKE) edit
 
 # Setup with prebuilt images: copy config and use prebuilt docker-compose
-setup-prebuilt:
-	@mkdir -p ~/.mmrelay ~/.mmrelay/data ~/.mmrelay/logs
-	@if [ ! -f ~/.mmrelay/config.yaml ]; then \
-		cp src/mmrelay/tools/sample_config.yaml ~/.mmrelay/config.yaml; \
-		echo "Sample config copied to ~/.mmrelay/config.yaml - please edit it before running"; \
-	else \
-		echo "~/.mmrelay/config.yaml already exists"; \
-	fi
-	@if [ ! -f .env ]; then \
-		cp src/mmrelay/tools/sample.env .env; \
-		echo ".env file created from sample - edit if needed"; \
-	else \
-		echo ".env file already exists"; \
-	fi
+setup-prebuilt: _setup_common
 	@if [ ! -f docker-compose.yaml ]; then \
 		cp src/mmrelay/tools/sample-docker-compose-prebuilt.yaml docker-compose.yaml; \
 		echo "docker-compose.yaml created from prebuilt sample - uses official images"; \
 	else \
 		echo "docker-compose.yaml already exists"; \
 	fi
-	@echo "Created directories: ~/.mmrelay/data and ~/.mmrelay/logs with proper ownership"
 	@echo "Using prebuilt images - no building required, just run 'make run'"
 	@$(MAKE) edit
 
