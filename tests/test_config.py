@@ -1,7 +1,7 @@
 import os
 import sys
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -31,7 +31,9 @@ class TestConfig(unittest.TestCase):
         """
         Test that get_base_dir() returns the default base directory on Linux systems.
         """
-        with patch("sys.platform", "linux"), patch("mmrelay.config.custom_data_dir", None):
+        with patch("sys.platform", "linux"), patch(
+            "mmrelay.config.custom_data_dir", None
+        ):
             base_dir = get_base_dir()
             self.assertEqual(base_dir, os.path.expanduser("~/.mmrelay"))
 
@@ -41,7 +43,9 @@ class TestConfig(unittest.TestCase):
         """
         Test that get_base_dir returns the expected default base directory on Windows by mocking platform detection and the user data directory.
         """
-        with patch("sys.platform", "win32"), patch("mmrelay.config.custom_data_dir", None):
+        with patch("sys.platform", "win32"), patch(
+            "mmrelay.config.custom_data_dir", None
+        ):
             mock_user_data_dir.return_value = "C:\\Users\\test\\AppData\\Local\\mmrelay"
             base_dir = get_base_dir()
             self.assertEqual(base_dir, "C:\\Users\\test\\AppData\\Local\\mmrelay")
@@ -79,7 +83,9 @@ class TestConfig(unittest.TestCase):
         """
         Test that `get_config_paths` returns the default Linux configuration path when no command-line arguments are provided.
         """
-        with patch("sys.platform", "linux"), patch("sys.argv", ["mmrelay"]), patch("mmrelay.config.custom_data_dir", None):
+        with patch("sys.platform", "linux"), patch("sys.argv", ["mmrelay"]), patch(
+            "mmrelay.config.custom_data_dir", None
+        ):
             paths = get_config_paths()
             self.assertIn(os.path.expanduser("~/.mmrelay/config.yaml"), paths)
 
@@ -105,7 +111,9 @@ class TestConfig(unittest.TestCase):
         """
         Test that get_data_dir returns the default data directory path on Linux platforms.
         """
-        with patch("sys.platform", "linux"), patch("mmrelay.config.custom_data_dir", None):
+        with patch("sys.platform", "linux"), patch(
+            "mmrelay.config.custom_data_dir", None
+        ):
             data_dir = get_data_dir()
             self.assertEqual(data_dir, os.path.expanduser("~/.mmrelay/data"))
 
@@ -113,17 +121,21 @@ class TestConfig(unittest.TestCase):
         """
         Test that get_log_dir() returns the default logs directory on Linux platforms.
         """
-        with patch("sys.platform", "linux"), patch("mmrelay.config.custom_data_dir", None):
+        with patch("sys.platform", "linux"), patch(
+            "mmrelay.config.custom_data_dir", None
+        ):
             log_dir = get_log_dir()
             self.assertEqual(log_dir, os.path.expanduser("~/.mmrelay/logs"))
 
     def test_get_plugin_data_dir_linux(self):
         """
         Test that get_plugin_data_dir returns correct plugin data directory paths on Linux.
-        
+
         Ensures the function resolves both the default plugins data directory and a plugin-specific directory for the Linux platform.
         """
-        with patch("sys.platform", "linux"), patch("mmrelay.config.custom_data_dir", None):
+        with patch("sys.platform", "linux"), patch(
+            "mmrelay.config.custom_data_dir", None
+        ):
             plugin_data_dir = get_plugin_data_dir()
             self.assertEqual(
                 plugin_data_dir, os.path.expanduser("~/.mmrelay/data/plugins")
@@ -151,7 +163,7 @@ class TestConfigEdgeCases(unittest.TestCase):
     def test_config_migration_scenarios(self, mock_yaml_load, mock_open, mock_isfile):
         """
         Test migration of configuration files from an old format to a new format.
-        
+
         Simulates loading a legacy configuration file missing newer fields and verifies that loading proceeds without errors, preserving original data and handling missing fields gracefully.
         """
         # Simulate old config format (missing new fields)
@@ -159,12 +171,9 @@ class TestConfigEdgeCases(unittest.TestCase):
             "matrix": {
                 "homeserver": "https://matrix.org",
                 "username": "@bot:matrix.org",
-                "password": "secret"
+                "password": "secret",
             },
-            "meshtastic": {
-                "connection_type": "serial",
-                "serial_port": "/dev/ttyUSB0"
-            }
+            "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"},
         }
 
         mock_yaml_load.return_value = old_config
@@ -186,7 +195,7 @@ class TestConfigEdgeCases(unittest.TestCase):
     def test_partial_config_handling(self, mock_yaml_load, mock_open, mock_isfile):
         """
         Test that loading a partial or incomplete configuration file does not cause errors.
-        
+
         Ensures that configuration files missing sections or fields are loaded without exceptions, and missing keys are handled gracefully.
         """
         # Test with minimal config
@@ -213,10 +222,12 @@ class TestConfigEdgeCases(unittest.TestCase):
     @patch("mmrelay.config.os.path.isfile")
     @patch("builtins.open")
     @patch("mmrelay.config.yaml.load")
-    def test_config_validation_error_messages(self, mock_yaml_load, mock_open, mock_isfile):
+    def test_config_validation_error_messages(
+        self, mock_yaml_load, mock_open, mock_isfile
+    ):
         """
         Test loading of invalid configuration structures and ensure they are returned as dictionaries.
-        
+
         This test verifies that when a configuration file contains invalid types or values, the `load_config` function still loads and returns the raw configuration dictionary. Validation and error messaging are expected to occur outside of this function.
         """
         # Test with invalid YAML structure
@@ -224,7 +235,7 @@ class TestConfigEdgeCases(unittest.TestCase):
             "matrix": "not_a_dict",  # Should be a dictionary
             "meshtastic": {
                 "connection_type": "invalid_type"  # Invalid connection type
-            }
+            },
         }
 
         mock_yaml_load.return_value = invalid_config
@@ -242,7 +253,7 @@ class TestConfigEdgeCases(unittest.TestCase):
     def test_corrupted_config_file_handling(self, mock_open, mock_isfile):
         """
         Test that loading a corrupted YAML configuration file is handled gracefully.
-        
+
         Simulates a YAML parsing error and verifies that `load_config` does not raise uncaught exceptions and returns a dictionary as fallback.
         """
         import yaml
@@ -250,9 +261,13 @@ class TestConfigEdgeCases(unittest.TestCase):
         mock_isfile.return_value = True
 
         # Simulate YAML parsing error
-        mock_open.return_value.__enter__.return_value.read.return_value = "invalid: yaml: content: ["
+        mock_open.return_value.__enter__.return_value.read.return_value = (
+            "invalid: yaml: content: ["
+        )
 
-        with patch("mmrelay.config.yaml.load", side_effect=yaml.YAMLError("Invalid YAML")):
+        with patch(
+            "mmrelay.config.yaml.load", side_effect=yaml.YAMLError("Invalid YAML")
+        ):
             # Should handle YAML errors gracefully
             try:
                 config = load_config(config_file="corrupted.yaml")
@@ -281,32 +296,35 @@ class TestConfigEdgeCases(unittest.TestCase):
     @patch("mmrelay.config.os.path.isfile")
     @patch("builtins.open")
     @patch("mmrelay.config.yaml.load")
-    def test_config_with_environment_variables(self, mock_yaml_load, mock_open, mock_isfile):
+    def test_config_with_environment_variables(
+        self, mock_yaml_load, mock_open, mock_isfile
+    ):
         """
         Test loading a configuration file containing environment variable references.
-        
+
         Ensures that configuration values with environment variable placeholders are loaded as raw strings, without expansion, as expected at this stage.
         """
         # Config with environment variable references
         env_config = {
             "matrix": {
                 "homeserver": "${MATRIX_HOMESERVER}",
-                "access_token": "${MATRIX_TOKEN}"
+                "access_token": "${MATRIX_TOKEN}",
             },
-            "meshtastic": {
-                "serial_port": "${MESHTASTIC_PORT}"
-            }
+            "meshtastic": {"serial_port": "${MESHTASTIC_PORT}"},
         }
 
         mock_yaml_load.return_value = env_config
         mock_isfile.return_value = True
 
         # Set environment variables
-        with patch.dict(os.environ, {
-            "MATRIX_HOMESERVER": "https://test.matrix.org",
-            "MATRIX_TOKEN": "test_token_123",
-            "MESHTASTIC_PORT": "/dev/ttyUSB1"
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "MATRIX_HOMESERVER": "https://test.matrix.org",
+                "MATRIX_TOKEN": "test_token_123",
+                "MESHTASTIC_PORT": "/dev/ttyUSB1",
+            },
+        ):
             config = load_config(config_file="env_config.yaml")
 
             # Should load the raw config (environment variable expansion happens elsewhere)
@@ -316,7 +334,7 @@ class TestConfigEdgeCases(unittest.TestCase):
     def test_config_path_resolution_edge_cases(self):
         """
         Test that configuration path resolution correctly handles relative and absolute paths.
-        
+
         Ensures that get_config_paths returns absolute paths for both relative and absolute config file arguments, covering edge cases in path normalization.
         """
         # Mock argparse Namespace object for relative path

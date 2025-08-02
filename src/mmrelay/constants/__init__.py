@@ -19,10 +19,10 @@ Usage:
 # Re-export commonly used constants for convenience
 from .app import APP_AUTHOR, APP_NAME
 from .config import (
+    CONFIG_KEY_LEVEL,
+    CONFIG_SECTION_LOGGING,
     CONFIG_SECTION_MATRIX,
     CONFIG_SECTION_MESHTASTIC,
-    CONFIG_SECTION_LOGGING,
-    CONFIG_KEY_LEVEL,
     DEFAULT_LOG_LEVEL,
 )
 from .formats import DEFAULT_MATRIX_PREFIX, DEFAULT_MESHTASTIC_PREFIX

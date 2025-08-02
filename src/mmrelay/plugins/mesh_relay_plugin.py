@@ -31,10 +31,10 @@ class Plugin(BasePlugin):
     def normalize(self, dict_obj):
         """
         Converts packet data in various formats (dict, JSON string, or plain string) into a normalized dictionary with raw data fields removed.
-        
+
         Parameters:
             dict_obj: Packet data as a dictionary, JSON string, or plain string.
-        
+
         Returns:
             A dictionary representing the normalized packet with raw fields stripped.
         """
