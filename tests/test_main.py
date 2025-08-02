@@ -210,7 +210,9 @@ class TestMain(unittest.TestCase):
     @patch("mmrelay.config.load_config")
     @patch("asyncio.run")
     @patch("mmrelay.main.main", new_callable=AsyncMock)
-    def test_run_main_exception_handling(self, mock_main, mock_asyncio_run, mock_load_config):
+    def test_run_main_exception_handling(
+        self, mock_main, mock_asyncio_run, mock_load_config
+    ):
         """
         Test that run_main returns 1 if an exception occurs during execution.
         """
