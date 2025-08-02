@@ -2,6 +2,20 @@
 
 MMRelay supports Docker deployment with two image options and multiple deployment methods.
 
+## Table of Contents
+
+- [Image Options](#image-options)
+- [Deployment Methods](#deployment-methods)
+  - [Method A: Using Make Commands](#method-a-using-make-commands-linuxmacos)
+  - [Method B: Manual Setup](#method-b-manual-setup-any-platform)
+  - [Method C: Portainer / Docker GUI](#method-c-portainer--docker-gui)
+- [Environment Variables](#environment-variables)
+- [Make Commands Reference](#make-commands-reference)
+- [Connection Types](#connection-types)
+- [Data Persistence](#data-persistence)
+- [Troubleshooting](#troubleshooting)
+- [Updates](#updates)
+
 ## Image Options
 
 ### Option 1: Prebuilt Images (Recommended)
@@ -91,61 +105,43 @@ nano ~/.mmrelay/config.yaml
 
 **Step 2: Create stack in Portainer**
 
-Use this docker-compose content in Portainer's stack editor:
+**Option A: Use the official sample file (recommended)**
 
-**For prebuilt images (recommended):**
+Copy the latest docker-compose content from our official sample file:
+- **View online**: [sample-docker-compose-prebuilt.yaml](https://github.com/jeremiah-k/meshtastic-matrix-relay/blob/main/src/mmrelay/tools/sample-docker-compose-prebuilt.yaml)
+- **Download directly**:
+  ```bash
+  curl -o docker-compose.yaml https://raw.githubusercontent.com/jeremiah-k/meshtastic-matrix-relay/main/src/mmrelay/tools/sample-docker-compose-prebuilt.yaml
+  ```
+
+**Option B: Manual compose file**
+
+If you prefer to create your own, use this minimal configuration:
+
 ```yaml
 services:
   mmrelay:
     image: ghcr.io/jeremiah-k/mmrelay:latest
     container_name: meshtastic-matrix-relay
     restart: unless-stopped
-    user: "${UID:-1000}:${GID:-1000}"
+    user: "1000:1000"
     environment:
       - TZ=UTC
       - PYTHONUNBUFFERED=1
       - MPLCONFIGDIR=/tmp/matplotlib
-
     volumes:
-      # Configuration - adjust path if needed
+      # Replace /home/yourusername with your actual home directory
       - /home/yourusername/.mmrelay/config.yaml:/app/config.yaml:ro
-      # Data and logs - adjust paths if needed
       - /home/yourusername/.mmrelay/data:/app/data
       - /home/yourusername/.mmrelay/logs:/app/logs
-
-    # For TCP connections (most common) - Meshtastic typically uses port 4403
     ports:
       - "4403:4403"
-
-    # For BLE connections, uncomment these:
-    # privileged: true
-    # network_mode: host
-    # Additional volumes for BLE (add to existing volumes section above):
-    #   - /var/run/dbus:/var/run/dbus:ro
-    #   - /sys/bus/usb:/sys/bus/usb:ro
-    #   - /sys/class/bluetooth:/sys/class/bluetooth:ro
-    #   - /sys/devices:/sys/devices:ro
-
-  # Optional: Watchtower for automatic updates
-  # Uncomment this service to enable daily checks for new images
-  # watchtower:
-  #   image: containrrr/watchtower:latest
-  #   container_name: watchtower-mmrelay
-  #   restart: unless-stopped
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock
-  #   environment:
-  #     - WATCHTOWER_CLEANUP=true
-  #     - WATCHTOWER_INCLUDE_STOPPED=true
-  #     - WATCHTOWER_SCHEDULE=0 0 2 * * *  # Daily at 2 AM
-  #     - WATCHTOWER_TIMEOUT=30s
-  #   command: meshtastic-matrix-relay
 ```
 
 **Important for Portainer users:**
 - Replace `/home/yourusername/.mmrelay/` with your actual home directory path
-- The `${UID:-1000}:${GID:-1000}` will default to user/group 1000
-- Adjust paths in the volumes section to match your system
+- For additional features (BLE, Watchtower), use the official sample file
+- The official sample file is always up-to-date with the latest configuration options
 
 ## Environment Variables
 
