@@ -13,7 +13,7 @@ Tests edge cases and error handling including:
 """
 
 import os
-import subprocess
+import subprocess  # nosec B404 - Used for controlled test environment operations
 import sys
 import unittest
 from pathlib import Path

@@ -1,11 +1,6 @@
 [bandit]
-# Skip B101 (assert_used) in test directories only
-# Asserts are commonly used in tests and are acceptable there
-# Skip B105 (hardcoded_password_string) - false positives for config key names
-# Skip B110 (try_except_pass) in tests - acceptable for test error handling
-# Skip B311 (random) in tests - not used for cryptographic purposes
-# Skip B404 (subprocess_without_shell_equals_true) in tests - controlled test environment
-skips = B101,B105,B110,B311,B404
+# Skip B101 (assert_used) - asserts are commonly used in tests and are acceptable there
+skips = B101
 
 # Exclude directories
 exclude_dirs = src/mmrelay/tools
