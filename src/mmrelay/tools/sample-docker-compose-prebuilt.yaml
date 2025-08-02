@@ -11,8 +11,8 @@ services:
       - MPLCONFIGDIR=/tmp/matplotlib
 
     volumes:
-      # Configuration - uses standard ~/.mmrelay/config.yaml location
-      # Create this first with: make setup-prebuilt
+      # Configuration - create ~/.mmrelay/config.yaml first
+      # See docs/DOCKER.md for setup instructions (covers all deployment methods)
       - ${MMRELAY_HOME}/.mmrelay/config.yaml:/app/config.yaml:ro
 
       # Data and logs - same locations as standalone installation
