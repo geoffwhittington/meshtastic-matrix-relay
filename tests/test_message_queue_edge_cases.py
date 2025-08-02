@@ -73,7 +73,7 @@ class TestMessageQueueEdgeCases(unittest.TestCase):
             # Set event loop to None to ensure clean state
             asyncio.set_event_loop(None)
         except Exception:
-            pass  # Ignore any cleanup errors
+            pass  # nosec B110 - Cleanup operation, exceptions expected and safely ignored
 
         # Reset global state
         import mmrelay.meshtastic_utils

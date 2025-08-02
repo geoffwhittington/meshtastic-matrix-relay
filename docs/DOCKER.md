@@ -4,7 +4,6 @@ MMRelay supports Docker deployment with two image options and multiple deploymen
 
 ## Table of Contents
 
-- [Image Options](#image-options)
 - [Deployment Methods](#deployment-methods)
   - [Method A: Prebuilt Images (Recommended)](#method-a-prebuilt-images-recommended)
   - [Method B: Build from Source (Easy with Make Commands)](#method-b-build-from-source-easy-with-make-commands)
@@ -29,6 +28,7 @@ Choose the method that best fits your needs:
 - **Best for**: Most users who want to run MMRelay quickly
 
 **With make commands (if you have the repo):**
+
 ```bash
 make setup-prebuilt  # Copy config, .env, and docker-compose.yaml, then opens editor
 make run             # Start container (pulls official image)
@@ -43,6 +43,7 @@ make run             # Start container (pulls official image)
 - **Best for**: Developers, contributors, users who want customization
 
 **With make commands:**
+
 ```bash
 make setup    # Copy config, .env, and docker-compose.yaml, then opens editor
 make build    # Build Docker image from source (convenient and fast)
@@ -133,7 +134,7 @@ services:
     image: ghcr.io/jeremiah-k/mmrelay:latest
     container_name: meshtastic-matrix-relay
     restart: unless-stopped
-    user: "1000:1000"  # May need to match your user's UID/GID. See the Troubleshooting section.
+    user: "1000:1000" # May need to match your user's UID/GID. See the Troubleshooting section.
     environment:
       - TZ=UTC
       - PYTHONUNBUFFERED=1

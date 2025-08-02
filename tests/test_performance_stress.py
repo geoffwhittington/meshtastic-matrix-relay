@@ -395,7 +395,7 @@ class TestPerformanceStress(unittest.TestCase):
 
                                             asyncio.run(coro)
                                         except Exception:
-                                            pass  # Ignore any errors from running the mock coroutine
+                                            pass  # nosec B110 - Mock coroutine cleanup, exceptions expected and safely ignored
                                         return mock_future
 
                                     with patch(
@@ -778,8 +778,12 @@ class TestPerformanceStress(unittest.TestCase):
                         messages_queued = 0
                         while time.time() - start_time < test_duration:
                             # Randomly select message type and node
-                            msg_type = random.choice(message_types)  # nosec B311 - Test data generation, not cryptographic
-                            node_id = random.choice(node_ids)  # nosec B311 - Test data generation, not cryptographic
+                            msg_type = random.choice(
+                                message_types
+                            )  # nosec B311 - Test data generation, not cryptographic
+                            node_id = random.choice(
+                                node_ids
+                            )  # nosec B311 - Test data generation, not cryptographic
 
                             # Queue message with realistic frequency
                             success = queue.enqueue(
@@ -793,7 +797,9 @@ class TestPerformanceStress(unittest.TestCase):
                                 messages_queued += 1
 
                             # Realistic inter-message delay (0.5-3 seconds)
-                            await asyncio.sleep(random.uniform(0.5, 3.0))  # nosec B311 - Test timing variation, not cryptographic
+                            await asyncio.sleep(
+                                random.uniform(0.5, 3.0)  # nosec B311 - Test timing variation, not cryptographic
+                            )
 
                         # Wait for queue to process remaining messages
                         await asyncio.sleep(10)  # Allow processing to complete

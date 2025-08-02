@@ -588,7 +588,7 @@ class TestRunMain(unittest.TestCase):
                 # Close the coroutine to prevent "never awaited" warning
                 coro.close()
             except Exception:
-                pass
+                pass  # nosec B110 - Cleanup operation, exceptions expected and safely ignored
             return None
 
         mock_asyncio_run.side_effect = mock_run
