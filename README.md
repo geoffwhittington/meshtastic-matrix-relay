@@ -47,12 +47,25 @@ For detailed installation and configuration instructions, see the [Installation 
 
 ## Docker
 
-MMRelay includes official Docker support for easy deployment and management:
+MMRelay includes official Docker support with two deployment options:
+
+### Option 1: Prebuilt Images (Recommended)
+Use official multi-platform images for fastest setup:
 
 ```bash
-# Quick setup with Docker
+# Quick setup with prebuilt images
+make setup-prebuilt  # Copy config and open editor (first time)
+make run             # Start the container (pulls official image)
+make logs            # View logs
+```
+
+### Option 2: Build from Source
+Build your own image locally:
+
+```bash
+# Setup and build from source
 make setup   # Copy config and open editor (first time)
-make build   # Build the Docker image
+make build   # Build the Docker image from source
 make run     # Start the container
 make logs    # View logs
 ```
