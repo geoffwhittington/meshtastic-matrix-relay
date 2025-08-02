@@ -131,7 +131,7 @@ class TestMain(unittest.TestCase):
     def test_main_with_message_map_wipe(self):
         """
         Test that the message map wipe function is called when the configuration enables wiping on restart.
-        
+
         Verifies that the wipe logic correctly parses both new and legacy configuration formats and triggers the wipe when appropriate.
         """
         # Enable message map wiping
@@ -208,8 +208,9 @@ class TestMain(unittest.TestCase):
         self.assertEqual(result, 0)
 
     @patch("mmrelay.config.load_config")
+    @patch("asyncio.run")
     @patch("mmrelay.main.main", new_callable=AsyncMock)
-    def test_run_main_exception_handling(self, mock_main, mock_load_config):
+    def test_run_main_exception_handling(self, mock_main, mock_asyncio_run, mock_load_config):
         """
         Test that run_main returns 1 if an exception occurs during execution.
         """
@@ -218,6 +219,9 @@ class TestMain(unittest.TestCase):
 
         # Mock main to raise an exception
         mock_main.side_effect = Exception("Test error")
+
+        # Mock asyncio.run to raise the exception from main
+        mock_asyncio_run.side_effect = Exception("Test error")
 
         result = run_main(None)
 
@@ -370,7 +374,7 @@ class TestRunMain(unittest.TestCase):
     ):
         """
         Test that `run_main` executes successfully with valid configuration and returns 0.
-        
+
         Ensures that the banner is printed, configuration is loaded, and the main asynchronous function is run when correct arguments are provided.
         """
         # Mock configuration
@@ -386,7 +390,7 @@ class TestRunMain(unittest.TestCase):
             # Close the coroutine to prevent warnings
             """
             Mocks the execution of an asynchronous coroutine by closing it if possible and returning None.
-            
+
             Parameters:
                 coro: The coroutine object to be closed.
             """
@@ -557,7 +561,7 @@ class TestRunMain(unittest.TestCase):
     ):
         """
         Test that run_main uses a custom log level from arguments and completes successfully.
-        
+
         Verifies that specifying a log level in the arguments overrides the logging level in the configuration and that run_main returns 0 to indicate success.
         """
         mock_config = {
@@ -566,23 +570,25 @@ class TestRunMain(unittest.TestCase):
             "matrix_rooms": [{"id": "!room:matrix.org"}],
         }
         mock_load_config.return_value = mock_config
+
         # Mock asyncio.run to consume the coroutine to prevent warnings
         def mock_run(coro):
             """
             Closes the given coroutine to suppress "never awaited" warnings during testing.
-            
+
             Parameters:
                 coro: The coroutine object to be closed.
-            
+
             Returns:
                 None
             """
             try:
                 # Close the coroutine to prevent "never awaited" warning
                 coro.close()
-            except:
+            except Exception:
                 pass
             return None
+
         mock_asyncio_run.side_effect = mock_run
 
         mock_args = MagicMock()
@@ -616,7 +622,7 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
     def test_main_with_database_wipe_new_format(self):
         """
         Test that the database wipe logic is triggered when `wipe_on_restart` is set in the new configuration format.
-        
+
         Verifies that the `wipe_message_map` function is called if the `database.msg_map.wipe_on_restart` flag is enabled in the configuration.
         """
         # Add database config with wipe_on_restart
@@ -648,7 +654,7 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
     def test_main_with_database_wipe_legacy_format(self):
         """
         Test that the database wipe logic is triggered when the legacy configuration format specifies `wipe_on_restart`.
-        
+
         Verifies that the application correctly detects the legacy `db.msg_map.wipe_on_restart` setting and calls the database wipe function.
         """
         # Add legacy database config with wipe_on_restart
@@ -702,7 +708,7 @@ class TestMainFunctionEdgeCases(unittest.TestCase):
     def test_main_no_meshtastic_client_warning(self):
         """
         Verify that update functions are not called when the Meshtastic client is None.
-        
+
         This test ensures that, if the Meshtastic client is not initialized, the main logic does not attempt to update longnames or shortnames.
         """
         # This test is simplified to avoid async complexity while still testing the core logic

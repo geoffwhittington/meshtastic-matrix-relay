@@ -125,9 +125,9 @@ class Plugin(BasePlugin):
     ):
         """
         Processes incoming Meshtastic text messages and responds with a weather forecast if the plugin command is detected.
-        
+
         Checks if the message is a valid text message on the expected port, verifies channel and command enablement, retrieves the sender's GPS location, generates a weather forecast, and sends the response either as a direct message or broadcast depending on the message type.
-        
+
         Returns:
             bool: True if the message was handled and a response was sent; False otherwise.
         """

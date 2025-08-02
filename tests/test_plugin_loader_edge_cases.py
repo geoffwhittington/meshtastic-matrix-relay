@@ -97,7 +97,7 @@ class TestPluginLoaderEdgeCases(unittest.TestCase):
     def test_load_plugins_from_directory_plugin_initialization_failure(self):
         """
         Verify that plugins whose initialization fails are not loaded.
-        
+
         Creates a plugin file with a `Plugin` class that raises an exception during initialization, then checks that `load_plugins_from_directory` returns an empty list and logs an error.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -120,7 +120,7 @@ class Plugin:
     def test_load_plugins_from_directory_import_error_with_dependency_install(self):
         """
         Verifies that the plugin loader attempts to install missing dependencies when a plugin import fails due to a missing module.
-        
+
         Creates a plugin file that imports a nonexistent module, mocks the dependency installation process, and asserts that the loader tries to install the missing dependency, logs appropriate warnings and info messages, and does not load the plugin.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -155,19 +155,31 @@ class Plugin:
                         self.assertIn("nonexistent_module", str(install_call))
 
                         # Should have logged the missing dependency warning
-                        warning_calls = [call for call in mock_logger.warning.call_args_list
-                                       if "Missing dependency" in str(call)]
-                        self.assertTrue(len(warning_calls) > 0, "Should have logged missing dependency warning")
+                        warning_calls = [
+                            call
+                            for call in mock_logger.warning.call_args_list
+                            if "Missing dependency" in str(call)
+                        ]
+                        self.assertTrue(
+                            len(warning_calls) > 0,
+                            "Should have logged missing dependency warning",
+                        )
 
                         # Should have logged the installation attempt
-                        info_calls = [call for call in mock_logger.info.call_args_list
-                                    if "Attempting to install missing dependency" in str(call)]
-                        self.assertTrue(len(info_calls) > 0, "Should have logged installation attempt")
+                        info_calls = [
+                            call
+                            for call in mock_logger.info.call_args_list
+                            if "Attempting to install missing dependency" in str(call)
+                        ]
+                        self.assertTrue(
+                            len(info_calls) > 0,
+                            "Should have logged installation attempt",
+                        )
 
     def test_load_plugins_from_directory_dependency_install_failure(self):
         """
         Test that plugin loading fails gracefully when a plugin's missing dependency cannot be installed.
-        
+
         Creates a plugin file that imports a nonexistent module, simulates a failed dependency installation, and verifies that no plugins are loaded and an error is logged.
         """
         with tempfile.TemporaryDirectory() as temp_dir:

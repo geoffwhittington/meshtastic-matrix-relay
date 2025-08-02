@@ -71,27 +71,35 @@ sys.modules["nio"] = nio_mock
 sys.modules["nio.events"] = MagicMock()
 sys.modules["nio.events.room_events"] = MagicMock()
 
+
 # Create proper mock classes for nio that can be used with isinstance()
 class MockMatrixRoom:
     pass
 
+
 class MockReactionEvent:
     pass
+
 
 class MockRoomMessageEmote:
     pass
 
+
 class MockRoomMessageNotice:
     pass
+
 
 class MockRoomMessageText:
     pass
 
+
 class MockWhoamiError(Exception):
     """Mock WhoamiError that inherits from Exception for isinstance checks."""
+
     def __init__(self, message="Whoami error"):
         super().__init__(message)
         self.message = message
+
 
 # Mock specific nio classes that are imported directly
 nio_mock.AsyncClient = MagicMock()
@@ -107,13 +115,16 @@ nio_mock.WhoamiError = MockWhoamiError
 # Mock RoomMemberEvent from nio.events.room_events
 sys.modules["nio.events.room_events"].RoomMemberEvent = MagicMock()
 
+
 # Mock PIL/Pillow
 # Create proper PIL mock classes that work with real imports
 class MockPILImage:
     """Mock PIL Image class that can be used as a spec."""
+
     def save(self, *args, **kwargs):
         """Mock save method for PIL Image."""
         pass
+
 
 # Create a mock that allows attribute access like the real PIL module
 pil_mock = MagicMock()
@@ -135,12 +146,15 @@ certifi_mock = MagicMock()
 certifi_mock.where.return_value = "/fake/cert/path.pem"
 sys.modules["certifi"] = certifi_mock
 
+
 # Don't mock ssl module - it can interfere with logging and other system components
 # Instead, we'll mock ssl.create_default_context at the test level when needed
 # Create proper exception class for serial
 class SerialException(Exception):
     """Mock SerialException for testing."""
+
     pass
+
 
 # Create serial module with proper exception
 serial_mock = MagicMock()
@@ -148,19 +162,26 @@ serial_mock.SerialException = SerialException
 sys.modules["serial"] = serial_mock
 sys.modules["serial.tools"] = MagicMock()
 sys.modules["serial.tools.list_ports"] = MagicMock()
+
+
 # Create proper exception classes for bleak that inherit from Exception
 class BleakError(Exception):
     """Mock BleakError exception for testing."""
+
     pass
+
 
 class BleakDBusError(BleakError):
     """Mock BleakDBusError exception for testing."""
+
     pass
+
 
 # Create a proper module-like object for bleak.exc
 class BleakExcModule:
     BleakError = BleakError
     BleakDBusError = BleakDBusError
+
 
 sys.modules["bleak"] = MagicMock()
 sys.modules["bleak.exc"] = BleakExcModule()
@@ -177,22 +198,29 @@ sys.modules["haversine"] = MagicMock()
 sys.modules["schedule"] = MagicMock()
 sys.modules["platformdirs"] = MagicMock()
 sys.modules["py_staticmaps"] = MagicMock()
+
+
 # Create proper mock classes for s2sphere
 class MockLatLng:
     """Mock LatLng class for s2sphere."""
+
     @classmethod
     def from_degrees(cls, lat, lng):
         return cls()
 
+
 class MockLatLngRect:
     """Mock LatLngRect class for s2sphere."""
+
     @classmethod
     def from_point(cls, point):
         return cls()
 
+
 class MockS2Module:
     LatLng = MockLatLng
     LatLngRect = MockLatLngRect
+
 
 sys.modules["s2sphere"] = MockS2Module()
 

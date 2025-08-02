@@ -1,8 +1,7 @@
-import asyncio
 import os
 import sys
-import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 # Add src to path for imports
@@ -31,7 +30,6 @@ from mmrelay.matrix_utils import (
     validate_prefix_format,
 )
 
-
 # Matrix room message handling tests - converted from unittest.TestCase to standalone pytest functions
 #
 # Conversion rationale:
@@ -40,6 +38,7 @@ from mmrelay.matrix_utils import (
 # - Simplified async test execution without explicit asyncio.run() calls
 # - Enhanced test isolation and maintainability
 # - Alignment with modern Python testing practices
+
 
 @pytest.fixture
 def mock_room():
@@ -75,6 +74,7 @@ def test_config():
         "matrix": {"bot_user_id": "@bot:matrix.org"},
     }
 
+
 @patch("mmrelay.matrix_utils.connect_meshtastic")
 @patch("mmrelay.matrix_utils.queue_message")
 @patch("mmrelay.matrix_utils.bot_start_time", 1234567880)
@@ -98,9 +98,7 @@ async def test_on_room_message_simple_text(
     mock_get_user_display_name.return_value = "user"
     with patch("mmrelay.matrix_utils.config", test_config), patch(
         "mmrelay.matrix_utils.matrix_rooms", test_config["matrix_rooms"]
-    ), patch(
-        "mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]
-    ):
+    ), patch("mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]):
         # Mock the matrix client
         mock_matrix_client = AsyncMock()
         with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
@@ -111,6 +109,7 @@ async def test_on_room_message_simple_text(
             mock_queue_message.assert_called_once()
             call_args = mock_queue_message.call_args[1]
             assert "Hello, world!" in call_args["text"]
+
 
 @patch("mmrelay.matrix_utils.connect_meshtastic")
 @patch("mmrelay.matrix_utils.queue_message")
@@ -124,9 +123,7 @@ async def test_on_room_message_ignore_bot(
     mock_event.sender = test_config["matrix"]["bot_user_id"]
     with patch("mmrelay.matrix_utils.config", test_config), patch(
         "mmrelay.matrix_utils.matrix_rooms", test_config["matrix_rooms"]
-    ), patch(
-        "mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]
-    ):
+    ), patch("mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]):
         # Mock the matrix client
         mock_matrix_client = AsyncMock()
         with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
@@ -135,6 +132,7 @@ async def test_on_room_message_ignore_bot(
 
             # Assert that the message was not queued
             mock_queue_message.assert_not_called()
+
 
 @patch("mmrelay.matrix_utils.connect_meshtastic")
 @patch("mmrelay.matrix_utils.queue_message")
@@ -177,9 +175,7 @@ async def test_on_room_message_reply_enabled(
 
     with patch("mmrelay.matrix_utils.config", test_config), patch(
         "mmrelay.matrix_utils.matrix_rooms", test_config["matrix_rooms"]
-    ), patch(
-        "mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]
-    ):
+    ), patch("mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]):
         # Mock the matrix client
         mock_matrix_client = AsyncMock()
         with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
@@ -190,6 +186,7 @@ async def test_on_room_message_reply_enabled(
             mock_queue_message.assert_called_once()
             call_args = mock_queue_message.call_args[1]
             assert "This is a reply" in call_args["text"]
+
 
 @patch("mmrelay.matrix_utils.connect_meshtastic")
 @patch("mmrelay.matrix_utils.queue_message")
@@ -224,9 +221,7 @@ async def test_on_room_message_reply_disabled(
 
     with patch("mmrelay.matrix_utils.config", test_config), patch(
         "mmrelay.matrix_utils.matrix_rooms", test_config["matrix_rooms"]
-    ), patch(
-        "mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]
-    ):
+    ), patch("mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]):
         # Mock the matrix client
         mock_matrix_client = AsyncMock()
         with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
@@ -237,6 +232,7 @@ async def test_on_room_message_reply_disabled(
             mock_queue_message.assert_called_once()
             call_args = mock_queue_message.call_args[1]
             assert mock_event.body in call_args["text"]
+
 
 @patch("mmrelay.matrix_utils.connect_meshtastic")
 @patch("mmrelay.matrix_utils.queue_message")
@@ -262,9 +258,7 @@ async def test_on_room_message_reaction_enabled(
     """
     from nio import ReactionEvent
 
-    mock_isinstance.side_effect = (
-        lambda event, event_type: event_type == ReactionEvent
-    )
+    mock_isinstance.side_effect = lambda event, event_type: event_type == ReactionEvent
 
     test_config["meshtastic"]["message_interactions"]["reactions"] = True
     mock_event.source = {
@@ -286,9 +280,7 @@ async def test_on_room_message_reaction_enabled(
 
     with patch("mmrelay.matrix_utils.config", test_config), patch(
         "mmrelay.matrix_utils.matrix_rooms", test_config["matrix_rooms"]
-    ), patch(
-        "mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]
-    ):
+    ), patch("mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]):
         # Mock the matrix client
         mock_matrix_client = AsyncMock()
         with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
@@ -300,12 +292,18 @@ async def test_on_room_message_reaction_enabled(
             call_args = mock_queue_message.call_args[1]
             assert "reacted 👍 to" in call_args["text"]
 
+
 @patch("mmrelay.matrix_utils.connect_meshtastic")
 @patch("mmrelay.matrix_utils.queue_message")
 @patch("mmrelay.matrix_utils.bot_start_time", 1234567880)
 @patch("mmrelay.matrix_utils.isinstance")
 async def test_on_room_message_reaction_disabled(
-    mock_isinstance, mock_queue_message, mock_connect_meshtastic, mock_room, mock_event, test_config
+    mock_isinstance,
+    mock_queue_message,
+    mock_connect_meshtastic,
+    mock_room,
+    mock_event,
+    test_config,
 ):
     # This is a reaction event
     """
@@ -313,9 +311,7 @@ async def test_on_room_message_reaction_disabled(
     """
     from nio import ReactionEvent
 
-    mock_isinstance.side_effect = (
-        lambda event, event_type: event_type == ReactionEvent
-    )
+    mock_isinstance.side_effect = lambda event, event_type: event_type == ReactionEvent
 
     test_config["meshtastic"]["message_interactions"]["reactions"] = False
     mock_event.source = {
@@ -330,9 +326,7 @@ async def test_on_room_message_reaction_disabled(
 
     with patch("mmrelay.matrix_utils.config", test_config), patch(
         "mmrelay.matrix_utils.matrix_rooms", test_config["matrix_rooms"]
-    ), patch(
-        "mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]
-    ):
+    ), patch("mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]):
         # Mock the matrix client
         mock_matrix_client = AsyncMock()
         with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
@@ -341,6 +335,7 @@ async def test_on_room_message_reaction_disabled(
 
             # Assert that the message was not queued
             mock_queue_message.assert_not_called()
+
 
 @patch("mmrelay.matrix_utils.connect_meshtastic")
 @patch("mmrelay.matrix_utils.queue_message")
@@ -356,9 +351,7 @@ async def test_on_room_message_unsupported_room(
     mock_room.room_id = "!unsupported:matrix.org"
     with patch("mmrelay.matrix_utils.config", test_config), patch(
         "mmrelay.matrix_utils.matrix_rooms", test_config["matrix_rooms"]
-    ), patch(
-        "mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]
-    ):
+    ), patch("mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]):
         # Mock the matrix client
         mock_matrix_client = AsyncMock()
         with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
@@ -370,6 +363,7 @@ async def test_on_room_message_unsupported_room(
 
 
 # Matrix utility function tests - converted from unittest.TestCase to standalone pytest functions
+
 
 @patch("mmrelay.matrix_utils.config", {})
 def test_get_msgs_to_keep_config_default():
@@ -442,9 +436,7 @@ def test_get_interaction_settings_new_format():
     Tests that interaction settings are correctly retrieved from a configuration using the new format.
     """
     config = {
-        "meshtastic": {
-            "message_interactions": {"reactions": True, "replies": False}
-        }
+        "meshtastic": {"message_interactions": {"reactions": True, "replies": False}}
     }
 
     result = get_interaction_settings(config)
@@ -538,6 +530,7 @@ def test_add_truncated_vars_none_text():
 
 # Prefix formatting function tests - converted from unittest.TestCase to standalone pytest functions
 
+
 def test_validate_prefix_format_valid():
     """
     Tests that a valid prefix format string with available variables passes validation without errors.
@@ -590,9 +583,7 @@ def test_get_meshtastic_prefix_custom_format():
     """
     Tests that a custom Meshtastic prefix format is applied correctly using the truncated display name.
     """
-    config = {
-        "meshtastic": {"prefix_enabled": True, "prefix_format": "[{display3}]: "}
-    }
+    config = {"meshtastic": {"prefix_enabled": True, "prefix_format": "[{display3}]: "}}
 
     result = get_meshtastic_prefix(config, "Alice")
     assert result == "[Ali]: "
@@ -614,9 +605,7 @@ def test_get_matrix_prefix_enabled():
     """
     Tests that the Matrix prefix is generated correctly when prefixing is enabled and a custom format is provided.
     """
-    config = {
-        "matrix": {"prefix_enabled": True, "prefix_format": "[{long3}/{mesh}]: "}
-    }
+    config = {"matrix": {"prefix_enabled": True, "prefix_format": "[{long3}/{mesh}]: "}}
 
     result = get_matrix_prefix(config, "Alice", "A", "TestMesh")
     assert result == "[Ali/TestMesh]: "
@@ -648,6 +637,7 @@ def test_get_matrix_prefix_default_format():
 
 
 # Text processing function tests - converted from unittest.TestCase to standalone pytest functions
+
 
 def test_truncate_message_under_limit():
     """
@@ -722,14 +712,16 @@ def test_format_reply_message():
 
 # Bot command detection tests - refactored to use test class with fixtures for better maintainability
 
+
 class TestBotCommand:
     """Test class for bot command detection functionality."""
 
     @pytest.fixture(autouse=True)
     def mock_bot_globals(self):
         """Fixture to mock bot user globals for all tests in this class."""
-        with patch("mmrelay.matrix_utils.bot_user_id", "@bot:matrix.org"), \
-             patch("mmrelay.matrix_utils.bot_user_name", "Bot"):
+        with patch("mmrelay.matrix_utils.bot_user_id", "@bot:matrix.org"), patch(
+            "mmrelay.matrix_utils.bot_user_name", "Bot"
+        ):
             yield
 
     def test_direct_mention(self):
@@ -779,6 +771,7 @@ class TestBotCommand:
 
 # Async Matrix function tests - converted from unittest.TestCase to standalone pytest functions
 
+
 @pytest.fixture
 def matrix_config():
     """Test configuration for Matrix functions."""
@@ -792,12 +785,14 @@ def matrix_config():
         "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}],
     }
 
+
 async def test_connect_matrix_success(matrix_config):
     """Test successful Matrix connection."""
-    with patch("mmrelay.matrix_utils.matrix_client", None), \
-         patch("mmrelay.matrix_utils.AsyncClient") as mock_async_client, \
-         patch("mmrelay.matrix_utils.logger"), \
-         patch("ssl.create_default_context") as mock_ssl_context:
+    with patch("mmrelay.matrix_utils.matrix_client", None), patch(
+        "mmrelay.matrix_utils.AsyncClient"
+    ) as mock_async_client, patch("mmrelay.matrix_utils.logger"), patch(
+        "ssl.create_default_context"
+    ) as mock_ssl_context:
 
         # Mock SSL context creation
         mock_ssl_context.return_value = MagicMock()
@@ -823,14 +818,16 @@ async def test_connect_matrix_success(matrix_config):
         assert result == mock_client_instance
         mock_client_instance.whoami.assert_called_once()
 
+
 async def test_connect_matrix_whoami_error(matrix_config):
     """Test Matrix connection when whoami fails."""
     from nio import WhoamiError
 
-    with patch("mmrelay.matrix_utils.matrix_client", None), \
-         patch("mmrelay.matrix_utils.AsyncClient") as mock_async_client, \
-         patch("mmrelay.matrix_utils.logger"), \
-         patch("ssl.create_default_context") as mock_ssl_context:
+    with patch("mmrelay.matrix_utils.matrix_client", None), patch(
+        "mmrelay.matrix_utils.AsyncClient"
+    ) as mock_async_client, patch("mmrelay.matrix_utils.logger"), patch(
+        "ssl.create_default_context"
+    ) as mock_ssl_context:
 
         # Mock SSL context creation
         mock_ssl_context.return_value = MagicMock()
@@ -848,6 +845,7 @@ async def test_connect_matrix_whoami_error(matrix_config):
         assert result == mock_client_instance
         assert mock_client_instance.device_id is None
 
+
 @patch("mmrelay.matrix_utils.matrix_client")
 @patch("mmrelay.matrix_utils.logger")
 async def test_join_matrix_room_by_id(mock_logger, mock_matrix_client):
@@ -858,6 +856,7 @@ async def test_join_matrix_room_by_id(mock_logger, mock_matrix_client):
 
     mock_matrix_client.join.assert_called_once_with("!room:matrix.org")
 
+
 @patch("mmrelay.matrix_utils.matrix_client")
 @patch("mmrelay.matrix_utils.matrix_rooms", [])
 @patch("mmrelay.matrix_utils.logger")
@@ -866,7 +865,9 @@ async def test_join_matrix_room_by_alias(mock_logger, mock_matrix_client):
     # Mock room alias resolution
     mock_resolve_response = MagicMock()
     mock_resolve_response.room_id = "!resolved:matrix.org"
-    mock_matrix_client.room_resolve_alias = AsyncMock(return_value=mock_resolve_response)
+    mock_matrix_client.room_resolve_alias = AsyncMock(
+        return_value=mock_resolve_response
+    )
     mock_matrix_client.join.return_value = AsyncMock()
 
     await join_matrix_room(mock_matrix_client, "#room:matrix.org")
@@ -882,12 +883,15 @@ async def test_join_matrix_room_alias_resolution_fails(mock_logger, mock_matrix_
     # Mock failed alias resolution
     mock_resolve_response = MagicMock()
     mock_resolve_response.room_id = None
-    mock_matrix_client.room_resolve_alias = AsyncMock(return_value=mock_resolve_response)
+    mock_matrix_client.room_resolve_alias = AsyncMock(
+        return_value=mock_resolve_response
+    )
 
     await join_matrix_room(mock_matrix_client, "#room:matrix.org")
 
     # Should not attempt to join if resolution fails
     mock_matrix_client.join.assert_not_called()
+
 
 @patch("mmrelay.matrix_utils.config", {"meshtastic": {"meshnet_name": "TestMesh"}})
 @patch("mmrelay.matrix_utils.connect_matrix")
@@ -896,9 +900,14 @@ async def test_join_matrix_room_alias_resolution_fails(mock_logger, mock_matrix_
 @patch("mmrelay.matrix_utils.store_message_map")
 @patch("mmrelay.matrix_utils.prune_message_map")
 @patch("mmrelay.matrix_utils.logger")
-async def test_matrix_relay_simple_message(mock_logger, mock_prune, mock_store,
-                                           mock_storage_enabled, mock_get_interactions,
-                                           mock_connect_matrix):
+async def test_matrix_relay_simple_message(
+    mock_logger,
+    mock_prune,
+    mock_store,
+    mock_storage_enabled,
+    mock_get_interactions,
+    mock_connect_matrix,
+):
     """Test relaying a simple message to Matrix."""
     # Setup mocks
     mock_get_interactions.return_value = {"reactions": False, "replies": False}
@@ -928,13 +937,15 @@ async def test_matrix_relay_simple_message(mock_logger, mock_prune, mock_store,
     assert call_args[1]["room_id"] == "!room:matrix.org"
     assert call_args[1]["message_type"] == "m.room.message"
 
+
 @patch("mmrelay.matrix_utils.config", {"meshtastic": {"meshnet_name": "TestMesh"}})
 @patch("mmrelay.matrix_utils.connect_matrix")
 @patch("mmrelay.matrix_utils.get_interaction_settings")
 @patch("mmrelay.matrix_utils.message_storage_enabled")
 @patch("mmrelay.matrix_utils.logger")
-async def test_matrix_relay_emote_message(mock_logger, mock_storage_enabled,
-                                          mock_get_interactions, mock_connect_matrix):
+async def test_matrix_relay_emote_message(
+    mock_logger, mock_storage_enabled, mock_get_interactions, mock_connect_matrix
+):
     """Test relaying an emote message to Matrix."""
     # Setup mocks
     mock_get_interactions.return_value = {"reactions": False, "replies": False}
@@ -965,12 +976,15 @@ async def test_matrix_relay_emote_message(mock_logger, mock_storage_enabled,
     content = call_args[1]["content"]
     assert content["msgtype"] == "m.emote"
 
+
 @patch("mmrelay.matrix_utils.config", {"meshtastic": {"meshnet_name": "TestMesh"}})
 @patch("mmrelay.matrix_utils.connect_matrix")
 @patch("mmrelay.matrix_utils.get_interaction_settings")
 @patch("mmrelay.matrix_utils.message_storage_enabled")
 @patch("mmrelay.matrix_utils.logger")
-async def test_matrix_relay_client_none(mock_logger, mock_storage_enabled, mock_get_interactions, mock_connect_matrix):
+async def test_matrix_relay_client_none(
+    mock_logger, mock_storage_enabled, mock_get_interactions, mock_connect_matrix
+):
     """Test matrix_relay when matrix_client is None."""
     mock_get_interactions.return_value = {"reactions": False, "replies": False}
     mock_storage_enabled.return_value = False
@@ -991,6 +1005,7 @@ async def test_matrix_relay_client_none(mock_logger, mock_storage_enabled, mock_
     # Should log error about None client
     mock_logger.error.assert_called_with("Matrix client is None. Cannot send message.")
 
+
 @patch("mmrelay.matrix_utils.matrix_client")
 @patch("mmrelay.matrix_utils.logger")
 async def test_get_user_display_name_room_name(mock_logger, mock_matrix_client):
@@ -1006,6 +1021,7 @@ async def test_get_user_display_name_room_name(mock_logger, mock_matrix_client):
     assert result == "Room Display Name"
     mock_room.user_name.assert_called_once_with("@user:matrix.org")
 
+
 @patch("mmrelay.matrix_utils.matrix_client")
 @patch("mmrelay.matrix_utils.logger")
 async def test_get_user_display_name_fallback(mock_logger, mock_matrix_client):
@@ -1019,7 +1035,9 @@ async def test_get_user_display_name_fallback(mock_logger, mock_matrix_client):
     # Mock Matrix API response
     mock_displayname_response = MagicMock()
     mock_displayname_response.displayname = "Global Display Name"
-    mock_matrix_client.get_displayname = AsyncMock(return_value=mock_displayname_response)
+    mock_matrix_client.get_displayname = AsyncMock(
+        return_value=mock_displayname_response
+    )
 
     result = await get_user_display_name(mock_room, mock_event)
 
@@ -1040,18 +1058,23 @@ async def test_get_user_display_name_no_displayname(mock_logger, mock_matrix_cli
     # Mock Matrix API response with no display name
     mock_displayname_response = MagicMock()
     mock_displayname_response.displayname = None
-    mock_matrix_client.get_displayname = AsyncMock(return_value=mock_displayname_response)
+    mock_matrix_client.get_displayname = AsyncMock(
+        return_value=mock_displayname_response
+    )
 
     result = await get_user_display_name(mock_room, mock_event)
 
     # Should fallback to sender ID
     assert result == "@user:matrix.org"
 
+
 @patch("mmrelay.matrix_utils.config", {"meshtastic": {"broadcast_enabled": True}})
 @patch("mmrelay.matrix_utils.connect_meshtastic")
 @patch("mmrelay.matrix_utils.queue_message")
 @patch("mmrelay.matrix_utils.logger")
-async def test_send_reply_to_meshtastic_with_reply_id(mock_logger, mock_queue, mock_connect):
+async def test_send_reply_to_meshtastic_with_reply_id(
+    mock_logger, mock_queue, mock_connect
+):
     """Test sending a reply to Meshtastic with reply_id."""
     mock_room_config = {"meshtastic_channel": 0}
     mock_room = MagicMock()
@@ -1074,11 +1097,14 @@ async def test_send_reply_to_meshtastic_with_reply_id(mock_logger, mock_queue, m
     call_kwargs = mock_queue.call_args[1]
     assert call_kwargs["reply_id"] == 12345
 
+
 @patch("mmrelay.matrix_utils.config", {"meshtastic": {"broadcast_enabled": True}})
 @patch("mmrelay.matrix_utils.connect_meshtastic")
 @patch("mmrelay.matrix_utils.queue_message")
 @patch("mmrelay.matrix_utils.logger")
-async def test_send_reply_to_meshtastic_no_reply_id(mock_logger, mock_queue, mock_connect):
+async def test_send_reply_to_meshtastic_no_reply_id(
+    mock_logger, mock_queue, mock_connect
+):
     """Test sending a reply to Meshtastic without reply_id."""
     mock_room_config = {"meshtastic_channel": 0}
     mock_room = MagicMock()
@@ -1103,6 +1129,7 @@ async def test_send_reply_to_meshtastic_no_reply_id(mock_logger, mock_queue, moc
 
 
 # Image upload function tests - converted from unittest.TestCase to standalone pytest functions
+
 
 @patch("mmrelay.matrix_utils.io.BytesIO")
 async def test_upload_image(mock_bytesio):

@@ -59,7 +59,7 @@ def print_banner():
 async def main(config):
     """
     Coordinates the main asynchronous relay loop between Meshtastic and Matrix clients.
-    
+
     Initializes the database, loads plugins, starts the message queue, and establishes connections to both Meshtastic and Matrix. Joins configured Matrix rooms, registers event callbacks for message and membership events, and periodically updates node names from the Meshtastic network. Monitors connection health, manages the Matrix sync loop with reconnection and shutdown handling, and ensures graceful shutdown of all components. Optionally wipes the message map on startup and shutdown if configured.
     """
     # Extract Matrix configuration

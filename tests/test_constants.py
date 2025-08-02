@@ -112,7 +112,7 @@ class TestConstantsValidity:
     def test_format_constants_valid(self):
         """
         Validates that message format prefix constants are non-empty strings containing format placeholders.
-        
+
         Ensures that `DEFAULT_MESHTASTIC_PREFIX` and `DEFAULT_MATRIX_PREFIX` in the `formats` module are valid strings and include curly brace placeholders for formatting.
         """
         assert isinstance(formats.DEFAULT_MESHTASTIC_PREFIX, str)
@@ -171,10 +171,10 @@ class TestConstantsImports:
             APP_NAME,
             CONFIG_SECTION_MATRIX,
             CONFIG_SECTION_MESHTASTIC,
+            DEFAULT_MATRIX_PREFIX,
+            DEFAULT_MESHTASTIC_PREFIX,
             DEFAULT_MESSAGE_DELAY,
             MAX_QUEUE_SIZE,
-            DEFAULT_MESHTASTIC_PREFIX,
-            DEFAULT_MATRIX_PREFIX,
         )
 
     def test_constants_used_in_codebase_are_accessible(self):
@@ -183,9 +183,9 @@ class TestConstantsImports:
         """
         # Test a sampling of constants that are imported in the main codebase
         from mmrelay.constants.config import CONFIG_SECTION_MATRIX
+        from mmrelay.constants.formats import TEXT_MESSAGE_APP
         from mmrelay.constants.network import CONNECTION_TYPE_TCP
         from mmrelay.constants.queue import DEFAULT_MESSAGE_DELAY
-        from mmrelay.constants.formats import TEXT_MESSAGE_APP
 
         assert isinstance(CONFIG_SECTION_MATRIX, str)
         assert isinstance(CONNECTION_TYPE_TCP, str)
@@ -214,7 +214,7 @@ class TestConstantsConsistency:
     def test_connection_types_used_consistently(self):
         """
         Verify that connection type constants are lowercase and match expected string values.
-        
+
         Ensures that TCP, serial, and BLE connection type constants in the network module are consistently defined as lowercase strings and correspond to their expected identifiers.
         """
         # Test that connection types are defined and used consistently
@@ -235,7 +235,7 @@ class TestConstantsConsistency:
     def test_queue_size_calculations_correct(self):
         """
         Verify that queue water marks are correctly calculated as integer percentages of the maximum queue size.
-        
+
         Asserts that `QUEUE_HIGH_WATER_MARK` is 75% and `QUEUE_MEDIUM_WATER_MARK` is 50% of `MAX_QUEUE_SIZE`.
         """
         # Test that water marks are calculated as percentages

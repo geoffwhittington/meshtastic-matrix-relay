@@ -16,20 +16,20 @@ import yaml
 from yaml.loader import SafeLoader
 
 from mmrelay.constants.network import (
+    CONFIG_KEY_BLE_ADDRESS,
+    CONFIG_KEY_CONNECTION_TYPE,
+    CONFIG_KEY_HOST,
+    CONFIG_KEY_SERIAL_PORT,
     CONNECTION_TYPE_BLE,
     CONNECTION_TYPE_SERIAL,
     CONNECTION_TYPE_TCP,
-    CONFIG_KEY_BLE_ADDRESS,
-    CONFIG_KEY_SERIAL_PORT,
-    CONFIG_KEY_HOST,
-    CONFIG_KEY_CONNECTION_TYPE,
 )
 
 
 def get_config_paths():
     """
     Return a list of possible file paths where the mmrelay configuration file may be located.
-    
+
     Returns:
         list: Paths to potential configuration files.
     """
@@ -41,7 +41,7 @@ def get_config_paths():
 def check_config():
     """
     Validates the mmrelay configuration file by checking for required sections and fields.
-    
+
     Returns:
         bool: True if a valid configuration file is found and passes all checks; False otherwise.
     """

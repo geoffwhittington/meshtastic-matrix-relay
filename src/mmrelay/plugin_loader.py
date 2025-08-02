@@ -521,13 +521,13 @@ def clone_or_update_repo(repo_url, ref, plugins_dir):
 def load_plugins_from_directory(directory, recursive=False):
     """
     Dynamically loads and instantiates plugin classes from Python files in a specified directory.
-    
+
     Scans the given directory (and subdirectories if `recursive` is True) for `.py` files, importing each as a module and instantiating its `Plugin` class if present. Automatically attempts to install missing dependencies when a `ModuleNotFoundError` occurs, supporting both pip and pipx environments. Provides compatibility for plugins importing from either `plugins` or `mmrelay.plugins`. Skips files without a `Plugin` class or with unresolved import errors.
-    
+
     Parameters:
         directory (str): Path to the directory containing plugin files.
         recursive (bool): If True, searches subdirectories recursively.
-    
+
     Returns:
         list: Instantiated plugin objects found in the directory.
     """

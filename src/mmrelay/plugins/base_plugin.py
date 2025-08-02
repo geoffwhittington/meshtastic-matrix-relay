@@ -303,14 +303,14 @@ class BasePlugin(ABC):
     def send_message(self, text: str, channel: int = 0, destination_id=None) -> bool:
         """
         Send a message to the Meshtastic network using the message queue.
-        
+
         Queues the specified text for broadcast or direct delivery on the given channel. Returns True if the message was successfully queued, or False if the Meshtastic client is unavailable.
-        
+
         Parameters:
             text (str): The message content to send.
             channel (int, optional): The channel index for sending the message. Defaults to 0.
             destination_id (optional): The destination node ID for direct messages. If None, the message is broadcast.
-        
+
         Returns:
             bool: True if the message was queued successfully; False otherwise.
         """
