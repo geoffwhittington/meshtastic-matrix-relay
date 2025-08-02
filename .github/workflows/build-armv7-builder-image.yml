@@ -3,7 +3,7 @@ name: Build ARMv7 Builder Image
 on:
   workflow_dispatch:
     inputs:
-      push_image:
+      push_image: # checkov:skip=CKV_GHA_7 Legitimate CI/CD control - only affects publishing, not build content
         description: Push image to registry
         required: false
         default: true

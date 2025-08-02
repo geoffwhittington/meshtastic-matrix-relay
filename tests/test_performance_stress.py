@@ -798,7 +798,9 @@ class TestPerformanceStress(unittest.TestCase):
 
                             # Realistic inter-message delay (0.5-3 seconds)
                             await asyncio.sleep(
-                                random.uniform(0.5, 3.0)  # nosec B311 - Test timing variation, not cryptographic
+                                random.uniform(
+                                    0.5, 3.0
+                                )  # nosec B311 - Test timing variation, not cryptographic
                             )
 
                         # Wait for queue to process remaining messages
