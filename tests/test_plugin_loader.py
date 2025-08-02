@@ -12,7 +12,7 @@ Tests the plugin discovery, loading, and management functionality including:
 """
 
 import os
-import subprocess
+import subprocess  # nosec B404 - Used for controlled test environment operations
 import sys
 import tempfile
 import unittest

@@ -81,7 +81,7 @@ matrix:
 
 ### Character Efficiency Tips
 
-- **Default formats use 10 characters** (`Alice[M]: `) leaving ~200 characters for message content
+- **Default formats use 10 characters** (`Alice[M]:`) leaving ~200 characters for message content
 - **Use shorter truncations** like `{display3}` or `{long4}` to save space
 - **Consider your mesh network's message limits** when choosing prefix lengths
 - **Test your formats** with typical usernames in your community
@@ -119,19 +119,19 @@ logging:
 
 When enabled, this will set the following loggers to DEBUG level:
 
-**matrix_nio: true**
+#### matrix_nio: true
 
 - `nio` - Main matrix-nio logger
 - `nio.client` - Matrix client operations
 - `nio.http` - HTTP requests/responses
 - `nio.crypto` - Encryption/decryption operations
 
-**bleak: true**
+#### bleak: true
 
 - `bleak` - Main BLE library logger
 - `bleak.backends` - Platform-specific BLE backends
 
-**meshtastic: true**
+#### meshtastic: true
 
 - `meshtastic` - Main meshtastic library logger
 - `meshtastic.serial_interface` - Serial connection debugging

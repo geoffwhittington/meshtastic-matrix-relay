@@ -1,7 +1,5 @@
 [bandit]
-# Skip B101 (assert_used) in test directories only
-# Asserts are commonly used in tests and are acceptable there
-tests = tests
+# Skip B101 (assert_used) - asserts are commonly used in tests and are acceptable there
 skips = B101
 
 # Exclude directories

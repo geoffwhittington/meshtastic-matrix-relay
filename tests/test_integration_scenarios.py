@@ -321,7 +321,7 @@ class TestIntegrationScenarios(unittest.TestCase):
                                 try:
                                     coro.close()
                                 except Exception:
-                                    pass
+                                    pass  # nosec B110 - Cleanup operation, exceptions expected and safely ignored
                             mock_future.result.return_value = None
                         return mock_future
 

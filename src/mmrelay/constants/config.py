@@ -17,7 +17,9 @@ CONFIG_SECTION_CUSTOM_PLUGINS = "custom-plugins"
 
 # Matrix configuration keys
 CONFIG_KEY_HOMESERVER = "homeserver"
-CONFIG_KEY_ACCESS_TOKEN = "access_token"
+CONFIG_KEY_ACCESS_TOKEN = (
+    "access_token"  # nosec B105 - This is a config key name, not a hardcoded password
+)
 CONFIG_KEY_BOT_USER_ID = "bot_user_id"
 CONFIG_KEY_PREFIX_ENABLED = "prefix_enabled"
 CONFIG_KEY_PREFIX_FORMAT = "prefix_format"

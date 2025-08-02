@@ -368,7 +368,7 @@ class Plugin:
                         if len(plugins) > 0:
                             self.assertGreaterEqual(len(plugins), 1)
                     except Exception:
-                        pass  # Ignore exceptions, focus on error logging
+                        pass  # nosec B110 - Intentionally ignoring exceptions in stress test to focus on error logging
                     mock_logger.error.assert_called()
 
     def test_load_plugins_memory_constraint(self):
@@ -392,7 +392,7 @@ class Plugin:
                     try:
                         load_plugins(config)
                     except Exception:
-                        pass  # Ignore exceptions, focus on error logging
+                        pass  # nosec B110 - Intentionally ignoring exceptions in stress test to focus on error logging
                     mock_logger.error.assert_called()
 
     def test_load_plugins_circular_dependency(self):

@@ -3,26 +3,27 @@
 # Detect docker compose command (prefer newer 'docker compose' over 'docker-compose')
 DOCKER_COMPOSE := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
 
-.PHONY: help build build-nocache rebuild run stop logs shell clean config edit setup update-compose
+.PHONY: help build build-nocache rebuild run stop logs shell clean config edit setup setup-prebuilt update-compose
 
 # Default target
 help:
 	@echo "Available Docker commands:"
-	@echo "  setup   - Copy sample config and open editor (recommended for first time)"
+	@echo "  setup   - Copy sample config and open editor (builds from source)"
+	@echo "  setup-prebuilt - Copy sample config for prebuilt images (faster, recommended)"
 	@echo "  config  - Copy sample config to ~/.mmrelay/config.yaml"
 	@echo "  edit    - Edit the config file with your preferred editor"
 	@echo "  update-compose - Update docker-compose.yaml with latest sample"
-	@echo "  build   - Build Docker image (uses layer caching for faster builds)"
-	@echo "  build-nocache - Build Docker image with --no-cache for fresh builds"
-	@echo "  rebuild - Stop, rebuild with --no-cache, and restart container (for updates)"
-	@echo "  run     - Start the container"
+	@echo "  build   - Build Docker image from source (uses layer caching)"
+	@echo "  build-nocache - Build Docker image from source with --no-cache"
+	@echo "  rebuild - Stop, rebuild from source with --no-cache, and restart"
+	@echo "  run     - Start the container (prebuilt images or built from source)"
 	@echo "  stop    - Stop the container (keeps container for restart)"
 	@echo "  logs    - Show container logs"
 	@echo "  shell   - Access container shell"
 	@echo "  clean   - Remove containers and networks"
 
-# Copy sample config to ~/.mmrelay/config.yaml and create Docker files
-config:
+# Internal target for common setup tasks
+_setup_common:
 	@mkdir -p ~/.mmrelay ~/.mmrelay/data ~/.mmrelay/logs
 	@if [ ! -f ~/.mmrelay/config.yaml ]; then \
 		cp src/mmrelay/tools/sample_config.yaml ~/.mmrelay/config.yaml; \
@@ -36,13 +37,16 @@ config:
 	else \
 		echo ".env file already exists"; \
 	fi
+	@echo "Created directories: ~/.mmrelay/data and ~/.mmrelay/logs with proper ownership"
+
+# Copy sample config to ~/.mmrelay/config.yaml and create Docker files
+config: _setup_common
 	@if [ ! -f docker-compose.yaml ]; then \
 		cp src/mmrelay/tools/sample-docker-compose.yaml docker-compose.yaml; \
 		echo "docker-compose.yaml created from sample - edit if needed"; \
 	else \
 		echo "docker-compose.yaml already exists"; \
 	fi
-	@echo "Created directories: ~/.mmrelay/data and ~/.mmrelay/logs with proper ownership"
 
 # Edit the config file with preferred editor
 edit:
@@ -91,9 +95,20 @@ edit:
 		esac \
 	fi
 
-# Setup: copy config and open editor (recommended for first time)
+# Setup: copy config and open editor (builds from source)
 setup:
 	@$(MAKE) config
+	@$(MAKE) edit
+
+# Setup with prebuilt images: copy config and use prebuilt docker-compose
+setup-prebuilt: _setup_common
+	@if [ ! -f docker-compose.yaml ]; then \
+		cp src/mmrelay/tools/sample-docker-compose-prebuilt.yaml docker-compose.yaml; \
+		echo "docker-compose.yaml created from prebuilt sample - uses official images"; \
+	else \
+		echo "docker-compose.yaml already exists"; \
+	fi
+	@echo "Using prebuilt images - no building required, just run 'make run'"
 	@$(MAKE) edit
 
 # Update docker-compose.yaml with latest sample

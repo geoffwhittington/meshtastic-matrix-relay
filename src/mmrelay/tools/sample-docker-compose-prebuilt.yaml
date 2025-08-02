@@ -1,0 +1,54 @@
+services:
+  mmrelay:
+    image: ghcr.io/jeremiah-k/mmrelay:latest
+    container_name: meshtastic-matrix-relay
+    restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
+
+    environment:
+      - TZ=UTC
+      - PYTHONUNBUFFERED=1
+      - MPLCONFIGDIR=/tmp/matplotlib
+
+    volumes:
+      # Configuration - create ~/.mmrelay/config.yaml first
+      # See docs/DOCKER.md for setup instructions (covers all deployment methods)
+      - ${MMRELAY_HOME}/.mmrelay/config.yaml:/app/config.yaml:ro
+
+      # Data and logs - same locations as standalone installation
+      # These directories will be created automatically
+      - ${MMRELAY_HOME}/.mmrelay/data:/app/data
+      - ${MMRELAY_HOME}/.mmrelay/logs:/app/logs
+
+    # For TCP connections (most common) - Meshtastic typically uses port 4403
+    ports:
+      - 4403:4403
+
+    # For serial connections, uncomment the device you need:
+    # devices:
+    #   - /dev/ttyUSB0:/dev/ttyUSB0
+    #   - /dev/ttyACM0:/dev/ttyACM0
+
+    # For BLE connections, uncomment these:
+    # privileged: true
+    # network_mode: host
+    # Additional volumes for BLE (add to existing volumes section above):
+    #   - /var/run/dbus:/var/run/dbus:ro
+    #   - /sys/bus/usb:/sys/bus/usb:ro
+    #   - /sys/class/bluetooth:/sys/class/bluetooth:ro
+    #   - /sys/devices:/sys/devices:ro
+
+  # Optional: Watchtower for automatic updates
+  # Uncomment this service to enable daily checks for new images
+  # watchtower:
+  #   image: containrrr/watchtower:latest
+  #   container_name: watchtower-mmrelay
+  #   restart: unless-stopped
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   environment:
+  #     - WATCHTOWER_CLEANUP=true
+  #     - WATCHTOWER_INCLUDE_STOPPED=true
+  #     - WATCHTOWER_SCHEDULE=0 0 2 * * *  # Daily at 2 AM
+  #     - WATCHTOWER_TIMEOUT=30s
+  #   command: meshtastic-matrix-relay
