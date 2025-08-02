@@ -108,8 +108,17 @@ nano ~/.mmrelay/config.yaml
 **Option A: Use the official sample file (recommended)**
 
 Copy the latest docker-compose content from our official sample file:
-- **View online**: [sample-docker-compose-prebuilt.yaml](https://github.com/jeremiah-k/meshtastic-matrix-relay/blob/main/src/mmrelay/tools/sample-docker-compose-prebuilt.yaml)
-- **Download directly**:
+
+**If viewing locally (after cloning the repo):**
+```bash
+# Copy the sample file directly
+cp src/mmrelay/tools/sample-docker-compose-prebuilt.yaml docker-compose.yaml
+```
+
+**If viewing online or want latest from main branch:**
+- **View in current branch**: [sample-docker-compose-prebuilt.yaml](../src/mmrelay/tools/sample-docker-compose-prebuilt.yaml) (relative link)
+- **View in main branch**: [sample-docker-compose-prebuilt.yaml](https://github.com/jeremiah-k/meshtastic-matrix-relay/blob/main/src/mmrelay/tools/sample-docker-compose-prebuilt.yaml) (absolute link)
+- **Download from main branch**:
   ```bash
   curl -o docker-compose.yaml https://raw.githubusercontent.com/jeremiah-k/meshtastic-matrix-relay/main/src/mmrelay/tools/sample-docker-compose-prebuilt.yaml
   ```
