@@ -50,10 +50,15 @@ For detailed installation and configuration instructions, see the [Installation 
 MMRelay includes official Docker support for easy deployment and management:
 
 ```bash
-# Quick setup with prebuilt images (if you have the repo)
+# Recommended: Prebuilt images (fastest setup)
 make setup-prebuilt  # Copy config and open editor (first time)
 make run              # Start the container
 make logs             # View logs
+
+# Alternative: Build from source (easy with make commands)
+make setup            # Copy config and open editor (first time)
+make build            # Build Docker image from source
+make run              # Start the container
 ```
 
 **Don't want to clone the repo?** The [Docker Guide](docs/DOCKER.md) covers multiple deployment methods including direct docker-compose usage without cloning.

@@ -6,9 +6,9 @@ MMRelay supports Docker deployment with two image options and multiple deploymen
 
 - [Image Options](#image-options)
 - [Deployment Methods](#deployment-methods)
-  - [Method A: Using Make Commands](#method-a-using-make-commands-linuxmacos)
-  - [Method B: Manual Setup](#method-b-manual-setup-any-platform)
-  - [Method C: Portainer / Docker GUI](#method-c-portainer--docker-gui)
+  - [Method A: Prebuilt Images (Recommended)](#method-a-prebuilt-images-recommended)
+  - [Method B: Build from Source (Easy with Make Commands)](#method-b-build-from-source-easy-with-make-commands)
+  - [Method C: Manual Setup / Portainer](#method-c-manual-setup--portainer)
 - [Environment Variables](#environment-variables)
 - [Make Commands Reference](#make-commands-reference)
 - [Connection Types](#connection-types)
@@ -16,38 +16,36 @@ MMRelay supports Docker deployment with two image options and multiple deploymen
 - [Troubleshooting](#troubleshooting)
 - [Updates](#updates)
 
-## Image Options
+## Deployment Methods
 
-### Option 1: Prebuilt Images (Recommended)
+Choose the method that best fits your needs:
+
+### Method A: Prebuilt Images (Recommended)
+
+**Fast setup with official images** - no building required, perfect for most users.
 
 - **Image**: `ghcr.io/jeremiah-k/mmrelay:latest`
 - **Benefits**: Fastest setup, multi-platform (amd64/arm64), automatic updates
-- **Use case**: Most users who want to run MMRelay
+- **Best for**: Most users who want to run MMRelay quickly
 
-### Option 2: Build from Source
-
-- **Build**: Local compilation from source code
-- **Benefits**: Full control, local modifications, development
-- **Use case**: Developers or users who need custom modifications
-
-## Deployment Methods
-
-Choose the method that fits your environment:
-
-### Method A: Using Make Commands (Linux/macOS)
-
-**Prebuilt images:**
-
+**With make commands (if you have the repo):**
 ```bash
 make setup-prebuilt  # Copy config, .env, and docker-compose.yaml, then opens editor
 make run             # Start container (pulls official image)
 ```
 
-**Build from source:**
+### Method B: Build from Source (Easy with Make Commands)
 
+**Full control with convenient tooling** - build your own image with simple commands.
+
+- **Build**: Local compilation from source code
+- **Benefits**: Full control, local modifications, development, latest features
+- **Best for**: Developers, contributors, users who want customization
+
+**With make commands:**
 ```bash
 make setup    # Copy config, .env, and docker-compose.yaml, then opens editor
-make build    # Build Docker image from source
+make build    # Build Docker image from source (convenient and fast)
 make run      # Start container
 ```
 
@@ -93,7 +91,7 @@ docker compose build
 docker compose up -d
 ```
 
-### Method C: Portainer / Docker GUI
+### Method C: Manual Setup / Portainer
 
 #### Step 1: Prepare configuration
 
