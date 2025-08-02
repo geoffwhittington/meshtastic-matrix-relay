@@ -1,5 +1,5 @@
 ignore:
-  - "tests/**/*"
+  - tests/**/*
 
 coverage:
   status:
@@ -94,6 +94,6 @@ component_management:
           threshold: 3%
 
 comment:
-  layout: "header, diff, flags, components"
+  layout: header, diff, flags, components
   behavior: default
   require_changes: false

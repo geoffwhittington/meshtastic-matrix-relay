@@ -19,11 +19,13 @@ MMRelay supports Docker deployment with two image options and multiple deploymen
 ## Image Options
 
 ### Option 1: Prebuilt Images (Recommended)
+
 - **Image**: `ghcr.io/jeremiah-k/mmrelay:latest`
 - **Benefits**: Fastest setup, multi-platform (amd64/arm64), automatic updates
 - **Use case**: Most users who want to run MMRelay
 
 ### Option 2: Build from Source
+
 - **Build**: Local compilation from source code
 - **Benefits**: Full control, local modifications, development
 - **Use case**: Developers or users who need custom modifications
@@ -35,12 +37,14 @@ Choose the method that fits your environment:
 ### Method A: Using Make Commands (Linux/macOS)
 
 **Prebuilt images:**
+
 ```bash
 make setup-prebuilt  # Copy config, .env, and docker-compose.yaml, then opens editor
 make run             # Start container (pulls official image)
 ```
 
 **Build from source:**
+
 ```bash
 make setup    # Copy config, .env, and docker-compose.yaml, then opens editor
 make build    # Build Docker image from source
@@ -49,12 +53,14 @@ make run      # Start container
 
 ### Method B: Manual Setup (Any Platform)
 
-**Step 1: Create directories**
+#### Step 1: Create directories
+
 ```bash
 mkdir -p ~/.mmrelay/data ~/.mmrelay/logs
 ```
 
-**Step 2: Copy configuration files**
+#### Step 2: Copy configuration files
+
 ```bash
 # Copy sample config
 cp src/mmrelay/tools/sample_config.yaml ~/.mmrelay/config.yaml
@@ -69,13 +75,15 @@ cp src/mmrelay/tools/sample-docker-compose-prebuilt.yaml docker-compose.yaml
 cp src/mmrelay/tools/sample-docker-compose.yaml docker-compose.yaml
 ```
 
-**Step 3: Edit configuration**
+#### Step 3: Edit configuration
+
 ```bash
 # Edit the config file with your preferred editor
 nano ~/.mmrelay/config.yaml
 ```
 
-**Step 4: Start container**
+#### Step 4: Start container
+
 ```bash
 # For prebuilt images:
 docker compose up -d
@@ -87,14 +95,16 @@ docker compose up -d
 
 ### Method C: Portainer / Docker GUI
 
-**Step 1: Prepare configuration**
+#### Step 1: Prepare configuration
 
 Create the MMRelay configuration directory on your host:
+
 ```bash
 mkdir -p ~/.mmrelay/data ~/.mmrelay/logs
 ```
 
 Download and edit the configuration file:
+
 ```bash
 # Download sample config
 curl -o ~/.mmrelay/config.yaml https://raw.githubusercontent.com/jeremiah-k/meshtastic-matrix-relay/main/src/mmrelay/tools/sample_config.yaml
@@ -103,18 +113,19 @@ curl -o ~/.mmrelay/config.yaml https://raw.githubusercontent.com/jeremiah-k/mesh
 nano ~/.mmrelay/config.yaml
 ```
 
-**Step 2: Create stack in Portainer**
+#### Step 2: Create stack in Portainer
 
-**Option A: Use the official sample file (recommended)**
+##### Option A: Use the official sample file (recommended)
 
 Copy the latest docker-compose content from our official sample file:
+
 - **View online**: [sample-docker-compose-prebuilt.yaml](https://github.com/jeremiah-k/meshtastic-matrix-relay/blob/main/src/mmrelay/tools/sample-docker-compose-prebuilt.yaml)
 - **Download directly**:
   ```bash
   curl -o docker-compose.yaml https://raw.githubusercontent.com/jeremiah-k/meshtastic-matrix-relay/main/src/mmrelay/tools/sample-docker-compose-prebuilt.yaml
   ```
 
-**Option B: Manual compose file**
+##### Option B: Manual compose file
 
 If you prefer to create your own, use this minimal configuration:
 
@@ -139,6 +150,7 @@ services:
 ```
 
 **Important for Portainer users:**
+
 - Replace `/home/yourusername/.mmrelay/` with your actual home directory path
 - For additional features (BLE, Watchtower), use the official sample file
 - The official sample file is always up-to-date with the latest configuration options
@@ -153,6 +165,7 @@ The docker-compose files use environment variables for customization:
 - **`EDITOR`**: Preferred text editor for config editing (default: `nano`)
 
 These are set in the `.env` file. For Portainer users, you can:
+
 1. Set them in Portainer's environment variables section
 2. Use absolute paths instead of variables in the docker-compose
 3. Ensure the paths exist on your host system
@@ -160,12 +173,14 @@ These are set in the `.env` file. For Portainer users, you can:
 ## Make Commands Reference
 
 ### Setup Commands
+
 - `make setup-prebuilt` - Copy config for prebuilt images and open editor (recommended)
 - `make setup` - Copy config for building from source and open editor
 - `make config` - Copy sample files and create directories (config.yaml, .env, docker-compose.yaml)
 - `make edit` - Edit config file with your preferred editor
 
 ### Container Management
+
 - `make run` - Start container (prebuilt images or built from source)
 - `make stop` - Stop container (keeps container for restart)
 - `make logs` - Show container logs
@@ -173,6 +188,7 @@ These are set in the `.env` file. For Portainer users, you can:
 - `make clean` - Remove containers and networks
 
 ### Build Commands (Source Only)
+
 - `make build` - Build Docker image from source (uses layer caching for faster builds)
 - `make build-nocache` - Build Docker image from source with --no-cache for fresh builds
 - `make rebuild` - Stop, rebuild with --no-cache, and restart container (for updates)
@@ -248,21 +264,25 @@ MMRELAY_HOME=/path/to/your/data
 ### Common Portainer Issues
 
 **Volume path errors:**
+
 - Ensure paths like `/home/yourusername/.mmrelay/` exist on the host
 - Replace `yourusername` with your actual username
 - Create directories manually: `mkdir -p ~/.mmrelay/data ~/.mmrelay/logs`
 
 **Permission errors:**
+
 - Check that the user ID (1000) has access to the mounted directories
 - Adjust `UID` and `GID` in environment variables if needed
 - Use `chown -R 1000:1000 ~/.mmrelay/` to fix ownership
 
 **Environment variable issues:**
+
 - Portainer doesn't expand `$HOME` - use absolute paths
 - Set environment variables in Portainer's stack environment section
 - Or replace `${MMRELAY_HOME}` with absolute paths in the compose file
 
 **Config file not found:**
+
 - Verify the config file exists at the mounted path
 - Check the volume mapping in the compose file
 - Ensure the file is readable by the container user
@@ -270,11 +290,13 @@ MMRELAY_HOME=/path/to/your/data
 ### General Docker Issues
 
 **Container won't start:**
+
 - Check logs: `docker compose logs mmrelay`
 - Verify config file syntax: `mmrelay --config ~/.mmrelay/config.yaml --validate`
 - Ensure all required config fields are set
 
 **Connection issues:**
+
 - For TCP: Verify Meshtastic device IP and port 4403
 - For Serial: Check device permissions and path
 - For BLE: Ensure privileged mode and host networking are enabled
@@ -282,10 +304,12 @@ MMRELAY_HOME=/path/to/your/data
 ## Updates
 
 **Prebuilt images:**
+
 - Pull latest: `docker compose pull && docker compose up -d`
 - Or use Watchtower for automatic updates (see sample-docker-compose-prebuilt.yaml)
 
 **Built from source:**
+
 ```bash
 git pull
 make rebuild    # Stop, rebuild with fresh code, and restart
