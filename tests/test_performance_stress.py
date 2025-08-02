@@ -666,6 +666,7 @@ class TestPerformanceStress(unittest.TestCase):
         # Run the async test
         asyncio.run(run_rate_limit_test())
 
+    @pytest.mark.performance  # Resource cleanup test can be slow
     def test_resource_cleanup_effectiveness(self):
         """
         Test that MessageQueue and plugin objects are properly garbage collected after use, confirming no lingering references remain after typical operation and cleanup.

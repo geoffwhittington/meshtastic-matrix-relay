@@ -796,7 +796,11 @@ async def test_connect_matrix_success(matrix_config):
     """Test successful Matrix connection."""
     with patch("mmrelay.matrix_utils.matrix_client", None), \
          patch("mmrelay.matrix_utils.AsyncClient") as mock_async_client, \
-         patch("mmrelay.matrix_utils.logger"):
+         patch("mmrelay.matrix_utils.logger"), \
+         patch("ssl.create_default_context") as mock_ssl_context:
+
+        # Mock SSL context creation
+        mock_ssl_context.return_value = MagicMock()
 
         # Mock the AsyncClient instance
         mock_client_instance = AsyncMock()
@@ -825,7 +829,11 @@ async def test_connect_matrix_whoami_error(matrix_config):
 
     with patch("mmrelay.matrix_utils.matrix_client", None), \
          patch("mmrelay.matrix_utils.AsyncClient") as mock_async_client, \
-         patch("mmrelay.matrix_utils.logger"):
+         patch("mmrelay.matrix_utils.logger"), \
+         patch("ssl.create_default_context") as mock_ssl_context:
+
+        # Mock SSL context creation
+        mock_ssl_context.return_value = MagicMock()
 
         mock_client_instance = AsyncMock()
         mock_async_client.return_value = mock_client_instance
