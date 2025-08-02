@@ -1,33 +1,58 @@
 # Docker Deployment
 
-Simple Docker setup for Meshtastic Matrix Relay.
+MMRelay offers two Docker deployment options to suit different needs.
 
-## Quick Start
+## Deployment Options
 
-**Option 1: One-step setup (recommended for first time):**
+### Option 1: Prebuilt Images (Recommended)
 
+Use official multi-platform images for fastest setup. No building required.
+
+**Quick setup:**
+```bash
+make setup-prebuilt  # Copy config, .env, and docker-compose.yaml, then opens editor
+make run             # Start container (pulls official image)
+```
+
+**Manual steps:**
+```bash
+make config          # Copy sample files and create directories
+make edit            # Edit config with your preferred editor
+# Copy prebuilt docker-compose manually if needed:
+cp src/mmrelay/tools/sample-docker-compose-prebuilt.yaml docker-compose.yaml
+make run             # Start container
+```
+
+### Option 2: Build from Source
+
+Build your own image locally. Useful for development or custom modifications.
+
+**Quick setup:**
 ```bash
 make setup    # Copy config, .env, and docker-compose.yaml, then opens editor
-make build    # Build Docker image
+make build    # Build Docker image from source
 make run      # Start container
 ```
 
-**Option 2: Manual steps:**
-
+**Manual steps:**
 ```bash
 make config   # Copy sample files and create directories
 make edit     # Edit config with your preferred editor
-make build    # Build Docker image
+make build    # Build Docker image from source
 make run      # Start container
 ```
 
 ## Commands
 
-- `make setup` - Copy sample config and open editor (recommended for first time)
+### Setup Commands
+- `make setup-prebuilt` - Copy config for prebuilt images and open editor (recommended)
+- `make setup` - Copy config for building from source and open editor
 - `make config` - Copy sample files and create directories (config.yaml, .env, docker-compose.yaml)
 - `make edit` - Edit config file with your preferred editor
-- `make build` - Build Docker image (uses layer caching for faster builds)
-- `make build-nocache` - Build Docker image with --no-cache for fresh builds
+
+### Build Commands (Source Only)
+- `make build` - Build Docker image from source (uses layer caching for faster builds)
+- `make build-nocache` - Build Docker image from source with --no-cache for fresh builds
 - `make rebuild` - Stop, rebuild with --no-cache, and restart container (for updates)
 - `make run` - Start container
 - `make stop` - Stop container (keeps container for restart)
