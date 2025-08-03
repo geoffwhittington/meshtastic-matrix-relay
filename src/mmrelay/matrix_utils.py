@@ -536,12 +536,12 @@ async def matrix_relay(
     try:
         # Always use our own local meshnet_name for outgoing events
         local_meshnet_name = config["meshtastic"]["meshnet_name"]
-        # Check if message contains HTML tags (more precise regex)
-        has_html = bool(re.search(r"<[a-zA-Z][^>]*>", message))
+        # Check if message contains HTML tags (matches opening and closing tags)
+        has_html = bool(re.search(r"</?[a-zA-Z][^>]*>", message))
 
         content = {
             "msgtype": "m.text" if not emote else "m.emote",
-            "body": re.sub(r"<[a-zA-Z][^>]*>", "", message) if has_html else message,
+            "body": re.sub(r"</?[a-zA-Z][^>]*>", "", message) if has_html else message,
             "meshtastic_longname": longname,
             "meshtastic_shortname": shortname,
             "meshtastic_meshnet": local_meshnet_name,
@@ -578,7 +578,7 @@ async def matrix_relay(
 
                     # Create the quoted reply format
                     quoted_text = f"> <@{bot_user_id}> [{original_sender_display}]: {original_text}"
-                    content["body"] = f"{quoted_text}\n\n{re.sub(r'<[a-zA-Z][^>]*>', '', message) if has_html else message}"
+                    content["body"] = f"{quoted_text}\n\n{re.sub(r'</?[a-zA-Z][^>]*>', '', message) if has_html else message}"
 
                     # Always use HTML formatting for replies since we need the mx-reply structure
                     content["format"] = "org.matrix.custom.html"
