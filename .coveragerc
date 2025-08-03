@@ -1,7 +1,6 @@
 [run]
 source = src/mmrelay
 omit =
-    tests/**/*
     */tests/*
     */test_*
     */__pycache__/*
