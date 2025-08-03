@@ -350,6 +350,12 @@ def clone_or_update_repo(repo_url, ref, plugins_dir):
         # Repository doesn't exist yet, clone it
         try:
             os.makedirs(plugins_dir, exist_ok=True)
+        except (OSError, PermissionError) as e:
+            logger.error(f"Cannot create plugin directory {plugins_dir}: {e}")
+            logger.error(f"Skipping repository {repo_name} due to permission error")
+            return False
+
+        try:
 
             # If it's a default branch, just clone it directly
             if is_default_branch:
