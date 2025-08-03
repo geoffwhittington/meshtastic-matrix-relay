@@ -79,7 +79,9 @@ class TestConfigEdgeCases(unittest.TestCase):
                 mock_user_config.return_value = (
                     "C:\\Users\\Test\\AppData\\Local\\mmrelay"
                 )
-                with patch("mmrelay.config.os.makedirs"):  # Mock directory creation in the right namespace
+                with patch(
+                    "mmrelay.config.os.makedirs"
+                ):  # Mock directory creation in the right namespace
                     paths = get_config_paths()
                     # Check that a Windows-style path is in the list
                     windows_path_found = any("AppData" in path for path in paths)
@@ -95,7 +97,9 @@ class TestConfigEdgeCases(unittest.TestCase):
             with patch("mmrelay.config.get_base_dir") as mock_get_base_dir:
                 with tempfile.TemporaryDirectory() as temp_dir:
                     mock_get_base_dir.return_value = temp_dir
-                    with patch("mmrelay.config.os.makedirs"):  # Mock directory creation in the right namespace
+                    with patch(
+                        "mmrelay.config.os.makedirs"
+                    ):  # Mock directory creation in the right namespace
                         paths = get_config_paths()
                         self.assertIn(f"{temp_dir}/config.yaml", paths)
 
