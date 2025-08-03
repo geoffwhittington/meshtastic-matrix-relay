@@ -536,14 +536,22 @@ async def matrix_relay(
     try:
         # Always use our own local meshnet_name for outgoing events
         local_meshnet_name = config["meshtastic"]["meshnet_name"]
+        # Check if message contains HTML tags (more precise regex)
+        has_html = bool(re.search(r"<[a-zA-Z][^>]*>", message))
+
         content = {
             "msgtype": "m.text" if not emote else "m.emote",
-            "body": message,
+            "body": re.sub(r"<[a-zA-Z][^>]*>", "", message) if has_html else message,
             "meshtastic_longname": longname,
             "meshtastic_shortname": shortname,
             "meshtastic_meshnet": local_meshnet_name,
             "meshtastic_portnum": portnum,
         }
+
+        # Only add HTML formatting fields if message contains HTML tags
+        if has_html:
+            content["format"] = "org.matrix.custom.html"
+            content["formatted_body"] = message
         if meshtastic_id is not None:
             content["meshtastic_id"] = meshtastic_id
         if meshtastic_replyId is not None:
@@ -570,10 +578,10 @@ async def matrix_relay(
 
                     # Create the quoted reply format
                     quoted_text = f"> <@{bot_user_id}> [{original_sender_display}]: {original_text}"
-                    content["body"] = f"{quoted_text}\n\n{message}"
-                    content["format"] = "org.matrix.custom.html"
+                    content["body"] = f"{quoted_text}\n\n{re.sub(r'<[a-zA-Z][^>]*>', '', message) if has_html else message}"
 
-                    # Create formatted HTML version with better readability
+                    # Always use HTML formatting for replies since we need the mx-reply structure
+                    content["format"] = "org.matrix.custom.html"
                     reply_link = f"https://matrix.to/#/{room_id}/{reply_to_event_id}"
                     bot_link = f"https://matrix.to/#/@{bot_user_id}"
                     blockquote_content = f'<a href="{reply_link}">In reply to</a> <a href="{bot_link}">@{bot_user_id}</a><br>[{original_sender_display}]: {original_text}'
