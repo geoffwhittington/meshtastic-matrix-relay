@@ -26,12 +26,24 @@ def get_custom_plugin_dirs():
 
     # Check user directory first (preferred location)
     user_dir = os.path.join(get_base_dir(), "plugins", "custom")
-    os.makedirs(user_dir, exist_ok=True)
-    dirs.append(user_dir)
+    try:
+        os.makedirs(user_dir, exist_ok=True)
+        dirs.append(user_dir)
+    except (OSError, PermissionError) as e:
+        logger.warning(f"Cannot create user plugin directory {user_dir}: {e}")
 
     # Check local directory (backward compatibility)
     local_dir = os.path.join(get_app_path(), "plugins", "custom")
-    dirs.append(local_dir)
+    # Only add local directory if it exists or can be created
+    if os.path.exists(local_dir):
+        dirs.append(local_dir)
+    else:
+        try:
+            os.makedirs(local_dir, exist_ok=True)
+            dirs.append(local_dir)
+        except (OSError, PermissionError):
+            # Skip local directory if we can't create it (e.g., in Docker)
+            logger.debug(f"Cannot create local plugin directory {local_dir}, skipping")
 
     return dirs
 
@@ -46,12 +58,24 @@ def get_community_plugin_dirs():
 
     # Check user directory first (preferred location)
     user_dir = os.path.join(get_base_dir(), "plugins", "community")
-    os.makedirs(user_dir, exist_ok=True)
-    dirs.append(user_dir)
+    try:
+        os.makedirs(user_dir, exist_ok=True)
+        dirs.append(user_dir)
+    except (OSError, PermissionError) as e:
+        logger.warning(f"Cannot create user plugin directory {user_dir}: {e}")
 
     # Check local directory (backward compatibility)
     local_dir = os.path.join(get_app_path(), "plugins", "community")
-    dirs.append(local_dir)
+    # Only add local directory if it exists or can be created
+    if os.path.exists(local_dir):
+        dirs.append(local_dir)
+    else:
+        try:
+            os.makedirs(local_dir, exist_ok=True)
+            dirs.append(local_dir)
+        except (OSError, PermissionError):
+            # Skip local directory if we can't create it (e.g., in Docker)
+            logger.debug(f"Cannot create local plugin directory {local_dir}, skipping")
 
     return dirs
 
@@ -776,7 +800,10 @@ def load_plugins(passed_config=None):
     if active_community_plugins:
         # Ensure all community plugin directories exist
         for dir_path in community_plugin_dirs:
-            os.makedirs(dir_path, exist_ok=True)
+            try:
+                os.makedirs(dir_path, exist_ok=True)
+            except (OSError, PermissionError) as e:
+                logger.warning(f"Cannot create community plugin directory {dir_path}: {e}")
 
         logger.debug(
             f"Loading active community plugins: {', '.join(active_community_plugins)}"
