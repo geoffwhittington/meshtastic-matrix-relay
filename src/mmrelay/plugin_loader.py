@@ -19,10 +19,10 @@ plugins_loaded = False
 def _get_plugin_dirs(plugin_type):
     """
     Return a list of directories for the specified plugin type, ensuring user and local plugin directories exist if possible.
-    
+
     Parameters:
         plugin_type (str): The type of plugins ("custom" or "community").
-    
+
     Returns:
         list: Ordered list of plugin directories to search, prioritizing the user directory followed by the local directory if accessible.
     """
@@ -51,7 +51,7 @@ def _get_plugin_dirs(plugin_type):
 def get_custom_plugin_dirs():
     """
     Return the list of directories to search for custom plugins, ordered by priority.
-    
+
     The directories include the user-specific custom plugins directory and a local directory for backward compatibility.
     """
     return _get_plugin_dirs("custom")
@@ -60,7 +60,7 @@ def get_custom_plugin_dirs():
 def get_community_plugin_dirs():
     """
     Return the list of directories to search for community plugins, ordered by priority.
-    
+
     The directories include the user-specific community plugins directory and a local directory for backward compatibility.
     """
     return _get_plugin_dirs("community")
@@ -69,16 +69,16 @@ def get_community_plugin_dirs():
 def clone_or_update_repo(repo_url, ref, plugins_dir):
     """
     Clone or update a community plugin Git repository and ensure its dependencies are installed.
-    
+
     Attempts to clone the repository at the specified branch or tag, or update it if it already exists. Handles switching between branches and tags, falls back to default branches if needed, and installs Python dependencies from `requirements.txt` using either pip or pipx. Logs errors and warnings for any issues encountered.
-    
+
     Parameters:
         repo_url (str): The URL of the Git repository to clone or update.
         ref (dict): Reference specification with keys:
             - type: "tag" or "branch"
             - value: The tag or branch name to use.
         plugins_dir (str): Directory where the repository should be cloned or updated.
-    
+
     Returns:
         bool: True if the repository was successfully cloned or updated and dependencies were handled; False if any critical error occurred.
     """
@@ -672,19 +672,19 @@ def load_plugins_from_directory(directory, recursive=False):
 def load_plugins(passed_config=None):
     """
     Discovers, loads, and initializes all active plugins based on the provided or global configuration.
-    
+
     This function orchestrates the full plugin lifecycle, including:
     - Loading core, custom, and community plugins as specified in the configuration.
     - Cloning or updating community plugin repositories and installing their dependencies.
     - Dynamically loading plugin classes from discovered directories.
     - Filtering and sorting plugins by their configured priority.
     - Starting each active plugin.
-    
+
     If plugins have already been loaded, returns the cached sorted list.
-    
+
     Parameters:
         passed_config (dict, optional): Configuration dictionary to use instead of the global configuration.
-    
+
     Returns:
         list: Active plugin instances, sorted by priority.
     """
@@ -795,7 +795,9 @@ def load_plugins(passed_config=None):
             try:
                 os.makedirs(dir_path, exist_ok=True)
             except (OSError, PermissionError) as e:
-                logger.warning(f"Cannot create community plugin directory {dir_path}: {e}")
+                logger.warning(
+                    f"Cannot create community plugin directory {dir_path}: {e}"
+                )
 
         logger.debug(
             f"Loading active community plugins: {', '.join(active_community_plugins)}"

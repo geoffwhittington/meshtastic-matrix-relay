@@ -73,7 +73,7 @@ class TestConfigEdgeCases(unittest.TestCase):
     def test_get_config_paths_windows_platform(self):
         """
         Test that get_config_paths() returns Windows-style configuration paths when the platform is set to Windows.
-        
+
         Ensures that the returned paths include a directory under 'AppData' as expected for Windows environments.
         """
         with patch("sys.platform", "win32"):
@@ -92,7 +92,7 @@ class TestConfigEdgeCases(unittest.TestCase):
     def test_get_config_paths_darwin_platform(self):
         """
         Test that get_config_paths returns the correct configuration file path for macOS.
-        
+
         Simulates a Darwin platform and a custom base directory to ensure get_config_paths includes the expected config.yaml path in its results.
         """
         with patch("sys.platform", "darwin"):

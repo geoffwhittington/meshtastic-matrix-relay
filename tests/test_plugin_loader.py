@@ -106,7 +106,7 @@ class TestPluginLoader(unittest.TestCase):
     ):
         """
         Test that custom plugin directories are discovered and created as expected.
-        
+
         Verifies that `get_custom_plugin_dirs()` returns the correct list of custom plugin directories and that the directory creation function is called for each directory.
         """
         import tempfile
@@ -157,7 +157,7 @@ class TestPluginLoader(unittest.TestCase):
     def test_load_plugins_from_directory_empty(self):
         """
         Test that loading plugins from an empty directory returns an empty list.
-        
+
         Verifies that no plugins are loaded when the specified directory contains no plugin files.
         """
         plugins = load_plugins_from_directory(self.custom_dir)
