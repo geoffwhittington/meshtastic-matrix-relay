@@ -16,16 +16,22 @@ sorted_active_plugins = []
 plugins_loaded = False
 
 
-def get_custom_plugin_dirs():
+def _get_plugin_dirs(plugin_type):
     """
-    Returns a list of directories to check for custom plugins in order of priority:
-    1. User directory (~/.mmrelay/plugins/custom)
-    2. Local directory (plugins/custom) for backward compatibility
+    Helper function to get plugin directories for a specific plugin type.
+
+    Args:
+        plugin_type (str): Either "custom" or "community"
+
+    Returns:
+        list: List of directories to check for plugins in order of priority:
+              1. User directory (~/.mmrelay/plugins/{plugin_type})
+              2. Local directory (plugins/{plugin_type}) for backward compatibility
     """
     dirs = []
 
     # Check user directory first (preferred location)
-    user_dir = os.path.join(get_base_dir(), "plugins", "custom")
+    user_dir = os.path.join(get_base_dir(), "plugins", plugin_type)
     try:
         os.makedirs(user_dir, exist_ok=True)
         dirs.append(user_dir)
@@ -33,19 +39,24 @@ def get_custom_plugin_dirs():
         logger.warning(f"Cannot create user plugin directory {user_dir}: {e}")
 
     # Check local directory (backward compatibility)
-    local_dir = os.path.join(get_app_path(), "plugins", "custom")
-    # Only add local directory if it exists or can be created
-    if os.path.exists(local_dir):
+    local_dir = os.path.join(get_app_path(), "plugins", plugin_type)
+    try:
+        os.makedirs(local_dir, exist_ok=True)
         dirs.append(local_dir)
-    else:
-        try:
-            os.makedirs(local_dir, exist_ok=True)
-            dirs.append(local_dir)
-        except (OSError, PermissionError):
-            # Skip local directory if we can't create it (e.g., in Docker)
-            logger.debug(f"Cannot create local plugin directory {local_dir}, skipping")
+    except (OSError, PermissionError):
+        # Skip local directory if we can't create it (e.g., in Docker)
+        logger.debug(f"Cannot create local plugin directory {local_dir}, skipping")
 
     return dirs
+
+
+def get_custom_plugin_dirs():
+    """
+    Returns a list of directories to check for custom plugins in order of priority:
+    1. User directory (~/.mmrelay/plugins/custom)
+    2. Local directory (plugins/custom) for backward compatibility
+    """
+    return _get_plugin_dirs("custom")
 
 
 def get_community_plugin_dirs():
@@ -54,30 +65,7 @@ def get_community_plugin_dirs():
     1. User directory (~/.mmrelay/plugins/community)
     2. Local directory (plugins/community) for backward compatibility
     """
-    dirs = []
-
-    # Check user directory first (preferred location)
-    user_dir = os.path.join(get_base_dir(), "plugins", "community")
-    try:
-        os.makedirs(user_dir, exist_ok=True)
-        dirs.append(user_dir)
-    except (OSError, PermissionError) as e:
-        logger.warning(f"Cannot create user plugin directory {user_dir}: {e}")
-
-    # Check local directory (backward compatibility)
-    local_dir = os.path.join(get_app_path(), "plugins", "community")
-    # Only add local directory if it exists or can be created
-    if os.path.exists(local_dir):
-        dirs.append(local_dir)
-    else:
-        try:
-            os.makedirs(local_dir, exist_ok=True)
-            dirs.append(local_dir)
-        except (OSError, PermissionError):
-            # Skip local directory if we can't create it (e.g., in Docker)
-            logger.debug(f"Cannot create local plugin directory {local_dir}, skipping")
-
-    return dirs
+    return _get_plugin_dirs("community")
 
 
 def clone_or_update_repo(repo_url, ref, plugins_dir):
@@ -355,8 +343,8 @@ def clone_or_update_repo(repo_url, ref, plugins_dir):
             logger.error(f"Skipping repository {repo_name} due to permission error")
             return False
 
+        # Now try to clone the repository
         try:
-
             # If it's a default branch, just clone it directly
             if is_default_branch:
                 try:
