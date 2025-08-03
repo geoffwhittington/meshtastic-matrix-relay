@@ -440,7 +440,7 @@ class TestRunMain(unittest.TestCase):
     @patch("mmrelay.config.set_config")
     @patch("mmrelay.log_utils.configure_component_debug_logging")
     @patch("mmrelay.main.print_banner")
-    def test_run_main_keyboard_interrupt(
+    def test_run_main_keyboard_interrupt_with_args(
         self,
         mock_print_banner,
         mock_configure_logging,
@@ -449,7 +449,7 @@ class TestRunMain(unittest.TestCase):
         mock_asyncio_run,
     ):
         """
-        Test that run_main returns 0 when a KeyboardInterrupt occurs during execution.
+        Test that run_main returns 0 when a KeyboardInterrupt occurs during execution with args.
         """
         mock_config = {
             "matrix": {"homeserver": "https://matrix.org"},
