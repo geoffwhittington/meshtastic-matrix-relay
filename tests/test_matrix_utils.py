@@ -1006,6 +1006,68 @@ async def test_matrix_relay_client_none(
     mock_logger.error.assert_called_with("Matrix client is None. Cannot send message.")
 
 
+@patch("mmrelay.matrix_utils.config", {"meshtastic": {"meshnet_name": "TestMesh"}})
+@patch("mmrelay.matrix_utils.connect_matrix")
+@patch("mmrelay.matrix_utils.get_interaction_settings")
+@patch("mmrelay.matrix_utils.message_storage_enabled")
+@patch("mmrelay.matrix_utils.logger")
+async def test_matrix_relay_html_formatting(
+    mock_logger, mock_storage_enabled, mock_get_interactions, mock_connect_matrix
+):
+    """Test that HTML messages get proper formatting fields while plain text messages don't."""
+    # Setup mocks
+    mock_get_interactions.return_value = {"reactions": False, "replies": False}
+    mock_storage_enabled.return_value = False
+
+    # Mock matrix client
+    mock_matrix_client = AsyncMock()
+    mock_connect_matrix.return_value = mock_matrix_client
+
+    # Mock successful message send
+    mock_response = MagicMock()
+    mock_response.event_id = "$event123"
+    mock_matrix_client.room_send.return_value = mock_response
+
+    # Test 1: Plain text message (no HTML fields should be added)
+    await matrix_relay(
+        room_id="!room:matrix.org",
+        message="Hello world",  # Plain text
+        longname="Alice",
+        shortname="A",
+        meshnet_name="TestMesh",
+        portnum=1,
+    )
+
+    # Verify plain text message structure
+    call_args = mock_matrix_client.room_send.call_args
+    content = call_args[1]["content"]
+    assert content["msgtype"] == "m.text"
+    assert content["body"] == "Hello world"
+    assert "format" not in content  # Should NOT have HTML fields
+    assert "formatted_body" not in content
+
+    # Reset mock for second test
+    mock_matrix_client.room_send.reset_mock()
+
+    # Test 2: HTML message (HTML fields should be added)
+    await matrix_relay(
+        room_id="!room:matrix.org",
+        message="<b>Alice</b>[Test]: Hello world",  # Contains HTML
+        longname="Alice",
+        shortname="A",
+        meshnet_name="TestMesh",
+        portnum=1,
+    )
+
+    # Verify HTML message structure
+    call_args = mock_matrix_client.room_send.call_args
+    content = call_args[1]["content"]
+    assert content["msgtype"] == "m.text"
+    assert content["body"] == "Alice[Test]: Hello world"  # HTML stripped
+    assert content["format"] == "org.matrix.custom.html"  # Should have HTML fields
+    assert content["formatted_body"] == "<b>Alice</b>[Test]: Hello world"
+
+
 @patch("mmrelay.matrix_utils.matrix_client")
 @patch("mmrelay.matrix_utils.logger")
 async def test_get_user_display_name_room_name(mock_logger, mock_matrix_client):
