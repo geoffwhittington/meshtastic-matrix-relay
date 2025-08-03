@@ -124,7 +124,8 @@ class TestPluginLoader(unittest.TestCase):
                 os.path.join(temp_app_dir, "plugins", "custom"),
             ]
             self.assertEqual(dirs, expected_dirs)
-        mock_makedirs.assert_called_once()
+        # Should be called twice: once for user dir, once for local dir
+        self.assertEqual(mock_makedirs.call_count, 2)
 
     @patch("mmrelay.plugin_loader.get_base_dir")
     @patch("mmrelay.plugin_loader.get_app_path")
@@ -150,7 +151,8 @@ class TestPluginLoader(unittest.TestCase):
                 os.path.join(temp_app_dir, "plugins", "community"),
             ]
             self.assertEqual(dirs, expected_dirs)
-        mock_makedirs.assert_called_once()
+        # Should be called twice: once for user dir, once for local dir
+        self.assertEqual(mock_makedirs.call_count, 2)
 
     def test_load_plugins_from_directory_empty(self):
         """
