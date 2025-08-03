@@ -105,9 +105,9 @@ class TestPluginLoader(unittest.TestCase):
         self, mock_makedirs, mock_get_app_path, mock_get_base_dir
     ):
         """
-        Test that custom plugin directories are correctly discovered and created.
+        Test that custom plugin directories are discovered and created as expected.
 
-        Verifies that `get_custom_plugin_dirs()` returns the expected list of custom plugin directories and that the directory creation function is called.
+        Verifies that `get_custom_plugin_dirs()` returns the correct list of custom plugin directories and that the directory creation function is called for each directory.
         """
         import tempfile
 
@@ -124,7 +124,8 @@ class TestPluginLoader(unittest.TestCase):
                 os.path.join(temp_app_dir, "plugins", "custom"),
             ]
             self.assertEqual(dirs, expected_dirs)
-        mock_makedirs.assert_called_once()
+        # Should be called twice: once for user dir, once for local dir
+        self.assertEqual(mock_makedirs.call_count, 2)
 
     @patch("mmrelay.plugin_loader.get_base_dir")
     @patch("mmrelay.plugin_loader.get_app_path")
@@ -133,7 +134,7 @@ class TestPluginLoader(unittest.TestCase):
         self, mock_makedirs, mock_get_app_path, mock_get_base_dir
     ):
         """
-        Verify that the community plugin directory discovery function returns the expected directories and ensures their creation when needed.
+        Test that the community plugin directory discovery returns the correct directories and creates them if they do not exist.
         """
         import tempfile
 
@@ -150,11 +151,14 @@ class TestPluginLoader(unittest.TestCase):
                 os.path.join(temp_app_dir, "plugins", "community"),
             ]
             self.assertEqual(dirs, expected_dirs)
-        mock_makedirs.assert_called_once()
+        # Should be called twice: once for user dir, once for local dir
+        self.assertEqual(mock_makedirs.call_count, 2)
 
     def test_load_plugins_from_directory_empty(self):
         """
         Test that loading plugins from an empty directory returns an empty list.
+
+        Verifies that no plugins are loaded when the specified directory contains no plugin files.
         """
         plugins = load_plugins_from_directory(self.custom_dir)
         self.assertEqual(plugins, [])

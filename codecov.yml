@@ -26,6 +26,7 @@ component_management:
       name: Plugins
       paths:
         - src/mmrelay/plugins/**
+        - src/mmrelay/plugin_loader.py
       statuses:
         - type: project
           target: 50%
@@ -50,6 +51,8 @@ component_management:
       paths:
         - src/mmrelay/meshtastic_utils.py
         - src/mmrelay/matrix_utils.py
+        - src/mmrelay/message_queue.py
+        - src/mmrelay/log_utils.py
       statuses:
         - type: project
           target: 40%
@@ -92,6 +95,18 @@ component_management:
         - type: patch
           target: 30%
           threshold: 3%
+    - component_id: constants
+      name: Constants & Init
+      paths:
+        - src/mmrelay/constants/**
+        - src/mmrelay/__init__.py
+      statuses:
+        - type: project
+          target: 80%
+          threshold: 2%
+        - type: patch
+          target: 70%
+          threshold: 2%
 
 comment:
   layout: header, diff, flags, components

@@ -72,14 +72,18 @@ class TestConfigEdgeCases(unittest.TestCase):
 
     def test_get_config_paths_windows_platform(self):
         """
-        Verify that get_config_paths returns Windows-style configuration paths when running on a Windows platform.
+        Test that get_config_paths() returns Windows-style configuration paths when the platform is set to Windows.
+
+        Ensures that the returned paths include a directory under 'AppData' as expected for Windows environments.
         """
         with patch("sys.platform", "win32"):
             with patch("platformdirs.user_config_dir") as mock_user_config:
                 mock_user_config.return_value = (
                     "C:\\Users\\Test\\AppData\\Local\\mmrelay"
                 )
-                with patch("mmrelay.config.os.makedirs"):  # Mock directory creation in the right namespace
+                with patch(
+                    "mmrelay.config.os.makedirs"
+                ):  # Mock directory creation in the right namespace
                     paths = get_config_paths()
                     # Check that a Windows-style path is in the list
                     windows_path_found = any("AppData" in path for path in paths)
@@ -87,15 +91,17 @@ class TestConfigEdgeCases(unittest.TestCase):
 
     def test_get_config_paths_darwin_platform(self):
         """
-        Test that get_config_paths returns the correct configuration file path on macOS.
+        Test that get_config_paths returns the correct configuration file path for macOS.
 
-        Simulates the macOS platform and a custom base directory to verify that get_config_paths includes the expected config.yaml path for macOS environments.
+        Simulates a Darwin platform and a custom base directory to ensure get_config_paths includes the expected config.yaml path in its results.
         """
         with patch("sys.platform", "darwin"):
             with patch("mmrelay.config.get_base_dir") as mock_get_base_dir:
                 with tempfile.TemporaryDirectory() as temp_dir:
                     mock_get_base_dir.return_value = temp_dir
-                    with patch("mmrelay.config.os.makedirs"):  # Mock directory creation in the right namespace
+                    with patch(
+                        "mmrelay.config.os.makedirs"
+                    ):  # Mock directory creation in the right namespace
                         paths = get_config_paths()
                         self.assertIn(f"{temp_dir}/config.yaml", paths)
 

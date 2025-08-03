@@ -16,68 +16,71 @@ sorted_active_plugins = []
 plugins_loaded = False
 
 
-def get_custom_plugin_dirs():
+def _get_plugin_dirs(plugin_type):
     """
-    Returns a list of directories to check for custom plugins in order of priority:
-    1. User directory (~/.mmrelay/plugins/custom)
-    2. Local directory (plugins/custom) for backward compatibility
+    Return a list of directories for the specified plugin type, ensuring user and local plugin directories exist if possible.
+
+    Parameters:
+        plugin_type (str): The type of plugins ("custom" or "community").
+
+    Returns:
+        list: Ordered list of plugin directories to search, prioritizing the user directory followed by the local directory if accessible.
     """
     dirs = []
 
     # Check user directory first (preferred location)
-    user_dir = os.path.join(get_base_dir(), "plugins", "custom")
-    os.makedirs(user_dir, exist_ok=True)
-    dirs.append(user_dir)
+    user_dir = os.path.join(get_base_dir(), "plugins", plugin_type)
+    try:
+        os.makedirs(user_dir, exist_ok=True)
+        dirs.append(user_dir)
+    except (OSError, PermissionError) as e:
+        logger.warning(f"Cannot create user plugin directory {user_dir}: {e}")
 
     # Check local directory (backward compatibility)
-    local_dir = os.path.join(get_app_path(), "plugins", "custom")
-    dirs.append(local_dir)
+    local_dir = os.path.join(get_app_path(), "plugins", plugin_type)
+    try:
+        os.makedirs(local_dir, exist_ok=True)
+        dirs.append(local_dir)
+    except (OSError, PermissionError):
+        # Skip local directory if we can't create it (e.g., in Docker)
+        logger.debug(f"Cannot create local plugin directory {local_dir}, skipping")
 
     return dirs
+
+
+def get_custom_plugin_dirs():
+    """
+    Return the list of directories to search for custom plugins, ordered by priority.
+
+    The directories include the user-specific custom plugins directory and a local directory for backward compatibility.
+    """
+    return _get_plugin_dirs("custom")
 
 
 def get_community_plugin_dirs():
     """
-    Returns a list of directories to check for community plugins in order of priority:
-    1. User directory (~/.mmrelay/plugins/community)
-    2. Local directory (plugins/community) for backward compatibility
+    Return the list of directories to search for community plugins, ordered by priority.
+
+    The directories include the user-specific community plugins directory and a local directory for backward compatibility.
     """
-    dirs = []
-
-    # Check user directory first (preferred location)
-    user_dir = os.path.join(get_base_dir(), "plugins", "community")
-    os.makedirs(user_dir, exist_ok=True)
-    dirs.append(user_dir)
-
-    # Check local directory (backward compatibility)
-    local_dir = os.path.join(get_app_path(), "plugins", "community")
-    dirs.append(local_dir)
-
-    return dirs
+    return _get_plugin_dirs("community")
 
 
 def clone_or_update_repo(repo_url, ref, plugins_dir):
-    """Clone or update a Git repository for community plugins.
+    """
+    Clone or update a community plugin Git repository and ensure its dependencies are installed.
 
-    Args:
-        repo_url (str): Git repository URL to clone/update
+    Attempts to clone the repository at the specified branch or tag, or update it if it already exists. Handles switching between branches and tags, falls back to default branches if needed, and installs Python dependencies from `requirements.txt` using either pip or pipx. Logs errors and warnings for any issues encountered.
+
+    Parameters:
+        repo_url (str): The URL of the Git repository to clone or update.
         ref (dict): Reference specification with keys:
-                   - type: "tag" or "branch"
-                   - value: tag name or branch name
-        plugins_dir (str): Directory where the repository should be cloned
+            - type: "tag" or "branch"
+            - value: The tag or branch name to use.
+        plugins_dir (str): Directory where the repository should be cloned or updated.
 
     Returns:
-        bool: True if successful, False if clone/update failed
-
-    Handles complex Git operations including:
-    - Cloning new repositories with specific tags/branches
-    - Updating existing repositories and switching refs
-    - Installing requirements.txt dependencies via pip or pipx
-    - Fallback to default branches (main/master) when specified ref fails
-    - Robust error handling and logging
-
-    The function automatically installs Python dependencies if a requirements.txt
-    file is found in the repository root.
+        bool: True if the repository was successfully cloned or updated and dependencies were handled; False if any critical error occurred.
     """
     # Extract the repository name from the URL
     repo_name = os.path.splitext(os.path.basename(repo_url.rstrip("/")))[0]
@@ -326,7 +329,13 @@ def clone_or_update_repo(repo_url, ref, plugins_dir):
         # Repository doesn't exist yet, clone it
         try:
             os.makedirs(plugins_dir, exist_ok=True)
+        except (OSError, PermissionError) as e:
+            logger.error(f"Cannot create plugin directory {plugins_dir}: {e}")
+            logger.error(f"Skipping repository {repo_name} due to permission error")
+            return False
 
+        # Now try to clone the repository
+        try:
             # If it's a default branch, just clone it directly
             if is_default_branch:
                 try:
@@ -662,15 +671,22 @@ def load_plugins_from_directory(directory, recursive=False):
 
 def load_plugins(passed_config=None):
     """
-    Discovers, loads, and initializes all active plugins according to the configuration.
+    Discovers, loads, and initializes all active plugins based on the provided or global configuration.
 
-    This function manages the full plugin lifecycle: it loads core, custom, and community plugins as specified in the configuration, handles cloning and updating of community plugin repositories, installs dependencies as needed, and starts each active plugin. Plugins are filtered and sorted by priority before being returned. If plugins have already been loaded, returns the cached list.
+    This function orchestrates the full plugin lifecycle, including:
+    - Loading core, custom, and community plugins as specified in the configuration.
+    - Cloning or updating community plugin repositories and installing their dependencies.
+    - Dynamically loading plugin classes from discovered directories.
+    - Filtering and sorting plugins by their configured priority.
+    - Starting each active plugin.
+
+    If plugins have already been loaded, returns the cached sorted list.
 
     Parameters:
-        passed_config (dict, optional): Configuration dictionary to use instead of the global config.
+        passed_config (dict, optional): Configuration dictionary to use instead of the global configuration.
 
     Returns:
-        list: Active plugin instances sorted by priority.
+        list: Active plugin instances, sorted by priority.
     """
     global sorted_active_plugins
     global plugins_loaded
@@ -776,7 +792,12 @@ def load_plugins(passed_config=None):
     if active_community_plugins:
         # Ensure all community plugin directories exist
         for dir_path in community_plugin_dirs:
-            os.makedirs(dir_path, exist_ok=True)
+            try:
+                os.makedirs(dir_path, exist_ok=True)
+            except (OSError, PermissionError) as e:
+                logger.warning(
+                    f"Cannot create community plugin directory {dir_path}: {e}"
+                )
 
         logger.debug(
             f"Loading active community plugins: {', '.join(active_community_plugins)}"
