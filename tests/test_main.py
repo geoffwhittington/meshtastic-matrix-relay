@@ -449,7 +449,9 @@ class TestRunMain(unittest.TestCase):
         mock_asyncio_run,
     ):
         """
-        Test that run_main returns 0 when a KeyboardInterrupt occurs during execution with args.
+        Test that run_main returns 0 when a KeyboardInterrupt is raised during execution with provided arguments.
+        
+        This ensures the application exits gracefully on keyboard interruption, even when arguments are supplied.
         """
         mock_config = {
             "matrix": {"homeserver": "https://matrix.org"},
