@@ -6,6 +6,7 @@ import time
 from typing import Union
 
 import certifi
+import markdown
 import meshtastic.protobuf.portnums_pb2
 from nio import (
     AsyncClient,
@@ -480,10 +481,10 @@ async def matrix_relay(
     reply_to_event_id=None,
 ):
     """
-    Relay a message from the Meshtastic network to a Matrix room, supporting replies, emotes, emoji reactions, and message mapping for future interactions.
-
-    If a reply target is specified, formats the message as a Matrix reply with quoted original content. When message interactions (reactions or replies) are enabled, stores a mapping between the Meshtastic message ID and the resulting Matrix event ID to support cross-network interactions. Prunes old message mappings according to configuration to limit storage.
-
+    Relays a message from the Meshtastic network to a Matrix room, supporting replies, emotes, emoji reactions, and message mapping for cross-network interactions.
+    
+    If a reply target is specified, formats the message as a Matrix reply with proper quoting and HTML structure. Detects and preserves HTML or markdown formatting in outgoing messages, ensuring correct plain text and formatted body fields. When message interactions (reactions or replies) are enabled, stores a mapping between the Meshtastic message ID and the resulting Matrix event ID to support future interactions, pruning old mappings according to configuration.
+    
     Parameters:
         room_id (str): The Matrix room ID to send the message to.
         message (str): The message content to relay.
@@ -536,14 +537,32 @@ async def matrix_relay(
     try:
         # Always use our own local meshnet_name for outgoing events
         local_meshnet_name = config["meshtastic"]["meshnet_name"]
+
+        # Check if message contains HTML tags or markdown formatting
+        has_html = bool(re.search(r"</?[a-zA-Z][^>]*>", message))
+        has_markdown = bool(re.search(r"[*_`~]", message))  # Basic markdown indicators
+
+        # Process markdown to HTML if needed (like base plugin does)
+        if has_markdown or has_html:
+            formatted_body = markdown.markdown(message)
+            plain_body = re.sub(r"</?[^>]*>", "", formatted_body)  # Strip all HTML tags
+        else:
+            formatted_body = message
+            plain_body = message
+
         content = {
             "msgtype": "m.text" if not emote else "m.emote",
-            "body": message,
+            "body": plain_body,
             "meshtastic_longname": longname,
             "meshtastic_shortname": shortname,
             "meshtastic_meshnet": local_meshnet_name,
             "meshtastic_portnum": portnum,
         }
+
+        # Add HTML formatting fields if message has markdown or HTML
+        if has_markdown or has_html:
+            content["format"] = "org.matrix.custom.html"
+            content["formatted_body"] = formatted_body
         if meshtastic_id is not None:
             content["meshtastic_id"] = meshtastic_id
         if meshtastic_replyId is not None:
@@ -570,15 +589,15 @@ async def matrix_relay(
 
                     # Create the quoted reply format
                     quoted_text = f"> <@{bot_user_id}> [{original_sender_display}]: {original_text}"
-                    content["body"] = f"{quoted_text}\n\n{message}"
-                    content["format"] = "org.matrix.custom.html"
+                    content["body"] = f"{quoted_text}\n\n{plain_body}"
 
-                    # Create formatted HTML version with better readability
+                    # Always use HTML formatting for replies since we need the mx-reply structure
+                    content["format"] = "org.matrix.custom.html"
                     reply_link = f"https://matrix.to/#/{room_id}/{reply_to_event_id}"
                     bot_link = f"https://matrix.to/#/@{bot_user_id}"
                     blockquote_content = f'<a href="{reply_link}">In reply to</a> <a href="{bot_link}">@{bot_user_id}</a><br>[{original_sender_display}]: {original_text}'
                     content["formatted_body"] = (
-                        f"<mx-reply><blockquote>{blockquote_content}</blockquote></mx-reply>{message}"
+                        f"<mx-reply><blockquote>{blockquote_content}</blockquote></mx-reply>{formatted_body}"
                     )
                 else:
                     logger.warning(
