@@ -6,6 +6,7 @@ import time
 from typing import Union
 
 import certifi
+import markdown
 import meshtastic.protobuf.portnums_pb2
 from nio import (
     AsyncClient,
@@ -536,22 +537,32 @@ async def matrix_relay(
     try:
         # Always use our own local meshnet_name for outgoing events
         local_meshnet_name = config["meshtastic"]["meshnet_name"]
-        # Check if message contains HTML tags (matches opening and closing tags)
+
+        # Check if message contains HTML tags or markdown formatting
         has_html = bool(re.search(r"</?[a-zA-Z][^>]*>", message))
+        has_markdown = bool(re.search(r"[*_`~]", message))  # Basic markdown indicators
+
+        # Process markdown to HTML if needed (like base plugin does)
+        if has_markdown or has_html:
+            formatted_body = markdown.markdown(message)
+            plain_body = re.sub(r"</?[^>]*>", "", formatted_body)  # Strip all HTML tags
+        else:
+            formatted_body = message
+            plain_body = message
 
         content = {
             "msgtype": "m.text" if not emote else "m.emote",
-            "body": re.sub(r"</?[a-zA-Z][^>]*>", "", message) if has_html else message,
+            "body": plain_body,
             "meshtastic_longname": longname,
             "meshtastic_shortname": shortname,
             "meshtastic_meshnet": local_meshnet_name,
             "meshtastic_portnum": portnum,
         }
 
-        # Only add HTML formatting fields if message contains HTML tags
-        if has_html:
+        # Add HTML formatting fields if message has markdown or HTML
+        if has_markdown or has_html:
             content["format"] = "org.matrix.custom.html"
-            content["formatted_body"] = message
+            content["formatted_body"] = formatted_body
         if meshtastic_id is not None:
             content["meshtastic_id"] = meshtastic_id
         if meshtastic_replyId is not None:
@@ -578,7 +589,7 @@ async def matrix_relay(
 
                     # Create the quoted reply format
                     quoted_text = f"> <@{bot_user_id}> [{original_sender_display}]: {original_text}"
-                    content["body"] = f"{quoted_text}\n\n{re.sub(r'</?[a-zA-Z][^>]*>', '', message) if has_html else message}"
+                    content["body"] = f"{quoted_text}\n\n{plain_body}"
 
                     # Always use HTML formatting for replies since we need the mx-reply structure
                     content["format"] = "org.matrix.custom.html"
@@ -586,7 +597,7 @@ async def matrix_relay(
                     bot_link = f"https://matrix.to/#/@{bot_user_id}"
                     blockquote_content = f'<a href="{reply_link}">In reply to</a> <a href="{bot_link}">@{bot_user_id}</a><br>[{original_sender_display}]: {original_text}'
                     content["formatted_body"] = (
-                        f"<mx-reply><blockquote>{blockquote_content}</blockquote></mx-reply>{message}"
+                        f"<mx-reply><blockquote>{blockquote_content}</blockquote></mx-reply>{formatted_body}"
                     )
                 else:
                     logger.warning(
