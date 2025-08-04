@@ -79,7 +79,7 @@ def test_config():
 @patch("mmrelay.matrix_utils.connect_meshtastic")
 @patch("mmrelay.matrix_utils.queue_message")
 @patch("mmrelay.matrix_utils.bot_start_time", 1234567880)
-@patch("mmrelay.matrix_utils.get_user_display_name", new_callable=AsyncMock)
+@patch("mmrelay.matrix_utils.get_user_display_name")
 @patch("mmrelay.matrix_utils.isinstance")
 async def test_on_room_message_simple_text(
     mock_isinstance,
@@ -96,7 +96,10 @@ async def test_on_room_message_simple_text(
     Verifies that when a non-reaction text message is received from a user, the message is queued with the expected content.
     """
     mock_isinstance.return_value = False
-    mock_get_user_display_name.return_value = "user"
+    # Create a proper async mock function
+    async def mock_get_user_display_name_func(*args, **kwargs):
+        return "user"
+    mock_get_user_display_name.side_effect = mock_get_user_display_name_func
     with patch("mmrelay.matrix_utils.config", test_config), patch(
         "mmrelay.matrix_utils.matrix_rooms", test_config["matrix_rooms"]
     ), patch("mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]):
@@ -139,7 +142,7 @@ async def test_on_room_message_ignore_bot(
 @patch("mmrelay.matrix_utils.queue_message")
 @patch("mmrelay.matrix_utils.bot_start_time", 1234567880)
 @patch("mmrelay.matrix_utils.get_message_map_by_matrix_event_id")
-@patch("mmrelay.matrix_utils.get_user_display_name", new_callable=AsyncMock)
+@patch("mmrelay.matrix_utils.get_user_display_name")
 @patch("mmrelay.matrix_utils.isinstance")
 async def test_on_room_message_reply_enabled(
     mock_isinstance,
@@ -157,7 +160,10 @@ async def test_on_room_message_reply_enabled(
     Ensures that when a Matrix event is a reply and reply interactions are enabled in the configuration, the reply text is extracted and passed to the message queue for Meshtastic relay.
     """
     mock_isinstance.return_value = False
-    mock_get_user_display_name.return_value = "user"
+    # Create a proper async mock function
+    async def mock_get_user_display_name_func(*args, **kwargs):
+        return "user"
+    mock_get_user_display_name.side_effect = mock_get_user_display_name_func
     test_config["meshtastic"]["message_interactions"]["replies"] = True
     mock_event.source = {
         "content": {
@@ -192,7 +198,7 @@ async def test_on_room_message_reply_enabled(
 @patch("mmrelay.matrix_utils.connect_meshtastic")
 @patch("mmrelay.matrix_utils.queue_message")
 @patch("mmrelay.matrix_utils.bot_start_time", 1234567880)
-@patch("mmrelay.matrix_utils.get_user_display_name", new_callable=AsyncMock)
+@patch("mmrelay.matrix_utils.get_user_display_name")
 @patch("mmrelay.matrix_utils.isinstance")
 async def test_on_room_message_reply_disabled(
     mock_isinstance,
@@ -209,7 +215,10 @@ async def test_on_room_message_reply_disabled(
     Verifies that when replies are disabled in the configuration, the full event body (including quoted original message) is queued for Meshtastic relay.
     """
     mock_isinstance.return_value = False
-    mock_get_user_display_name.return_value = "user"
+    # Create a proper async mock function
+    async def mock_get_user_display_name_func(*args, **kwargs):
+        return "user"
+    mock_get_user_display_name.side_effect = mock_get_user_display_name_func
     test_config["meshtastic"]["message_interactions"]["replies"] = False
     mock_event.source = {
         "content": {
@@ -239,7 +248,7 @@ async def test_on_room_message_reply_disabled(
 @patch("mmrelay.matrix_utils.queue_message")
 @patch("mmrelay.matrix_utils.bot_start_time", 1234567880)
 @patch("mmrelay.matrix_utils.get_message_map_by_matrix_event_id")
-@patch("mmrelay.matrix_utils.get_user_display_name", new_callable=AsyncMock)
+@patch("mmrelay.matrix_utils.get_user_display_name")
 @patch("mmrelay.matrix_utils.isinstance")
 async def test_on_room_message_reaction_enabled(
     mock_isinstance,
