@@ -235,35 +235,30 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
 
         asyncio.run(run_test())
 
-    @patch("mmrelay.matrix_utils.join_matrix_room")
     @patch("mmrelay.matrix_utils.logger")
-    def test_join_matrix_room_with_invalid_alias(self, mock_logger, mock_join_matrix_room):
+    def test_join_matrix_room_with_invalid_alias(self, mock_logger):
         """
         Test that join_matrix_room logs an error when attempting to join a Matrix room with an invalid alias.
 
         Verifies that an error is logged if the room alias cannot be resolved to a room ID.
         """
-        # Mock the join_matrix_room function to simulate the error logging behavior
-        async def mock_join_room_func(client, room_alias):
-            mock_logger.error.assert_called = True
-            mock_logger.error("Failed to resolve room alias: Room not found")
+        # Create a mock client with proper async methods using AsyncMock
+        mock_client = AsyncMock()
+        mock_response = MagicMock()
+        mock_response.room_id = None
+        mock_response.message = "Room not found"
 
-        mock_join_matrix_room.side_effect = mock_join_room_func
+        mock_client.room_resolve_alias.return_value = mock_response
 
-        # Create a mock client
-        mock_client = MagicMock()
-
-        # Import the function to call it directly (since we're mocking the module-level function)
-        from mmrelay.matrix_utils import join_matrix_room
-
-        # Run the test with asyncio.run
+        # Run the test directly with asyncio.run
         async def test_coroutine():
             await join_matrix_room(mock_client, "#invalid:matrix.org")
 
+        # Execute the test
         asyncio.run(test_coroutine())
 
-        # Verify the function was called
-        mock_join_matrix_room.assert_called_once_with(mock_client, "#invalid:matrix.org")
+        # Verify the error was logged
+        mock_logger.error.assert_called()
 
     @patch("mmrelay.matrix_utils.logger")
     def test_join_matrix_room_exception_handling(self, mock_logger):
