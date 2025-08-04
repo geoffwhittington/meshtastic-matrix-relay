@@ -543,11 +543,7 @@ class TestConnectionLossHandling(unittest.TestCase):
         self.assertIn("test_source", error_call)
 
     @patch("mmrelay.meshtastic_utils.logger")
-    @patch("mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe")
-    @patch("mmrelay.meshtastic_utils.is_running_as_service", return_value=True)
-    @patch("mmrelay.matrix_utils.matrix_client", None)
-    @patch("mmrelay.meshtastic_utils.event_loop", MagicMock())
-    def test_on_lost_meshtastic_connection_already_reconnecting(self, mock_event_loop, mock_matrix_client, mock_is_service, mock_run_coro, mock_logger):
+    def test_on_lost_meshtastic_connection_already_reconnecting(self, mock_logger):
         """
         Test that connection loss handling skips reconnection if already reconnecting.
 

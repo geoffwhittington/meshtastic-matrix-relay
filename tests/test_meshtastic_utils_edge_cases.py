@@ -136,7 +136,15 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
             side_effect=ConnectionRefusedError("Device not found"),
         ):
             with patch("time.sleep"):  # Speed up test
-                with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
+                with patch("mmrelay.meshtastic_utils.logger") as mock_logger, patch(
+                    "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
+                ), patch(
+                    "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
+                ), patch(
+                    "mmrelay.matrix_utils.matrix_client", None
+                ), patch(
+                    "mmrelay.meshtastic_utils.event_loop", MagicMock()
+                ):
                     result = connect_meshtastic(config)
                     self.assertIsNone(result)
                     mock_logger.error.assert_called()
