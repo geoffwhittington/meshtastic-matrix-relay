@@ -236,31 +236,36 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         asyncio.run(run_test())
 
     @patch("mmrelay.matrix_utils.logger")
-    def test_join_matrix_room_with_invalid_alias(self, mock_logger):
+    @patch("mmrelay.matrix_utils.matrix_client")
+    def test_join_matrix_room_with_invalid_alias(self, mock_matrix_client_global, mock_logger):
         """
         Test that join_matrix_room logs an error when attempting to join a Matrix room with an invalid alias.
 
         Verifies that an error is logged if the room alias cannot be resolved to a room ID.
         """
+        # Create a mock client with proper async methods
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.room_id = None
         mock_response.message = "Room not found"
 
-        # Create a proper async mock for room_resolve_alias
+        # Create a proper async mock for room_resolve_alias that doesn't create coroutines
         async def mock_room_resolve_alias(*args, **kwargs):
             return mock_response
 
         mock_client.room_resolve_alias = mock_room_resolve_alias
 
-        async def run_test():
-            """
-            Asynchronously attempts to join a Matrix room with an invalid alias and verifies that an error is logged.
-            """
-            await join_matrix_room(mock_client, "#invalid:matrix.org")
-            mock_logger.error.assert_called()
+        # Mock the global matrix_client to prevent any side effects
+        mock_matrix_client_global.return_value = None
 
-        asyncio.run(run_test())
+        # Use a simpler test approach that doesn't create additional coroutines
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(join_matrix_room(mock_client, "#invalid:matrix.org"))
+            mock_logger.error.assert_called()
+        finally:
+            loop.close()
 
     @patch("mmrelay.matrix_utils.logger")
     def test_join_matrix_room_exception_handling(self, mock_logger):

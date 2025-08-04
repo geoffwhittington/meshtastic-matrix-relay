@@ -494,8 +494,10 @@ class TestGitRepositoryHandling(unittest.TestCase):
     @patch("rich.file_proxy.FileProxy")
     @patch("rich.ansi.AnsiDecoder")
     @patch("mmrelay.log_utils.RichHandler")
+    @patch("importlib.import_module")
     def test_clone_or_update_repo_existing_repo_same_branch(
         self,
+        mock_import_module,
         mock_log_rich_handler,
         mock_ansi_decoder,
         mock_file_proxy,

@@ -588,9 +588,12 @@ class TestRunMain(unittest.TestCase):
 
         # Mock asyncio.run to properly handle the coroutine and prevent warnings
         def mock_run_with_cleanup(coro):
-            # Close the coroutine to prevent "never awaited" warning
-            if hasattr(coro, "close"):
-                coro.close()
+            # Properly consume the coroutine to prevent "never awaited" warning
+            try:
+                if hasattr(coro, "close"):
+                    coro.close()
+            except Exception:
+                pass  # Ignore any cleanup errors
             return None
 
         mock_asyncio_run.side_effect = mock_run_with_cleanup
