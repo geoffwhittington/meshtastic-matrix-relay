@@ -236,8 +236,7 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         asyncio.run(run_test())
 
     @patch("mmrelay.matrix_utils.logger")
-    @patch("mmrelay.matrix_utils.matrix_client")
-    def test_join_matrix_room_with_invalid_alias(self, mock_matrix_client_global, mock_logger):
+    def test_join_matrix_room_with_invalid_alias(self, mock_logger):
         """
         Test that join_matrix_room logs an error when attempting to join a Matrix room with an invalid alias.
 
@@ -255,17 +254,13 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
 
         mock_client.room_resolve_alias = mock_room_resolve_alias
 
-        # Mock the global matrix_client to prevent any side effects
-        mock_matrix_client_global.return_value = None
-
-        # Use a simpler test approach that doesn't create additional coroutines
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(join_matrix_room(mock_client, "#invalid:matrix.org"))
+        # Use asyncio.run with proper cleanup
+        async def run_test():
+            await join_matrix_room(mock_client, "#invalid:matrix.org")
             mock_logger.error.assert_called()
-        finally:
-            loop.close()
+
+        # Run the test with proper coroutine handling
+        asyncio.run(run_test())
 
     @patch("mmrelay.matrix_utils.logger")
     def test_join_matrix_room_exception_handling(self, mock_logger):

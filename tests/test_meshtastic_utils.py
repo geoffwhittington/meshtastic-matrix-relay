@@ -345,6 +345,10 @@ class TestMeshtasticUtils(unittest.TestCase):
             "mmrelay.matrix_utils.message_storage_enabled"
         ) as mock_storage, patch(
             "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
+        ), patch(
+            "mmrelay.matrix_utils.matrix_client", None
+        ), patch(
+            "mmrelay.meshtastic_utils.event_loop", MagicMock()
         ):
 
             mock_get_longname.return_value = "Test User"
@@ -693,6 +697,10 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
             "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
         ) as mock_run_coro, patch(
             "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
+        ), patch(
+            "mmrelay.matrix_utils.matrix_client", None
+        ), patch(
+            "mmrelay.meshtastic_utils.event_loop", MagicMock()
         ):
 
             mock_interface = MagicMock()

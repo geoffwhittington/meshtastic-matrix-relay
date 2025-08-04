@@ -561,6 +561,7 @@ class TestRunMain(unittest.TestCase):
             mock_abspath.assert_any_call(custom_data_dir)
             mock_makedirs.assert_called_once_with(custom_data_dir, exist_ok=True)
 
+    @patch("mmrelay.main.main")
     @patch("asyncio.run")
     @patch("mmrelay.config.load_config")
     @patch("mmrelay.config.set_config")
@@ -573,6 +574,7 @@ class TestRunMain(unittest.TestCase):
         mock_set_config,
         mock_load_config,
         mock_asyncio_run,
+        mock_main,
     ):
         """
         Test that run_main uses a custom log level from arguments and completes successfully.
@@ -586,7 +588,10 @@ class TestRunMain(unittest.TestCase):
         }
         mock_load_config.return_value = mock_config
 
-        # Mock asyncio.run to properly handle the coroutine and prevent warnings
+        # Mock the main function to return None instead of creating a coroutine
+        mock_main.return_value = None
+
+        # Mock asyncio.run to properly handle any coroutines
         def mock_run_with_cleanup(coro):
             # Properly consume the coroutine to prevent "never awaited" warning
             try:
