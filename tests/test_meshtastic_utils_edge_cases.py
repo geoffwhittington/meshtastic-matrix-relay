@@ -418,7 +418,15 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
             }
         mock_interface.nodes = large_nodes
 
-        with patch("mmrelay.meshtastic_utils.logger"):
+        with patch("mmrelay.meshtastic_utils.logger"), patch(
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
+        ) as mock_run_coro, patch(
+            "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
+        ), patch(
+            "mmrelay.matrix_utils.matrix_client", None
+        ), patch(
+            "mmrelay.meshtastic_utils.event_loop", MagicMock()
+        ):
             # Should handle large node lists without crashing
             on_meshtastic_message(packet, mock_interface)
 

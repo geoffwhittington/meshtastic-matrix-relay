@@ -523,7 +523,13 @@ class TestGitRepositoryHandling(unittest.TestCase):
             return "mock_output\n"
 
         mock_check_output.side_effect = mock_check_output_side_effect
-        mock_check_call.return_value = None  # Mock successful git operations
+
+        # Mock check_call to never raise CalledProcessError
+        def mock_check_call_side_effect(cmd, **kwargs):
+            # Always succeed for all git operations
+            return None
+
+        mock_check_call.side_effect = mock_check_call_side_effect
 
         repo_url = "https://github.com/user/test-repo.git"
         ref = {"type": "branch", "value": "main"}

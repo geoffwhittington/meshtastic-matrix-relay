@@ -512,6 +512,7 @@ class TestRunMain(unittest.TestCase):
 
         self.assertEqual(result, 1)  # Should return error code
 
+    @patch("mmrelay.main.main")
     @patch("os.makedirs")
     @patch("os.path.abspath")
     @patch("asyncio.run")
@@ -528,6 +529,7 @@ class TestRunMain(unittest.TestCase):
         mock_asyncio_run,
         mock_abspath,
         mock_makedirs,
+        mock_main,
     ):
         """
         Test that run_main correctly handles a custom data directory by creating it and resolving its absolute path.
@@ -544,6 +546,7 @@ class TestRunMain(unittest.TestCase):
         }
         mock_load_config.return_value = mock_config
         mock_asyncio_run.return_value = None
+        mock_main.return_value = None  # Prevent coroutine creation
 
         # Use a temporary directory instead of hardcoded path
         with tempfile.TemporaryDirectory() as temp_dir:
