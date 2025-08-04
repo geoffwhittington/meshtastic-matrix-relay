@@ -286,7 +286,10 @@ async def test_on_room_message_reaction_enabled(
         "original_text",
         "test_mesh",
     )
-    mock_get_user_display_name.return_value = "user"
+    # Create a proper async mock function
+    async def mock_get_user_display_name_func(*args, **kwargs):
+        return "user"
+    mock_get_user_display_name.side_effect = mock_get_user_display_name_func
 
     with patch("mmrelay.matrix_utils.config", test_config), patch(
         "mmrelay.matrix_utils.matrix_rooms", test_config["matrix_rooms"]
