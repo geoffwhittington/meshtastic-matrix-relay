@@ -586,25 +586,14 @@ class TestRunMain(unittest.TestCase):
         }
         mock_load_config.return_value = mock_config
 
-        # Mock asyncio.run to consume the coroutine to prevent warnings
-        def mock_run(coro):
-            """
-            Closes the given coroutine to suppress "never awaited" warnings during testing.
-
-            Parameters:
-                coro: The coroutine object to be closed.
-
-            Returns:
-                None
-            """
-            try:
-                # Close the coroutine to prevent "never awaited" warning
+        # Mock asyncio.run to properly handle the coroutine and prevent warnings
+        def mock_run_with_cleanup(coro):
+            # Close the coroutine to prevent "never awaited" warning
+            if hasattr(coro, 'close'):
                 coro.close()
-            except Exception:
-                pass  # nosec B110 - Cleanup operation, exceptions expected and safely ignored
             return None
 
-        mock_asyncio_run.side_effect = mock_run
+        mock_asyncio_run.side_effect = mock_run_with_cleanup
 
         mock_args = MagicMock()
         mock_args.data_dir = None

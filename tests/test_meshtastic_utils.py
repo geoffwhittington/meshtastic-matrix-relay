@@ -343,7 +343,9 @@ class TestMeshtasticUtils(unittest.TestCase):
             "mmrelay.matrix_utils.get_interaction_settings"
         ) as mock_get_interactions, patch(
             "mmrelay.matrix_utils.message_storage_enabled"
-        ) as mock_storage:
+        ) as mock_storage, patch(
+            "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
+        ):
 
             mock_get_longname.return_value = "Test User"
             mock_get_shortname.return_value = "TU"
@@ -352,7 +354,7 @@ class TestMeshtasticUtils(unittest.TestCase):
 
             mock_interface = MagicMock()
 
-            # Set up event loop mock
+            # Set up event loop mock - ensure it's not an AsyncMock
             import mmrelay.meshtastic_utils
 
             mmrelay.meshtastic_utils.event_loop = MagicMock()
@@ -689,7 +691,9 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
         ), patch(
             "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
-        ) as mock_run_coro:
+        ) as mock_run_coro, patch(
+            "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
+        ):
 
             mock_interface = MagicMock()
 

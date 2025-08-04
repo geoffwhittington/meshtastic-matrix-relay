@@ -488,8 +488,12 @@ class TestGitRepositoryHandling(unittest.TestCase):
     @patch("subprocess.check_call")
     @patch("subprocess.check_output")
     @patch("os.path.isdir")
+    @patch("rich.progress.Progress")
+    @patch("rich.console.Console")
+    @patch("rich.logging.RichHandler")
+    @patch("mmrelay.log_utils.RichHandler")
     def test_clone_or_update_repo_existing_repo_same_branch(
-        self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs
+        self, mock_rich_handler, mock_log_rich_handler, mock_console, mock_progress, mock_isdir, mock_check_output, mock_check_call, mock_makedirs
     ):
         """
         Test that updating an existing Git repository on the same branch triggers fetch and pull operations.

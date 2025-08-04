@@ -242,11 +242,16 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
 
         Verifies that an error is logged if the room alias cannot be resolved to a room ID.
         """
-        mock_client = AsyncMock()
+        mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.room_id = None
         mock_response.message = "Room not found"
-        mock_client.room_resolve_alias.return_value = mock_response
+
+        # Create a proper async mock for room_resolve_alias
+        async def mock_room_resolve_alias(*args, **kwargs):
+            return mock_response
+
+        mock_client.room_resolve_alias = mock_room_resolve_alias
 
         async def run_test():
             """
