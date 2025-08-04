@@ -6,6 +6,7 @@ import time
 from typing import Union
 
 import certifi
+import markdown
 import meshtastic.protobuf.portnums_pb2
 from nio import (
     AsyncClient,
@@ -543,17 +544,8 @@ async def matrix_relay(
 
         # Process markdown to HTML if needed (like base plugin does)
         if has_markdown or has_html:
-            try:
-                import markdown
-
-                formatted_body = markdown.markdown(message)
-                plain_body = re.sub(
-                    r"</?[^>]*>", "", formatted_body
-                )  # Strip all HTML tags
-            except ImportError:
-                # Fallback if markdown is not available
-                formatted_body = message
-                plain_body = message
+            formatted_body = markdown.markdown(message)
+            plain_body = re.sub(r"</?[^>]*>", "", formatted_body)  # Strip all HTML tags
         else:
             formatted_body = message
             plain_body = message
