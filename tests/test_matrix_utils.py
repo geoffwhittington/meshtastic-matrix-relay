@@ -1013,7 +1013,10 @@ async def test_matrix_relay_client_none(
 @patch("mmrelay.matrix_utils.get_interaction_settings")
 @patch("mmrelay.matrix_utils.message_storage_enabled")
 async def test_matrix_relay_markdown_formatting(
-    mock_message_storage_enabled, mock_get_interaction_settings, mock_logger, mock_matrix_client
+    mock_message_storage_enabled,
+    mock_get_interaction_settings,
+    mock_logger,
+    mock_matrix_client,
 ):
     """Test matrix_relay with markdown formatting functionality."""
     # Setup mocks
@@ -1026,6 +1029,7 @@ async def test_matrix_relay_markdown_formatting(
 
     # Set the global matrix_client variable
     import mmrelay.matrix_utils
+
     mmrelay.matrix_utils.matrix_client = mock_client
 
     # Test with markdown content
@@ -1035,7 +1039,7 @@ async def test_matrix_relay_markdown_formatting(
         longname="TestUser",
         shortname="TU",
         meshnet_name="TestMesh",
-        portnum=1
+        portnum=1,
     )
 
     # Verify the call was made
