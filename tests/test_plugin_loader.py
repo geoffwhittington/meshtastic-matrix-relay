@@ -515,7 +515,14 @@ class TestGitRepositoryHandling(unittest.TestCase):
         Verifies that when the repository directory exists and the current branch matches the requested branch, the `clone_or_update_repo` function performs a fetch and pull, and returns True.
         """
         mock_isdir.return_value = True  # Repository exists
-        mock_check_output.return_value = "main\n"  # Current branch is main
+
+        # Mock all git operations to succeed
+        def mock_check_output_side_effect(cmd, **kwargs):
+            if "rev-parse" in cmd and "--abbrev-ref" in cmd:
+                return "main\n"  # Current branch is main
+            return "mock_output\n"
+
+        mock_check_output.side_effect = mock_check_output_side_effect
         mock_check_call.return_value = None  # Mock successful git operations
 
         repo_url = "https://github.com/user/test-repo.git"
