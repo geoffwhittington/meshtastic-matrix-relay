@@ -239,8 +239,13 @@ class TestMain(unittest.TestCase):
         # Mock config loading
         mock_load_config.return_value = self.mock_config
 
-        # Mock asyncio.run to raise KeyboardInterrupt
-        mock_asyncio_run.side_effect = KeyboardInterrupt()
+        # Mock asyncio.run to properly handle the coroutine and raise KeyboardInterrupt
+        def mock_run_with_cleanup(coro):
+            # Close the coroutine to prevent "never awaited" warning
+            coro.close()
+            raise KeyboardInterrupt()
+
+        mock_asyncio_run.side_effect = mock_run_with_cleanup
 
         result = run_main(None)
 
@@ -459,7 +464,14 @@ class TestRunMain(unittest.TestCase):
             "matrix_rooms": [{"id": "!room:matrix.org"}],
         }
         mock_load_config.return_value = mock_config
-        mock_asyncio_run.side_effect = KeyboardInterrupt()
+
+        # Mock asyncio.run to properly handle the coroutine and raise KeyboardInterrupt
+        def mock_run_with_cleanup(coro):
+            # Close the coroutine to prevent "never awaited" warning
+            coro.close()
+            raise KeyboardInterrupt()
+
+        mock_asyncio_run.side_effect = mock_run_with_cleanup
 
         mock_args = MagicMock()
         mock_args.data_dir = None
