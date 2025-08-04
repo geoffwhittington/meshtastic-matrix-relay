@@ -436,7 +436,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.logger"), patch(
             "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
-        ) as mock_run_coro, patch(
+        ), patch(
             "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
         ), patch(
             "mmrelay.matrix_utils.matrix_client", None

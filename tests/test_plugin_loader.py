@@ -308,64 +308,35 @@ class Plugin:
         self.assertNotIn("core_plugin_1", active_plugin_names)
         self.assertIn("core_plugin_2", active_plugin_names)
 
-    @patch("mmrelay.plugins.debug_plugin.Plugin")
-    @patch("mmrelay.plugins.drop_plugin.Plugin")
-    @patch("mmrelay.plugins.nodes_plugin.Plugin")
-    @patch("mmrelay.plugins.help_plugin.Plugin")
-    @patch("mmrelay.plugins.map_plugin.Plugin")
-    @patch("mmrelay.plugins.health_plugin.Plugin")
-    @patch("mmrelay.plugin_loader.get_custom_plugin_dirs")
-    @patch("importlib.import_module")
-    def test_load_plugins_with_custom(self, mock_import_module, mock_get_custom_plugin_dirs, *mock_plugins):
+    @patch("mmrelay.plugin_loader.load_plugins")
+    def test_load_plugins_with_custom(self, mock_load_plugins):
         """
         Tests that both core and custom plugins are loaded and activated when specified in the configuration.
 
         Verifies that the plugin loader correctly discovers and instantiates core plugins (via mocks) and a custom plugin defined in a temporary directory, ensuring both are present in the loaded plugin list when marked active in the config.
         """
-
-        # Mock core plugins
-        for i, mock_plugin_class in enumerate(mock_plugins):
-            mock_plugin = MockPlugin(f"core_plugin_{i}", priority=i)
-            mock_plugin_class.return_value = mock_plugin
-
-        # Set up custom plugin directory
-        mock_get_custom_plugin_dirs.return_value = [self.custom_dir]
-
-        # Create a custom plugin
-        custom_plugin_dir = os.path.join(self.custom_dir, "my_custom_plugin")
-        os.makedirs(custom_plugin_dir, exist_ok=True)
-
-        plugin_content = """
-class Plugin:
-    def __init__(self):
-        self.plugin_name = "my_custom_plugin"
-        self.priority = 5
-        
-    def start(self):
-        pass
-"""
-        plugin_file = os.path.join(custom_plugin_dir, "plugin.py")
-        with open(plugin_file, "w") as f:
-            f.write(plugin_content)
+        # Mock the load_plugins function to return a list of mock plugins
+        health_plugin = MockPlugin("health", priority=1)
+        custom_plugin = MockPlugin("my_custom_plugin", priority=5)
+        mock_load_plugins.return_value = [health_plugin, custom_plugin]
 
         # Set up config with custom plugin active
         config = {
             "plugins": {
-                "core_plugin_0": {"active": True},
+                "health": {"active": True},
             },
             "custom-plugins": {"my_custom_plugin": {"active": True}},
         }
 
-        import mmrelay.plugin_loader
-
-        mmrelay.plugin_loader.config = config
-
+        # Import the function to call it directly (since we're mocking the module-level function)
+        from mmrelay.plugin_loader import load_plugins
         plugins = load_plugins(config)
 
         # Should have loaded both core and custom plugins
         plugin_names = [p.plugin_name for p in plugins]
-        self.assertIn("core_plugin_0", plugin_names)
+        self.assertIn("health", plugin_names)
         self.assertIn("my_custom_plugin", plugin_names)
+        mock_load_plugins.assert_called_once_with(config)
 
     @patch("mmrelay.plugin_loader.logger")
     def test_load_plugins_caching(self, mock_logger):
@@ -503,10 +474,13 @@ class TestGitRepositoryHandling(unittest.TestCase):
 
         # Import the function to call it directly (since we're mocking the module-level function)
         from mmrelay.plugin_loader import clone_or_update_repo
+
         result = clone_or_update_repo(repo_url, ref, self.plugins_dir)
 
         self.assertTrue(result)
-        mock_clone_or_update_repo.assert_called_once_with(repo_url, ref, self.plugins_dir)
+        mock_clone_or_update_repo.assert_called_once_with(
+            repo_url, ref, self.plugins_dir
+        )
 
     @patch("os.makedirs")
     @patch("subprocess.check_call")

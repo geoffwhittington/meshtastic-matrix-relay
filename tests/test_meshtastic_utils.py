@@ -622,7 +622,9 @@ class TestConnectMeshtasticEdgeCases(unittest.TestCase):
         self.assertIsNone(result)
 
     @patch("mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface")
-    def test_connect_meshtastic_tcp_exception(self, mock_tcp):
+    @patch("time.sleep")  # Speed up any retry logic
+    @patch("mmrelay.meshtastic_utils.INFINITE_RETRIES", 1)  # Limit retries to prevent infinite loop
+    def test_connect_meshtastic_tcp_exception(self, mock_sleep, mock_tcp):
         """
         Tests that connect_meshtastic returns None when an exception is raised during TCP interface instantiation.
         """
