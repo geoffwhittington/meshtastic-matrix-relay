@@ -315,7 +315,12 @@ class Plugin:
     @patch("mmrelay.plugins.map_plugin.Plugin")
     @patch("mmrelay.plugins.health_plugin.Plugin")
     @patch("mmrelay.plugin_loader.get_custom_plugin_dirs")
-    def test_load_plugins_with_custom(self, mock_get_custom_plugin_dirs, *mock_plugins):
+    @patch("importlib.import_module")
+    @patch("mmrelay.plugin_loader.asyncio.run_coroutine_threadsafe")
+    @patch("mmrelay.plugin_loader.is_running_as_service", return_value=True)
+    @patch("mmrelay.matrix_utils.matrix_client", None)
+    @patch("mmrelay.plugin_loader.event_loop", MagicMock())
+    def test_load_plugins_with_custom(self, mock_event_loop, mock_matrix_client, mock_is_service, mock_run_coro, mock_import_module, mock_get_custom_plugin_dirs, *mock_plugins):
         """
         Tests that both core and custom plugins are loaded and activated when specified in the configuration.
 

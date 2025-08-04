@@ -254,13 +254,15 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
 
         mock_client.room_resolve_alias = mock_room_resolve_alias
 
-        # Use asyncio.run with proper cleanup
-        async def run_test():
+        # Run the test directly with asyncio.run
+        async def test_coroutine():
             await join_matrix_room(mock_client, "#invalid:matrix.org")
-            mock_logger.error.assert_called()
 
-        # Run the test with proper coroutine handling
-        asyncio.run(run_test())
+        # Execute the test
+        asyncio.run(test_coroutine())
+
+        # Verify the error was logged
+        mock_logger.error.assert_called()
 
     @patch("mmrelay.matrix_utils.logger")
     def test_join_matrix_room_exception_handling(self, mock_logger):

@@ -591,20 +591,14 @@ class TestRunMain(unittest.TestCase):
         }
         mock_load_config.return_value = mock_config
 
-        # Mock the main function to return None instead of creating a coroutine
-        mock_main.return_value = None
-
-        # Mock asyncio.run to properly handle any coroutines
-        def mock_run_with_cleanup(coro):
-            # Properly consume the coroutine to prevent "never awaited" warning
-            try:
-                if hasattr(coro, "close"):
-                    coro.close()
-            except Exception:
-                pass  # Ignore any cleanup errors
+        # Mock the main function to return a simple value instead of a coroutine
+        async def mock_main_func(config):
             return None
 
-        mock_asyncio_run.side_effect = mock_run_with_cleanup
+        mock_main.side_effect = mock_main_func
+
+        # Mock asyncio.run to handle the mocked coroutine
+        mock_asyncio_run.return_value = None
 
         mock_args = MagicMock()
         mock_args.data_dir = None
