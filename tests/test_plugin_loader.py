@@ -485,6 +485,7 @@ class TestGitRepositoryHandling(unittest.TestCase):
         self.assertIn("develop", clone_call[0][0])
 
     @patch("os.makedirs")
+    @patch("os.path.isfile")
     @patch("subprocess.check_call")
     @patch("subprocess.check_output")
     @patch("os.path.isdir")
@@ -507,6 +508,7 @@ class TestGitRepositoryHandling(unittest.TestCase):
         mock_isdir,
         mock_check_output,
         mock_check_call,
+        mock_isfile,
         mock_makedirs,
     ):
         """
@@ -514,7 +516,12 @@ class TestGitRepositoryHandling(unittest.TestCase):
 
         Verifies that when the repository directory exists and the current branch matches the requested branch, the `clone_or_update_repo` function performs a fetch and pull, and returns True.
         """
-        mock_isdir.return_value = True  # Repository exists
+        # Mock isdir to return True for the specific repo path
+        def mock_isdir_side_effect(path):
+            # Return True for any path that looks like a repository
+            return "test-repo" in str(path) or True
+
+        mock_isdir.side_effect = mock_isdir_side_effect
 
         # Mock all git operations to succeed
         def mock_check_output_side_effect(cmd, **kwargs):
@@ -530,6 +537,9 @@ class TestGitRepositoryHandling(unittest.TestCase):
             return None
 
         mock_check_call.side_effect = mock_check_call_side_effect
+
+        # Mock isfile to return False for requirements.txt to skip dependency installation
+        mock_isfile.return_value = False
 
         repo_url = "https://github.com/user/test-repo.git"
         ref = {"type": "branch", "value": "main"}
