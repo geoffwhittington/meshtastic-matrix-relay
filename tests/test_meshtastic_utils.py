@@ -805,9 +805,11 @@ async def test_reconnect_attempts_connection(
     mock_logger, mock_sleep, mock_connect, reset_meshtastic_globals
 ):
     """Test that reconnect attempts to connect to Meshtastic."""
+
     # Mock asyncio.sleep to return a completed coroutine
     async def mock_sleep_func(*args, **kwargs):
         pass
+
     mock_sleep.side_effect = mock_sleep_func
 
     # Simulate connect_meshtastic succeeding to prevent an infinite loop

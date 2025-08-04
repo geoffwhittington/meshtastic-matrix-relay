@@ -444,10 +444,13 @@ class Plugin:
 
         config = {"custom-plugins": {"duplicate": {"active": True}}}
 
-        with patch("mmrelay.plugin_loader.load_plugins_from_directory") as mock_load, \
-             patch("rich.progress.Progress"), \
-             patch("rich.console.Console"), \
-             patch("rich.logging.RichHandler"):
+        with patch(
+            "mmrelay.plugin_loader.load_plugins_from_directory"
+        ) as mock_load, patch("rich.progress.Progress"), patch(
+            "rich.console.Console"
+        ), patch(
+            "rich.logging.RichHandler"
+        ):
             # Return both plugins with same name
             mock_load.return_value = [mock_plugin1, mock_plugin2]
             with patch("mmrelay.plugin_loader.get_custom_plugin_dirs") as mock_dirs:
