@@ -355,12 +355,6 @@ class TestMeshtasticUtils(unittest.TestCase):
             "mmrelay.matrix_utils.matrix_client", None
         ), patch(
             "mmrelay.meshtastic_utils.event_loop", MagicMock()
-        ), patch(
-            "rich.text.Text"
-        ), patch(
-            "rich.console.Console"
-        ), patch(
-            "rich.logging.RichHandler"
         ):
 
             mock_get_longname.return_value = "Test User"
@@ -628,11 +622,7 @@ class TestConnectMeshtasticEdgeCases(unittest.TestCase):
         self.assertIsNone(result)
 
     @patch("mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface")
-    @patch("mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe")
-    @patch("mmrelay.meshtastic_utils.is_running_as_service", return_value=True)
-    @patch("mmrelay.matrix_utils.matrix_client", None)
-    @patch("mmrelay.meshtastic_utils.event_loop", MagicMock())
-    def test_connect_meshtastic_tcp_exception(self, mock_event_loop, mock_matrix_client, mock_is_service, mock_run_coro, mock_tcp):
+    def test_connect_meshtastic_tcp_exception(self, mock_tcp):
         """
         Tests that connect_meshtastic returns None when an exception is raised during TCP interface instantiation.
         """
