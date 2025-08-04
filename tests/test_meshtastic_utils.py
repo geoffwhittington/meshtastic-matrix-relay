@@ -339,9 +339,7 @@ class TestMeshtasticUtils(unittest.TestCase):
             "mmrelay.meshtastic_utils.matrix_rooms", config_no_broadcast["matrix_rooms"]
         ), patch(
             "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
-        ) as mock_run_coro, patch(
-            "mmrelay.matrix_utils.matrix_relay"
-        ), patch(
+        ) as mock_run_coro, patch("mmrelay.matrix_utils.matrix_relay", return_value=None), patch(
             "mmrelay.meshtastic_utils.get_longname"
         ) as mock_get_longname, patch(
             "mmrelay.meshtastic_utils.get_shortname"
@@ -529,8 +527,8 @@ class TestConnectionLossHandling(unittest.TestCase):
         mmrelay.meshtastic_utils.reconnecting = False
         mmrelay.meshtastic_utils.shutting_down = False
 
-        # Make mock_reconnect return an AsyncMock to simulate a coroutine
-        mock_reconnect.return_value = AsyncMock()
+        # Make mock_reconnect return a MagicMock to simulate a coroutine object
+        mock_reconnect.return_value = MagicMock()
 
         mock_interface = MagicMock()
 
@@ -822,11 +820,8 @@ async def test_reconnect_attempts_connection(
 ):
     """Test that reconnect attempts to connect to Meshtastic."""
 
-    # Mock asyncio.sleep to return a completed coroutine
-    async def mock_sleep_func(*args, **kwargs):
-        pass
-
-    mock_sleep.side_effect = mock_sleep_func
+    # Mock asyncio.sleep to prevent the test from actually sleeping
+    mock_sleep.return_value = None
 
     # Simulate connect_meshtastic succeeding to prevent an infinite loop
     mock_connect.return_value = MagicMock()

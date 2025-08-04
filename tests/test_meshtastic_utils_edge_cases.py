@@ -436,13 +436,18 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.logger"), patch(
             "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
-        ), patch(
+        ) as mock_run_coroutine, patch(
             "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
         ), patch(
             "mmrelay.matrix_utils.matrix_client", None
         ), patch(
             "mmrelay.meshtastic_utils.event_loop", MagicMock()
-        ):
+        ), patch("mmrelay.matrix_utils.matrix_relay", return_value=None):
+            def mock_run_coro(coro, loop):
+                future = asyncio.Future()
+                future.set_result(None)
+                return future
+            mock_run_coroutine.side_effect = mock_run_coro
             # Should handle large node lists without crashing
             on_meshtastic_message(packet, mock_interface)
 

@@ -216,13 +216,7 @@ class TestMain(unittest.TestCase):
         # Mock config loading
         mock_load_config.return_value = self.mock_config
 
-        # Mock asyncio.run to properly handle the coroutine and raise exception
-        def mock_run_with_cleanup(coro):
-            # Close the coroutine to prevent "never awaited" warning
-            coro.close()
-            raise Exception("Test error")
-
-        mock_asyncio_run.side_effect = mock_run_with_cleanup
+        mock_asyncio_run.side_effect = Exception("Test error")
 
         result = run_main(None)
 
@@ -238,13 +232,7 @@ class TestMain(unittest.TestCase):
         # Mock config loading
         mock_load_config.return_value = self.mock_config
 
-        # Mock asyncio.run to properly handle the coroutine and raise KeyboardInterrupt
-        def mock_run_with_cleanup(coro):
-            # Close the coroutine to prevent "never awaited" warning
-            coro.close()
-            raise KeyboardInterrupt()
-
-        mock_asyncio_run.side_effect = mock_run_with_cleanup
+        mock_asyncio_run.side_effect = KeyboardInterrupt()
 
         result = run_main(None)
 
@@ -391,20 +379,7 @@ class TestRunMain(unittest.TestCase):
         }
         mock_load_config.return_value = mock_config
 
-        # Configure asyncio.run mock to properly handle coroutines
-        def mock_run(coro):
-            # Close the coroutine to prevent warnings
-            """
-            Mocks the execution of an asynchronous coroutine by closing it if possible and returning None.
-
-            Parameters:
-                coro: The coroutine object to be closed.
-            """
-            if hasattr(coro, "close"):
-                coro.close()
-            return None
-
-        mock_asyncio_run.side_effect = mock_run
+        mock_asyncio_run.return_value = None
 
         # Mock args
         mock_args = MagicMock()
@@ -464,13 +439,7 @@ class TestRunMain(unittest.TestCase):
         }
         mock_load_config.return_value = mock_config
 
-        # Mock asyncio.run to properly handle the coroutine and raise KeyboardInterrupt
-        def mock_run_with_cleanup(coro):
-            # Close the coroutine to prevent "never awaited" warning
-            coro.close()
-            raise KeyboardInterrupt()
-
-        mock_asyncio_run.side_effect = mock_run_with_cleanup
+        mock_asyncio_run.side_effect = KeyboardInterrupt()
 
         mock_args = MagicMock()
         mock_args.data_dir = None
@@ -589,14 +558,7 @@ class TestRunMain(unittest.TestCase):
         }
         mock_load_config.return_value = mock_config
 
-        # Mock asyncio.run with coroutine cleanup to prevent warnings
-        def mock_run_with_cleanup(coro):
-            # Close the coroutine to prevent "never awaited" warning
-            if hasattr(coro, 'close'):
-                coro.close()
-            return None
-
-        mock_asyncio_run.side_effect = mock_run_with_cleanup
+        mock_asyncio_run.return_value = None
 
         mock_args = MagicMock()
         mock_args.data_dir = None

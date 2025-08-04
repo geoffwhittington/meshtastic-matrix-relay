@@ -286,7 +286,7 @@ class TestImageUploadAndSend(unittest.TestCase):
                 result = await upload_image(self.mock_client, self.mock_image)
 
                 self.assertEqual(result, self.mock_upload_response)
-                self.mock_client.upload.assert_called_once()
+                self.mock_client.upload.assert_awaited_once()
 
         asyncio.run(run_test())
 
@@ -303,7 +303,7 @@ class TestImageUploadAndSend(unittest.TestCase):
 
             await send_room_image(self.mock_client, room_id, self.mock_upload_response)
 
-            self.mock_client.room_send.assert_called_once_with(
+            self.mock_client.room_send.assert_awaited_once_with(
                 room_id=room_id,
                 message_type="m.room.message",
                 content={
@@ -333,10 +333,10 @@ class TestImageUploadAndSend(unittest.TestCase):
 
             await send_image(self.mock_client, room_id, self.mock_image)
 
-            mock_upload_image.assert_called_once_with(
+            mock_upload_image.assert_awaited_once_with(
                 client=self.mock_client, image=self.mock_image
             )
-            mock_send_room_image.assert_called_once_with(
+            mock_send_room_image.assert_awaited_once_with(
                 self.mock_client, room_id, upload_response=self.mock_upload_response
             )
 
