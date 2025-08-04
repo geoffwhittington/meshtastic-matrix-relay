@@ -1011,6 +1011,7 @@ async def test_matrix_relay_client_none(
 # TODO: Add test for markdown formatting functionality
 # The functionality works correctly (verified manually) but there's a test environment issue
 # that prevents the test from running properly in the pytest environment.
+# The lazy import with ImportError fallback has been implemented to handle missing markdown library.
 
 
 @patch("mmrelay.matrix_utils.matrix_client")
