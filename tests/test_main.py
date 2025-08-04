@@ -564,12 +564,12 @@ class TestRunMain(unittest.TestCase):
             mock_abspath.assert_any_call(custom_data_dir)
             mock_makedirs.assert_called_once_with(custom_data_dir, exist_ok=True)
 
-    @patch("mmrelay.main.main")
-    @patch("asyncio.run")
-    @patch("mmrelay.config.load_config")
-    @patch("mmrelay.config.set_config")
-    @patch("mmrelay.log_utils.configure_component_debug_logging")
-    @patch("mmrelay.main.print_banner")
+    @patch("mmrelay.main.main", spec=True)
+    @patch("asyncio.run", spec=True)
+    @patch("mmrelay.config.load_config", spec=True)
+    @patch("mmrelay.config.set_config", spec=True)
+    @patch("mmrelay.log_utils.configure_component_debug_logging", spec=True)
+    @patch("mmrelay.main.print_banner", spec=True)
     def test_run_main_with_log_level(
         self,
         mock_print_banner,
@@ -591,14 +591,13 @@ class TestRunMain(unittest.TestCase):
         }
         mock_load_config.return_value = mock_config
 
-        # Mock the main function to return a simple value instead of a coroutine
-        async def mock_main_func(config):
-            return None
-
-        mock_main.side_effect = mock_main_func
-
-        # Mock asyncio.run to handle the mocked coroutine
+        # Mock asyncio.run to prevent coroutine creation
         mock_asyncio_run.return_value = None
+
+        # Replace main function with a simple MagicMock to prevent AsyncMock creation
+        from unittest.mock import MagicMock
+        mock_main.return_value = None
+        mock_main._mock_name = 'main'
 
         mock_args = MagicMock()
         mock_args.data_dir = None
