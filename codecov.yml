@@ -7,19 +7,12 @@ coverage:
       default:
         target: 40%
         threshold: 2%
-    patch:
-      default:
-        target: 0%
-        threshold: 2%
 
 component_management:
   default_rules:
     statuses:
       - type: project
         target: auto
-        threshold: 2%
-      - type: patch
-        target: 0%
         threshold: 2%
   individual_components:
     - component_id: plugins
@@ -31,9 +24,6 @@ component_management:
         - type: project
           target: 50%
           threshold: 3%
-        - type: patch
-          target: 0%
-          threshold: 3%
     - component_id: configuration
       name: Configuration
       paths:
@@ -42,9 +32,6 @@ component_management:
       statuses:
         - type: project
           target: 70%
-          threshold: 2%
-        - type: patch
-          target: 0%
           threshold: 2%
     - component_id: core_utils
       name: Core Utils
@@ -57,9 +44,6 @@ component_management:
         - type: project
           target: 40%
           threshold: 3%
-        - type: patch
-          target: 0%
-          threshold: 3%
     - component_id: cli_main
       name: CLI & Main
       paths:
@@ -69,9 +53,6 @@ component_management:
         - type: project
           target: 60%
           threshold: 3%
-        - type: patch
-          target: 0%
-          threshold: 3%
     - component_id: database
       name: Database
       paths:
@@ -79,9 +60,6 @@ component_management:
       statuses:
         - type: project
           target: 70%
-          threshold: 2%
-        - type: patch
-          target: 0%
           threshold: 2%
     - component_id: setup_tools
       name: Setup & Tools
@@ -92,9 +70,6 @@ component_management:
         - type: project
           target: 30%
           threshold: 3%
-        - type: patch
-          target: 0%
-          threshold: 3%
     - component_id: constants
       name: Constants & Init
       paths:
@@ -103,9 +78,6 @@ component_management:
       statuses:
         - type: project
           target: 80%
-          threshold: 2%
-        - type: patch
-          target: 0%
           threshold: 2%
 
 comment:
