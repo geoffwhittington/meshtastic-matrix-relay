@@ -235,10 +235,8 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
 
         asyncio.run(run_test())
 
-    @patch("mmrelay.matrix_utils.matrix_client", None)
-    @patch("mmrelay.matrix_utils.matrix_rooms", [])
     @patch("mmrelay.matrix_utils.logger")
-    def test_join_matrix_room_with_invalid_alias(self, mock_logger, mock_matrix_rooms, mock_matrix_client):
+    def test_join_matrix_room_with_invalid_alias(self, mock_logger):
         """
         Test that join_matrix_room logs an error when attempting to join a Matrix room with an invalid alias.
 
