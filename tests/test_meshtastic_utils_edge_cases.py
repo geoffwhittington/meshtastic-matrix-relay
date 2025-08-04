@@ -108,7 +108,15 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                 "mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface",
                 side_effect=TimeoutError("Connection timeout"),
             ):
-                with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
+                with patch("mmrelay.meshtastic_utils.logger") as mock_logger, patch(
+                    "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
+                ), patch(
+                    "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
+                ), patch(
+                    "mmrelay.matrix_utils.matrix_client", None
+                ), patch(
+                    "mmrelay.meshtastic_utils.event_loop", MagicMock()
+                ):
                     result = connect_meshtastic(config)
                     self.assertIsNone(result)
                     mock_logger.error.assert_called()
