@@ -516,6 +516,7 @@ class TestGitRepositoryHandling(unittest.TestCase):
         """
         mock_isdir.return_value = True  # Repository exists
         mock_check_output.return_value = "main\n"  # Current branch is main
+        mock_check_call.return_value = None  # Mock successful git operations
 
         repo_url = "https://github.com/user/test-repo.git"
         ref = {"type": "branch", "value": "main"}
