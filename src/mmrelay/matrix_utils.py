@@ -545,8 +545,11 @@ async def matrix_relay(
         if has_markdown or has_html:
             try:
                 import markdown
+
                 formatted_body = markdown.markdown(message)
-                plain_body = re.sub(r"</?[^>]*>", "", formatted_body)  # Strip all HTML tags
+                plain_body = re.sub(
+                    r"</?[^>]*>", "", formatted_body
+                )  # Strip all HTML tags
             except ImportError:
                 # Fallback if markdown is not available
                 formatted_body = message

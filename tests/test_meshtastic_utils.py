@@ -508,7 +508,9 @@ class TestConnectionLossHandling(unittest.TestCase):
     @patch("mmrelay.meshtastic_utils.event_loop", MagicMock())
     @patch("mmrelay.meshtastic_utils.reconnect")
     @patch("mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe")
-    def test_on_lost_meshtastic_connection_normal(self, mock_run_coro, mock_reconnect, mock_logger):
+    def test_on_lost_meshtastic_connection_normal(
+        self, mock_run_coro, mock_reconnect, mock_logger
+    ):
         """Test normal connection loss handling."""
         import mmrelay.meshtastic_utils
 

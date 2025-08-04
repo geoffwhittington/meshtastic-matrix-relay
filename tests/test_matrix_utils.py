@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -1019,11 +1020,12 @@ def test_markdown_import_error_fallback_coverage():
     has_html = False
 
     # Test the ImportError fallback path
-    with patch.dict('sys.modules', {'markdown': None}):
+    with patch.dict("sys.modules", {"markdown": None}):
         # This simulates the exact try/except block from matrix_relay
         if has_markdown or has_html:
             try:
                 import markdown
+
                 formatted_body = markdown.markdown(message)
                 plain_body = re.sub(r"</?[^>]*>", "", formatted_body)
             except ImportError:
