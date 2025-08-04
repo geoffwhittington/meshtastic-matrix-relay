@@ -209,21 +209,20 @@ class TestMain(unittest.TestCase):
 
     @patch("mmrelay.config.load_config")
     @patch("asyncio.run")
-    @patch("mmrelay.main.main", new_callable=AsyncMock)
-    def test_run_main_exception_handling(
-        self, mock_main, mock_asyncio_run, mock_load_config
-    ):
+    def test_run_main_exception_handling(self, mock_asyncio_run, mock_load_config):
         """
         Test that run_main returns 1 if an exception occurs during execution.
         """
         # Mock config loading
         mock_load_config.return_value = self.mock_config
 
-        # Mock main to raise an exception
-        mock_main.side_effect = Exception("Test error")
+        # Mock asyncio.run to properly handle the coroutine and raise exception
+        def mock_run_with_cleanup(coro):
+            # Close the coroutine to prevent "never awaited" warning
+            coro.close()
+            raise Exception("Test error")
 
-        # Mock asyncio.run to raise the exception from main
-        mock_asyncio_run.side_effect = Exception("Test error")
+        mock_asyncio_run.side_effect = mock_run_with_cleanup
 
         result = run_main(None)
 
