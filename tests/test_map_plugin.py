@@ -272,17 +272,14 @@ class TestImageUploadAndSend(unittest.TestCase):
 
     def tearDown(self):
         """Clean up test fixtures to prevent AsyncMock warnings."""
-        # Properly close AsyncMock instances to prevent coroutine warnings
-        if hasattr(self.mock_client.upload, 'close'):
-            try:
-                self.mock_client.upload.close()
-            except:
-                pass
-        if hasattr(self.mock_client.room_send, 'close'):
-            try:
-                self.mock_client.room_send.close()
-            except:
-                pass
+        # Reset AsyncMock instances to prevent test pollution
+        # Don't call .close() as it creates coroutines that need to be awaited
+        self.mock_client.upload.reset_mock()
+        self.mock_client.room_send.reset_mock()
+        # Clear references to prevent pollution
+        self.mock_client = None
+        self.mock_image = None
+        self.mock_upload_response = None
 
     def test_upload_image(self):
         """
