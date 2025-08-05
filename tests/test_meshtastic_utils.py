@@ -135,7 +135,9 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
-        ), patch("asyncio.run_coroutine_threadsafe", new_callable=AsyncMock) as mock_run_coro:
+        ), patch(
+            "asyncio.run_coroutine_threadsafe", new_callable=AsyncMock
+        ) as mock_run_coro:
 
             mock_interface = MagicMock()
 
@@ -157,7 +159,9 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
-        ), patch("asyncio.run_coroutine_threadsafe", new_callable=AsyncMock) as mock_run_coro, patch(
+        ), patch(
+            "asyncio.run_coroutine_threadsafe", new_callable=AsyncMock
+        ) as mock_run_coro, patch(
             "mmrelay.plugin_loader.load_plugins"
         ) as mock_load_plugins, patch(
             "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
@@ -342,7 +346,9 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.config", config_no_broadcast), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", config_no_broadcast["matrix_rooms"]
-        ), patch("asyncio.run_coroutine_threadsafe", new_callable=AsyncMock) as mock_run_coroutine, patch(
+        ), patch(
+            "asyncio.run_coroutine_threadsafe", new_callable=AsyncMock
+        ) as mock_run_coroutine, patch(
             "mmrelay.matrix_utils.matrix_relay", return_value=None
         ), patch(
             "mmrelay.meshtastic_utils.get_longname"
@@ -725,7 +731,8 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
         ), patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe", new_callable=AsyncMock
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe",
+            new_callable=AsyncMock,
         ) as mock_run_coro, patch(
             "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
         ), patch(
@@ -757,7 +764,8 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
         ), patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe", new_callable=AsyncMock
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe",
+            new_callable=AsyncMock,
         ) as mock_run_coro:
 
             mock_interface = MagicMock()
