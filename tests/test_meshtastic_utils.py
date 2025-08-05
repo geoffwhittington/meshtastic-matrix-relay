@@ -73,6 +73,17 @@ class TestMeshtasticUtils(unittest.TestCase):
         mmrelay.meshtastic_utils.meshtastic_client = None
         mmrelay.meshtastic_utils.config = None
         mmrelay.meshtastic_utils.matrix_rooms = []
+        mmrelay.meshtastic_utils.reconnecting = False
+        mmrelay.meshtastic_utils.shutting_down = False
+        # Properly clean up reconnect_task to avoid AsyncMock warnings
+        if hasattr(mmrelay.meshtastic_utils, 'reconnect_task'):
+            task = mmrelay.meshtastic_utils.reconnect_task
+            if task and hasattr(task, 'close'):
+                try:
+                    task.close()
+                except:
+                    pass
+            mmrelay.meshtastic_utils.reconnect_task = None
 
     def test_on_meshtastic_message_basic(self):
         """
@@ -86,23 +97,27 @@ class TestMeshtasticUtils(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.get_longname") as mock_get_longname, patch(
             "mmrelay.meshtastic_utils.get_shortname"
         ) as mock_get_shortname, patch(
-            "asyncio.run_coroutine_threadsafe", new_callable=AsyncMock
+            "asyncio.run_coroutine_threadsafe"
         ) as mock_run_coroutine, patch(
             "mmrelay.matrix_utils.matrix_relay"
-        ), patch(
+        ) as mock_matrix_relay, patch(
             "mmrelay.matrix_utils.get_interaction_settings"
         ) as mock_get_interactions, patch(
             "mmrelay.matrix_utils.message_storage_enabled"
         ) as mock_storage:
 
-            def mock_run_coro(coro, loop):
+            # Mock run_coroutine_threadsafe to return a completed future
+            def create_completed_future(*args, **kwargs):
                 try:
                     loop = asyncio.get_running_loop()
                 except RuntimeError:
                     loop = asyncio.new_event_loop()
-                return loop.run_until_complete(coro)
+                    asyncio.set_event_loop(loop)
+                future = loop.create_future()
+                future.set_result(None)
+                return future
 
-            mock_run_coroutine.side_effect = mock_run_coro
+            mock_run_coroutine.side_effect = create_completed_future
 
             mock_get_longname.return_value = "Test User"
             mock_get_shortname.return_value = "TU"
@@ -347,10 +362,10 @@ class TestMeshtasticUtils(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.config", config_no_broadcast), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", config_no_broadcast["matrix_rooms"]
         ), patch(
-            "asyncio.run_coroutine_threadsafe", new_callable=AsyncMock
+            "asyncio.run_coroutine_threadsafe"
         ) as mock_run_coroutine, patch(
-            "mmrelay.matrix_utils.matrix_relay", return_value=None
-        ), patch(
+            "mmrelay.matrix_utils.matrix_relay"
+        ) as mock_matrix_relay, patch(
             "mmrelay.meshtastic_utils.get_longname"
         ) as mock_get_longname, patch(
             "mmrelay.meshtastic_utils.get_shortname"
@@ -366,14 +381,18 @@ class TestMeshtasticUtils(unittest.TestCase):
             "mmrelay.meshtastic_utils.event_loop", MagicMock()
         ):
 
-            def mock_run_coro(coro, loop):
+            # Mock run_coroutine_threadsafe to return a completed future
+            def create_completed_future(*args, **kwargs):
                 try:
                     loop = asyncio.get_running_loop()
                 except RuntimeError:
                     loop = asyncio.new_event_loop()
-                return loop.run_until_complete(coro)
+                    asyncio.set_event_loop(loop)
+                future = loop.create_future()
+                future.set_result(None)
+                return future
 
-            mock_run_coroutine.side_effect = mock_run_coro
+            mock_run_coroutine.side_effect = create_completed_future
 
             mock_get_longname.return_value = "Test User"
             mock_get_shortname.return_value = "TU"

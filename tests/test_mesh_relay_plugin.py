@@ -205,7 +205,9 @@ class TestMeshRelayPlugin(unittest.TestCase):
         """
         Test that handle_meshtastic_message returns None and does not send a Matrix message when no configuration is present.
         """
-        mock_matrix_client = AsyncMock()
+        # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+        mock_matrix_client = MagicMock()
+        mock_matrix_client.room_send = AsyncMock()
         mock_connect.return_value = mock_matrix_client
 
         packet = {
@@ -239,7 +241,9 @@ class TestMeshRelayPlugin(unittest.TestCase):
         """
         Test that handle_meshtastic_message returns None and does not send a Matrix message when the packet's channel is not mapped in the configuration.
         """
-        mock_matrix_client = AsyncMock()
+        # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+        mock_matrix_client = MagicMock()
+        mock_matrix_client.room_send = AsyncMock()
         mock_connect.return_value = mock_matrix_client
 
         # Mock config with no matching channel
@@ -338,7 +342,9 @@ class TestMeshRelayPlugin(unittest.TestCase):
 
         Verifies that a Matrix message is sent to the room mapped to channel 0 and that the method returns False.
         """
-        mock_matrix_client = AsyncMock()
+        # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+        mock_matrix_client = MagicMock()
+        mock_matrix_client.room_send = AsyncMock()
         mock_connect.return_value = mock_matrix_client
 
         # Mock config with channel 0 mapped (default channel)
