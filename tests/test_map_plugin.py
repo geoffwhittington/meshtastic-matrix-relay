@@ -270,6 +270,20 @@ class TestImageUploadAndSend(unittest.TestCase):
         self.mock_upload_response = MagicMock()
         self.mock_upload_response.content_uri = "mxc://example.com/test123"
 
+    def tearDown(self):
+        """Clean up test fixtures to prevent AsyncMock warnings."""
+        # Properly close AsyncMock instances to prevent coroutine warnings
+        if hasattr(self.mock_client.upload, 'close'):
+            try:
+                self.mock_client.upload.close()
+            except:
+                pass
+        if hasattr(self.mock_client.room_send, 'close'):
+            try:
+                self.mock_client.room_send.close()
+            except:
+                pass
+
     def test_upload_image(self):
         """
         Test that the image upload function correctly saves the image to a buffer, uploads it using the client, and returns the upload response.
