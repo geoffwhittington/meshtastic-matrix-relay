@@ -29,17 +29,17 @@ from mmrelay.matrix_utils import connect_matrix
 from mmrelay.meshtastic_utils import connect_meshtastic, on_meshtastic_message
 
 
-class TestIntegrationScenarios:
+class TestIntegrationScenarios(unittest.TestCase):
     """Test cases for integration scenarios and end-to-end flows."""
 
-    def setup_method(self):
+    def setUp(self):
         self._reset_global_state()
 
-    def teardown_method(self):
+    def tearDown(self):
         self._reset_global_state()
 
     def _reset_global_state(self):
-        # ... (same as before)
+        pass
 
     def test_complete_meshtastic_to_matrix_flow(self):
         """
@@ -89,11 +89,12 @@ class TestIntegrationScenarios:
                     )
                     mock_load_plugins.return_value = [mock_plugin]
 
-                    # Mock the async execution to prevent warnings
                     def mock_run_coro(coro, loop):
-                        future = asyncio.Future()
-                        future.set_result(None)
-                        return future
+                        try:
+                            loop = asyncio.get_running_loop()
+                        except RuntimeError:
+                            loop = asyncio.new_event_loop()
+                        return loop.run_until_complete(coro)
 
                     mock_run_coroutine.side_effect = mock_run_coro
 
@@ -220,11 +221,12 @@ class TestIntegrationScenarios:
         with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins:
             with patch("mmrelay.matrix_utils.matrix_relay"):
                 with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
-                    # Mock the async execution to prevent warnings
                     def mock_run_coro(coro, loop):
-                        future = asyncio.Future()
-                        future.set_result(None)
-                        return future
+                        try:
+                            loop = asyncio.get_running_loop()
+                        except RuntimeError:
+                            loop = asyncio.new_event_loop()
+                        return loop.run_until_complete(coro)
 
                     mock_run_coroutine.side_effect = mock_run_coro
 
@@ -392,6 +394,8 @@ plugins:
                 asyncio.run(test_matrix_recovery())
 
         # Test Meshtastic connection failure recovery
+        import mmrelay.meshtastic_utils
+        mmrelay.meshtastic_utils.shutting_down = False
         with patch("mmrelay.meshtastic_utils.serial_port_exists", return_value=True):
             # Patch all exceptions in the except clause to be proper Exception classes
             with patch("mmrelay.meshtastic_utils.BleakDBusError", Exception):
@@ -399,31 +403,15 @@ plugins:
                     with patch(
                         "mmrelay.meshtastic_utils.serial.SerialException", Exception
                     ):
-                        with patch(
-                            "mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface",
-                            side_effect=Exception("Connection failed"),
-                        ):
-                            with patch("time.sleep"):  # Speed up test
-                                # Set shutting_down to True after a few attempts to break the retry loop
-                                def side_effect_shutdown(*args, **kwargs):
-                                    """
-                                    Sets the Meshtastic shutdown flag and raises an exception to simulate a connection failure.
-
-                                    Intended for use as a side effect in tests that require simulating a shutdown scenario.
-                                    """
-                                    import mmrelay.meshtastic_utils
-
-                                    mmrelay.meshtastic_utils.shutting_down = True
-                                    raise Exception("Connection failed")
-
-                                with patch(
-                                    "mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface",
-                                    side_effect=side_effect_shutdown,
-                                ):
-                                    result = connect_meshtastic(config)
-                                    self.assertIsNone(
-                                        result
-                                    )  # Should handle failure gracefully
+                        with patch("time.sleep") as mock_sleep:
+                            def set_shutdown(*args, **kwargs):
+                                import mmrelay.meshtastic_utils
+                                mmrelay.meshtastic_utils.shutting_down = True
+                                return None
+                            mock_sleep.side_effect = set_shutdown
+                            with patch("meshtastic.serial_interface.SerialInterface", side_effect=Exception("Connection failed")):
+                                result = connect_meshtastic(config)
+                                self.assertIsNone(result)
 
     def test_multi_room_message_routing(self):
         """
@@ -551,7 +539,10 @@ plugins:
                 # Set up minimal config
                 import mmrelay.meshtastic_utils
 
-                mmrelay.meshtastic_utils.config = {"matrix_rooms": []}
+                mmrelay.meshtastic_utils.config = {
+                    "matrix_rooms": [],
+                    "meshtastic": {"meshnet_name": "TestMesh"},
+                }
                 mmrelay.meshtastic_utils.matrix_rooms = []
 
                 # Process multiple messages
@@ -608,11 +599,12 @@ plugins:
                     )
                     mock_load_plugins.return_value = [mock_telemetry_plugin]
 
-                    # Mock async execution to prevent warnings
                     def mock_run_coro(coro, loop):
-                        future = asyncio.Future()
-                        future.set_result(None)
-                        return future
+                        try:
+                            loop = asyncio.get_running_loop()
+                        except RuntimeError:
+                            loop = asyncio.new_event_loop()
+                        return loop.run_until_complete(coro)
 
                     mock_run_coroutine.side_effect = mock_run_coro
 

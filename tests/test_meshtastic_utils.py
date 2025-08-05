@@ -86,14 +86,22 @@ class TestMeshtasticUtils(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.get_longname") as mock_get_longname, patch(
             "mmrelay.meshtastic_utils.get_shortname"
         ) as mock_get_shortname, patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
-        ) as mock_run_coro, patch(
+            "asyncio.run_coroutine_threadsafe"
+        ) as mock_run_coroutine, patch(
             "mmrelay.matrix_utils.matrix_relay"
         ), patch(
             "mmrelay.matrix_utils.get_interaction_settings"
         ) as mock_get_interactions, patch(
             "mmrelay.matrix_utils.message_storage_enabled"
         ) as mock_storage:
+
+            def mock_run_coro(coro, loop):
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                return loop.run_until_complete(coro)
+            mock_run_coroutine.side_effect = mock_run_coro
 
             mock_get_longname.return_value = "Test User"
             mock_get_shortname.return_value = "TU"
@@ -112,7 +120,7 @@ class TestMeshtasticUtils(unittest.TestCase):
             on_meshtastic_message(self.mock_packet, mock_interface)
 
             # Verify asyncio.run_coroutine_threadsafe was called (which calls matrix_relay)
-            mock_run_coro.assert_called_once()
+            mock_run_coroutine.assert_called_once()
 
     def test_on_meshtastic_message_unmapped_channel(self):
         """
@@ -127,7 +135,7 @@ class TestMeshtasticUtils(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
         ), patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
+            "asyncio.run_coroutine_threadsafe"
         ) as mock_run_coro:
 
             mock_interface = MagicMock()
@@ -151,7 +159,7 @@ class TestMeshtasticUtils(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
         ), patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
+            "asyncio.run_coroutine_threadsafe"
         ) as mock_run_coro, patch(
             "mmrelay.plugin_loader.load_plugins"
         ) as mock_load_plugins, patch(
@@ -338,8 +346,8 @@ class TestMeshtasticUtils(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.config", config_no_broadcast), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", config_no_broadcast["matrix_rooms"]
         ), patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
-        ) as mock_run_coro, patch("mmrelay.matrix_utils.matrix_relay", return_value=None), patch(
+            "asyncio.run_coroutine_threadsafe"
+        ) as mock_run_coroutine, patch("mmrelay.matrix_utils.matrix_relay", return_value=None), patch(
             "mmrelay.meshtastic_utils.get_longname"
         ) as mock_get_longname, patch(
             "mmrelay.meshtastic_utils.get_shortname"
@@ -354,6 +362,14 @@ class TestMeshtasticUtils(unittest.TestCase):
         ), patch(
             "mmrelay.meshtastic_utils.event_loop", MagicMock()
         ):
+
+            def mock_run_coro(coro, loop):
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                return loop.run_until_complete(coro)
+            mock_run_coroutine.side_effect = mock_run_coro
 
             mock_get_longname.return_value = "Test User"
             mock_get_shortname.return_value = "TU"
@@ -372,7 +388,7 @@ class TestMeshtasticUtils(unittest.TestCase):
 
             # Meshtastic->Matrix messages are still relayed regardless of broadcast_enabled
             # (broadcast_enabled only affects Matrix->Meshtastic direction)
-            mock_run_coro.assert_called_once()
+            mock_run_coroutine.assert_called_once()
 
 
 class TestServiceDetection(unittest.TestCase):
@@ -517,15 +533,23 @@ class TestConnectionLossHandling(unittest.TestCase):
     @patch("mmrelay.meshtastic_utils.logger")
     @patch("mmrelay.meshtastic_utils.event_loop", MagicMock())
     @patch("mmrelay.meshtastic_utils.reconnect")
-    @patch("mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe")
+    @patch("asyncio.run_coroutine_threadsafe")
     def test_on_lost_meshtastic_connection_normal(
-        self, mock_run_coro, mock_reconnect, mock_logger
+        self, mock_run_coroutine, mock_reconnect, mock_logger
     ):
         """Test normal connection loss handling."""
         import mmrelay.meshtastic_utils
 
         mmrelay.meshtastic_utils.reconnecting = False
         mmrelay.meshtastic_utils.shutting_down = False
+
+        def mock_run_coro(coro, loop):
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+            return loop.run_until_complete(coro)
+        mock_run_coroutine.side_effect = mock_run_coro
 
         # Make mock_reconnect return a MagicMock to simulate a coroutine object
         mock_reconnect.return_value = MagicMock()

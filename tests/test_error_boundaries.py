@@ -111,24 +111,12 @@ class TestErrorBoundaries(unittest.TestCase):
             ) as mock_matrix_relay:
                 with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
                     with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
-                        # Mock the async execution
                         def mock_run_coro(coro, loop):
-                            """
-                            Synchronously executes a coroutine and returns a mock future whose result mimics the coroutine's outcome.
-
-                            If the coroutine raises an exception, calling `result()` on the returned mock future will re-raise that exception.
-                            """
-                            mock_future = MagicMock()
                             try:
-                                import asyncio
-
-                                result = asyncio.run(coro)
-                                mock_future.result.return_value = result
-                            except Exception as e:
-                                # Re-raise the exception when result() is called
-                                mock_future.result.side_effect = e
-                            return mock_future
-
+                                loop = asyncio.get_running_loop()
+                            except RuntimeError:
+                                loop = asyncio.new_event_loop()
+                            return loop.run_until_complete(coro)
                         mock_run_coroutine.side_effect = mock_run_coro
 
                         # Set up minimal config
@@ -193,28 +181,12 @@ class TestErrorBoundaries(unittest.TestCase):
                             "asyncio.run_coroutine_threadsafe"
                         ) as mock_run_coroutine:
                             with patch("mmrelay.meshtastic_utils.logger"):
-                                # Mock the async execution
                                 def mock_run_coro(coro, loop):
-                                    """
-                                    Synchronously executes a coroutine and returns a mock future with the result.
-
-                                    Parameters:
-                                        coro: The coroutine to execute.
-                                        loop: The event loop (unused).
-
-                                    Returns:
-                                        A MagicMock object simulating a future, with its `result()` method returning the coroutine's result or None if an exception occurs.
-                                    """
-                                    mock_future = MagicMock()
                                     try:
-                                        import asyncio
-
-                                        result = asyncio.run(coro)
-                                        mock_future.result.return_value = result
-                                    except Exception:
-                                        mock_future.result.return_value = None
-                                    return mock_future
-
+                                        loop = asyncio.get_running_loop()
+                                    except RuntimeError:
+                                        loop = asyncio.new_event_loop()
+                                    return loop.run_until_complete(coro)
                                 mock_run_coroutine.side_effect = mock_run_coro
 
                                 # Set up config
@@ -284,24 +256,12 @@ class TestErrorBoundaries(unittest.TestCase):
             ):
                 with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
                     with patch("mmrelay.meshtastic_utils.logger"):
-                        # Mock the async execution
                         def mock_run_coro(coro, loop):
-                            """
-                            Synchronously executes a coroutine and returns a mock future whose result mimics the coroutine's outcome.
-
-                            If the coroutine raises an exception, calling `result()` on the returned mock future will re-raise that exception.
-                            """
-                            mock_future = MagicMock()
                             try:
-                                import asyncio
-
-                                result = asyncio.run(coro)
-                                mock_future.result.return_value = result
-                            except Exception as e:
-                                # Re-raise the exception when result() is called
-                                mock_future.result.side_effect = e
-                            return mock_future
-
+                                loop = asyncio.get_running_loop()
+                            except RuntimeError:
+                                loop = asyncio.new_event_loop()
+                            return loop.run_until_complete(coro)
                         mock_run_coroutine.side_effect = mock_run_coro
                     # Set up config
                     import mmrelay.meshtastic_utils

@@ -363,17 +363,12 @@ class TestPerformanceStress(unittest.TestCase):
                      patch("mmrelay.matrix_utils.message_storage_enabled", return_value=True), \
                      patch("mmrelay.meshtastic_utils.shutting_down", False):
 
-                    # Mock asyncio.run_coroutine_threadsafe to actually call the coroutine
                     def mock_run_coroutine_threadsafe(coro, loop):
-                        mock_future = MagicMock()
-                        mock_future.result.return_value = False
                         try:
-                            import asyncio
-                            asyncio.run(coro)
-                        except Exception:
-                            pass
-                        return mock_future
-
+                            loop = asyncio.get_running_loop()
+                        except RuntimeError:
+                            loop = asyncio.new_event_loop()
+                        return loop.run_until_complete(coro)
                     with patch("asyncio.run_coroutine_threadsafe", side_effect=mock_run_coroutine_threadsafe):
                         start_time = time.time()
 
