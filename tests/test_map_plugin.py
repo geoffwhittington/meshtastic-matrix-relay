@@ -262,7 +262,10 @@ class TestImageUploadAndSend(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.mock_client = AsyncMock()
+        # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+        self.mock_client = MagicMock()
+        self.mock_client.upload = AsyncMock()
+        self.mock_client.room_send = AsyncMock()
         self.mock_image = MagicMock()
         self.mock_upload_response = MagicMock()
         self.mock_upload_response.content_uri = "mxc://example.com/test123"
@@ -436,7 +439,9 @@ class TestMapPlugin(unittest.TestCase):
             mock_event = MagicMock()
             mock_event.body = "!map"
 
-            mock_matrix_client = AsyncMock()
+            # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+            mock_matrix_client = MagicMock()
+            mock_matrix_client.room_send = AsyncMock()
             mock_connect_matrix.return_value = mock_matrix_client
 
             mock_meshtastic_client = MagicMock()
@@ -493,7 +498,9 @@ class TestMapPlugin(unittest.TestCase):
             mock_event = MagicMock()
             mock_event.body = "!map zoom=15"
 
-            mock_matrix_client = AsyncMock()
+            # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+            mock_matrix_client = MagicMock()
+            mock_matrix_client.room_send = AsyncMock()
             mock_connect_matrix.return_value = mock_matrix_client
 
             mock_meshtastic_client = MagicMock()
@@ -541,7 +548,9 @@ class TestMapPlugin(unittest.TestCase):
             mock_event = MagicMock()
             mock_event.body = "!map size=500,400"
 
-            mock_matrix_client = AsyncMock()
+            # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+            mock_matrix_client = MagicMock()
+            mock_matrix_client.room_send = AsyncMock()
             mock_connect_matrix.return_value = mock_matrix_client
 
             mock_meshtastic_client = MagicMock()
@@ -613,7 +622,9 @@ class TestMapPlugin(unittest.TestCase):
             mock_event = MagicMock()
             mock_event.body = "!map zoom=50"  # Invalid zoom > 30
 
-            mock_matrix_client = AsyncMock()
+            # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+            mock_matrix_client = MagicMock()
+            mock_matrix_client.room_send = AsyncMock()
             mock_connect_matrix.return_value = mock_matrix_client
 
             mock_meshtastic_client = MagicMock()
@@ -663,7 +674,9 @@ class TestMapPlugin(unittest.TestCase):
             mock_event = MagicMock()
             mock_event.body = "!map size=2000,1500"  # Oversized
 
-            mock_matrix_client = AsyncMock()
+            # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+            mock_matrix_client = MagicMock()
+            mock_matrix_client.room_send = AsyncMock()
             mock_connect_matrix.return_value = mock_matrix_client
 
             mock_meshtastic_client = MagicMock()
