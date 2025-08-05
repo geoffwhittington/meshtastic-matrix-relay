@@ -481,7 +481,6 @@ class TestRunMain(unittest.TestCase):
 
         self.assertEqual(result, 1)  # Should return error code
 
-    @patch("mmrelay.main.main")
     @patch("os.makedirs")
     @patch("os.path.abspath")
     @patch("asyncio.run")
@@ -498,7 +497,6 @@ class TestRunMain(unittest.TestCase):
         mock_asyncio_run,
         mock_abspath,
         mock_makedirs,
-        mock_main,
     ):
         """
         Test that run_main correctly handles a custom data directory by creating it and resolving its absolute path.
@@ -514,8 +512,15 @@ class TestRunMain(unittest.TestCase):
             "matrix_rooms": [{"id": "!room:matrix.org"}],
         }
         mock_load_config.return_value = mock_config
-        mock_asyncio_run.return_value = None
-        mock_main.return_value = None  # Prevent coroutine creation
+
+        # Mock asyncio.run with coroutine cleanup to prevent warnings
+        def mock_run_with_cleanup(coro):
+            # Close the coroutine to prevent "never awaited" warning
+            if hasattr(coro, 'close'):
+                coro.close()
+            return None
+
+        mock_asyncio_run.side_effect = mock_run_with_cleanup
 
         # Use a temporary directory instead of hardcoded path
         with tempfile.TemporaryDirectory() as temp_dir:

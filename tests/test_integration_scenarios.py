@@ -39,7 +39,11 @@ class TestIntegrationScenarios(unittest.TestCase):
         self._reset_global_state()
 
     def _reset_global_state(self):
-        pass
+        """Reset global state variables to prevent test interference."""
+        import mmrelay.meshtastic_utils
+        mmrelay.meshtastic_utils.shutting_down = False
+        mmrelay.meshtastic_utils.meshtastic_client = None
+        mmrelay.meshtastic_utils.reconnecting = False
 
     def test_complete_meshtastic_to_matrix_flow(self):
         """
@@ -409,7 +413,14 @@ plugins:
                                 mmrelay.meshtastic_utils.shutting_down = True
                                 return None
                             mock_sleep.side_effect = set_shutdown
-                            with patch("meshtastic.serial_interface.SerialInterface", side_effect=Exception("Connection failed")):
+
+                            # Import meshtastic to patch at the module level
+                            import meshtastic.serial_interface
+                            # Patch the SerialInterface at the module level where it's imported
+                            with patch.object(meshtastic.serial_interface, 'SerialInterface') as mock_serial_interface:
+                                # Make the constructor raise an exception
+                                mock_serial_interface.side_effect = Exception("Connection failed")
+
                                 result = connect_meshtastic(config)
                                 self.assertIsNone(result)
 
