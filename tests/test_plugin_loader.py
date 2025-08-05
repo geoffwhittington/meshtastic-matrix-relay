@@ -308,36 +308,62 @@ class Plugin:
         self.assertNotIn("core_plugin_1", active_plugin_names)
         self.assertIn("core_plugin_2", active_plugin_names)
 
-    @patch("mmrelay.plugin_loader.load_plugins")
-    def test_load_plugins_with_custom(self, mock_load_plugins):
+    @patch("mmrelay.plugins.debug_plugin.Plugin")
+    @patch("mmrelay.plugins.drop_plugin.Plugin")
+    @patch("mmrelay.plugins.nodes_plugin.Plugin")
+    @patch("mmrelay.plugins.help_plugin.Plugin")
+    @patch("mmrelay.plugins.map_plugin.Plugin")
+    @patch("mmrelay.plugins.health_plugin.Plugin")
+    @patch("mmrelay.plugin_loader.get_custom_plugin_dirs")
+    def test_load_plugins_with_custom(self, mock_get_custom_plugin_dirs, *mock_plugins):
         """
         Tests that both core and custom plugins are loaded and activated when specified in the configuration.
 
         Verifies that the plugin loader correctly discovers and instantiates core plugins (via mocks) and a custom plugin defined in a temporary directory, ensuring both are present in the loaded plugin list when marked active in the config.
         """
-        # Mock the load_plugins function to return a list of mock plugins
-        health_plugin = MockPlugin("health", priority=1)
-        custom_plugin = MockPlugin("my_custom_plugin", priority=5)
-        mock_load_plugins.return_value = [health_plugin, custom_plugin]
+        # Mock core plugins
+        for i, mock_plugin_class in enumerate(mock_plugins):
+            mock_plugin = MockPlugin(f"core_plugin_{i}", priority=i)
+            mock_plugin_class.return_value = mock_plugin
+
+        # Set up custom plugin directory
+        mock_get_custom_plugin_dirs.return_value = [self.custom_dir]
+
+        # Create a custom plugin
+        custom_plugin_dir = os.path.join(self.custom_dir, "my_custom_plugin")
+        os.makedirs(custom_plugin_dir, exist_ok=True)
+
+        plugin_content = """
+class Plugin:
+    def __init__(self):
+        self.plugin_name = "my_custom_plugin"
+        self.priority = 5
+
+    def start(self):
+        pass
+"""
+        plugin_file = os.path.join(custom_plugin_dir, "plugin.py")
+        with open(plugin_file, "w") as f:
+            f.write(plugin_content)
 
         # Set up config with custom plugin active
         config = {
             "plugins": {
-                "health": {"active": True},
+                "core_plugin_0": {"active": True},
             },
             "custom-plugins": {"my_custom_plugin": {"active": True}},
         }
 
-        # Import the function to call it directly (since we're mocking the module-level function)
-        from mmrelay.plugin_loader import load_plugins
+        import mmrelay.plugin_loader
+
+        mmrelay.plugin_loader.config = config
 
         plugins = load_plugins(config)
 
         # Should have loaded both core and custom plugins
         plugin_names = [p.plugin_name for p in plugins]
-        self.assertIn("health", plugin_names)
+        self.assertIn("core_plugin_0", plugin_names)
         self.assertIn("my_custom_plugin", plugin_names)
-        mock_load_plugins.assert_called_once_with(config)
 
     @patch("mmrelay.plugin_loader.logger")
     def test_load_plugins_caching(self, mock_logger):
@@ -457,31 +483,36 @@ class TestGitRepositoryHandling(unittest.TestCase):
         self.assertIn("--branch", clone_call[0][0])
         self.assertIn("develop", clone_call[0][0])
 
-    @patch("mmrelay.plugin_loader.clone_or_update_repo")
+    @patch("os.makedirs")
+    @patch("subprocess.check_call")
+    @patch("subprocess.check_output")
+    @patch("os.path.isdir")
     def test_clone_or_update_repo_existing_repo_same_branch(
-        self,
-        mock_clone_or_update_repo,
+        self, mock_isdir, mock_check_output, mock_check_call, mock_makedirs
     ):
         """
         Test that updating an existing Git repository on the same branch triggers fetch and pull operations.
 
         Verifies that when the repository directory exists and the current branch matches the requested branch, the `clone_or_update_repo` function performs a fetch and pull, and returns True.
         """
-        # Mock the function to return True for successful update
-        mock_clone_or_update_repo.return_value = True
+        mock_isdir.return_value = True  # Repository exists
+        mock_check_output.return_value = "main\n"  # Current branch is main
 
         repo_url = "https://github.com/user/test-repo.git"
         ref = {"type": "branch", "value": "main"}
 
-        # Import the function to call it directly (since we're mocking the module-level function)
-        from mmrelay.plugin_loader import clone_or_update_repo
-
         result = clone_or_update_repo(repo_url, ref, self.plugins_dir)
 
         self.assertTrue(result)
-        mock_clone_or_update_repo.assert_called_once_with(
-            repo_url, ref, self.plugins_dir
+        # Should fetch and pull
+        fetch_called = any(
+            "fetch" in str(call) for call in mock_check_call.call_args_list
         )
+        pull_called = any(
+            "pull" in str(call) for call in mock_check_call.call_args_list
+        )
+        self.assertTrue(fetch_called)
+        self.assertTrue(pull_called)
 
     @patch("os.makedirs")
     @patch("subprocess.check_call")

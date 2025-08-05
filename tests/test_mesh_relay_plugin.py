@@ -283,7 +283,9 @@ class TestMeshRelayPlugin(unittest.TestCase):
 
         Verifies that the correct Matrix room, message type, and content are used, and that the function returns False to allow further processing by other plugins.
         """
-        mock_matrix_client = AsyncMock()
+        # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+        mock_matrix_client = MagicMock()
+        mock_matrix_client.room_send = AsyncMock()
         mock_connect.return_value = mock_matrix_client
 
         # Mock config with matching channel

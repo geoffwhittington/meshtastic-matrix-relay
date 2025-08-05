@@ -130,8 +130,8 @@ async def test_on_room_message_ignore_bot(
     with patch("mmrelay.matrix_utils.config", test_config), patch(
         "mmrelay.matrix_utils.matrix_rooms", test_config["matrix_rooms"]
     ), patch("mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]):
-        # Mock the matrix client
-        mock_matrix_client = AsyncMock()
+        # Mock the matrix client - use MagicMock to prevent coroutine warnings
+        mock_matrix_client = MagicMock()
         with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
             # Run the function
             await on_room_message(mock_room, mock_event)
