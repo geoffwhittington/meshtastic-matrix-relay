@@ -877,7 +877,8 @@ async def test_connect_matrix_whoami_error(matrix_config):
 @patch("mmrelay.matrix_utils.logger")
 async def test_join_matrix_room_by_id(mock_logger, mock_matrix_client):
     """Test joining a Matrix room by room ID."""
-    mock_matrix_client.join.return_value = AsyncMock()
+    # Use MagicMock to prevent coroutine warnings
+    mock_matrix_client.join = AsyncMock()
 
     await join_matrix_room(mock_matrix_client, "!room:matrix.org")
 
@@ -895,7 +896,8 @@ async def test_join_matrix_room_by_alias(mock_logger, mock_matrix_client):
     mock_matrix_client.room_resolve_alias = AsyncMock(
         return_value=mock_resolve_response
     )
-    mock_matrix_client.join.return_value = AsyncMock()
+    # Use MagicMock to prevent coroutine warnings
+    mock_matrix_client.join = AsyncMock()
 
     await join_matrix_room(mock_matrix_client, "#room:matrix.org")
 
@@ -940,8 +942,9 @@ async def test_matrix_relay_simple_message(
     mock_get_interactions.return_value = {"reactions": False, "replies": False}
     mock_storage_enabled.return_value = False
 
-    # Mock matrix client
-    mock_matrix_client = AsyncMock()
+    # Mock matrix client - use MagicMock to prevent coroutine warnings
+    mock_matrix_client = MagicMock()
+    mock_matrix_client.room_send = AsyncMock()
     mock_connect_matrix.return_value = mock_matrix_client
 
     # Mock successful message send
@@ -978,8 +981,9 @@ async def test_matrix_relay_emote_message(
     mock_get_interactions.return_value = {"reactions": False, "replies": False}
     mock_storage_enabled.return_value = False
 
-    # Mock matrix client
-    mock_matrix_client = AsyncMock()
+    # Mock matrix client - use MagicMock to prevent coroutine warnings
+    mock_matrix_client = MagicMock()
+    mock_matrix_client.room_send = AsyncMock()
     mock_connect_matrix.return_value = mock_matrix_client
 
     # Mock successful message send
@@ -1207,8 +1211,9 @@ async def test_upload_image(mock_bytesio):
     mock_bytesio.return_value = mock_buffer
     mock_buffer.getvalue.return_value = b"fake_image_data"
 
-    # Mock Matrix client
-    mock_client = AsyncMock()
+    # Mock Matrix client - use MagicMock to prevent coroutine warnings
+    mock_client = MagicMock()
+    mock_client.upload = AsyncMock()
     mock_upload_response = MagicMock()
     mock_client.upload.return_value = (mock_upload_response, None)
 
@@ -1222,7 +1227,9 @@ async def test_upload_image(mock_bytesio):
 
 async def test_send_room_image():
     """Test sending an uploaded image to a Matrix room."""
-    mock_client = AsyncMock()
+    # Use MagicMock to prevent coroutine warnings
+    mock_client = MagicMock()
+    mock_client.room_send = AsyncMock()
     mock_upload_response = MagicMock()
     mock_upload_response.content_uri = "mxc://matrix.org/test123"
 
