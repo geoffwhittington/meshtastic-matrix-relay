@@ -39,12 +39,53 @@ class TestIntegrationScenarios(unittest.TestCase):
         self._reset_global_state()
 
     def _reset_global_state(self):
-        """Reset global state variables to prevent test interference."""
-        import mmrelay.meshtastic_utils
+        """
+        Reset global state variables in all MMRelay modules to ensure test isolation.
 
-        mmrelay.meshtastic_utils.shutting_down = False
-        mmrelay.meshtastic_utils.meshtastic_client = None
-        mmrelay.meshtastic_utils.reconnecting = False
+        This method clears or reinitializes global variables in the `meshtastic_utils`, `matrix_utils`, `plugin_loader`, `config`, and `db_utils` modules if they are loaded, preventing state leakage between tests.
+        """
+        # Reset meshtastic_utils globals
+        if "mmrelay.meshtastic_utils" in sys.modules:
+            module = sys.modules["mmrelay.meshtastic_utils"]
+            module.config = None
+            module.matrix_rooms = []
+            module.meshtastic_client = None
+            module.event_loop = None
+            module.reconnecting = False
+            module.shutting_down = False
+            module.reconnect_task = None
+            module.subscribed_to_messages = False
+            module.subscribed_to_connection_lost = False
+
+        # Reset matrix_utils globals
+        if "mmrelay.matrix_utils" in sys.modules:
+            module = sys.modules["mmrelay.matrix_utils"]
+            if hasattr(module, "config"):
+                module.config = None
+            if hasattr(module, "matrix_client"):
+                module.matrix_client = None
+
+        # Reset plugin_loader globals
+        if "mmrelay.plugin_loader" in sys.modules:
+            module = sys.modules["mmrelay.plugin_loader"]
+            if hasattr(module, "config"):
+                module.config = None
+            if hasattr(module, "sorted_active_plugins"):
+                module.sorted_active_plugins = []
+            if hasattr(module, "plugins_loaded"):
+                module.plugins_loaded = False
+
+        # Reset config globals
+        if "mmrelay.config" in sys.modules:
+            module = sys.modules["mmrelay.config"]
+            if hasattr(module, "config"):
+                module.config = None
+
+        # Reset db_utils globals
+        if "mmrelay.db_utils" in sys.modules:
+            module = sys.modules["mmrelay.db_utils"]
+            if hasattr(module, "config"):
+                module.config = None
 
     def test_complete_meshtastic_to_matrix_flow(self):
         """

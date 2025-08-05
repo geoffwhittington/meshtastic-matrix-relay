@@ -16,7 +16,7 @@ import asyncio
 import os
 import sys
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -110,7 +110,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                 side_effect=TimeoutError("Connection timeout"),
             ):
                 with patch("mmrelay.meshtastic_utils.logger") as mock_logger, patch(
-                    "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
+                    "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe", new_callable=AsyncMock
                 ), patch(
                     "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
                 ), patch(
@@ -138,7 +138,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         ):
             with patch("time.sleep"):  # Speed up test
                 with patch("mmrelay.meshtastic_utils.logger") as mock_logger, patch(
-                    "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
+                    "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe", new_callable=AsyncMock
                 ), patch(
                     "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
                 ), patch(
@@ -436,7 +436,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         mock_interface.nodes = large_nodes
 
         with patch("mmrelay.meshtastic_utils.logger"), patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe", new_callable=AsyncMock
         ) as mock_run_coroutine, patch(
             "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
         ), patch(
