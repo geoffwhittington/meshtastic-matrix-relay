@@ -79,12 +79,12 @@ class TestMeshtasticUtils(unittest.TestCase):
         if hasattr(mmrelay.meshtastic_utils, "reconnect_task"):
             task = mmrelay.meshtastic_utils.reconnect_task
             if task:
-                # If it's an AsyncMock, close it properly
-                if hasattr(task, "_mock_name") and hasattr(task, "close"):
+                # If it's a mock, reset it
+                if hasattr(task, "reset_mock"):
                     try:
-                        task.close()
+                        task.reset_mock()
                     except (AttributeError, RuntimeError):
-                        # Ignore errors when closing mock objects during cleanup
+                        # Ignore errors when resetting mock objects during cleanup
                         pass
                 # If it's a real asyncio Task, cancel it
                 elif hasattr(task, "cancel"):
@@ -107,7 +107,7 @@ class TestMeshtasticUtils(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.get_longname") as mock_get_longname, patch(
             "mmrelay.meshtastic_utils.get_shortname"
         ) as mock_get_shortname, patch(
-            "asyncio.run_coroutine_threadsafe"
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
         ) as mock_run_coroutine, patch(
             "mmrelay.matrix_utils.matrix_relay"
         ), patch(
@@ -161,7 +161,7 @@ class TestMeshtasticUtils(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
         ), patch(
-            "asyncio.run_coroutine_threadsafe", new_callable=AsyncMock
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
         ) as mock_run_coro:
 
             mock_interface = MagicMock()
@@ -185,7 +185,7 @@ class TestMeshtasticUtils(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
         ), patch(
-            "asyncio.run_coroutine_threadsafe", new_callable=AsyncMock
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
         ) as mock_run_coro, patch(
             "mmrelay.plugin_loader.load_plugins"
         ) as mock_load_plugins, patch(
@@ -371,7 +371,9 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.config", config_no_broadcast), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", config_no_broadcast["matrix_rooms"]
-        ), patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine, patch(
+        ), patch(
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
+        ) as mock_run_coroutine, patch(
             "mmrelay.matrix_utils.matrix_relay"
         ), patch(
             "mmrelay.meshtastic_utils.get_longname"
@@ -564,12 +566,12 @@ class TestConnectionLossHandling(unittest.TestCase):
         if hasattr(mmrelay.meshtastic_utils, "reconnect_task"):
             task = mmrelay.meshtastic_utils.reconnect_task
             if task:
-                # If it's an AsyncMock, close it properly
-                if hasattr(task, "_mock_name") and hasattr(task, "close"):
+                # If it's a mock, reset it
+                if hasattr(task, "reset_mock"):
                     try:
-                        task.close()
+                        task.reset_mock()
                     except (AttributeError, RuntimeError):
-                        # Ignore errors when closing mock objects during cleanup
+                        # Ignore errors when resetting mock objects during cleanup
                         pass
                 # If it's a real asyncio Task, cancel it
                 elif hasattr(task, "cancel"):
@@ -583,7 +585,7 @@ class TestConnectionLossHandling(unittest.TestCase):
     @patch("mmrelay.meshtastic_utils.logger")
     @patch("mmrelay.meshtastic_utils.event_loop", MagicMock())
     @patch("mmrelay.meshtastic_utils.reconnect")
-    @patch("asyncio.run_coroutine_threadsafe", new_callable=AsyncMock)
+    @patch("mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe")
     def test_on_lost_meshtastic_connection_normal(
         self, mock_run_coroutine, mock_reconnect, mock_logger
     ):
@@ -777,8 +779,7 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
         ), patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe",
-            new_callable=AsyncMock,
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
         ) as mock_run_coro, patch(
             "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
         ), patch(
@@ -810,8 +811,7 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
         ), patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe",
-            new_callable=AsyncMock,
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
         ) as mock_run_coro:
 
             mock_interface = MagicMock()

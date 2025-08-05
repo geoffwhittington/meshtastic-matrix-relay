@@ -110,8 +110,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                 side_effect=TimeoutError("Connection timeout"),
             ):
                 with patch("mmrelay.meshtastic_utils.logger") as mock_logger, patch(
-                    "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe",
-                    new_callable=AsyncMock,
+                    "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
                 ), patch(
                     "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
                 ), patch(
@@ -139,8 +138,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         ):
             with patch("time.sleep"):  # Speed up test
                 with patch("mmrelay.meshtastic_utils.logger") as mock_logger, patch(
-                    "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe",
-                    new_callable=AsyncMock,
+                    "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
                 ), patch(
                     "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
                 ), patch(
@@ -438,8 +436,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         mock_interface.nodes = large_nodes
 
         with patch("mmrelay.meshtastic_utils.logger"), patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe",
-            new_callable=AsyncMock,
+            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
         ) as mock_run_coroutine, patch(
             "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
         ), patch(
