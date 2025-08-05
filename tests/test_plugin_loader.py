@@ -330,6 +330,7 @@ class Plugin:
 
         # Import the function to call it directly (since we're mocking the module-level function)
         from mmrelay.plugin_loader import load_plugins
+
         plugins = load_plugins(config)
 
         # Should have loaded both core and custom plugins

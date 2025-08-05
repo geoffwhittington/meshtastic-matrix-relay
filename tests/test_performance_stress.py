@@ -12,6 +12,7 @@ Tests performance and stress scenarios including:
 - Rate limiting effectiveness
 """
 
+import asyncio
 import gc
 import os
 import sys
@@ -84,6 +85,7 @@ class TestPerformanceStress(unittest.TestCase):
         Simulates message reception by mocking dependencies and measures total processing time and throughput. Verifies that all messages are processed and that performance criteria are met. Thresholds adjusted for test environment performance.
         """
         import tempfile
+
         from mmrelay.db_utils import initialize_database
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -100,12 +102,17 @@ class TestPerformanceStress(unittest.TestCase):
                 mock_interface = MagicMock()
                 mock_interface.nodes = {
                     "!12345678": {
-                        "user": {"id": "!12345678", "longName": "Test Node", "shortName": "TN"}
+                        "user": {
+                            "id": "!12345678",
+                            "longName": "Test Node",
+                            "shortName": "TN",
+                        }
                     }
                 }
                 mock_interface.myInfo.my_node_num = 123456789
 
                 import asyncio
+
                 import mmrelay.meshtastic_utils
 
                 loop = asyncio.new_event_loop()
@@ -113,7 +120,9 @@ class TestPerformanceStress(unittest.TestCase):
                 mmrelay.meshtastic_utils.event_loop = loop
 
                 mmrelay.meshtastic_utils.config = {
-                    "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}],
+                    "matrix_rooms": [
+                        {"id": "!room:matrix.org", "meshtastic_channel": 0}
+                    ],
                     "meshtastic": {"meshnet_name": "TestMesh"},
                 }
                 mmrelay.meshtastic_utils.matrix_rooms = [
@@ -121,11 +130,20 @@ class TestPerformanceStress(unittest.TestCase):
                 ]
 
                 try:
-                    with patch("mmrelay.plugin_loader.load_plugins", return_value=[]), \
-                         patch("mmrelay.matrix_utils.get_matrix_prefix", return_value="[TestMesh/TN] "), \
-                         patch("mmrelay.db_utils.get_longname", return_value="Test Node"), \
-                         patch("mmrelay.db_utils.get_shortname", return_value="TN"), \
-                         patch("mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock, side_effect=mock_matrix_relay):
+                    with patch(
+                        "mmrelay.plugin_loader.load_plugins", return_value=[]
+                    ), patch(
+                        "mmrelay.matrix_utils.get_matrix_prefix",
+                        return_value="[TestMesh/TN] ",
+                    ), patch(
+                        "mmrelay.db_utils.get_longname", return_value="Test Node"
+                    ), patch(
+                        "mmrelay.db_utils.get_shortname", return_value="TN"
+                    ), patch(
+                        "mmrelay.matrix_utils.matrix_relay",
+                        new_callable=AsyncMock,
+                        side_effect=mock_matrix_relay,
+                    ):
 
                         start_time = time.time()
 
@@ -314,6 +332,7 @@ class TestPerformanceStress(unittest.TestCase):
         Simulates processing 100 messages through 10 mock plugins, asserting that all plugin handlers are called for each message, total processing completes in under 5 seconds, and the aggregate plugin call rate exceeds 100 calls per second.
         """
         import tempfile
+
         from mmrelay.db_utils import initialize_database
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -343,7 +362,10 @@ class TestPerformanceStress(unittest.TestCase):
 
                 # Mock the global config that on_meshtastic_message needs
                 mock_config = {
-                    "meshtastic": {"connection_type": "serial", "meshnet_name": "TestMesh"},
+                    "meshtastic": {
+                        "connection_type": "serial",
+                        "meshnet_name": "TestMesh",
+                    },
                     "matrix_rooms": {
                         "general": {"id": "!room:matrix.org", "meshtastic_channel": 0}
                     },
@@ -353,15 +375,24 @@ class TestPerformanceStress(unittest.TestCase):
                 mock_interactions = {"reactions": True, "replies": True}
 
                 # matrix_rooms should be a list of room dictionaries, not a dict of dicts
-                mock_matrix_rooms = [{"id": "!room:matrix.org", "meshtastic_channel": 0}]
+                mock_matrix_rooms = [
+                    {"id": "!room:matrix.org", "meshtastic_channel": 0}
+                ]
 
-                with patch("mmrelay.plugin_loader.load_plugins", return_value=plugins), \
-                     patch("mmrelay.meshtastic_utils.config", mock_config), \
-                     patch("mmrelay.meshtastic_utils.matrix_rooms", mock_matrix_rooms), \
-                     patch("mmrelay.meshtastic_utils.event_loop", MagicMock()), \
-                     patch("mmrelay.matrix_utils.get_interaction_settings", return_value=mock_interactions), \
-                     patch("mmrelay.matrix_utils.message_storage_enabled", return_value=True), \
-                     patch("mmrelay.meshtastic_utils.shutting_down", False):
+                with patch(
+                    "mmrelay.plugin_loader.load_plugins", return_value=plugins
+                ), patch("mmrelay.meshtastic_utils.config", mock_config), patch(
+                    "mmrelay.meshtastic_utils.matrix_rooms", mock_matrix_rooms
+                ), patch(
+                    "mmrelay.meshtastic_utils.event_loop", MagicMock()
+                ), patch(
+                    "mmrelay.matrix_utils.get_interaction_settings",
+                    return_value=mock_interactions,
+                ), patch(
+                    "mmrelay.matrix_utils.message_storage_enabled", return_value=True
+                ), patch(
+                    "mmrelay.meshtastic_utils.shutting_down", False
+                ):
 
                     def mock_run_coroutine_threadsafe(coro, loop):
                         try:
@@ -369,7 +400,11 @@ class TestPerformanceStress(unittest.TestCase):
                         except RuntimeError:
                             loop = asyncio.new_event_loop()
                         return loop.run_until_complete(coro)
-                    with patch("asyncio.run_coroutine_threadsafe", side_effect=mock_run_coroutine_threadsafe):
+
+                    with patch(
+                        "asyncio.run_coroutine_threadsafe",
+                        side_effect=mock_run_coroutine_threadsafe,
+                    ):
                         start_time = time.time()
 
                         for _ in range(message_count):

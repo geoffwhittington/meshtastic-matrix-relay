@@ -111,12 +111,14 @@ class TestErrorBoundaries(unittest.TestCase):
             ) as mock_matrix_relay:
                 with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
                     with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
+
                         def mock_run_coro(coro, loop):
                             try:
                                 loop = asyncio.get_running_loop()
                             except RuntimeError:
                                 loop = asyncio.new_event_loop()
                             return loop.run_until_complete(coro)
+
                         mock_run_coroutine.side_effect = mock_run_coro
 
                         # Set up minimal config
@@ -181,12 +183,14 @@ class TestErrorBoundaries(unittest.TestCase):
                             "asyncio.run_coroutine_threadsafe"
                         ) as mock_run_coroutine:
                             with patch("mmrelay.meshtastic_utils.logger"):
+
                                 def mock_run_coro(coro, loop):
                                     try:
                                         loop = asyncio.get_running_loop()
                                     except RuntimeError:
                                         loop = asyncio.new_event_loop()
                                     return loop.run_until_complete(coro)
+
                                 mock_run_coroutine.side_effect = mock_run_coro
 
                                 # Set up config
@@ -256,12 +260,14 @@ class TestErrorBoundaries(unittest.TestCase):
             ):
                 with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
                     with patch("mmrelay.meshtastic_utils.logger"):
+
                         def mock_run_coro(coro, loop):
                             try:
                                 loop = asyncio.get_running_loop()
                             except RuntimeError:
                                 loop = asyncio.new_event_loop()
                             return loop.run_until_complete(coro)
+
                         mock_run_coroutine.side_effect = mock_run_coro
                     # Set up config
                     import mmrelay.meshtastic_utils

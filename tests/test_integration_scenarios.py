@@ -41,6 +41,7 @@ class TestIntegrationScenarios(unittest.TestCase):
     def _reset_global_state(self):
         """Reset global state variables to prevent test interference."""
         import mmrelay.meshtastic_utils
+
         mmrelay.meshtastic_utils.shutting_down = False
         mmrelay.meshtastic_utils.meshtastic_client = None
         mmrelay.meshtastic_utils.reconnecting = False
@@ -225,6 +226,7 @@ class TestIntegrationScenarios(unittest.TestCase):
         with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins:
             with patch("mmrelay.matrix_utils.matrix_relay"):
                 with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
+
                     def mock_run_coro(coro, loop):
                         try:
                             loop = asyncio.get_running_loop()
@@ -399,6 +401,7 @@ plugins:
 
         # Test Meshtastic connection failure recovery
         import mmrelay.meshtastic_utils
+
         mmrelay.meshtastic_utils.shutting_down = False
         with patch("mmrelay.meshtastic_utils.serial_port_exists", return_value=True):
             # Patch all exceptions in the except clause to be proper Exception classes
@@ -408,18 +411,26 @@ plugins:
                         "mmrelay.meshtastic_utils.serial.SerialException", Exception
                     ):
                         with patch("time.sleep") as mock_sleep:
+
                             def set_shutdown(*args, **kwargs):
                                 import mmrelay.meshtastic_utils
+
                                 mmrelay.meshtastic_utils.shutting_down = True
                                 return None
+
                             mock_sleep.side_effect = set_shutdown
 
                             # Import meshtastic to patch at the module level
                             import meshtastic.serial_interface
+
                             # Patch the SerialInterface at the module level where it's imported
-                            with patch.object(meshtastic.serial_interface, 'SerialInterface') as mock_serial_interface:
+                            with patch.object(
+                                meshtastic.serial_interface, "SerialInterface"
+                            ) as mock_serial_interface:
                                 # Make the constructor raise an exception
-                                mock_serial_interface.side_effect = Exception("Connection failed")
+                                mock_serial_interface.side_effect = Exception(
+                                    "Connection failed"
+                                )
 
                                 result = connect_meshtastic(config)
                                 self.assertIsNone(result)

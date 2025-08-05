@@ -14,7 +14,7 @@ import asyncio
 import os
 import sys
 import unittest
-from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
@@ -101,6 +101,7 @@ class TestMeshtasticUtils(unittest.TestCase):
                 except RuntimeError:
                     loop = asyncio.new_event_loop()
                 return loop.run_until_complete(coro)
+
             mock_run_coroutine.side_effect = mock_run_coro
 
             mock_get_longname.return_value = "Test User"
@@ -134,9 +135,7 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
-        ), patch(
-            "asyncio.run_coroutine_threadsafe"
-        ) as mock_run_coro:
+        ), patch("asyncio.run_coroutine_threadsafe") as mock_run_coro:
 
             mock_interface = MagicMock()
 
@@ -158,9 +157,7 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
-        ), patch(
-            "asyncio.run_coroutine_threadsafe"
-        ) as mock_run_coro, patch(
+        ), patch("asyncio.run_coroutine_threadsafe") as mock_run_coro, patch(
             "mmrelay.plugin_loader.load_plugins"
         ) as mock_load_plugins, patch(
             "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
@@ -345,9 +342,9 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.config", config_no_broadcast), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", config_no_broadcast["matrix_rooms"]
+        ), patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine, patch(
+            "mmrelay.matrix_utils.matrix_relay", return_value=None
         ), patch(
-            "asyncio.run_coroutine_threadsafe"
-        ) as mock_run_coroutine, patch("mmrelay.matrix_utils.matrix_relay", return_value=None), patch(
             "mmrelay.meshtastic_utils.get_longname"
         ) as mock_get_longname, patch(
             "mmrelay.meshtastic_utils.get_shortname"
@@ -369,6 +366,7 @@ class TestMeshtasticUtils(unittest.TestCase):
                 except RuntimeError:
                     loop = asyncio.new_event_loop()
                 return loop.run_until_complete(coro)
+
             mock_run_coroutine.side_effect = mock_run_coro
 
             mock_get_longname.return_value = "Test User"
@@ -549,6 +547,7 @@ class TestConnectionLossHandling(unittest.TestCase):
             except RuntimeError:
                 loop = asyncio.new_event_loop()
             return loop.run_until_complete(coro)
+
         mock_run_coroutine.side_effect = mock_run_coro
 
         # Make mock_reconnect return a MagicMock to simulate a coroutine object
@@ -645,7 +644,9 @@ class TestConnectMeshtasticEdgeCases(unittest.TestCase):
 
     @patch("mmrelay.meshtastic_utils.meshtastic.tcp_interface.TCPInterface")
     @patch("time.sleep")  # Speed up any retry logic
-    @patch("mmrelay.meshtastic_utils.INFINITE_RETRIES", 1)  # Limit retries to prevent infinite loop
+    @patch(
+        "mmrelay.meshtastic_utils.INFINITE_RETRIES", 1
+    )  # Limit retries to prevent infinite loop
     def test_connect_meshtastic_tcp_exception(self, mock_sleep, mock_tcp):
         """
         Tests that connect_meshtastic returns None when an exception is raised during TCP interface instantiation.

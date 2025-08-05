@@ -12,6 +12,7 @@ Tests edge cases and error handling including:
 - Memory constraints with large node lists
 """
 
+import asyncio
 import os
 import sys
 import unittest
@@ -442,11 +443,15 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
             "mmrelay.matrix_utils.matrix_client", None
         ), patch(
             "mmrelay.meshtastic_utils.event_loop", MagicMock()
-        ), patch("mmrelay.matrix_utils.matrix_relay", return_value=None):
+        ), patch(
+            "mmrelay.matrix_utils.matrix_relay", return_value=None
+        ):
+
             def mock_run_coro(coro, loop):
                 future = asyncio.Future()
                 future.set_result(None)
                 return future
+
             mock_run_coroutine.side_effect = mock_run_coro
             # Should handle large node lists without crashing
             on_meshtastic_message(packet, mock_interface)
