@@ -105,8 +105,8 @@ async def test_on_room_message_simple_text(
     with patch("mmrelay.matrix_utils.config", test_config), patch(
         "mmrelay.matrix_utils.matrix_rooms", test_config["matrix_rooms"]
     ), patch("mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]):
-        # Mock the matrix client
-        mock_matrix_client = AsyncMock()
+        # Mock the matrix client - use MagicMock to prevent coroutine warnings
+        mock_matrix_client = MagicMock()
         with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
             # Run the function
             await on_room_message(mock_room, mock_event)
@@ -238,8 +238,8 @@ async def test_on_room_message_reply_disabled(
     with patch("mmrelay.matrix_utils.config", test_config), patch(
         "mmrelay.matrix_utils.matrix_rooms", test_config["matrix_rooms"]
     ), patch("mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]):
-        # Mock the matrix client
-        mock_matrix_client = AsyncMock()
+        # Mock the matrix client - use MagicMock to prevent coroutine warnings
+        mock_matrix_client = MagicMock()
         with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
             # Run the function
             await on_room_message(mock_room, mock_event)
@@ -302,8 +302,8 @@ async def test_on_room_message_reaction_enabled(
     with patch("mmrelay.matrix_utils.config", test_config), patch(
         "mmrelay.matrix_utils.matrix_rooms", test_config["matrix_rooms"]
     ), patch("mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]):
-        # Mock the matrix client
-        mock_matrix_client = AsyncMock()
+        # Mock the matrix client - use MagicMock to prevent coroutine warnings
+        mock_matrix_client = MagicMock()
         with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
             # Run the function
             await on_room_message(mock_room, mock_event)
@@ -348,8 +348,8 @@ async def test_on_room_message_reaction_disabled(
     with patch("mmrelay.matrix_utils.config", test_config), patch(
         "mmrelay.matrix_utils.matrix_rooms", test_config["matrix_rooms"]
     ), patch("mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]):
-        # Mock the matrix client
-        mock_matrix_client = AsyncMock()
+        # Mock the matrix client - use MagicMock to prevent coroutine warnings
+        mock_matrix_client = MagicMock()
         with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
             # Run the function
             await on_room_message(mock_room, mock_event)
@@ -373,8 +373,8 @@ async def test_on_room_message_unsupported_room(
     with patch("mmrelay.matrix_utils.config", test_config), patch(
         "mmrelay.matrix_utils.matrix_rooms", test_config["matrix_rooms"]
     ), patch("mmrelay.matrix_utils.bot_user_id", test_config["matrix"]["bot_user_id"]):
-        # Mock the matrix client
-        mock_matrix_client = AsyncMock()
+        # Mock the matrix client - use MagicMock to prevent coroutine warnings
+        mock_matrix_client = MagicMock()
         with patch("mmrelay.matrix_utils.matrix_client", mock_matrix_client):
             # Run the function
             await on_room_message(mock_room, mock_event)
@@ -818,8 +818,11 @@ async def test_connect_matrix_success(matrix_config):
         # Mock SSL context creation
         mock_ssl_context.return_value = MagicMock()
 
-        # Mock the AsyncClient instance
-        mock_client_instance = AsyncMock()
+        # Mock the AsyncClient instance - use MagicMock to prevent coroutine warnings
+        mock_client_instance = MagicMock()
+        mock_client_instance.whoami = AsyncMock()
+        mock_client_instance.sync = AsyncMock()
+        mock_client_instance.get_displayname = AsyncMock()
         mock_async_client.return_value = mock_client_instance
 
         # Mock whoami response
@@ -853,7 +856,10 @@ async def test_connect_matrix_whoami_error(matrix_config):
         # Mock SSL context creation
         mock_ssl_context.return_value = MagicMock()
 
-        mock_client_instance = AsyncMock()
+        # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+        mock_client_instance = MagicMock()
+        mock_client_instance.whoami = AsyncMock()
+        mock_client_instance.get_displayname = AsyncMock()
         mock_async_client.return_value = mock_client_instance
 
         # Mock whoami error
