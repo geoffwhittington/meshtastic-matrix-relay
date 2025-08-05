@@ -78,12 +78,20 @@ class TestMeshtasticUtils(unittest.TestCase):
         # Properly clean up reconnect_task to avoid AsyncMock warnings
         if hasattr(mmrelay.meshtastic_utils, 'reconnect_task'):
             task = mmrelay.meshtastic_utils.reconnect_task
-            if task and hasattr(task, 'close'):
-                try:
-                    task.close()
-                except:
-                    pass
-            mmrelay.meshtastic_utils.reconnect_task = None
+            if task:
+                # If it's an AsyncMock, close it properly
+                if hasattr(task, '_mock_name') and hasattr(task, 'close'):
+                    try:
+                        task.close()
+                    except:
+                        pass
+                # If it's a real asyncio Task, cancel it
+                elif hasattr(task, 'cancel'):
+                    try:
+                        task.cancel()
+                    except:
+                        pass
+        mmrelay.meshtastic_utils.reconnect_task = None
 
     def test_on_meshtastic_message_basic(self):
         """
