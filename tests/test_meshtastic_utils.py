@@ -95,6 +95,31 @@ class TestMeshtasticUtils(unittest.TestCase):
                         pass
         mmrelay.meshtastic_utils.reconnect_task = None
 
+    def tearDown(self):
+        """
+        Clean up global module state to prevent AsyncMock test pollution.
+
+        This method ensures that any global module attributes that might hold
+        AsyncMock references are properly cleaned up between tests.
+        """
+        import mmrelay.meshtastic_utils
+
+        # Clean up global module attributes that might hold AsyncMock references
+        if hasattr(mmrelay.meshtastic_utils, 'event_loop'):
+            event_loop = mmrelay.meshtastic_utils.event_loop
+            if event_loop and hasattr(event_loop, '_mock_name'):
+                # This is a mock object, reset it
+                event_loop.reset_mock()
+            mmrelay.meshtastic_utils.event_loop = None
+
+        # Clean up other potential AsyncMock references
+        if hasattr(mmrelay.meshtastic_utils, 'reconnect_task'):
+            task = mmrelay.meshtastic_utils.reconnect_task
+            if task and hasattr(task, '_mock_name'):
+                # This is a mock object, reset it
+                task.reset_mock()
+            mmrelay.meshtastic_utils.reconnect_task = None
+
     def test_on_meshtastic_message_basic(self):
         """
         Test that a basic Meshtastic message is processed and relayed to Matrix.
@@ -426,6 +451,22 @@ class TestMeshtasticUtils(unittest.TestCase):
 
 class TestServiceDetection(unittest.TestCase):
     """Test cases for service detection functionality."""
+
+    def tearDown(self):
+        """
+        Clean up test fixtures to prevent AsyncMock test pollution.
+
+        This method ensures that any global module state or mock instances
+        are properly cleaned up between tests.
+        """
+        # Clean up any global module attributes that might hold AsyncMock references
+        import mmrelay.meshtastic_utils
+
+        if hasattr(mmrelay.meshtastic_utils, 'event_loop'):
+            event_loop = mmrelay.meshtastic_utils.event_loop
+            if event_loop and hasattr(event_loop, '_mock_name'):
+                event_loop.reset_mock()
+            mmrelay.meshtastic_utils.event_loop = None
 
     @patch.dict(os.environ, {"INVOCATION_ID": "test-service-id"})
     def test_is_running_as_service_with_invocation_id(self):

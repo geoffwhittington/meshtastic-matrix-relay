@@ -373,6 +373,16 @@ class TestMapPlugin(unittest.TestCase):
             "radius": 2000,
         }
 
+    def tearDown(self):
+        """
+        Clean up test fixtures to prevent AsyncMock test pollution.
+
+        This method ensures that any AsyncMock instances created by @patch decorators
+        are properly cleaned up between tests to prevent warnings.
+        """
+        # Clean up any references that might hold AsyncMock instances
+        self.plugin = None
+
     def test_plugin_name(self):
         """
         Test that the plugin_name property returns the expected value "map".
