@@ -228,6 +228,44 @@ sys.modules["s2sphere"] = MockS2Module()
 # Rich is optional and tests should work without it
 # If Rich is needed for specific tests, mock it at the test level
 
+import pytest
+from concurrent.futures import Future
+
+import mmrelay.meshtastic_utils as mu
+
+
+@pytest.fixture(autouse=True)
+def meshtastic_loop_safety(monkeypatch):
+    """
+    Module-scoped fixture to ensure the event loop in meshtastic_utils is
+    properly managed.
+    """
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    monkeypatch.setattr(mu, "event_loop", loop)
+
+    yield loop
+
+    # Teardown: Clean up the loop
+    try:
+        tasks = asyncio.all_tasks(loop=loop)
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
+    finally:
+        loop.close()
+        asyncio.set_event_loop(None)
+
+
+@pytest.fixture
+def done_future():
+    loop = asyncio.get_event_loop()
+    f = Future()
+    f.set_result(None)
+    return f
+
+
 # Ensure built-in modules are not accidentally mocked
 ensure_builtins_not_mocked()
 

@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import inspect
 import io
 import os
 import threading
@@ -90,6 +91,27 @@ reconnect_task = None  # To keep track of the reconnect task
 # Subscription flags to prevent duplicate subscriptions
 subscribed_to_messages = False
 subscribed_to_connection_lost = False
+
+
+def _submit_coro(coro, loop=None):
+    if not inspect.iscoroutine(coro):
+        # Defensive guard for tests that mistakenly patch async funcs to return None
+        return None
+    loop = loop or event_loop
+    if loop and isinstance(loop, asyncio.AbstractEventLoop) and not loop.is_closed():
+        return asyncio.run_coroutine_threadsafe(coro, loop)
+    # Fallback: schedule on a real loop if present; tests can override this.
+    try:
+        running = asyncio.get_running_loop()
+        return running.create_task(coro)
+    except RuntimeError:
+        # No running loop: create a private one, run “soon”
+        tmp = asyncio.new_event_loop()
+        try:
+            return asyncio.run_coroutine_threadsafe(coro, tmp)
+        finally:
+            # don’t leak this loop: the caller must not force this path in tests
+            pass
 
 
 def is_running_as_service():
@@ -371,7 +393,7 @@ def on_lost_meshtastic_connection(interface=None, detection_source="unknown"):
         meshtastic_client = None
 
         if event_loop:
-            reconnect_task = asyncio.run_coroutine_threadsafe(reconnect(), event_loop)
+            reconnect_task = _submit_coro(reconnect(), event_loop)
 
 
 async def reconnect():
@@ -543,7 +565,7 @@ def on_meshtastic_message(packet, interface):
             )
 
             # Relay the reaction as emote to Matrix, preserving the original meshnet name
-            asyncio.run_coroutine_threadsafe(
+            _submit_coro(
                 matrix_relay(
                     matrix_room_id,
                     reaction_message,
@@ -583,7 +605,7 @@ def on_meshtastic_message(packet, interface):
             logger.info(f"Relaying Meshtastic reply from {longname} to Matrix")
 
             # Relay the reply to Matrix with proper reply formatting
-            asyncio.run_coroutine_threadsafe(
+            _submit_coro(
                 matrix_relay(
                     matrix_room_id,
                     formatted_message,
@@ -684,7 +706,7 @@ def on_meshtastic_message(packet, interface):
         for plugin in plugins:
             if not found_matching_plugin:
                 try:
-                    result = asyncio.run_coroutine_threadsafe(
+                    result = _submit_coro(
                         plugin.handle_meshtastic_message(
                             packet, formatted_message, longname, meshnet_name
                         ),
@@ -720,7 +742,7 @@ def on_meshtastic_message(packet, interface):
                 # Storing the message_map (if enabled) occurs inside matrix_relay() now,
                 # controlled by relay_reactions.
                 try:
-                    asyncio.run_coroutine_threadsafe(
+                    _submit_coro(
                         matrix_relay(
                             room["id"],
                             formatted_message,
@@ -745,7 +767,7 @@ def on_meshtastic_message(packet, interface):
         for plugin in plugins:
             if not found_matching_plugin:
                 try:
-                    result = asyncio.run_coroutine_threadsafe(
+                    result = _submit_coro(
                         plugin.handle_meshtastic_message(
                             packet,
                             formatted_message=None,

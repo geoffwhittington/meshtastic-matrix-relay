@@ -30,52 +30,45 @@ from mmrelay.meshtastic_utils import on_meshtastic_message
 from mmrelay.message_queue import MessageQueue
 
 
-class TestPerformanceStress(unittest.TestCase):
+@pytest.fixture(autouse=True)
+def reset_global_state():
+    """
+    Pytest fixture to reset global state and force garbage collection before and after each test.
+    """
+    # Reset global state before the test
+    import mmrelay.meshtastic_utils
+    import mmrelay.message_queue
+
+    mmrelay.meshtastic_utils.meshtastic_client = None
+    mmrelay.meshtastic_utils.reconnecting = False
+    mmrelay.meshtastic_utils.config = None
+    mmrelay.meshtastic_utils.matrix_rooms = []
+    mmrelay.meshtastic_utils.shutting_down = False
+    mmrelay.meshtastic_utils.event_loop = None
+    mmrelay.meshtastic_utils.reconnect_task = None
+    mmrelay.meshtastic_utils.subscribed_to_messages = False
+    mmrelay.meshtastic_utils.subscribed_to_connection_lost = False
+
+    gc.collect()
+
+    yield
+
+    # Reset global state after the test
+    mmrelay.meshtastic_utils.meshtastic_client = None
+    mmrelay.meshtastic_utils.reconnecting = False
+    mmrelay.meshtastic_utils.config = None
+    mmrelay.meshtastic_utils.matrix_rooms = []
+    mmrelay.meshtastic_utils.shutting_down = False
+    mmrelay.meshtastic_utils.event_loop = None
+    mmrelay.meshtastic_utils.reconnect_task = None
+    mmrelay.meshtastic_utils.subscribed_to_messages = False
+    mmrelay.meshtastic_utils.subscribed_to_connection_lost = False
+
+    gc.collect()
+
+
+class TestPerformanceStress:
     """Test cases for performance and stress scenarios."""
-
-    def setUp(self):
-        """
-        Reset global state and force garbage collection before each test.
-
-        Ensures that shared variables in mmrelay.meshtastic_utils are set to default values and memory is cleared to provide test isolation.
-        """
-        # Reset global state
-        import mmrelay.meshtastic_utils
-        import mmrelay.message_queue
-
-        mmrelay.meshtastic_utils.meshtastic_client = None
-        mmrelay.meshtastic_utils.reconnecting = False
-        mmrelay.meshtastic_utils.config = None
-        mmrelay.meshtastic_utils.matrix_rooms = []
-        mmrelay.meshtastic_utils.shutting_down = False
-        mmrelay.meshtastic_utils.event_loop = None
-        mmrelay.meshtastic_utils.reconnect_task = None
-        mmrelay.meshtastic_utils.subscribed_to_messages = False
-        mmrelay.meshtastic_utils.subscribed_to_connection_lost = False
-
-        # Force garbage collection before each test
-        gc.collect()
-
-    def tearDown(self):
-        """
-        Cleans up and resets global state after each test to maintain test isolation.
-        """
-        # Reset global state
-        import mmrelay.meshtastic_utils
-        import mmrelay.message_queue
-
-        mmrelay.meshtastic_utils.meshtastic_client = None
-        mmrelay.meshtastic_utils.reconnecting = False
-        mmrelay.meshtastic_utils.config = None
-        mmrelay.meshtastic_utils.matrix_rooms = []
-        mmrelay.meshtastic_utils.shutting_down = False
-        mmrelay.meshtastic_utils.event_loop = None
-        mmrelay.meshtastic_utils.reconnect_task = None
-        mmrelay.meshtastic_utils.subscribed_to_messages = False
-        mmrelay.meshtastic_utils.subscribed_to_connection_lost = False
-
-        # Force garbage collection after each test
-        gc.collect()
 
     @pytest.mark.performance  # Changed from slow to performance
     def test_high_volume_message_processing(self):
@@ -165,14 +158,10 @@ class TestPerformanceStress(unittest.TestCase):
                         end_time = time.time()
                         processing_time = end_time - start_time
 
-                        self.assertEqual(len(processed_messages), message_count)
-                        self.assertLess(
-                            processing_time, 15.0, "Message processing took too long"
-                        )
+                        assert len(processed_messages) == message_count
+                        assert processing_time < 15.0, "Message processing took too long"
                         messages_per_second = message_count / processing_time
-                        self.assertGreater(
-                            messages_per_second, 35, "Processing rate too slow"
-                        )
+                        assert messages_per_second > 35, "Processing rate too slow"
                 finally:
                     loop.close()
 
@@ -221,7 +210,7 @@ class TestPerformanceStress(unittest.TestCase):
                                 mock_send_function,
                                 description=f"Performance test message {i}",
                             )
-                            self.assertTrue(success, f"Failed to enqueue message {i}")
+                            assert success, f"Failed to enqueue message {i}"
 
                         # Wait for processing to complete (50 messages * 2s = 100s + buffer)
                         timeout = 120  # 120 second timeout
@@ -235,22 +224,18 @@ class TestPerformanceStress(unittest.TestCase):
                         processing_time = end_time - start_time
 
                         # Verify all messages were processed
-                        self.assertEqual(processed_count, message_count)
+                        assert processed_count == message_count
 
                         # Performance assertions (adjusted for 2s minimum delay)
                         expected_min_time = (
                             message_count * 2.0
                         )  # 2s per message minimum
-                        self.assertGreaterEqual(
-                            processing_time,
-                            expected_min_time - 5.0,
-                            "Processing too fast (below firmware minimum)",
-                        )
+                        assert (
+                            processing_time >= expected_min_time - 5.0
+                        ), "Processing too fast (below firmware minimum)"
 
                         messages_per_second = message_count / processing_time
-                        self.assertGreater(
-                            messages_per_second, 0.3, "Queue processing rate too slow"
-                        )
+                        assert messages_per_second > 0.3, "Queue processing rate too slow"
 
                     finally:
                         queue.stop()
@@ -295,13 +280,13 @@ class TestPerformanceStress(unittest.TestCase):
 
                 for i in range(node_count):
                     name = get_longname(f"!{i:08x}")
-                    self.assertEqual(name, f"Node {i}")
+                    assert name == f"Node {i}"
 
                 retrieval_time = time.time() - start_time
 
                 # Performance assertions (adjusted for CI environment)
-                self.assertLess(insert_time, 20.0, "Database insertions too slow")
-                self.assertLess(retrieval_time, 8.0, "Database retrievals too slow")
+                assert insert_time < 20.0, "Database insertions too slow"
+                assert retrieval_time < 8.0, "Database retrievals too slow"
 
                 # Test message map performance
                 message_count = 1000
@@ -313,19 +298,20 @@ class TestPerformanceStress(unittest.TestCase):
                     )
 
                 message_insert_time = time.time() - start_time
-                self.assertLess(
-                    message_insert_time, 20.0, "Message map insertions too slow"
-                )
+                assert (
+                    message_insert_time < 20.0
+                ), "Message map insertions too slow"
 
                 # Test pruning performance
                 start_time = time.time()
                 prune_message_map(100)  # Keep only 100 most recent
                 prune_time = time.time() - start_time
 
-                self.assertLess(prune_time, 8.0, "Message map pruning too slow")
+                assert prune_time < 8.0, "Message map pruning too slow"
 
+    @pytest.mark.asyncio
     @pytest.mark.performance  # Changed from slow to performance
-    def test_plugin_processing_performance(self):
+    async def test_plugin_processing_performance(self, meshtastic_loop_safety):
         """
         Test the performance of processing messages through multiple plugins, ensuring timely invocation and correct call counts.
 
@@ -384,54 +370,47 @@ class TestPerformanceStress(unittest.TestCase):
                 ), patch("mmrelay.meshtastic_utils.config", mock_config), patch(
                     "mmrelay.meshtastic_utils.matrix_rooms", mock_matrix_rooms
                 ), patch(
-                    "mmrelay.meshtastic_utils.event_loop", MagicMock()
-                ), patch(
                     "mmrelay.matrix_utils.get_interaction_settings",
                     return_value=mock_interactions,
                 ), patch(
                     "mmrelay.matrix_utils.message_storage_enabled", return_value=True
                 ), patch(
                     "mmrelay.meshtastic_utils.shutting_down", False
-                ):
+                ), patch("mmrelay.meshtastic_utils.event_loop", meshtastic_loop_safety), patch(
+                    "mmrelay.meshtastic_utils._submit_coro"
+                ) as mock_submit_coro:
+                    mock_submit_coro.side_effect = lambda coro, loop=None: asyncio.create_task(coro)
 
-                    def mock_run_coroutine_threadsafe(coro, loop):
-                        try:
-                            loop = asyncio.get_running_loop()
-                        except RuntimeError:
-                            loop = asyncio.new_event_loop()
-                        return loop.run_until_complete(coro)
+                    start_time = time.time()
 
-                    with patch(
-                        "asyncio.run_coroutine_threadsafe",
-                        side_effect=mock_run_coroutine_threadsafe,
-                    ):
-                        start_time = time.time()
+                    for _ in range(message_count):
+                        on_meshtastic_message(packet, mock_interface)
 
-                        for _ in range(message_count):
-                            on_meshtastic_message(packet, mock_interface)
+                    # Wait for all tasks to complete
+                    pending = [
+                        task
+                        for task in asyncio.all_tasks(loop=meshtastic_loop_safety)
+                        if task is not asyncio.current_task()
+                    ]
+                    if pending:
+                        await asyncio.gather(*pending)
 
-                        end_time = time.time()
-                        processing_time = end_time - start_time
+                    end_time = time.time()
+                    processing_time = end_time - start_time
 
-                        total_plugin_calls = plugin_count * message_count
-                        self.assertLess(
-                            processing_time,
-                            10.0,  # Increased timeout for CI
-                            "Plugin processing too slow",
+                    total_plugin_calls = plugin_count * message_count
+                    assert (
+                        processing_time < 10.0
+                    ), "Plugin processing too slow"  # Increased timeout for CI
+
+                    calls_per_second = total_plugin_calls / processing_time
+                    assert calls_per_second > 100, "Plugin call rate too slow"
+
+                    for plugin in plugins:
+                        assert (
+                            plugin.handle_meshtastic_message.call_count
+                            == message_count
                         )
-
-                        calls_per_second = total_plugin_calls / processing_time
-                        self.assertGreater(
-                            calls_per_second,
-                            100,
-                            "Plugin call rate too slow",
-                        )
-
-                        for plugin in plugins:
-                            self.assertEqual(
-                                plugin.handle_meshtastic_message.call_count,
-                                message_count,
-                            )
 
     @pytest.mark.performance  # Changed from slow to performance
     def test_concurrent_message_queue_access(self):
@@ -507,24 +486,20 @@ class TestPerformanceStress(unittest.TestCase):
                         processing_time = end_time - start_time
 
                         # Verify all messages were processed
-                        self.assertEqual(processed_count, total_messages)
+                        assert processed_count == total_messages
 
                         # Performance assertions (adjusted for 2s minimum delay)
                         expected_min_time = (
                             total_messages * 2.0
                         )  # 2s per message minimum
-                        self.assertLess(
-                            processing_time,
-                            expected_min_time + 10.0,
-                            "Concurrent processing too slow",
-                        )
+                        assert (
+                            processing_time < expected_min_time + 10.0
+                        ), "Concurrent processing too slow"
 
                         messages_per_second = total_messages / processing_time
-                        self.assertGreater(
-                            messages_per_second,
-                            0.3,
-                            "Concurrent processing rate too slow",
-                        )
+                        assert (
+                            messages_per_second > 0.3
+                        ), "Concurrent processing rate too slow"
 
                     finally:
                         queue.stop()
@@ -582,11 +557,9 @@ class TestPerformanceStress(unittest.TestCase):
 
         # Memory increase should be reasonable (less than 50MB)
         max_acceptable_increase = 50 * 1024 * 1024  # 50MB
-        self.assertLess(
-            memory_increase,
-            max_acceptable_increase,
-            f"Memory usage increased by {memory_increase / 1024 / 1024:.2f}MB",
-        )
+        assert (
+            memory_increase < max_acceptable_increase
+        ), f"Memory usage increased by {memory_increase / 1024 / 1024:.2f}MB"
 
     @pytest.mark.performance  # Changed from slow to performance
     def test_rate_limiting_effectiveness(self):
@@ -642,17 +615,15 @@ class TestPerformanceStress(unittest.TestCase):
                             await asyncio.sleep(0.1)
 
                         # Verify all messages were sent
-                        self.assertEqual(len(send_times), message_count)
+                        assert len(send_times) == message_count
 
                         # Verify rate limiting was effective (2s minimum delay)
                         for i in range(1, len(send_times)):
                             time_diff = send_times[i] - send_times[i - 1]
                             # Allow some tolerance for timing variations
-                            self.assertGreaterEqual(
-                                time_diff,
-                                2.0 * 0.8,  # 80% of 2s minimum delay
-                                f"Rate limiting not effective between messages {i-1} and {i}",
-                            )
+                            assert (
+                                time_diff >= 2.0 * 0.8
+                            ), f"Rate limiting not effective between messages {i-1} and {i}"  # 80% of 2s minimum delay
 
                     finally:
                         queue.stop()
@@ -688,7 +659,7 @@ class TestPerformanceStress(unittest.TestCase):
         gc.collect()
 
         # Queue should be garbage collected
-        self.assertIsNone(queue_ref(), "MessageQueue not properly cleaned up")
+        assert queue_ref() is None, "MessageQueue not properly cleaned up"
 
         # Test plugin cleanup
         mock_plugin = MagicMock()
@@ -708,7 +679,7 @@ class TestPerformanceStress(unittest.TestCase):
         gc.collect()
 
         # Plugin should be garbage collected
-        self.assertIsNone(plugin_ref(), "Plugin not properly cleaned up")
+        assert plugin_ref() is None, "Plugin not properly cleaned up"
 
     @pytest.mark.performance  # New realistic throughput benchmark
     def test_realistic_throughput_benchmark(self):
@@ -808,26 +779,20 @@ class TestPerformanceStress(unittest.TestCase):
                         throughput = messages_processed / total_time
 
                         # Validate realistic performance expectations
-                        self.assertGreater(
-                            messages_queued, 5, "Should queue multiple messages"
-                        )
-                        self.assertGreater(
-                            messages_processed, 0, "Should process some messages"
-                        )
+                        assert messages_queued > 5, "Should queue multiple messages"
+                        assert messages_processed > 0, "Should process some messages"
 
                         # Throughput should be reasonable for 2s minimum delay
                         # With 2s delay, max theoretical throughput is 0.5 msg/s
-                        self.assertLessEqual(
-                            throughput, 0.6, "Throughput should respect rate limiting"
-                        )
+                        assert (
+                            throughput <= 0.6
+                        ), "Throughput should respect rate limiting"
 
                         # Should achieve at least 65% of theoretical maximum (more realistic for CI)
                         min_expected_throughput = 0.32  # 65% of 0.5 msg/s
-                        self.assertGreaterEqual(
-                            throughput,
-                            min_expected_throughput,
-                            f"Throughput {throughput:.3f} msg/s below minimum {min_expected_throughput}",
-                        )
+                        assert (
+                            throughput >= min_expected_throughput
+                        ), f"Throughput {throughput:.3f} msg/s below minimum {min_expected_throughput}"
 
                         # Verify message type distribution
                         type_counts = {}
@@ -836,9 +801,9 @@ class TestPerformanceStress(unittest.TestCase):
                             type_counts[msg_type] = type_counts.get(msg_type, 0) + 1
 
                         # Should have processed multiple message types
-                        self.assertGreater(
-                            len(type_counts), 0, "Should process various message types"
-                        )
+                        assert (
+                            len(type_counts) > 0
+                        ), "Should process various message types"
 
                         print("\nThroughput Benchmark Results:")
                         print(f"  Duration: {total_time:.1f}s")
@@ -854,6 +819,3 @@ class TestPerformanceStress(unittest.TestCase):
         asyncio.run(run_throughput_test())
 
 
-if __name__ == "__main__":
-    # Run with reduced verbosity for performance tests
-    unittest.main(verbosity=1)

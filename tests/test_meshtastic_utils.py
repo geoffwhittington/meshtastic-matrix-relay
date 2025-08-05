@@ -75,50 +75,7 @@ class TestMeshtasticUtils(unittest.TestCase):
         mmrelay.meshtastic_utils.matrix_rooms = []
         mmrelay.meshtastic_utils.reconnecting = False
         mmrelay.meshtastic_utils.shutting_down = False
-        # Properly clean up reconnect_task to avoid AsyncMock warnings
-        if hasattr(mmrelay.meshtastic_utils, "reconnect_task"):
-            task = mmrelay.meshtastic_utils.reconnect_task
-            if task:
-                # If it's a mock, reset it
-                if hasattr(task, "reset_mock"):
-                    try:
-                        task.reset_mock()
-                    except (AttributeError, RuntimeError):
-                        # Ignore errors when resetting mock objects during cleanup
-                        pass
-                # If it's a real asyncio Task, cancel it
-                elif hasattr(task, "cancel"):
-                    try:
-                        task.cancel()
-                    except (AttributeError, RuntimeError):
-                        # Ignore errors when canceling tasks during cleanup
-                        pass
         mmrelay.meshtastic_utils.reconnect_task = None
-
-    def tearDown(self):
-        """
-        Clean up global module state to prevent AsyncMock test pollution.
-
-        This method ensures that any global module attributes that might hold
-        AsyncMock references are properly cleaned up between tests.
-        """
-        import mmrelay.meshtastic_utils
-
-        # Clean up global module attributes that might hold AsyncMock references
-        if hasattr(mmrelay.meshtastic_utils, 'event_loop'):
-            event_loop = mmrelay.meshtastic_utils.event_loop
-            if event_loop and hasattr(event_loop, '_mock_name'):
-                # This is a mock object, reset it
-                event_loop.reset_mock()
-            mmrelay.meshtastic_utils.event_loop = None
-
-        # Clean up other potential AsyncMock references
-        if hasattr(mmrelay.meshtastic_utils, 'reconnect_task'):
-            task = mmrelay.meshtastic_utils.reconnect_task
-            if task and hasattr(task, '_mock_name'):
-                # This is a mock object, reset it
-                task.reset_mock()
-            mmrelay.meshtastic_utils.reconnect_task = None
 
     def test_on_meshtastic_message_basic(self):
         """
@@ -129,31 +86,25 @@ class TestMeshtasticUtils(unittest.TestCase):
         # Mock the required functions
         import mmrelay.meshtastic_utils
 
+        from concurrent.futures import Future
+
+        def _done_future(*args, **kwargs):
+            f = Future()
+            f.set_result(None)
+            return f
+
         with patch("mmrelay.meshtastic_utils.get_longname") as mock_get_longname, patch(
             "mmrelay.meshtastic_utils.get_shortname"
         ) as mock_get_shortname, patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
-        ) as mock_run_coroutine, patch(
-            "mmrelay.matrix_utils.matrix_relay"
+            "mmrelay.meshtastic_utils._submit_coro"
+        ) as mock_submit_coro, patch(
+            "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
         ), patch(
             "mmrelay.matrix_utils.get_interaction_settings"
         ) as mock_get_interactions, patch(
             "mmrelay.matrix_utils.message_storage_enabled"
         ) as mock_storage:
-
-            # Mock run_coroutine_threadsafe to return a completed future
-            def create_completed_future(*args, **kwargs):
-                try:
-                    loop = asyncio.get_running_loop()
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                future = loop.create_future()
-                future.set_result(None)
-                return future
-
-            mock_run_coroutine.side_effect = create_completed_future
-
+            mock_submit_coro.side_effect = _done_future
             mock_get_longname.return_value = "Test User"
             mock_get_shortname.return_value = "TU"
             mock_get_interactions.return_value = {"reactions": False, "replies": False}
@@ -165,13 +116,12 @@ class TestMeshtasticUtils(unittest.TestCase):
             # Set up the global config and matrix_rooms
             mmrelay.meshtastic_utils.config = self.mock_config
             mmrelay.meshtastic_utils.matrix_rooms = self.mock_config["matrix_rooms"]
-            mmrelay.meshtastic_utils.event_loop = MagicMock()  # Mock the event loop
 
             # Call the function
             on_meshtastic_message(self.mock_packet, mock_interface)
 
-            # Verify asyncio.run_coroutine_threadsafe was called (which calls matrix_relay)
-            mock_run_coroutine.assert_called_once()
+            # Verify _submit_coro was called (which calls matrix_relay)
+            mock_submit_coro.assert_called_once()
 
     def test_on_meshtastic_message_unmapped_channel(self):
         """
@@ -185,17 +135,14 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
-        ), patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
-        ) as mock_run_coro:
-
+        ), patch("mmrelay.meshtastic_utils._submit_coro") as mock_submit_coro:
             mock_interface = MagicMock()
 
             # Call the function
             on_meshtastic_message(packet_unmapped, mock_interface)
 
-            # Verify asyncio.run_coroutine_threadsafe was not called (no matrix relay)
-            mock_run_coro.assert_not_called()
+            # Verify _submit_coro was not called (no matrix relay)
+            mock_submit_coro.assert_not_called()
 
     def test_on_meshtastic_message_no_text(self):
         """
@@ -209,26 +156,21 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
-        ), patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
-        ) as mock_run_coro, patch(
+        ), patch("mmrelay.meshtastic_utils._submit_coro") as mock_submit_coro, patch(
             "mmrelay.plugin_loader.load_plugins"
         ) as mock_load_plugins, patch(
             "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
         ), patch(
             "mmrelay.matrix_utils.matrix_client", None
-        ), patch(
-            "mmrelay.meshtastic_utils.event_loop", MagicMock()
         ):
-
             mock_load_plugins.return_value = []
             mock_interface = MagicMock()
 
             # Call the function
             on_meshtastic_message(packet_no_text, mock_interface)
 
-            # Verify asyncio.run_coroutine_threadsafe was not called for non-text message
-            mock_run_coro.assert_not_called()
+            # Verify _submit_coro was not called for non-text message
+            mock_submit_coro.assert_not_called()
 
     @patch("mmrelay.meshtastic_utils.serial_port_exists")
     @patch("mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface")
@@ -394,12 +336,17 @@ class TestMeshtasticUtils(unittest.TestCase):
         config_no_broadcast = self.mock_config.copy()
         config_no_broadcast["meshtastic"]["broadcast_enabled"] = False
 
+        from concurrent.futures import Future
+
+        def _done_future(*args, **kwargs):
+            f = Future()
+            f.set_result(None)
+            return f
+
         with patch("mmrelay.meshtastic_utils.config", config_no_broadcast), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", config_no_broadcast["matrix_rooms"]
-        ), patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
-        ) as mock_run_coroutine, patch(
-            "mmrelay.matrix_utils.matrix_relay"
+        ), patch("mmrelay.meshtastic_utils._submit_coro") as mock_submit_coro, patch(
+            "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
         ), patch(
             "mmrelay.meshtastic_utils.get_longname"
         ) as mock_get_longname, patch(
@@ -412,23 +359,8 @@ class TestMeshtasticUtils(unittest.TestCase):
             "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
         ), patch(
             "mmrelay.matrix_utils.matrix_client", None
-        ), patch(
-            "mmrelay.meshtastic_utils.event_loop", MagicMock()
         ):
-
-            # Mock run_coroutine_threadsafe to return a completed future
-            def create_completed_future(*args, **kwargs):
-                try:
-                    loop = asyncio.get_running_loop()
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                future = loop.create_future()
-                future.set_result(None)
-                return future
-
-            mock_run_coroutine.side_effect = create_completed_future
-
+            mock_submit_coro.side_effect = _done_future
             mock_get_longname.return_value = "Test User"
             mock_get_shortname.return_value = "TU"
             mock_get_interactions.return_value = {"reactions": False, "replies": False}
@@ -436,37 +368,16 @@ class TestMeshtasticUtils(unittest.TestCase):
 
             mock_interface = MagicMock()
 
-            # Set up event loop mock - ensure it's not an AsyncMock
-            import mmrelay.meshtastic_utils
-
-            mmrelay.meshtastic_utils.event_loop = MagicMock()
-
             # Call the function
             on_meshtastic_message(self.mock_packet, mock_interface)
 
             # Meshtastic->Matrix messages are still relayed regardless of broadcast_enabled
             # (broadcast_enabled only affects Matrix->Meshtastic direction)
-            mock_run_coroutine.assert_called_once()
+            mock_submit_coro.assert_called_once()
 
 
 class TestServiceDetection(unittest.TestCase):
     """Test cases for service detection functionality."""
-
-    def tearDown(self):
-        """
-        Clean up test fixtures to prevent AsyncMock test pollution.
-
-        This method ensures that any global module state or mock instances
-        are properly cleaned up between tests.
-        """
-        # Clean up any global module attributes that might hold AsyncMock references
-        import mmrelay.meshtastic_utils
-
-        if hasattr(mmrelay.meshtastic_utils, 'event_loop'):
-            event_loop = mmrelay.meshtastic_utils.event_loop
-            if event_loop and hasattr(event_loop, '_mock_name'):
-                event_loop.reset_mock()
-            mmrelay.meshtastic_utils.event_loop = None
 
     @patch.dict(os.environ, {"INVOCATION_ID": "test-service-id"})
     def test_is_running_as_service_with_invocation_id(self):
@@ -602,33 +513,13 @@ class TestConnectionLossHandling(unittest.TestCase):
 
         mmrelay.meshtastic_utils.reconnecting = False
         mmrelay.meshtastic_utils.shutting_down = False
-
-        # Properly clean up reconnect_task to avoid AsyncMock warnings
-        if hasattr(mmrelay.meshtastic_utils, "reconnect_task"):
-            task = mmrelay.meshtastic_utils.reconnect_task
-            if task:
-                # If it's a mock, reset it
-                if hasattr(task, "reset_mock"):
-                    try:
-                        task.reset_mock()
-                    except (AttributeError, RuntimeError):
-                        # Ignore errors when resetting mock objects during cleanup
-                        pass
-                # If it's a real asyncio Task, cancel it
-                elif hasattr(task, "cancel"):
-                    try:
-                        task.cancel()
-                    except (AttributeError, RuntimeError):
-                        # Ignore errors when canceling tasks during cleanup
-                        pass
         mmrelay.meshtastic_utils.reconnect_task = None
 
     @patch("mmrelay.meshtastic_utils.logger")
-    @patch("mmrelay.meshtastic_utils.event_loop", MagicMock())
-    @patch("mmrelay.meshtastic_utils.reconnect")
-    @patch("mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe")
+    @patch("mmrelay.meshtastic_utils.reconnect", new_callable=AsyncMock)
+    @patch("mmrelay.meshtastic_utils._submit_coro")
     def test_on_lost_meshtastic_connection_normal(
-        self, mock_run_coroutine, mock_reconnect, mock_logger
+        self, mock_submit_coro, mock_reconnect, mock_logger
     ):
         """Test normal connection loss handling."""
         import mmrelay.meshtastic_utils
@@ -636,17 +527,14 @@ class TestConnectionLossHandling(unittest.TestCase):
         mmrelay.meshtastic_utils.reconnecting = False
         mmrelay.meshtastic_utils.shutting_down = False
 
-        def mock_run_coro(coro, loop):
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-            return loop.run_until_complete(coro)
+        from concurrent.futures import Future
 
-        mock_run_coroutine.side_effect = mock_run_coro
+        def _done_future(*args, **kwargs):
+            f = Future()
+            f.set_result(None)
+            return f
 
-        # Make mock_reconnect return a MagicMock to simulate a coroutine object
-        mock_reconnect.return_value = MagicMock()
+        mock_submit_coro.side_effect = _done_future
 
         mock_interface = MagicMock()
 
@@ -657,6 +545,9 @@ class TestConnectionLossHandling(unittest.TestCase):
         error_call = mock_logger.error.call_args[0][0]
         self.assertIn("Lost connection", error_call)
         self.assertIn("test_source", error_call)
+
+        # Verify that the reconnect coroutine was submitted
+        mock_submit_coro.assert_called_once()
 
     @patch("mmrelay.meshtastic_utils.logger")
     def test_on_lost_meshtastic_connection_already_reconnecting(self, mock_logger):
@@ -957,29 +848,6 @@ def test_check_connection_function_exists(reset_meshtastic_globals):
     # This test just verifies the function exists without running it
     # to avoid the hanging issue in the async loop
     assert callable(check_connection)
-
-
-class TestMeshtasticUtilsAsync(unittest.TestCase):
-    """Simplified async tests that avoid AsyncMock warnings."""
-
-    def test_async_message_processing_setup(self):
-        """
-        Verify that async message processing components and functions can be imported and exist.
-
-        This test ensures that key async functions and infrastructure are present and importable without executing any asynchronous code.
-        """
-        # Test that we can import the async functions
-        from mmrelay.matrix_utils import matrix_relay
-        from mmrelay.meshtastic_utils import on_meshtastic_message
-
-        self.assertIsNotNone(asyncio.run_coroutine_threadsafe)
-
-        # Test that the functions exist
-        self.assertIsNotNone(matrix_relay)
-        self.assertIsNotNone(on_meshtastic_message)
-
-        # This test passes if all imports work correctly
-        # Complex async testing is better done through integration tests
 
 
 if __name__ == "__main__":
