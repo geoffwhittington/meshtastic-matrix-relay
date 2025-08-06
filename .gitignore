@@ -21,5 +21,6 @@ docker-compose.yaml
 .coverage.*
 htmlcov/
 coverage.xml
+junit.xml
 .pytest_cache/
 MagicMock/

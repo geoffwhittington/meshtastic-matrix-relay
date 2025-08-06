@@ -174,7 +174,9 @@ class TestMain(unittest.TestCase):
         mock_asyncio_run,
     ):
         """
-        Tests that run_main loads configuration, sets logging, prints the banner, configures debug logging, runs the main async function, and returns 0 on successful execution.
+        Test that `run_main` executes the full startup sequence and returns 0 on success.
+
+        Verifies that configuration is loaded and set, logging level is overridden by arguments, the banner is printed, debug logging is configured, the main async function is run, and the function returns 0 to indicate successful execution.
         """
         # Mock arguments
         mock_args = MagicMock()
@@ -183,8 +185,20 @@ class TestMain(unittest.TestCase):
         # Mock config loading
         mock_load_config.return_value = self.mock_config
 
-        # Mock asyncio.run to return None
-        mock_asyncio_run.return_value = None
+        # Mock asyncio.run with coroutine cleanup to prevent warnings
+        def mock_run_with_cleanup(coro):
+            # Close the coroutine to prevent "never awaited" warning
+            """
+            Closes the provided coroutine to prevent "never awaited" warnings during testing.
+
+            Parameters:
+                coro: The coroutine object to be closed.
+            """
+            if hasattr(coro, "close"):
+                coro.close()
+            return None
+
+        mock_asyncio_run.side_effect = mock_run_with_cleanup
 
         result = run_main(mock_args)
 
@@ -209,21 +223,30 @@ class TestMain(unittest.TestCase):
 
     @patch("mmrelay.config.load_config")
     @patch("asyncio.run")
-    @patch("mmrelay.main.main", new_callable=AsyncMock)
-    def test_run_main_exception_handling(
-        self, mock_main, mock_asyncio_run, mock_load_config
-    ):
+    def test_run_main_exception_handling(self, mock_asyncio_run, mock_load_config):
         """
-        Test that run_main returns 1 if an exception occurs during execution.
+        Verify that run_main returns 1 when an exception is raised during asynchronous execution.
         """
         # Mock config loading
         mock_load_config.return_value = self.mock_config
 
-        # Mock main to raise an exception
-        mock_main.side_effect = Exception("Test error")
+        # Mock asyncio.run with coroutine cleanup and exception
+        def mock_run_with_exception(coro):
+            # Close the coroutine to prevent "never awaited" warning
+            """
+            Simulates an exception during coroutine execution in tests by closing the coroutine and raising an Exception.
 
-        # Mock asyncio.run to raise the exception from main
-        mock_asyncio_run.side_effect = Exception("Test error")
+            Parameters:
+                coro: The coroutine object to be closed before raising the exception.
+
+            Raises:
+                Exception: Always raised to simulate an error during coroutine execution.
+            """
+            if hasattr(coro, "close"):
+                coro.close()
+            raise Exception("Test error")
+
+        mock_asyncio_run.side_effect = mock_run_with_exception
 
         result = run_main(None)
 
@@ -234,13 +257,22 @@ class TestMain(unittest.TestCase):
     @patch("asyncio.run")
     def test_run_main_keyboard_interrupt(self, mock_asyncio_run, mock_load_config):
         """
-        Test that run_main returns 0 when a KeyboardInterrupt occurs during execution, indicating graceful shutdown.
+        Verifies that run_main returns 0 when a KeyboardInterrupt is raised during execution, ensuring graceful shutdown behavior.
         """
         # Mock config loading
         mock_load_config.return_value = self.mock_config
 
-        # Mock asyncio.run to raise KeyboardInterrupt
-        mock_asyncio_run.side_effect = KeyboardInterrupt()
+        # Mock asyncio.run with coroutine cleanup and KeyboardInterrupt
+        def mock_run_with_keyboard_interrupt(coro):
+            # Close the coroutine to prevent "never awaited" warning
+            """
+            Simulates a KeyboardInterrupt during coroutine execution in tests by closing the coroutine and raising KeyboardInterrupt.
+            """
+            if hasattr(coro, "close"):
+                coro.close()
+            raise KeyboardInterrupt()
+
+        mock_asyncio_run.side_effect = mock_run_with_keyboard_interrupt
 
         result = run_main(None)
 
@@ -251,8 +283,8 @@ class TestMain(unittest.TestCase):
     @patch("mmrelay.main.initialize_database")
     @patch("mmrelay.main.load_plugins")
     @patch("mmrelay.main.start_message_queue")
-    @patch("mmrelay.main.connect_matrix")
-    @patch("mmrelay.main.join_matrix_room")
+    @patch("mmrelay.main.connect_matrix", new_callable=AsyncMock)
+    @patch("mmrelay.main.join_matrix_room", new_callable=AsyncMock)
     @patch("mmrelay.main.stop_message_queue")
     def test_main_meshtastic_connection_failure(
         self,
@@ -265,9 +297,9 @@ class TestMain(unittest.TestCase):
         mock_connect_meshtastic,
     ):
         """
-        Test that the main application attempts Matrix connection even if Meshtastic connection fails.
+        Test that the application attempts to connect to Matrix even if Meshtastic connection fails.
 
-        Simulates a failure to connect to Meshtastic and verifies that the application still proceeds to attempt a Matrix connection during startup.
+        Simulates a failed Meshtastic connection and verifies that the Matrix connection is still attempted during application startup.
         """
         # Mock Meshtastic connection to return None (failure)
         mock_connect_meshtastic.return_value = None
@@ -288,7 +320,7 @@ class TestMain(unittest.TestCase):
     @patch("mmrelay.main.load_plugins")
     @patch("mmrelay.main.start_message_queue")
     @patch("mmrelay.main.connect_meshtastic")
-    @patch("mmrelay.main.connect_matrix")
+    @patch("mmrelay.main.connect_matrix", new_callable=AsyncMock)
     @patch("mmrelay.main.stop_message_queue")
     def test_main_matrix_connection_failure(
         self,
@@ -300,9 +332,9 @@ class TestMain(unittest.TestCase):
         mock_init_db,
     ):
         """
-        Test that an exception is raised and propagated when the Matrix connection fails during main application startup.
+        Test that an exception during Matrix connection is raised and not suppressed during main application startup.
 
-        This test mocks the Matrix connection to raise an exception and verifies that the main function does not suppress it.
+        Mocks the Matrix connection to raise an exception and verifies that the main function propagates the error.
         """
         # Mock Matrix connection to raise an exception
         mock_connect_matrix.side_effect = Exception("Matrix connection failed")
@@ -375,9 +407,9 @@ class TestRunMain(unittest.TestCase):
         mock_asyncio_run,
     ):
         """
-        Test that `run_main` executes successfully with valid configuration and returns 0.
+        Test that `run_main` completes successfully with valid configuration and arguments.
 
-        Ensures that the banner is printed, configuration is loaded, and the main asynchronous function is run when correct arguments are provided.
+        Verifies that the banner is printed, configuration is loaded, and the main asynchronous function is executed, resulting in a return value of 0.
         """
         # Mock configuration
         mock_config = {
@@ -387,11 +419,11 @@ class TestRunMain(unittest.TestCase):
         }
         mock_load_config.return_value = mock_config
 
-        # Configure asyncio.run mock to properly handle coroutines
-        def mock_run(coro):
-            # Close the coroutine to prevent warnings
+        # Mock asyncio.run with coroutine cleanup to prevent warnings
+        def mock_run_with_cleanup(coro):
+            # Close the coroutine to prevent "never awaited" warning
             """
-            Mocks the execution of an asynchronous coroutine by closing it if possible and returning None.
+            Closes the provided coroutine to prevent "never awaited" warnings during testing.
 
             Parameters:
                 coro: The coroutine object to be closed.
@@ -400,7 +432,7 @@ class TestRunMain(unittest.TestCase):
                 coro.close()
             return None
 
-        mock_asyncio_run.side_effect = mock_run
+        mock_asyncio_run.side_effect = mock_run_with_cleanup
 
         # Mock args
         mock_args = MagicMock()
@@ -414,18 +446,36 @@ class TestRunMain(unittest.TestCase):
         mock_load_config.assert_called_once_with(args=mock_args)
         mock_asyncio_run.assert_called_once()
 
+    @patch("asyncio.run")
     @patch("mmrelay.config.set_config")
     @patch("mmrelay.config.load_config")
     @patch("mmrelay.main.print_banner")
     def test_run_main_missing_config_keys(
-        self, mock_print_banner, mock_load_config, mock_set_config
+        self, mock_print_banner, mock_load_config, mock_set_config, mock_asyncio_run
     ):
         """
-        Test that run_main returns an error code when required configuration keys are missing.
+        Test that run_main returns 1 when required configuration keys are missing.
+
+        This verifies that the application detects incomplete configuration and exits with an error code.
         """
         # Mock incomplete configuration
         mock_config = {"matrix": {"homeserver": "https://matrix.org"}}  # Missing keys
         mock_load_config.return_value = mock_config
+
+        # Mock asyncio.run with coroutine cleanup to prevent warnings
+        def mock_run_with_cleanup(coro):
+            # Close the coroutine to prevent "never awaited" warning
+            """
+            Closes the provided coroutine to prevent "never awaited" warnings during testing.
+
+            Parameters:
+                coro: The coroutine object to be closed.
+            """
+            if hasattr(coro, "close"):
+                coro.close()
+            return None
+
+        mock_asyncio_run.side_effect = mock_run_with_cleanup
 
         mock_args = MagicMock()
         mock_args.data_dir = None
@@ -449,9 +499,9 @@ class TestRunMain(unittest.TestCase):
         mock_asyncio_run,
     ):
         """
-        Test that run_main returns 0 when a KeyboardInterrupt is raised during execution with provided arguments.
+        Test that `run_main` returns 0 when a `KeyboardInterrupt` occurs during execution with command-line arguments.
 
-        This ensures the application exits gracefully on keyboard interruption, even when arguments are supplied.
+        Ensures the application exits gracefully with a success code when interrupted by the user, even if arguments are provided.
         """
         mock_config = {
             "matrix": {"homeserver": "https://matrix.org"},
@@ -459,7 +509,18 @@ class TestRunMain(unittest.TestCase):
             "matrix_rooms": [{"id": "!room:matrix.org"}],
         }
         mock_load_config.return_value = mock_config
-        mock_asyncio_run.side_effect = KeyboardInterrupt()
+
+        # Mock asyncio.run with coroutine cleanup and KeyboardInterrupt
+        def mock_run_with_keyboard_interrupt(coro):
+            # Close the coroutine to prevent "never awaited" warning
+            """
+            Simulates a KeyboardInterrupt during coroutine execution in tests by closing the coroutine and raising KeyboardInterrupt.
+            """
+            if hasattr(coro, "close"):
+                coro.close()
+            raise KeyboardInterrupt()
+
+        mock_asyncio_run.side_effect = mock_run_with_keyboard_interrupt
 
         mock_args = MagicMock()
         mock_args.data_dir = None
@@ -483,7 +544,7 @@ class TestRunMain(unittest.TestCase):
         mock_asyncio_run,
     ):
         """
-        Test that run_main returns an error code when a general exception occurs during execution.
+        Test that run_main returns 1 when a general exception is raised during asynchronous execution.
         """
         mock_config = {
             "matrix": {"homeserver": "https://matrix.org"},
@@ -491,7 +552,24 @@ class TestRunMain(unittest.TestCase):
             "matrix_rooms": [{"id": "!room:matrix.org"}],
         }
         mock_load_config.return_value = mock_config
-        mock_asyncio_run.side_effect = Exception("Test error")
+
+        # Mock asyncio.run with coroutine cleanup and exception
+        def mock_run_with_exception(coro):
+            # Close the coroutine to prevent "never awaited" warning
+            """
+            Simulates an exception during coroutine execution in tests by closing the coroutine and raising an Exception.
+
+            Parameters:
+                coro: The coroutine object to be closed before raising the exception.
+
+            Raises:
+                Exception: Always raised to simulate an error during coroutine execution.
+            """
+            if hasattr(coro, "close"):
+                coro.close()
+            raise Exception("Test error")
+
+        mock_asyncio_run.side_effect = mock_run_with_exception
 
         mock_args = MagicMock()
         mock_args.data_dir = None
@@ -519,9 +597,9 @@ class TestRunMain(unittest.TestCase):
         mock_makedirs,
     ):
         """
-        Test that run_main correctly handles a custom data directory by creating it and resolving its absolute path.
+        Test that run_main creates and uses the absolute path of a custom data directory.
 
-        This test verifies that when a custom data directory is specified, run_main ensures the directory exists and uses its absolute path during initialization.
+        Verifies that when a custom data directory is specified, run_main ensures the directory exists by creating it if necessary and resolves its absolute path for initialization.
         """
         import os
         import tempfile
@@ -532,7 +610,21 @@ class TestRunMain(unittest.TestCase):
             "matrix_rooms": [{"id": "!room:matrix.org"}],
         }
         mock_load_config.return_value = mock_config
-        mock_asyncio_run.return_value = None
+
+        # Mock asyncio.run with coroutine cleanup to prevent warnings
+        def mock_run_with_cleanup(coro):
+            # Close the coroutine to prevent "never awaited" warning
+            """
+            Closes the provided coroutine to prevent "never awaited" warnings during testing.
+
+            Parameters:
+                coro: The coroutine object to be closed.
+            """
+            if hasattr(coro, "close"):
+                coro.close()
+            return None
+
+        mock_asyncio_run.side_effect = mock_run_with_cleanup
 
         # Use a temporary directory instead of hardcoded path
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -550,11 +642,11 @@ class TestRunMain(unittest.TestCase):
             mock_abspath.assert_any_call(custom_data_dir)
             mock_makedirs.assert_called_once_with(custom_data_dir, exist_ok=True)
 
-    @patch("asyncio.run")
-    @patch("mmrelay.config.load_config")
-    @patch("mmrelay.config.set_config")
-    @patch("mmrelay.log_utils.configure_component_debug_logging")
-    @patch("mmrelay.main.print_banner")
+    @patch("asyncio.run", spec=True)
+    @patch("mmrelay.config.load_config", spec=True)
+    @patch("mmrelay.config.set_config", spec=True)
+    @patch("mmrelay.log_utils.configure_component_debug_logging", spec=True)
+    @patch("mmrelay.main.print_banner", spec=True)
     def test_run_main_with_log_level(
         self,
         mock_print_banner,
@@ -564,9 +656,9 @@ class TestRunMain(unittest.TestCase):
         mock_asyncio_run,
     ):
         """
-        Test that run_main uses a custom log level from arguments and completes successfully.
+        Test that run_main applies a custom log level from arguments and completes successfully.
 
-        Verifies that specifying a log level in the arguments overrides the logging level in the configuration and that run_main returns 0 to indicate success.
+        Ensures that when a log level is specified in the arguments, it overrides the logging level in the configuration, and run_main returns 0 to indicate successful execution.
         """
         mock_config = {
             "matrix": {"homeserver": "https://matrix.org"},
@@ -575,25 +667,20 @@ class TestRunMain(unittest.TestCase):
         }
         mock_load_config.return_value = mock_config
 
-        # Mock asyncio.run to consume the coroutine to prevent warnings
-        def mock_run(coro):
+        # Mock asyncio.run with coroutine cleanup to prevent warnings
+        def mock_run_with_cleanup(coro):
+            # Close the coroutine to prevent "never awaited" warning
             """
-            Closes the given coroutine to suppress "never awaited" warnings during testing.
+            Closes the provided coroutine to prevent "never awaited" warnings during testing.
 
             Parameters:
                 coro: The coroutine object to be closed.
-
-            Returns:
-                None
             """
-            try:
-                # Close the coroutine to prevent "never awaited" warning
+            if hasattr(coro, "close"):
                 coro.close()
-            except Exception:
-                pass  # nosec B110 - Cleanup operation, exceptions expected and safely ignored
             return None
 
-        mock_asyncio_run.side_effect = mock_run
+        mock_asyncio_run.side_effect = mock_run_with_cleanup
 
         mock_args = MagicMock()
         mock_args.data_dir = None

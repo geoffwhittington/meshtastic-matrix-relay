@@ -6,7 +6,6 @@ import time
 from typing import Union
 
 import certifi
-import markdown
 import meshtastic.protobuf.portnums_pb2
 from nio import (
     AsyncClient,
@@ -481,9 +480,9 @@ async def matrix_relay(
     reply_to_event_id=None,
 ):
     """
-    Relay a message from the Meshtastic network to a Matrix room, supporting replies, emotes, emoji reactions, and message mapping for cross-network interactions.
+    Relays a message from the Meshtastic network to a Matrix room, supporting replies, emotes, emoji reactions, and cross-network message mapping.
 
-    If a reply target is specified, formats the message as a Matrix reply with appropriate quoting and HTML structure. Detects and preserves HTML or markdown formatting in outgoing messages. When message interactions (reactions or replies) are enabled, stores a mapping between the Meshtastic message ID and the resulting Matrix event ID to support future interactions, pruning old mappings according to configuration.
+    If a reply target is specified, formats the message as a Matrix reply with appropriate quoting and HTML structure. Detects and preserves markdown or HTML formatting in outgoing messages, with graceful fallback if markdown processing is unavailable. When message interactions (reactions or replies) are enabled, stores a mapping between the Meshtastic message ID and the resulting Matrix event ID to support future cross-network interactions, pruning old mappings according to configuration.
 
     Parameters:
         room_id (str): The Matrix room ID to send the message to.
@@ -544,8 +543,19 @@ async def matrix_relay(
 
         # Process markdown to HTML if needed (like base plugin does)
         if has_markdown or has_html:
-            formatted_body = markdown.markdown(message)
-            plain_body = re.sub(r"</?[^>]*>", "", formatted_body)  # Strip all HTML tags
+            try:
+                import markdown
+
+                formatted_body = markdown.markdown(message)
+                plain_body = re.sub(
+                    r"</?[^>]*>", "", formatted_body
+                )  # Strip all HTML tags
+            except ImportError:
+                # Fallback if markdown is not available
+                formatted_body = message
+                plain_body = message
+                has_markdown = False
+                has_html = False
         else:
             formatted_body = message
             plain_body = message

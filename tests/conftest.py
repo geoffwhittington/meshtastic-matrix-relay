@@ -13,7 +13,12 @@ import queue
 import sys
 import threading
 import time
+from concurrent.futures import Future
 from unittest.mock import MagicMock
+
+import pytest
+
+import mmrelay.meshtastic_utils as mu
 
 # Mock all external dependencies before any imports
 # This prevents ImportError and allows tests to run in isolation
@@ -227,6 +232,145 @@ sys.modules["s2sphere"] = MockS2Module()
 # Don't mock Rich at all - it can interfere with logging handlers
 # Rich is optional and tests should work without it
 # If Rich is needed for specific tests, mock it at the test level
+
+
+@pytest.fixture(autouse=True)
+def meshtastic_loop_safety(monkeypatch):
+    """
+    Module-scoped pytest fixture that creates and manages a dedicated asyncio event loop for tests using meshtastic_utils.
+
+    Ensures that a fresh event loop is used for each test module, assigns it to meshtastic_utils, and performs thorough cleanup of all tasks and the loop after tests complete to prevent AsyncMock contamination and event loop leakage.
+
+    Yields:
+        loop (asyncio.AbstractEventLoop): The newly created event loop for use in tests.
+    """
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    monkeypatch.setattr(mu, "event_loop", loop)
+
+    yield loop
+
+    # Teardown: Clean up the loop
+    try:
+        tasks = asyncio.all_tasks(loop=loop)
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
+    finally:
+        loop.close()
+        asyncio.set_event_loop(None)
+
+
+@pytest.fixture(autouse=True)
+def reset_plugin_loader_cache():
+    """
+    Pytest fixture that resets plugin loader caches before and after each test to prevent leakage of mocked objects between tests.
+
+    This helps avoid issues such as AsyncMock warnings caused by stale plugin instances persisting across test runs.
+    """
+    import mmrelay.plugin_loader as pl
+
+    pl._reset_caches_for_tests()
+    yield
+    pl._reset_caches_for_tests()
+
+
+@pytest.fixture(autouse=True)
+def cleanup_asyncmock_objects(request):
+    """
+    Forces garbage collection after tests likely to use AsyncMock to prevent "never awaited" warnings.
+
+    This fixture runs after tests whose filenames match known patterns associated with AsyncMock usage, ensuring that AsyncMock objects are promptly cleaned up and do not trigger warnings in subsequent tests.
+    """
+    yield
+
+    # Only force garbage collection for tests that might create AsyncMock objects
+    test_file = request.node.fspath.basename
+
+    # List of test files/patterns that use AsyncMock
+    asyncmock_patterns = [
+        "test_async_patterns",
+        "test_matrix_utils",
+        "test_mesh_relay_plugin",
+        "test_map_plugin",
+        "test_meshtastic_utils",
+        "test_base_plugin",
+        "test_telemetry_plugin",
+        "test_performance_stress",
+        "test_main",
+        "test_health_plugin",
+        "test_error_boundaries",
+        "test_integration_scenarios",
+        "test_help_plugin",
+        "test_ping_plugin",
+        "test_nodes_plugin",
+    ]
+
+    if any(pattern in test_file for pattern in asyncmock_patterns):
+        import gc
+
+        gc.collect()
+
+
+@pytest.fixture(autouse=True)
+def mock_submit_coro(monkeypatch):
+    """
+    Pytest fixture that replaces the `_submit_coro` function in `meshtastic_utils` with a mock that synchronously runs and awaits coroutines in a temporary event loop.
+
+    This ensures that AsyncMock coroutines are properly awaited during tests, preventing "never awaited" warnings and allowing side effects to occur as expected.
+    """
+    import asyncio
+    import inspect
+
+    def mock_submit(coro, loop=None):
+        """
+        Synchronously runs a coroutine in a temporary event loop and returns a Future with its result or exception.
+
+        If the input is not a coroutine, returns None. This function is designed to ensure that AsyncMock coroutines are properly awaited during testing, preventing "never awaited" warnings and triggering any side effects.
+
+        Parameters:
+            coro: The coroutine to execute.
+            loop: Unused; present for compatibility.
+
+        Returns:
+            Future: A Future containing the result or exception from the coroutine, or None if the input is not a coroutine.
+        """
+        if not inspect.iscoroutine(coro):  # Not a coroutine
+            return None
+
+        # For AsyncMock coroutines, we need to actually await them to get the result
+        # and prevent "never awaited" warnings, while also triggering any side effects
+        temp_loop = asyncio.new_event_loop()
+        try:
+            result = temp_loop.run_until_complete(coro)
+            future = Future()
+            future.set_result(result)
+            return future
+        except Exception as e:
+            future = Future()
+            future.set_exception(e)
+            return future
+        finally:
+            temp_loop.close()
+
+    monkeypatch.setattr(mu, "_submit_coro", mock_submit)
+    yield
+
+
+@pytest.fixture
+def done_future():
+    """
+    Return a Future object that is already completed with a result of None.
+
+    Returns:
+        Future: A completed Future with its result set to None.
+    """
+    asyncio.get_event_loop()
+    f = Future()
+    f.set_result(None)
+    return f
+
 
 # Ensure built-in modules are not accidentally mocked
 ensure_builtins_not_mocked()

@@ -15,7 +15,7 @@ Tests edge cases and error handling including:
 import os
 import sys
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -35,24 +35,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def setUp(self):
         """
-        Reset global state in mmrelay.meshtastic_utils before each test to ensure test isolation.
-        """
-        # Reset global state
-        import mmrelay.meshtastic_utils
-
-        mmrelay.meshtastic_utils.meshtastic_client = None
-        mmrelay.meshtastic_utils.reconnecting = False
-        mmrelay.meshtastic_utils.config = None
-        mmrelay.meshtastic_utils.matrix_rooms = []
-        mmrelay.meshtastic_utils.shutting_down = False
-        mmrelay.meshtastic_utils.event_loop = None
-        mmrelay.meshtastic_utils.reconnect_task = None
-        mmrelay.meshtastic_utils.subscribed_to_messages = False
-        mmrelay.meshtastic_utils.subscribed_to_connection_lost = False
-
-    def tearDown(self):
-        """
-        Reset global state variables in mmrelay.meshtastic_utils after each test to ensure test isolation.
+        Resets global state variables in mmrelay.meshtastic_utils to ensure each test runs in isolation.
         """
         # Reset global state
         import mmrelay.meshtastic_utils
@@ -69,7 +52,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_serial_port_exists_permission_error(self):
         """
-        Test that serial_port_exists returns False when a PermissionError occurs due to denied access to the serial port.
+        Test that serial_port_exists returns False when access to the serial port is denied due to a PermissionError.
         """
         with patch("serial.Serial", side_effect=PermissionError("Permission denied")):
             result = serial_port_exists("/dev/ttyUSB0")
@@ -97,7 +80,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_connect_meshtastic_serial_connection_timeout(self):
         """
-        Verifies that connect_meshtastic returns None and logs an error when a serial connection attempt times out.
+        Test that connect_meshtastic returns None and logs an error when a serial connection attempt results in a timeout.
         """
         config = {
             "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"}
@@ -108,16 +91,18 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
                 "mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface",
                 side_effect=TimeoutError("Connection timeout"),
             ):
-                with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
+                with patch("mmrelay.meshtastic_utils.logger") as mock_logger, patch(
+                    "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
+                ), patch("mmrelay.matrix_utils.matrix_client", None):
                     result = connect_meshtastic(config)
                     self.assertIsNone(result)
                     mock_logger.error.assert_called()
 
     def test_connect_meshtastic_ble_device_not_found(self):
         """
-        Test that connect_meshtastic returns None and logs an error when a BLE device is not found.
+        Test that connect_meshtastic returns None and logs an error when a BLE device is unavailable.
 
-        Simulates a BLE connection attempt where the device is unavailable, verifying graceful failure and error logging.
+        Simulates a BLE connection attempt where the device cannot be found, verifying that connect_meshtastic handles the error gracefully and logs the failure.
         """
         config = {
             "meshtastic": {"connection_type": "ble", "ble_address": "00:11:22:33:44:55"}
@@ -128,7 +113,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
             side_effect=ConnectionRefusedError("Device not found"),
         ):
             with patch("time.sleep"):  # Speed up test
-                with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
+                with patch("mmrelay.meshtastic_utils.logger") as mock_logger, patch(
+                    "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
+                ), patch("mmrelay.matrix_utils.matrix_client", None):
                     result = connect_meshtastic(config)
                     self.assertIsNone(result)
                     mock_logger.error.assert_called()
@@ -202,7 +189,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_on_meshtastic_message_plugin_processing_failure(self):
         """
-        Verify that on_meshtastic_message logs an error when a plugin raises an exception during message processing.
+        Test that on_meshtastic_message logs an error when a plugin raises an exception during message processing.
         """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
@@ -212,20 +199,22 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
         mock_interface = MagicMock()
 
-        with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins:
+        with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins, patch(
+            "mmrelay.meshtastic_utils._submit_coro"
+        ) as mock_submit_coro, patch("mmrelay.meshtastic_utils.logger") as mock_logger:
             mock_plugin = MagicMock()
-            mock_plugin.handle_meshtastic_message.side_effect = Exception(
-                "Plugin failed"
+            mock_plugin.handle_meshtastic_message = AsyncMock(
+                side_effect=Exception("Plugin failed")
             )
             mock_load_plugins.return_value = [mock_plugin]
+            mock_submit_coro.side_effect = Exception("Plugin failed")
 
-            with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
-                on_meshtastic_message(packet, mock_interface)
-                mock_logger.error.assert_called()
+            on_meshtastic_message(packet, mock_interface)
+            mock_logger.error.assert_called()
 
     def test_on_meshtastic_message_matrix_relay_failure(self):
         """
-        Verify that on_meshtastic_message logs an error when the Matrix relay integration fails during message processing.
+        Tests that on_meshtastic_message logs an error when the Matrix relay integration raises an exception during message processing.
         """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
@@ -242,20 +231,23 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
             {"id": "!room:matrix.org", "meshtastic_channel": 0}
         ]
 
-        with patch("mmrelay.plugin_loader.load_plugins", return_value=[]):
-            with patch(
-                "mmrelay.matrix_utils.matrix_relay",
-                side_effect=Exception("Matrix relay failed"),
-            ):
-                with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
-                    on_meshtastic_message(packet, mock_interface)
-                    mock_logger.error.assert_called()
+        with patch("mmrelay.plugin_loader.load_plugins", return_value=[]), patch(
+            "mmrelay.meshtastic_utils._submit_coro"
+        ) as mock_submit_coro, patch(
+            "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
+        ) as mock_matrix_relay, patch(
+            "mmrelay.meshtastic_utils.logger"
+        ) as mock_logger:
+            mock_submit_coro.side_effect = Exception("Matrix relay failed")
+            mock_matrix_relay.side_effect = Exception("Matrix relay failed")
+            on_meshtastic_message(packet, mock_interface)
+            mock_logger.error.assert_called()
 
     def test_on_meshtastic_message_database_error(self):
         """
-        Test that on_meshtastic_message handles database errors gracefully during message processing.
+        Verify that on_meshtastic_message handles exceptions from database utility functions without raising unhandled errors.
 
-        Simulates a failure in the database utility function when processing a Meshtastic message and verifies that no unhandled exceptions occur.
+        Simulates a database error during message processing and ensures the function completes gracefully.
         """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
@@ -274,22 +266,29 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_on_lost_meshtastic_connection_reconnection_failure(self):
         """
-        Verifies that on_lost_meshtastic_connection logs an error when reconnection fails.
+        Test that on_lost_meshtastic_connection logs an error when reconnection attempts fail.
+
+        Simulates a failed reconnection by patching connect_meshtastic to return None and verifies that an error is logged.
         """
         mock_interface = MagicMock()
 
-        with patch("mmrelay.meshtastic_utils.connect_meshtastic", return_value=None):
-            with patch("time.sleep"):  # Speed up test
-                with patch("mmrelay.meshtastic_utils.logger") as mock_logger:
-                    with patch(
-                        "mmrelay.meshtastic_utils.event_loop", None
-                    ):  # Prevent async reconnect
-                        on_lost_meshtastic_connection(mock_interface)
-                        mock_logger.error.assert_called()
+        with patch(
+            "mmrelay.meshtastic_utils.connect_meshtastic", return_value=None
+        ), patch("time.sleep"), patch(
+            "mmrelay.meshtastic_utils.logger"
+        ) as mock_logger, patch(
+            "mmrelay.meshtastic_utils._submit_coro"
+        ) as mock_submit_coro:
+            # Prevent async reconnect
+            mock_submit_coro.return_value = None
+            on_lost_meshtastic_connection(mock_interface)
+            mock_logger.error.assert_called()
 
     def test_on_lost_meshtastic_connection_detection_source_edge_cases(self):
         """
-        Test that on_lost_meshtastic_connection gracefully handles various invalid or unusual detection_source values without raising exceptions.
+        Test that on_lost_meshtastic_connection handles invalid or unusual detection_source values without raising exceptions.
+
+        Verifies that the function does not fail when provided with unexpected detection_source inputs such as unknown strings, None, invalid types, or empty strings.
         """
         mock_interface = MagicMock()
 
@@ -395,9 +394,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_on_meshtastic_message_large_node_list(self):
         """
-        Verifies that on_meshtastic_message can process a packet when the interface contains a very large node list without crashing.
-
-        This test ensures robustness and scalability of message handling with extensive node data.
+        Tests that on_meshtastic_message can handle processing a packet when the interface contains a very large number of nodes, ensuring the function does not crash or fail due to scalability issues.
         """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
@@ -418,7 +415,28 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
             }
         mock_interface.nodes = large_nodes
 
-        with patch("mmrelay.meshtastic_utils.logger"):
+        from concurrent.futures import Future
+
+        def _done_future(*args, **kwargs):
+            """
+            Return a completed Future with a result of None.
+
+            This utility function is typically used to simulate an already-finished asynchronous operation in tests.
+            """
+            f = Future()
+            f.set_result(None)
+            return f
+
+        with patch("mmrelay.meshtastic_utils.logger"), patch(
+            "mmrelay.meshtastic_utils._submit_coro"
+        ) as mock_submit_coro, patch(
+            "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
+        ), patch(
+            "mmrelay.matrix_utils.matrix_client", None
+        ), patch(
+            "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
+        ):
+            mock_submit_coro.side_effect = _done_future
             # Should handle large node lists without crashing
             on_meshtastic_message(packet, mock_interface)
 

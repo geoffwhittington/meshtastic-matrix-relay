@@ -261,21 +261,39 @@ class TestImageUploadAndSend(unittest.TestCase):
     """Test cases for image upload and sending functionality."""
 
     def setUp(self):
-        """Set up test fixtures."""
-        self.mock_client = AsyncMock()
+        """
+        Prepare MagicMock and AsyncMock instances for client, image, and upload response used in image upload and send tests.
+        """
+        # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+        self.mock_client = MagicMock()
+        self.mock_client.upload = AsyncMock()
+        self.mock_client.room_send = AsyncMock()
         self.mock_image = MagicMock()
         self.mock_upload_response = MagicMock()
         self.mock_upload_response.content_uri = "mxc://example.com/test123"
 
+    def tearDown(self):
+        """
+        Reset mocks and clear references to prevent cross-test contamination and coroutine warnings after each test.
+        """
+        # Reset AsyncMock instances to prevent test pollution
+        # Don't call .close() as it creates coroutines that need to be awaited
+        self.mock_client.upload.reset_mock()
+        self.mock_client.room_send.reset_mock()
+        # Clear references to prevent pollution
+        self.mock_client = None
+        self.mock_image = None
+        self.mock_upload_response = None
+
     def test_upload_image(self):
         """
-        Test that the image upload function correctly saves the image to a buffer, uploads it using the client, and returns the upload response.
+        Asynchronously tests that the image upload function saves an image to a buffer, uploads it via the client, and returns the correct upload response.
         """
 
         async def run_test():
             # Mock image save
             """
-            Asynchronously tests the upload_image function to ensure it uploads an image using the client and returns the expected upload response.
+            Asynchronously tests that the upload_image function uploads an image using the client and returns the correct upload response.
             """
             mock_buffer = MagicMock()
             mock_buffer.getvalue.return_value = b"fake_image_data"
@@ -286,24 +304,24 @@ class TestImageUploadAndSend(unittest.TestCase):
                 result = await upload_image(self.mock_client, self.mock_image)
 
                 self.assertEqual(result, self.mock_upload_response)
-                self.mock_client.upload.assert_called_once()
+                self.mock_client.upload.assert_awaited_once()
 
         asyncio.run(run_test())
 
     def test_send_room_image(self):
         """
-        Test that send_room_image sends an image message to the specified room with the correct content using the client.
+        Asynchronously verifies that an image message is sent to the specified Matrix room with the correct content using the client.
         """
 
         async def run_test():
             """
-            Asynchronously tests that an image is sent to a Matrix room with the correct message content.
+            Asynchronously verifies that an image message is sent to a Matrix room with the expected content and parameters.
             """
             room_id = "!test:example.com"
 
             await send_room_image(self.mock_client, room_id, self.mock_upload_response)
 
-            self.mock_client.room_send.assert_called_once_with(
+            self.mock_client.room_send.assert_awaited_once_with(
                 room_id=room_id,
                 message_type="m.room.message",
                 content={
@@ -319,24 +337,24 @@ class TestImageUploadAndSend(unittest.TestCase):
     @patch("mmrelay.plugins.map_plugin.send_room_image")
     def test_send_image(self, mock_send_room_image, mock_upload_image):
         """
-        Test that the image sending workflow uploads an image and sends it to the specified room.
+        Test that the image sending workflow uploads an image and sends it to a room.
 
-        Verifies that `upload_image` is called with the correct client and image, and that `send_room_image` is called with the resulting upload response.
+        Verifies that `upload_image` is awaited with the correct client and image, and that `send_room_image` is awaited with the resulting upload response.
         """
 
         async def run_test():
             """
-            Asynchronously tests the image sending workflow by verifying that image upload and room image sending functions are called with the correct arguments.
+            Asynchronously verifies that the image upload and room image sending functions are called with the expected arguments during the image sending workflow.
             """
             room_id = "!test:example.com"
             mock_upload_image.return_value = self.mock_upload_response
 
             await send_image(self.mock_client, room_id, self.mock_image)
 
-            mock_upload_image.assert_called_once_with(
+            mock_upload_image.assert_awaited_once_with(
                 client=self.mock_client, image=self.mock_image
             )
-            mock_send_room_image.assert_called_once_with(
+            mock_send_room_image.assert_awaited_once_with(
                 self.mock_client, room_id, upload_response=self.mock_upload_response
             )
 
@@ -348,7 +366,9 @@ class TestMapPlugin(unittest.TestCase):
 
     def setUp(self):
         """
-        Initializes a Plugin instance and sets its configuration for use in tests.
+        Set up a Plugin instance with predefined configuration for testing.
+
+        Initializes the Plugin and assigns test-specific configuration values for zoom, image size, anonymization, and radius.
         """
         self.plugin = Plugin()
         self.plugin.config = {
@@ -359,9 +379,18 @@ class TestMapPlugin(unittest.TestCase):
             "radius": 2000,
         }
 
+    def tearDown(self):
+        """
+        Clean up test fixtures after each test to prevent cross-test contamination.
+
+        Resets the plugin instance to ensure that no lingering references or mocks persist between tests.
+        """
+        # Clean up any references that might hold AsyncMock instances
+        self.plugin = None
+
     def test_plugin_name(self):
         """
-        Test that the plugin_name property returns the expected value "map".
+        Verify that the plugin_name property returns "map".
         """
         self.assertEqual(self.plugin.plugin_name, "map")
 
@@ -402,12 +431,12 @@ class TestMapPlugin(unittest.TestCase):
 
     def test_get_mesh_commands(self):
         """
-        Test that the plugin returns an empty list for mesh commands.
+        Test that the plugin's get_mesh_commands method returns an empty list.
         """
         commands = self.plugin.get_mesh_commands()
         self.assertEqual(commands, [])
 
-    @patch("mmrelay.plugins.map_plugin.send_image")
+    @patch("mmrelay.plugins.map_plugin.send_image", new_callable=AsyncMock)
     @patch("mmrelay.plugins.map_plugin.get_map")
     @patch("mmrelay.meshtastic_utils.connect_meshtastic")
     @patch("mmrelay.matrix_utils.connect_matrix")
@@ -419,24 +448,26 @@ class TestMapPlugin(unittest.TestCase):
         mock_send_image,
     ):
         """
-        Test that the plugin correctly handles a basic "!map" command in a Matrix room message.
+        Asynchronously tests that the plugin processes a "!map" Matrix room message by generating a map image and sending it to the room.
 
-        Verifies that the map is generated and sent when the command matches, and that the appropriate methods are called with the expected arguments.
+        Verifies that the map is generated using node positions and that the image is sent to the correct Matrix room when the command matches.
         """
 
         async def run_test():
             # Setup mocks
             """
-            Asynchronously tests that the plugin handles a "!map" room message by generating a map and sending the resulting image.
+            Asynchronously tests that the plugin processes a "!map" room message by generating a map image and sending it to the Matrix room.
 
-            This test verifies that when a "!map" command is received, the plugin correctly matches the command, generates a map image using node positions, and sends the image to the specified Matrix room.
+            This test ensures that when a "!map" command is received, the plugin matches the command, generates a map using node positions, and sends the resulting image to the correct Matrix room.
             """
             mock_room = MagicMock()
             mock_room.room_id = "!test:example.com"
             mock_event = MagicMock()
             mock_event.body = "!map"
 
-            mock_matrix_client = AsyncMock()
+            # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+            mock_matrix_client = MagicMock()
+            mock_matrix_client.room_send = AsyncMock()
             mock_connect_matrix.return_value = mock_matrix_client
 
             mock_meshtastic_client = MagicMock()
@@ -465,7 +496,7 @@ class TestMapPlugin(unittest.TestCase):
 
         asyncio.run(run_test())
 
-    @patch("mmrelay.plugins.map_plugin.send_image")
+    @patch("mmrelay.plugins.map_plugin.send_image", new_callable=AsyncMock)
     @patch("mmrelay.plugins.map_plugin.get_map")
     @patch("mmrelay.meshtastic_utils.connect_meshtastic")
     @patch("mmrelay.matrix_utils.connect_matrix")
@@ -477,23 +508,25 @@ class TestMapPlugin(unittest.TestCase):
         mock_send_image,
     ):
         """
-        Test that the plugin correctly handles a "!map" command with a specified zoom parameter.
+        Test that the plugin processes a "!map" command with a specified zoom parameter and passes it to map generation.
 
-        Verifies that when a room message includes "zoom=15", the plugin parses the zoom value and passes it to the map generation function.
+        This test mocks Matrix and Meshtastic clients, simulates a room message containing "zoom=15", and verifies that the map generation function receives the correct zoom value. It asserts that the plugin's message handler returns True, indicating the command was handled.
         """
 
         async def run_test():
             """
-            Asynchronously tests that the plugin handles a "!map zoom=15" command by generating a map with the specified zoom level.
+            Asynchronously tests that the plugin processes a "!map zoom=15" command by generating a map with the specified zoom level and confirms the handler returns True.
 
-            This test mocks the Matrix and Meshtastic clients, simulates a room message event, and verifies that the map generation function is called with the correct zoom parameter. It asserts that the plugin's message handler returns True, indicating successful handling.
+            This test mocks Matrix and Meshtastic clients, simulates a room message event, and verifies that the map generation function receives the correct zoom parameter.
             """
             mock_room = MagicMock()
             mock_room.room_id = "!test:example.com"
             mock_event = MagicMock()
             mock_event.body = "!map zoom=15"
 
-            mock_matrix_client = AsyncMock()
+            # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+            mock_matrix_client = MagicMock()
+            mock_matrix_client.room_send = AsyncMock()
             mock_connect_matrix.return_value = mock_matrix_client
 
             mock_meshtastic_client = MagicMock()
@@ -515,7 +548,7 @@ class TestMapPlugin(unittest.TestCase):
 
         asyncio.run(run_test())
 
-    @patch("mmrelay.plugins.map_plugin.send_image")
+    @patch("mmrelay.plugins.map_plugin.send_image", new_callable=AsyncMock)
     @patch("mmrelay.plugins.map_plugin.get_map")
     @patch("mmrelay.meshtastic_utils.connect_meshtastic")
     @patch("mmrelay.matrix_utils.connect_matrix")
@@ -527,21 +560,25 @@ class TestMapPlugin(unittest.TestCase):
         mock_send_image,
     ):
         """
-        Tests that the map plugin correctly handles the "!map" command with a custom image size parameter, ensuring the generated map uses the specified dimensions.
+        Tests that the plugin processes a "!map" command with a custom image size, ensuring the generated map uses the specified dimensions.
+
+        This test verifies that when a user specifies an image size (e.g., "!map size=500,400"), the map generation function receives the correct `image_size` parameter and the plugin returns True.
         """
 
         async def run_test():
             """
-            Asynchronously tests that the plugin handles a "!map size=500,400" command by generating a map image with the specified size and returns True.
+            Asynchronously tests that the plugin processes a "!map size=500,400" command by generating a map image with the specified size and returns True.
 
-            This test verifies that the `get_map` function is called with the correct `image_size` parameter when the command includes a custom size.
+            Verifies that the `get_map` function receives the correct `image_size` parameter when a custom size is provided in the command.
             """
             mock_room = MagicMock()
             mock_room.room_id = "!test:example.com"
             mock_event = MagicMock()
             mock_event.body = "!map size=500,400"
 
-            mock_matrix_client = AsyncMock()
+            # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+            mock_matrix_client = MagicMock()
+            mock_matrix_client.room_send = AsyncMock()
             mock_connect_matrix.return_value = mock_matrix_client
 
             mock_meshtastic_client = MagicMock()
@@ -566,6 +603,8 @@ class TestMapPlugin(unittest.TestCase):
     def test_handle_room_message_no_match(self):
         """
         Test that handle_room_message returns False when the message does not match the map command.
+
+        Verifies that the plugin's handle_room_message method returns False if the incoming message does not correspond to the map command.
         """
 
         async def run_test():
@@ -585,7 +624,7 @@ class TestMapPlugin(unittest.TestCase):
 
         asyncio.run(run_test())
 
-    @patch("mmrelay.plugins.map_plugin.send_image")
+    @patch("mmrelay.plugins.map_plugin.send_image", new_callable=AsyncMock)
     @patch("mmrelay.plugins.map_plugin.get_map")
     @patch("mmrelay.meshtastic_utils.connect_meshtastic")
     @patch("mmrelay.matrix_utils.connect_matrix")
@@ -597,23 +636,25 @@ class TestMapPlugin(unittest.TestCase):
         mock_send_image,
     ):
         """
-        Test that the plugin resets an invalid zoom parameter to the default value when handling a map command.
+        Test that an invalid zoom parameter in a map command is reset to the default value during room message handling.
 
-        Verifies that when a map command with an out-of-range zoom value is received, the plugin uses the default zoom (8) for map generation.
+        Simulates receiving a "!map zoom=50" command and verifies that the map generation function is called with the default zoom level (8) instead of the invalid value.
         """
 
         async def run_test():
             """
             Asynchronously tests that an invalid zoom parameter in the "!map" command is reset to the default value when handling a room message.
 
-            The test mocks Matrix and Meshtastic clients, simulates a "!map zoom=50" command, and verifies that the map generation function is called with the default zoom level (8) instead of the invalid value.
+            Simulates a "!map zoom=50" command and verifies that the map generation function receives the default zoom level (8) instead of the invalid value.
             """
             mock_room = MagicMock()
             mock_room.room_id = "!test:example.com"
             mock_event = MagicMock()
             mock_event.body = "!map zoom=50"  # Invalid zoom > 30
 
-            mock_matrix_client = AsyncMock()
+            # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+            mock_matrix_client = MagicMock()
+            mock_matrix_client.room_send = AsyncMock()
             mock_connect_matrix.return_value = mock_matrix_client
 
             mock_meshtastic_client = MagicMock()
@@ -635,7 +676,7 @@ class TestMapPlugin(unittest.TestCase):
 
         asyncio.run(run_test())
 
-    @patch("mmrelay.plugins.map_plugin.send_image")
+    @patch("mmrelay.plugins.map_plugin.send_image", new_callable=AsyncMock)
     @patch("mmrelay.plugins.map_plugin.get_map")
     @patch("mmrelay.meshtastic_utils.connect_meshtastic")
     @patch("mmrelay.matrix_utils.connect_matrix")
@@ -647,23 +688,25 @@ class TestMapPlugin(unittest.TestCase):
         mock_send_image,
     ):
         """
-        Test that the map command with oversized image size parameters results in the image size being capped at 1000x1000 pixels.
+        Tests that the plugin caps oversized image size parameters to 1000x1000 pixels when handling a "!map" command in a room message.
 
-        Verifies that when a user requests an image size exceeding the allowed maximum, the plugin enforces the size limit before generating the map.
+        Ensures that if a user requests an image larger than the allowed maximum, the plugin enforces the size limit before generating and sending the map image.
         """
 
         async def run_test():
             """
-            Test that oversized image size parameters in the "!map" command are capped at the maximum allowed dimensions when handling a room message.
+            Asynchronously tests that the plugin caps oversized image size parameters in the "!map" command to the maximum allowed dimensions when handling a room message.
 
-            Asserts that the plugin processes the command, generates a map image with the capped size, and returns True.
+            Verifies that the map is generated with the capped image size and that the command is processed successfully.
             """
             mock_room = MagicMock()
             mock_room.room_id = "!test:example.com"
             mock_event = MagicMock()
             mock_event.body = "!map size=2000,1500"  # Oversized
 
-            mock_matrix_client = AsyncMock()
+            # Use MagicMock instead of AsyncMock to prevent coroutine warnings
+            mock_matrix_client = MagicMock()
+            mock_matrix_client.room_send = AsyncMock()
             mock_connect_matrix.return_value = mock_matrix_client
 
             mock_meshtastic_client = MagicMock()
