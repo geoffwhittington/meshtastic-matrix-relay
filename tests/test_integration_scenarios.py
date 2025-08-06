@@ -268,7 +268,11 @@ class TestIntegrationScenarios(unittest.TestCase):
             with patch("mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock):
                 with patch("mmrelay.meshtastic_utils._submit_coro") as mock_submit_coro:
                     from concurrent.futures import Future
-                    def _done_future(*args, **kwargs):
+                    import inspect
+                    def _done_future(coro, *args, **kwargs):
+                        # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
+                        if inspect.iscoroutine(coro):
+                            coro.close()
                         f = Future()
                         f.set_result(None)
                         return f

@@ -337,8 +337,12 @@ class TestMeshtasticUtils(unittest.TestCase):
         config_no_broadcast["meshtastic"]["broadcast_enabled"] = False
 
         from concurrent.futures import Future
+        import inspect
 
-        def _done_future(*args, **kwargs):
+        def _done_future(coro, *args, **kwargs):
+            # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
+            if inspect.iscoroutine(coro):
+                coro.close()
             f = Future()
             f.set_result(None)
             return f
@@ -708,24 +712,34 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
             # No 'decoded' field
         }
 
+        from concurrent.futures import Future
+        import inspect
+
+        def _done_future(coro, *args, **kwargs):
+            # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
+            if inspect.iscoroutine(coro):
+                coro.close()
+            f = Future()
+            f.set_result(None)
+            return f
+
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
         ), patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
-        ) as mock_run_coro, patch(
+            "mmrelay.meshtastic_utils._submit_coro"
+        ) as mock_submit_coro, patch(
             "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
         ), patch(
             "mmrelay.matrix_utils.matrix_client", None
-        ), patch(
-            "mmrelay.meshtastic_utils.event_loop", MagicMock()
         ):
 
+            mock_submit_coro.side_effect = _done_future
             mock_interface = MagicMock()
 
             on_meshtastic_message(packet, mock_interface)
 
             # Should not process message without decoded field
-            mock_run_coro.assert_not_called()
+            mock_submit_coro.assert_not_called()
 
     def test_on_meshtastic_message_empty_text(self):
         """
@@ -740,18 +754,30 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
             "rxTime": 1234567890,
         }
 
+        from concurrent.futures import Future
+        import inspect
+
+        def _done_future(coro, *args, **kwargs):
+            # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
+            if inspect.iscoroutine(coro):
+                coro.close()
+            f = Future()
+            f.set_result(None)
+            return f
+
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
         ), patch(
-            "mmrelay.meshtastic_utils.asyncio.run_coroutine_threadsafe"
-        ) as mock_run_coro:
+            "mmrelay.meshtastic_utils._submit_coro"
+        ) as mock_submit_coro:
 
+            mock_submit_coro.side_effect = _done_future
             mock_interface = MagicMock()
 
             on_meshtastic_message(packet, mock_interface)
 
             # Should not process empty text messages
-            mock_run_coro.assert_not_called()
+            mock_submit_coro.assert_not_called()
 
 
 # Meshtastic connection retry tests - converted from unittest.TestCase to standalone pytest functions

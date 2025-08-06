@@ -16,7 +16,7 @@ import asyncio
 import os
 import sys
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -263,8 +263,8 @@ class TestMain(unittest.TestCase):
     @patch("mmrelay.main.initialize_database")
     @patch("mmrelay.main.load_plugins")
     @patch("mmrelay.main.start_message_queue")
-    @patch("mmrelay.main.connect_matrix")
-    @patch("mmrelay.main.join_matrix_room")
+    @patch("mmrelay.main.connect_matrix", new_callable=AsyncMock)
+    @patch("mmrelay.main.join_matrix_room", new_callable=AsyncMock)
     @patch("mmrelay.main.stop_message_queue")
     def test_main_meshtastic_connection_failure(
         self,
@@ -300,7 +300,7 @@ class TestMain(unittest.TestCase):
     @patch("mmrelay.main.load_plugins")
     @patch("mmrelay.main.start_message_queue")
     @patch("mmrelay.main.connect_meshtastic")
-    @patch("mmrelay.main.connect_matrix")
+    @patch("mmrelay.main.connect_matrix", new_callable=AsyncMock)
     @patch("mmrelay.main.stop_message_queue")
     def test_main_matrix_connection_failure(
         self,
