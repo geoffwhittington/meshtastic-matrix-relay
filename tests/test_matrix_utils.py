@@ -889,6 +889,7 @@ async def test_connect_matrix_whoami_error(matrix_config):
         mock_client_instance = MagicMock()
         mock_client_instance.sync = AsyncMock()  # Add missing sync method
         mock_client_instance.rooms = {}  # Add missing rooms attribute
+        mock_client_instance.device_id = None  # Set device_id to None for this test
         mock_client_instance.whoami = AsyncMock()
         mock_client_instance.get_displayname = AsyncMock()
         mock_async_client.return_value = mock_client_instance
