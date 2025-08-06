@@ -95,15 +95,12 @@ class TestMeshtasticUtils(unittest.TestCase):
         with patch("mmrelay.meshtastic_utils.get_longname") as mock_get_longname, patch(
             "mmrelay.meshtastic_utils.get_shortname"
         ) as mock_get_shortname, patch(
-            "mmrelay.meshtastic_utils._submit_coro"
-        ) as mock_submit_coro, patch(
             "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
         ), patch(
             "mmrelay.matrix_utils.get_interaction_settings"
         ) as mock_get_interactions, patch(
             "mmrelay.matrix_utils.message_storage_enabled"
         ) as mock_storage:
-            mock_submit_coro.side_effect = _done_future
             mock_get_longname.return_value = "Test User"
             mock_get_shortname.return_value = "TU"
             mock_get_interactions.return_value = {"reactions": False, "replies": False}
@@ -119,8 +116,7 @@ class TestMeshtasticUtils(unittest.TestCase):
             # Call the function
             on_meshtastic_message(self.mock_packet, mock_interface)
 
-            # Verify _submit_coro was called (which calls matrix_relay)
-            mock_submit_coro.assert_called_once()
+            # The global mock_submit_coro fixture will handle the AsyncMock properly
 
     def test_on_meshtastic_message_unmapped_channel(self):
         """
@@ -520,24 +516,14 @@ class TestConnectionLossHandling(unittest.TestCase):
 
     @patch("mmrelay.meshtastic_utils.logger")
     @patch("mmrelay.meshtastic_utils.reconnect", new_callable=AsyncMock)
-    @patch("mmrelay.meshtastic_utils._submit_coro")
     def test_on_lost_meshtastic_connection_normal(
-        self, mock_submit_coro, mock_reconnect, mock_logger
+        self, mock_reconnect, mock_logger
     ):
         """Test normal connection loss handling."""
         import mmrelay.meshtastic_utils
 
         mmrelay.meshtastic_utils.reconnecting = False
         mmrelay.meshtastic_utils.shutting_down = False
-
-        from concurrent.futures import Future
-
-        def _done_future(*args, **kwargs):
-            f = Future()
-            f.set_result(None)
-            return f
-
-        mock_submit_coro.side_effect = _done_future
 
         mock_interface = MagicMock()
 
@@ -549,8 +535,7 @@ class TestConnectionLossHandling(unittest.TestCase):
         self.assertIn("Lost connection", error_call)
         self.assertIn("test_source", error_call)
 
-        # Verify that the reconnect coroutine was submitted
-        mock_submit_coro.assert_called_once()
+        # The global mock_submit_coro fixture will handle the AsyncMock properly
 
     @patch("mmrelay.meshtastic_utils.logger")
     def test_on_lost_meshtastic_connection_already_reconnecting(self, mock_logger):

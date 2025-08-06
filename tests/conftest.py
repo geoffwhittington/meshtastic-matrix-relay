@@ -308,11 +308,7 @@ def cleanup_asyncmock_objects(request):
 
     if any(pattern in test_file for pattern in asyncmock_patterns):
         import gc
-        import warnings
-        # Suppress AsyncMock warnings during cleanup
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message=".*coroutine.*never awaited.*")
-            gc.collect()
+        gc.collect()
 
 
 @pytest.fixture(autouse=True)

@@ -514,42 +514,31 @@ plugins:
                                 with patch(
                                     "mmrelay.matrix_utils.message_storage_enabled"
                                 ):
-                                    with patch(
-                                        "mmrelay.meshtastic_utils._submit_coro"
-                                    ) as mock_submit_coro:
-                                        from concurrent.futures import Future
+                                    # Set up global state
+                                    import asyncio
 
-                                        def _done_future(*args, **kwargs):
-                                            f = Future()
-                                            f.set_result(None)
-                                            return f
+                                    import mmrelay.meshtastic_utils
 
-                                        mock_submit_coro.side_effect = _done_future
+                                    mmrelay.meshtastic_utils.config = config
+                                    mmrelay.meshtastic_utils.matrix_rooms = config[
+                                        "matrix_rooms"
+                                    ]
 
-                                        # Set up global state
-                                        import asyncio
+                                    # Create and set event loop
+                                    try:
+                                        loop = asyncio.get_event_loop()
+                                    except RuntimeError:
+                                        loop = asyncio.new_event_loop()
+                                        asyncio.set_event_loop(loop)
+                                    mmrelay.meshtastic_utils.event_loop = loop
 
-                                        import mmrelay.meshtastic_utils
+                                    on_meshtastic_message(packet, mock_interface)
 
-                                        mmrelay.meshtastic_utils.config = config
-                                        mmrelay.meshtastic_utils.matrix_rooms = config[
-                                            "matrix_rooms"
-                                        ]
-
-                                        # Create and set event loop
-                                        try:
-                                            loop = asyncio.get_event_loop()
-                                        except RuntimeError:
-                                            loop = asyncio.new_event_loop()
-                                            asyncio.set_event_loop(loop)
-                                        mmrelay.meshtastic_utils.event_loop = loop
-
-                                        on_meshtastic_message(packet, mock_interface)
-
-                                        # Should be called for each matching room
-                                        self.assertEqual(
-                                            mock_matrix_relay.call_count, 2
-                                        )
+                                    # Should be called for each matching room
+                                    # The global mock_submit_coro fixture will handle the AsyncMock properly
+                                    self.assertEqual(
+                                        mock_matrix_relay.call_count, 2
+                                    )
 
     def test_service_lifecycle_simulation(self):
         """
