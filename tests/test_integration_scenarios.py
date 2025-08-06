@@ -266,16 +266,13 @@ class TestIntegrationScenarios(unittest.TestCase):
 
         with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins:
             with patch("mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock):
-                with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
-
-                    def mock_run_coro(coro, loop):
-                        try:
-                            loop = asyncio.get_running_loop()
-                        except RuntimeError:
-                            loop = asyncio.new_event_loop()
-                        return loop.run_until_complete(coro)
-
-                    mock_run_coroutine.side_effect = mock_run_coro
+                with patch("mmrelay.meshtastic_utils._submit_coro") as mock_submit_coro:
+                    from concurrent.futures import Future
+                    def _done_future(*args, **kwargs):
+                        f = Future()
+                        f.set_result(None)
+                        return f
+                    mock_submit_coro.side_effect = _done_future
 
                     # Return plugins in random order (should be sorted by priority)
                     mock_load_plugins.return_value = [
