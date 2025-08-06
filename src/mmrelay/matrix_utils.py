@@ -29,6 +29,15 @@ from PIL import Image
 
 from mmrelay.config import get_base_dir, get_e2ee_store_dir, save_credentials
 from mmrelay.constants.app import MATRIX_DEVICE_NAME
+from mmrelay.constants.config import (
+    CONFIG_SECTION_MATRIX,
+)
+from mmrelay.constants.database import DEFAULT_MSGS_TO_KEEP
+from mmrelay.constants.formats import (
+    DEFAULT_MATRIX_PREFIX,
+    DEFAULT_MESHTASTIC_PREFIX,
+    DETECTION_SENSOR_APP,
+)
 from mmrelay.constants.messages import (
     DEFAULT_MESSAGE_TRUNCATE_BYTES,
     DISPLAY_NAME_DEFAULT_LENGTH,
@@ -42,17 +51,8 @@ from mmrelay.constants.network import (
     MATRIX_EARLY_SYNC_TIMEOUT,
     MATRIX_MAIN_SYNC_TIMEOUT,
     MATRIX_ROOM_SEND_TIMEOUT,
+    MILLISECONDS_PER_SECOND,
 )
-from mmrelay.constants.config import (
-    CONFIG_SECTION_MATRIX,
-)
-from mmrelay.constants.database import DEFAULT_MSGS_TO_KEEP
-from mmrelay.constants.formats import (
-    DEFAULT_MATRIX_PREFIX,
-    DEFAULT_MESHTASTIC_PREFIX,
-    DETECTION_SENSOR_APP,
-)
-from mmrelay.constants.network import MILLISECONDS_PER_SECOND
 from mmrelay.db_utils import (
     get_message_map_by_matrix_event_id,
     prune_message_map,
@@ -170,7 +170,9 @@ def _add_truncated_vars(format_vars, prefix, text):
     # Always add truncated variables, even for empty text (to prevent KeyError)
     text = text or ""  # Convert None to empty string
     logger.debug(f"Adding truncated vars for prefix='{prefix}', text='{text}'")
-    for i in range(1, MAX_TRUNCATION_LENGTH + 1):  # Support up to MAX_TRUNCATION_LENGTH chars, always add all variants
+    for i in range(
+        1, MAX_TRUNCATION_LENGTH + 1
+    ):  # Support up to MAX_TRUNCATION_LENGTH chars, always add all variants
         truncated_value = text[:i]
         format_vars[f"{prefix}{i}"] = truncated_value
         if i <= TRUNCATION_LOG_LIMIT:  # Only log first few to avoid spam

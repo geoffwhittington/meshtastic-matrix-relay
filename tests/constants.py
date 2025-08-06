@@ -46,7 +46,9 @@ TEST_JSON_INDENT = 2
 TEST_ROOM_CONFIG = {"meshtastic_channel": TEST_MESHTASTIC_CHANNEL}
 
 # Test matrix rooms configuration
-TEST_MATRIX_ROOMS = [{"id": MOCK_ROOM_ID, "meshtastic_channel": TEST_MESHTASTIC_CHANNEL}]
+TEST_MATRIX_ROOMS = [
+    {"id": MOCK_ROOM_ID, "meshtastic_channel": TEST_MESHTASTIC_CHANNEL}
+]
 
 # Test matrix configuration
 TEST_MATRIX_CONFIG = {"bot_user_id": MOCK_BOT_USER_ID}
