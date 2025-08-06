@@ -49,8 +49,10 @@ from mmrelay.constants.messages import (
 )
 from mmrelay.constants.network import (
     MATRIX_EARLY_SYNC_TIMEOUT,
+    MATRIX_LOGIN_TIMEOUT,
     MATRIX_MAIN_SYNC_TIMEOUT,
     MATRIX_ROOM_SEND_TIMEOUT,
+    MATRIX_SYNC_OPERATION_TIMEOUT,
     MILLISECONDS_PER_SECOND,
 )
 from mmrelay.db_utils import (
@@ -585,12 +587,35 @@ async def connect_matrix(passed_config=None):
 
     # Step 1: Early lightweight sync to initialize rooms and subscriptions
     logger.info("Performing early lightweight sync to initialize rooms...")
-    await matrix_client.sync(timeout=MATRIX_EARLY_SYNC_TIMEOUT)
-    logger.info(f"Early sync completed with {len(matrix_client.rooms)} rooms")
+    try:
+        await asyncio.wait_for(
+            matrix_client.sync(timeout=MATRIX_EARLY_SYNC_TIMEOUT),
+            timeout=MATRIX_SYNC_OPERATION_TIMEOUT
+        )
+        logger.info(f"Early sync completed with {len(matrix_client.rooms)} rooms")
+    except asyncio.TimeoutError:
+        logger.error(f"Early sync timed out after {MATRIX_SYNC_OPERATION_TIMEOUT} seconds")
+        raise
 
     # Retrieve the device_id using whoami() - this is critical for E2EE
-    whoami_response = await matrix_client.whoami()
-    if isinstance(whoami_response, WhoamiError):
+    try:
+        whoami_response = await asyncio.wait_for(
+            matrix_client.whoami(),
+            timeout=MATRIX_LOGIN_TIMEOUT
+        )
+    except asyncio.TimeoutError:
+        logger.error(f"whoami() timed out after {MATRIX_LOGIN_TIMEOUT} seconds")
+        whoami_response = None
+    if whoami_response is None:
+        logger.error("Failed to retrieve device_id: whoami() timed out")
+        if e2ee_enabled:
+            logger.error(
+                "E2EE requires a valid device_id. E2EE may not work correctly."
+            )
+        # Don't reset the device_id to None if we already have one from credentials
+        if not matrix_client.device_id:
+            logger.error("No device_id available. E2EE will not work correctly.")
+    elif isinstance(whoami_response, WhoamiError):
         logger.error(f"Failed to retrieve device_id: {whoami_response.message}")
         if e2ee_enabled:
             logger.error(
@@ -719,7 +744,14 @@ async def connect_matrix(passed_config=None):
 
             # Now perform sync after keys are uploaded
             logger.debug("Performing sync AFTER key upload")
-            await matrix_client.sync(timeout=MATRIX_MAIN_SYNC_TIMEOUT)
+            try:
+                await asyncio.wait_for(
+                    matrix_client.sync(timeout=MATRIX_MAIN_SYNC_TIMEOUT),
+                    timeout=MATRIX_SYNC_OPERATION_TIMEOUT
+                )
+            except asyncio.TimeoutError:
+                logger.error(f"Sync after key upload timed out after {MATRIX_SYNC_OPERATION_TIMEOUT} seconds")
+                # Continue anyway, don't fail completely
 
             # Debug store state after sync
             logger.debug(
@@ -741,7 +773,14 @@ async def connect_matrix(passed_config=None):
             try:
                 # First make sure we have synced to populate the device store
                 logger.debug("Performing sync to populate device store...")
-                await matrix_client.sync(timeout=MATRIX_MAIN_SYNC_TIMEOUT)
+                try:
+                    await asyncio.wait_for(
+                        matrix_client.sync(timeout=MATRIX_MAIN_SYNC_TIMEOUT),
+                        timeout=MATRIX_SYNC_OPERATION_TIMEOUT
+                    )
+                except asyncio.TimeoutError:
+                    logger.error(f"Sync to populate device store timed out after {MATRIX_SYNC_OPERATION_TIMEOUT} seconds")
+                    # Continue anyway, don't fail completely
 
                 # Check if our user_id is in the device_store
                 if (
@@ -902,9 +941,10 @@ async def login_matrix_bot(
         )
 
         # Initialize client with E2EE support
+        # Note: AsyncClient expects user_id format, not username
         client = AsyncClient(
-            homeserver,
-            username,
+            homeserver=homeserver,
+            user=username,  # This should be the full user_id (@user:server)
             device_id=existing_device_id,
             config=client_config,
             ssl=ssl_context,
@@ -913,14 +953,30 @@ async def login_matrix_bot(
 
         logger.info(f"Logging in as {username} to {homeserver}...")
 
-        # Login with consistent device name
+        # Login with consistent device name and timeout
         device_name = MATRIX_DEVICE_NAME
-        if existing_device_id:
-            response = await client.login(
-                password, device_name=device_name, device_id=existing_device_id
-            )
-        else:
-            response = await client.login(password, device_name=device_name)
+        try:
+            if existing_device_id:
+                response = await asyncio.wait_for(
+                    client.login(
+                        password, device_name=device_name, device_id=existing_device_id
+                    ),
+                    timeout=MATRIX_LOGIN_TIMEOUT
+                )
+            else:
+                response = await asyncio.wait_for(
+                    client.login(password, device_name=device_name),
+                    timeout=MATRIX_LOGIN_TIMEOUT
+                )
+        except asyncio.TimeoutError:
+            logger.error(f"Login timed out after {MATRIX_LOGIN_TIMEOUT} seconds")
+            await client.close()
+            return False
+        except Exception as e:
+            # Handle other exceptions during login (e.g., network errors)
+            logger.error(f"Login exception: {e}")
+            await client.close()
+            return False
 
         if hasattr(response, "access_token"):
             logger.info("Login successful!")
@@ -933,6 +989,8 @@ async def login_matrix_bot(
                 "device_id": response.device_id,
             }
 
+            config_dir = get_base_dir()
+            credentials_path = os.path.join(config_dir, "credentials.json")
             save_credentials(credentials)
             logger.info(f"Credentials saved to {credentials_path}")
 
@@ -945,7 +1003,12 @@ async def login_matrix_bot(
             await client.close()
             return True
         else:
+            # Better error logging
             logger.error(f"Login failed: {response}")
+            if hasattr(response, 'message'):
+                logger.error(f"Error message: {response.message}")
+            if hasattr(response, 'status_code'):
+                logger.error(f"Status code: {response.status_code}")
             await client.close()
             return False
 
