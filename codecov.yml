@@ -18,8 +18,8 @@ component_management:
     - component_id: plugins
       name: Plugins
       paths:
-        - plugins/**
-        - plugin_loader.py
+        - src/mmrelay/plugins/**
+        - src/mmrelay/plugin_loader.py
       statuses:
         - type: project
           target: 50%
@@ -27,8 +27,8 @@ component_management:
     - component_id: configuration
       name: Configuration
       paths:
-        - config_checker.py
-        - config.py
+        - src/mmrelay/config_checker.py
+        - src/mmrelay/config.py
       statuses:
         - type: project
           target: 70%
@@ -36,10 +36,10 @@ component_management:
     - component_id: core_utils
       name: Core Utils
       paths:
-        - meshtastic_utils.py
-        - matrix_utils.py
-        - message_queue.py
-        - log_utils.py
+        - src/mmrelay/meshtastic_utils.py
+        - src/mmrelay/matrix_utils.py
+        - src/mmrelay/message_queue.py
+        - src/mmrelay/log_utils.py
       statuses:
         - type: project
           target: 40%
@@ -47,8 +47,8 @@ component_management:
     - component_id: cli_main
       name: CLI & Main
       paths:
-        - main.py
-        - cli.py
+        - src/mmrelay/main.py
+        - src/mmrelay/cli.py
       statuses:
         - type: project
           target: 60%
@@ -56,7 +56,7 @@ component_management:
     - component_id: database
       name: Database
       paths:
-        - db_utils.py
+        - src/mmrelay/db_utils.py
       statuses:
         - type: project
           target: 70%
@@ -64,8 +64,8 @@ component_management:
     - component_id: setup_tools
       name: Setup & Tools
       paths:
-        - setup_utils.py
-        - tools/**
+        - src/mmrelay/setup_utils.py
+        - src/mmrelay/tools/**
       statuses:
         - type: project
           target: 30%
@@ -73,8 +73,8 @@ component_management:
     - component_id: constants
       name: Constants & Init
       paths:
-        - constants/**
-        - __init__.py
+        - src/mmrelay/constants/**
+        - src/mmrelay/__init__.py
       statuses:
         - type: project
           target: 80%
