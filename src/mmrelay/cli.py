@@ -80,9 +80,9 @@ def parse_arguments():
         help="Check if the configuration file is valid",
     )
     parser.add_argument(
-        "--login",
+        "--auth",
         action="store_true",
-        help="Login to Matrix and save credentials for E2EE support",
+        help="Authenticate with Matrix and save credentials for E2EE support",
     )
 
     # Windows-specific handling for backward compatibility
@@ -323,8 +323,8 @@ def main():
             print_version()
             return 0
 
-        # Handle --login
-        if args.login:
+        # Handle --auth
+        if args.auth:
             import asyncio
 
             from mmrelay.matrix_utils import login_matrix_bot
