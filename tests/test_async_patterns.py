@@ -382,6 +382,7 @@ class TestAsyncPatterns(unittest.TestCase):
             mock_client.room_send = AsyncMock(
                 return_value=MagicMock(event_id="$event123")
             )
+            mock_client.rooms = {}  # Add rooms attribute for E2EE compatibility
 
             # Mock room
             mock_room = MagicMock()
@@ -392,18 +393,23 @@ class TestAsyncPatterns(unittest.TestCase):
                     "mmrelay.matrix_utils.matrix_rooms",
                     [{"id": "!room1:matrix.org", "meshtastic_channel": 0}],
                 ):
-                    # Test matrix_relay async operation
-                    await matrix_relay(
-                        room_id="!room1:matrix.org",
-                        message="Test message",
-                        longname="TestNode",
-                        shortname="TN",
-                        meshnet_name="TestMesh",
-                        portnum=1,
-                    )
+                    with patch("mmrelay.matrix_utils.config", {
+                        "matrix": {"enabled": True},
+                        "meshtastic": {"meshnet_name": "TestMesh"}
+                    }):
+                        with patch("mmrelay.matrix_utils.connect_matrix", return_value=mock_client):
+                            # Test matrix_relay async operation
+                            await matrix_relay(
+                                room_id="!room1:matrix.org",
+                                message="Test message",
+                                longname="TestNode",
+                                shortname="TN",
+                                meshnet_name="TestMesh",
+                                portnum=1,
+                            )
 
-                    # Verify async method was called
-                    mock_client.room_send.assert_called_once()
+                            # Verify async method was called
+                            mock_client.room_send.assert_called_once()
 
         # Run the matrix relay test
         asyncio.run(test_matrix_relay())
