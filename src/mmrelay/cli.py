@@ -79,6 +79,11 @@ def parse_arguments():
         action="store_true",
         help="Check if the configuration file is valid",
     )
+    parser.add_argument(
+        "--bot_login",
+        action="store_true",
+        help="Login to Matrix and save credentials for E2EE support",
+    )
 
     # Windows-specific handling for backward compatibility
     # On Windows, add a positional argument for the config file path
@@ -317,6 +322,26 @@ def main():
         if args.version:
             print_version()
             return 0
+
+        # Handle --bot_login
+        if args.bot_login:
+            import asyncio
+
+            from mmrelay.matrix_utils import login_matrix_bot
+
+            # Only run the login function, not the main application
+            print("Matrix Bot Login for E2EE")
+            print("=========================")
+            try:
+                # Run the login function
+                result = asyncio.run(login_matrix_bot())
+                return 0 if result else 1
+            except KeyboardInterrupt:
+                print("\nLogin cancelled by user.")
+                return 1
+            except Exception as e:
+                print(f"\nError during login: {e}")
+                return 1
 
         # If no command was specified, run the main functionality
         try:

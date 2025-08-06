@@ -1,4 +1,5 @@
 import asyncio
+import getpass
 import io
 import json
 import os
@@ -6,6 +7,7 @@ import re
 import ssl
 import time
 from typing import Union
+from urllib.parse import urlparse
 
 import certifi
 import meshtastic.protobuf.portnums_pb2
@@ -723,6 +725,131 @@ async def connect_matrix(passed_config=None):
             # Continue without E2EE if there's an error
 
     return matrix_client
+
+
+async def login_matrix_bot(
+    homeserver=None, username=None, password=None, logout_others=False
+):
+    """
+    Login to Matrix as a bot and save the access token for E2EE use.
+
+    This function creates a new Matrix session with E2EE support and saves
+    the credentials to credentials.json for use by the relay.
+
+    Args:
+        homeserver: The Matrix homeserver URL
+        username: The Matrix username
+        password: The Matrix password
+        logout_others: Whether to log out other sessions
+
+    Returns:
+        bool: True if login was successful, False otherwise
+    """
+    try:
+        # Get homeserver URL
+        if not homeserver:
+            homeserver = input("Enter Matrix homeserver URL (e.g., https://matrix.org): ")
+
+        # Ensure homeserver URL has the correct format
+        if not (homeserver.startswith("https://") or homeserver.startswith("http://")):
+            homeserver = "https://" + homeserver
+
+        # Get username
+        if not username:
+            username = input("Enter Matrix username (without @): ")
+
+        # Format username correctly
+        if not username.startswith("@"):
+            username = f"@{username}"
+
+        server_name = urlparse(homeserver).netloc
+        if ":" not in username:
+            username = f"{username}:{server_name}"
+
+        logger.info(f"Using username: {username}")
+
+        # Get password
+        if not password:
+            password = getpass.getpass("Enter Matrix password: ")
+
+        # Ask about logging out other sessions
+        if logout_others is None:
+            logout_others_input = input("Log out other sessions? (Y/n) [Default: Yes]: ").lower()
+            logout_others = not logout_others_input.startswith("n") if logout_others_input else True
+
+        # Check for existing credentials to reuse device_id
+        existing_device_id = None
+        try:
+            config_dir = get_base_dir()
+            credentials_path = os.path.join(config_dir, "credentials.json")
+
+            if os.path.exists(credentials_path):
+                with open(credentials_path, "r") as f:
+                    existing_creds = json.load(f)
+                    if "device_id" in existing_creds and existing_creds["user_id"] == username:
+                        existing_device_id = existing_creds["device_id"]
+                        logger.info(f"Reusing existing device_id: {existing_device_id}")
+        except Exception as e:
+            logger.debug(f"Could not load existing credentials: {e}")
+
+        # Get the E2EE store path
+        store_path = get_e2ee_store_dir()
+        os.makedirs(store_path, exist_ok=True)
+        logger.info(f"Using E2EE store path: {store_path}")
+
+        # Create SSL context and client config for E2EE
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        client_config = AsyncClientConfig(store_sync_tokens=True, encryption_enabled=True)
+
+        # Initialize client with E2EE support
+        client = AsyncClient(
+            homeserver,
+            username,
+            device_id=existing_device_id,
+            config=client_config,
+            ssl=ssl_context,
+            store_path=store_path
+        )
+
+        logger.info(f"Logging in as {username} to {homeserver}...")
+
+        # Login with consistent device name
+        device_name = "mmrelay-e2ee"
+        if existing_device_id:
+            response = await client.login(password, device_name=device_name, device_id=existing_device_id)
+        else:
+            response = await client.login(password, device_name=device_name)
+
+        if hasattr(response, 'access_token'):
+            logger.info("Login successful!")
+
+            # Save credentials to credentials.json
+            credentials = {
+                "homeserver": homeserver,
+                "user_id": username,
+                "access_token": response.access_token,
+                "device_id": response.device_id
+            }
+
+            save_credentials(credentials)
+            logger.info(f"Credentials saved to {credentials_path}")
+
+            # Logout other sessions if requested
+            if logout_others:
+                logger.info("Logging out other sessions...")
+                # Note: This would require additional implementation
+                logger.warning("Logout others not yet implemented")
+
+            await client.close()
+            return True
+        else:
+            logger.error(f"Login failed: {response}")
+            await client.close()
+            return False
+
+    except Exception as e:
+        logger.error(f"Error during login: {e}")
+        return False
 
 
 async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
