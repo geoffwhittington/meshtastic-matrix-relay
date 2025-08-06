@@ -125,7 +125,9 @@ class TestIntegrationScenarios(unittest.TestCase):
             }
         }
 
-        with patch("mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock) as mock_matrix_relay:
+        with patch(
+            "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
+        ) as mock_matrix_relay:
             with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins:
                 with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
                     # Mock debug plugin
@@ -267,8 +269,9 @@ class TestIntegrationScenarios(unittest.TestCase):
         with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins:
             with patch("mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock):
                 with patch("mmrelay.meshtastic_utils._submit_coro") as mock_submit_coro:
-                    from concurrent.futures import Future
                     import inspect
+                    from concurrent.futures import Future
+
                     def _done_future(coro, *args, **kwargs):
                         # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
                         if inspect.iscoroutine(coro):
@@ -276,6 +279,7 @@ class TestIntegrationScenarios(unittest.TestCase):
                         f = Future()
                         f.set_result(None)
                         return f
+
                     mock_submit_coro.side_effect = _done_future
 
                     # Return plugins in random order (should be sorted by priority)
@@ -506,7 +510,9 @@ plugins:
         mock_interface = MagicMock()
         mock_interface.myInfo.my_node_num = 123456789
 
-        with patch("mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock) as mock_matrix_relay:
+        with patch(
+            "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
+        ) as mock_matrix_relay:
             with patch("mmrelay.plugin_loader.load_plugins", return_value=[]):
                 with patch("mmrelay.db_utils.get_longname", return_value="TestNode"):
                     with patch("mmrelay.db_utils.get_shortname", return_value="TN"):
@@ -518,12 +524,16 @@ plugins:
                                 with patch(
                                     "mmrelay.matrix_utils.message_storage_enabled"
                                 ):
-                                    with patch("mmrelay.meshtastic_utils._submit_coro") as mock_submit_coro:
+                                    with patch(
+                                        "mmrelay.meshtastic_utils._submit_coro"
+                                    ) as mock_submit_coro:
                                         from concurrent.futures import Future
+
                                         def _done_future(*args, **kwargs):
                                             f = Future()
                                             f.set_result(None)
                                             return f
+
                                         mock_submit_coro.side_effect = _done_future
 
                                         # Set up global state
@@ -547,7 +557,9 @@ plugins:
                                         on_meshtastic_message(packet, mock_interface)
 
                                         # Should be called for each matching room
-                                        self.assertEqual(mock_matrix_relay.call_count, 2)
+                                        self.assertEqual(
+                                            mock_matrix_relay.call_count, 2
+                                        )
 
     def test_service_lifecycle_simulation(self):
         """
@@ -607,7 +619,9 @@ plugins:
         mock_interface = MagicMock()
 
         with patch("mmrelay.plugin_loader.load_plugins", return_value=[]):
-            with patch("mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock) as mock_matrix_relay:
+            with patch(
+                "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
+            ) as mock_matrix_relay:
                 # Set up minimal config
                 import mmrelay.meshtastic_utils
 
@@ -661,7 +675,9 @@ plugins:
             }
         }
 
-        with patch("mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock) as mock_matrix_relay:
+        with patch(
+            "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
+        ) as mock_matrix_relay:
             with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins:
                 with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
                     # Mock telemetry plugin (simulates weather processing)

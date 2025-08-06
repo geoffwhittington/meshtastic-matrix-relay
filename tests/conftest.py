@@ -13,7 +13,12 @@ import queue
 import sys
 import threading
 import time
+from concurrent.futures import Future
 from unittest.mock import MagicMock
+
+import pytest
+
+import mmrelay.meshtastic_utils as mu
 
 # Mock all external dependencies before any imports
 # This prevents ImportError and allows tests to run in isolation
@@ -228,11 +233,6 @@ sys.modules["s2sphere"] = MockS2Module()
 # Rich is optional and tests should work without it
 # If Rich is needed for specific tests, mock it at the test level
 
-import pytest
-from concurrent.futures import Future
-
-import mmrelay.meshtastic_utils as mu
-
 
 @pytest.fixture(autouse=True)
 def meshtastic_loop_safety(monkeypatch):
@@ -260,7 +260,7 @@ def meshtastic_loop_safety(monkeypatch):
 
 @pytest.fixture
 def done_future():
-    loop = asyncio.get_event_loop()
+    asyncio.get_event_loop()
     f = Future()
     f.set_result(None)
     return f
@@ -268,6 +268,3 @@ def done_future():
 
 # Ensure built-in modules are not accidentally mocked
 ensure_builtins_not_mocked()
-
-
-

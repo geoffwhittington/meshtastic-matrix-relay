@@ -10,7 +10,6 @@ Tests the Meshtastic client functionality including:
 - Error handling and reconnection logic
 """
 
-import asyncio
 import os
 import sys
 import unittest
@@ -84,9 +83,9 @@ class TestMeshtasticUtils(unittest.TestCase):
         Verifies that when a valid text message is received on a mapped channel, the message is relayed to Matrix by ensuring the appropriate coroutine is scheduled.
         """
         # Mock the required functions
-        import mmrelay.meshtastic_utils
-
         from concurrent.futures import Future
+
+        import mmrelay.meshtastic_utils
 
         def _done_future(*args, **kwargs):
             f = Future()
@@ -336,8 +335,8 @@ class TestMeshtasticUtils(unittest.TestCase):
         config_no_broadcast = self.mock_config.copy()
         config_no_broadcast["meshtastic"]["broadcast_enabled"] = False
 
-        from concurrent.futures import Future
         import inspect
+        from concurrent.futures import Future
 
         def _done_future(coro, *args, **kwargs):
             # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
@@ -712,8 +711,8 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
             # No 'decoded' field
         }
 
-        from concurrent.futures import Future
         import inspect
+        from concurrent.futures import Future
 
         def _done_future(coro, *args, **kwargs):
             # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
@@ -725,9 +724,7 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
-        ), patch(
-            "mmrelay.meshtastic_utils._submit_coro"
-        ) as mock_submit_coro, patch(
+        ), patch("mmrelay.meshtastic_utils._submit_coro") as mock_submit_coro, patch(
             "mmrelay.meshtastic_utils.is_running_as_service", return_value=True
         ), patch(
             "mmrelay.matrix_utils.matrix_client", None
@@ -754,8 +751,8 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
             "rxTime": 1234567890,
         }
 
-        from concurrent.futures import Future
         import inspect
+        from concurrent.futures import Future
 
         def _done_future(coro, *args, **kwargs):
             # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
@@ -767,9 +764,7 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
 
         with patch("mmrelay.meshtastic_utils.config", self.mock_config), patch(
             "mmrelay.meshtastic_utils.matrix_rooms", self.mock_config["matrix_rooms"]
-        ), patch(
-            "mmrelay.meshtastic_utils._submit_coro"
-        ) as mock_submit_coro:
+        ), patch("mmrelay.meshtastic_utils._submit_coro") as mock_submit_coro:
 
             mock_submit_coro.side_effect = _done_future
             mock_interface = MagicMock()

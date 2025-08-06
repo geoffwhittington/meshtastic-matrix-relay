@@ -12,7 +12,6 @@ Tests edge cases and error handling including:
 - Memory constraints with large node lists
 """
 
-import asyncio
 import os
 import sys
 import unittest
@@ -271,9 +270,11 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         """
         mock_interface = MagicMock()
 
-        with patch("mmrelay.meshtastic_utils.connect_meshtastic", return_value=None), patch(
-            "time.sleep"
-        ), patch("mmrelay.meshtastic_utils.logger") as mock_logger, patch(
+        with patch(
+            "mmrelay.meshtastic_utils.connect_meshtastic", return_value=None
+        ), patch("time.sleep"), patch(
+            "mmrelay.meshtastic_utils.logger"
+        ) as mock_logger, patch(
             "mmrelay.meshtastic_utils._submit_coro"
         ) as mock_submit_coro:
             # Prevent async reconnect

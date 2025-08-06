@@ -18,7 +18,6 @@ import os
 import sys
 import threading
 import time
-import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -159,7 +158,9 @@ class TestPerformanceStress:
                         processing_time = end_time - start_time
 
                         assert len(processed_messages) == message_count
-                        assert processing_time < 15.0, "Message processing took too long"
+                        assert (
+                            processing_time < 15.0
+                        ), "Message processing took too long"
                         messages_per_second = message_count / processing_time
                         assert messages_per_second > 35, "Processing rate too slow"
                 finally:
@@ -235,7 +236,9 @@ class TestPerformanceStress:
                         ), "Processing too fast (below firmware minimum)"
 
                         messages_per_second = message_count / processing_time
-                        assert messages_per_second > 0.3, "Queue processing rate too slow"
+                        assert (
+                            messages_per_second > 0.3
+                        ), "Queue processing rate too slow"
 
                     finally:
                         queue.stop()
@@ -298,9 +301,7 @@ class TestPerformanceStress:
                     )
 
                 message_insert_time = time.time() - start_time
-                assert (
-                    message_insert_time < 20.0
-                ), "Message map insertions too slow"
+                assert message_insert_time < 20.0, "Message map insertions too slow"
 
                 # Test pruning performance
                 start_time = time.time()
@@ -376,10 +377,14 @@ class TestPerformanceStress:
                     "mmrelay.matrix_utils.message_storage_enabled", return_value=True
                 ), patch(
                     "mmrelay.meshtastic_utils.shutting_down", False
-                ), patch("mmrelay.meshtastic_utils.event_loop", meshtastic_loop_safety), patch(
+                ), patch(
+                    "mmrelay.meshtastic_utils.event_loop", meshtastic_loop_safety
+                ), patch(
                     "mmrelay.meshtastic_utils._submit_coro"
                 ) as mock_submit_coro:
-                    mock_submit_coro.side_effect = lambda coro, loop=None: asyncio.create_task(coro)
+                    mock_submit_coro.side_effect = (
+                        lambda coro, loop=None: asyncio.create_task(coro)
+                    )
 
                     start_time = time.time()
 
@@ -408,8 +413,7 @@ class TestPerformanceStress:
 
                     for plugin in plugins:
                         assert (
-                            plugin.handle_meshtastic_message.call_count
-                            == message_count
+                            plugin.handle_meshtastic_message.call_count == message_count
                         )
 
     @pytest.mark.performance  # Changed from slow to performance
@@ -817,5 +821,3 @@ class TestPerformanceStress:
 
         # Run the async throughput test
         asyncio.run(run_throughput_test())
-
-
