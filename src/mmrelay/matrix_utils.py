@@ -28,6 +28,21 @@ from nio.events.room_events import RoomMemberEvent
 from PIL import Image
 
 from mmrelay.config import get_base_dir, get_e2ee_store_dir, save_credentials
+from mmrelay.constants.app import MATRIX_DEVICE_NAME
+from mmrelay.constants.messages import (
+    DEFAULT_MESSAGE_TRUNCATE_BYTES,
+    DISPLAY_NAME_DEFAULT_LENGTH,
+    MAX_TRUNCATION_LENGTH,
+    MESHNET_NAME_ABBREVIATION_LENGTH,
+    MESSAGE_PREVIEW_LENGTH,
+    SHORTNAME_FALLBACK_LENGTH,
+    TRUNCATION_LOG_LIMIT,
+)
+from mmrelay.constants.network import (
+    MATRIX_EARLY_SYNC_TIMEOUT,
+    MATRIX_MAIN_SYNC_TIMEOUT,
+    MATRIX_ROOM_SEND_TIMEOUT,
+)
 from mmrelay.constants.config import (
     CONFIG_SECTION_MATRIX,
 )
@@ -155,10 +170,10 @@ def _add_truncated_vars(format_vars, prefix, text):
     # Always add truncated variables, even for empty text (to prevent KeyError)
     text = text or ""  # Convert None to empty string
     logger.debug(f"Adding truncated vars for prefix='{prefix}', text='{text}'")
-    for i in range(1, 21):  # Support up to 20 chars, always add all variants
+    for i in range(1, MAX_TRUNCATION_LENGTH + 1):  # Support up to MAX_TRUNCATION_LENGTH chars, always add all variants
         truncated_value = text[:i]
         format_vars[f"{prefix}{i}"] = truncated_value
-        if i <= 6:  # Only log first few to avoid spam
+        if i <= TRUNCATION_LOG_LIMIT:  # Only log first few to avoid spam
             logger.debug(f"  {prefix}{i} = '{truncated_value}'")
 
 
@@ -243,7 +258,7 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
         )
         # The default format only uses 'display5', which is safe to format
         return DEFAULT_MESHTASTIC_PREFIX.format(
-            display5=display_name[:5] if display_name else ""
+            display5=display_name[:DISPLAY_NAME_DEFAULT_LENGTH] if display_name else ""
         )
 
 
@@ -568,7 +583,7 @@ async def connect_matrix(passed_config=None):
 
     # Step 1: Early lightweight sync to initialize rooms and subscriptions
     logger.info("Performing early lightweight sync to initialize rooms...")
-    await matrix_client.sync(timeout=2000)
+    await matrix_client.sync(timeout=MATRIX_EARLY_SYNC_TIMEOUT)
     logger.info(f"Early sync completed with {len(matrix_client.rooms)} rooms")
 
     # Retrieve the device_id using whoami() - this is critical for E2EE
@@ -702,7 +717,7 @@ async def connect_matrix(passed_config=None):
 
             # Now perform sync after keys are uploaded
             logger.debug("Performing sync AFTER key upload")
-            await matrix_client.sync(timeout=5000)
+            await matrix_client.sync(timeout=MATRIX_MAIN_SYNC_TIMEOUT)
 
             # Debug store state after sync
             logger.debug(
@@ -724,7 +739,7 @@ async def connect_matrix(passed_config=None):
             try:
                 # First make sure we have synced to populate the device store
                 logger.debug("Performing sync to populate device store...")
-                await matrix_client.sync(timeout=5000)
+                await matrix_client.sync(timeout=MATRIX_MAIN_SYNC_TIMEOUT)
 
                 # Check if our user_id is in the device_store
                 if (
@@ -897,7 +912,7 @@ async def login_matrix_bot(
         logger.info(f"Logging in as {username} to {homeserver}...")
 
         # Login with consistent device name
-        device_name = "MMRelay"
+        device_name = MATRIX_DEVICE_NAME
         if existing_device_id:
             response = await client.login(
                 password, device_name=device_name, device_id=existing_device_id
@@ -1145,7 +1160,7 @@ async def matrix_relay(
                     content=content,
                     ignore_unverified_devices=ignore_unverified,
                 ),
-                timeout=10.0,  # Increased timeout
+                timeout=MATRIX_ROOM_SEND_TIMEOUT,  # Increased timeout
             )
 
             # Log at info level, matching one-point-oh pattern
@@ -1192,7 +1207,7 @@ async def matrix_relay(
         logger.error(f"Error sending radio message to matrix room {room_id}: {e}")
 
 
-def truncate_message(text, max_bytes=227):
+def truncate_message(text, max_bytes=DEFAULT_MESSAGE_TRUNCATE_BYTES):
     """
     Truncate the given text to fit within the specified byte size.
 
@@ -1561,12 +1576,12 @@ async def on_room_message(
         ):
             logger.info(f"Relaying reaction from remote meshnet: {meshnet_name}")
 
-            short_meshnet_name = meshnet_name[:4]
+            short_meshnet_name = meshnet_name[:MESHNET_NAME_ABBREVIATION_LENGTH]
 
             # Format the reaction message for relaying to the local meshnet.
             # The necessary information is in the m.emote event
             if not shortname:
-                shortname = longname[:3] if longname else "???"
+                shortname = longname[:SHORTNAME_FALLBACK_LENGTH] if longname else "???"
 
             meshtastic_text_db = event.source["content"].get("meshtastic_text", "")
             # Strip out any quoted lines from the text
@@ -1576,8 +1591,8 @@ async def on_room_message(
             )
 
             abbreviated_text = (
-                meshtastic_text_db[:40] + "..."
-                if len(meshtastic_text_db) > 40
+                meshtastic_text_db[:MESSAGE_PREVIEW_LENGTH] + "..."
+                if len(meshtastic_text_db) > MESSAGE_PREVIEW_LENGTH
                 else meshtastic_text_db
             )
 
@@ -1648,8 +1663,8 @@ async def on_room_message(
             )
 
             abbreviated_text = (
-                meshtastic_text_db[:40] + "..."
-                if len(meshtastic_text_db) > 40
+                meshtastic_text_db[:MESSAGE_PREVIEW_LENGTH] + "..."
+                if len(meshtastic_text_db) > MESSAGE_PREVIEW_LENGTH
                 else meshtastic_text_db
             )
 
@@ -1708,10 +1723,10 @@ async def on_room_message(
         if meshnet_name != local_meshnet_name:
             # A message from a remote meshnet relayed into Matrix, now going back out
             logger.info(f"Processing message from remote meshnet: {meshnet_name}")
-            short_meshnet_name = meshnet_name[:4]
+            short_meshnet_name = meshnet_name[:MESHNET_NAME_ABBREVIATION_LENGTH]
             # If shortname is not available, derive it from the longname
             if shortname is None:
-                shortname = longname[:3] if longname else "???"
+                shortname = longname[:SHORTNAME_FALLBACK_LENGTH] if longname else "???"
             # Remove the original prefix to avoid double-tagging
             # Get the prefix that would have been used for this message
             original_prefix = get_matrix_prefix(

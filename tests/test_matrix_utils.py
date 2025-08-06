@@ -1455,7 +1455,7 @@ async def test_connect_matrix_with_e2ee_credentials(
 
 
 @pytest.mark.asyncio
-@patch("mmrelay.matrix_utils.load_credentials")
+@patch("mmrelay.config.load_credentials")
 @patch("mmrelay.matrix_utils.ssl.create_default_context")
 @patch("mmrelay.matrix_utils.AsyncClient")
 async def test_connect_matrix_legacy_config(
