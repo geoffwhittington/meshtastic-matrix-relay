@@ -193,7 +193,9 @@ def load_credentials():
             if all(field in credentials for field in required_fields):
                 return credentials
             else:
-                logger.warning(f"credentials.json missing required fields: {required_fields}")
+                logger.warning(
+                    f"credentials.json missing required fields: {required_fields}"
+                )
                 return None
         else:
             return None

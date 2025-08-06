@@ -8,6 +8,7 @@ import pytest
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+from mmrelay.config import get_e2ee_store_dir, load_credentials, save_credentials
 from mmrelay.matrix_utils import (
     _add_truncated_vars,
     _create_mapping_info,
@@ -30,7 +31,6 @@ from mmrelay.matrix_utils import (
     upload_image,
     validate_prefix_format,
 )
-from mmrelay.config import load_credentials, save_credentials, get_e2ee_store_dir
 
 # Matrix room message handling tests - converted from unittest.TestCase to standalone pytest functions
 #
@@ -1310,7 +1310,9 @@ def test_get_e2ee_store_dir():
 @patch("os.path.exists")
 @patch("builtins.open")
 @patch("json.load")
-def test_load_credentials_success(mock_json_load, mock_open, mock_exists, mock_get_base_dir):
+def test_load_credentials_success(
+    mock_json_load, mock_open, mock_exists, mock_get_base_dir
+):
     """Test successful credentials loading."""
     mock_get_base_dir.return_value = "/test/config"
     mock_exists.return_value = True
@@ -1318,7 +1320,7 @@ def test_load_credentials_success(mock_json_load, mock_open, mock_exists, mock_g
         "homeserver": "https://matrix.example.org",
         "user_id": "@bot:example.org",
         "access_token": "test_token",
-        "device_id": "TEST_DEVICE"
+        "device_id": "TEST_DEVICE",
     }
 
     credentials = load_credentials()
@@ -1353,13 +1355,15 @@ def test_save_credentials(mock_json_dump, mock_open, mock_get_base_dir):
         "homeserver": "https://matrix.example.org",
         "user_id": "@bot:example.org",
         "access_token": "test_token",
-        "device_id": "TEST_DEVICE"
+        "device_id": "TEST_DEVICE",
     }
 
     save_credentials(test_credentials)
 
     mock_open.assert_called_once()
-    mock_json_dump.assert_called_once_with(test_credentials, mock_open().__enter__(), indent=2)
+    mock_json_dump.assert_called_once_with(
+        test_credentials, mock_open().__enter__(), indent=2
+    )
 
 
 # E2EE Client Initialization Tests
@@ -1374,7 +1378,16 @@ def test_save_credentials(mock_json_dump, mock_open, mock_get_base_dir):
 @patch("mmrelay.matrix_utils.ssl.create_default_context")
 @patch("mmrelay.matrix_utils.AsyncClient")
 @patch("mmrelay.matrix_utils.logger")
-async def test_connect_matrix_with_e2ee_credentials(mock_logger, mock_async_client, mock_ssl_context, mock_json_load, mock_open, mock_exists, mock_listdir, mock_makedirs):
+async def test_connect_matrix_with_e2ee_credentials(
+    mock_logger,
+    mock_async_client,
+    mock_ssl_context,
+    mock_json_load,
+    mock_open,
+    mock_exists,
+    mock_listdir,
+    mock_makedirs,
+):
     """Test Matrix connection with E2EE credentials."""
     # Mock credentials.json loading
     mock_exists.return_value = True
@@ -1382,7 +1395,7 @@ async def test_connect_matrix_with_e2ee_credentials(mock_logger, mock_async_clie
         "homeserver": "https://matrix.example.org",
         "user_id": "@bot:example.org",
         "access_token": "test_token",
-        "device_id": "TEST_DEVICE"
+        "device_id": "TEST_DEVICE",
     }
 
     # Mock directory operations
@@ -1418,13 +1431,8 @@ async def test_connect_matrix_with_e2ee_credentials(mock_logger, mock_async_clie
 
     # Test config with E2EE enabled
     test_config = {
-        "matrix": {
-            "e2ee": {
-                "enabled": True,
-                "store_path": "/test/store"
-            }
-        },
-        "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}]
+        "matrix": {"e2ee": {"enabled": True, "store_path": "/test/store"}},
+        "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}],
     }
 
     # Mock olm import to simulate E2EE availability
@@ -1450,7 +1458,9 @@ async def test_connect_matrix_with_e2ee_credentials(mock_logger, mock_async_clie
 @patch("mmrelay.matrix_utils.load_credentials")
 @patch("mmrelay.matrix_utils.ssl.create_default_context")
 @patch("mmrelay.matrix_utils.AsyncClient")
-async def test_connect_matrix_legacy_config(mock_async_client, mock_ssl_context, mock_load_credentials):
+async def test_connect_matrix_legacy_config(
+    mock_async_client, mock_ssl_context, mock_load_credentials
+):
     """Test Matrix connection with legacy config (no E2EE)."""
     # No credentials.json available
     mock_load_credentials.return_value = None
@@ -1465,7 +1475,9 @@ async def test_connect_matrix_legacy_config(mock_async_client, mock_ssl_context,
     mock_client_instance.whoami = AsyncMock()
     mock_client_instance.whoami.return_value = MagicMock(device_id="LEGACY_DEVICE")
     mock_client_instance.get_displayname = AsyncMock()
-    mock_client_instance.get_displayname.return_value = MagicMock(displayname="Test Bot")
+    mock_client_instance.get_displayname.return_value = MagicMock(
+        displayname="Test Bot"
+    )
     mock_async_client.return_value = mock_client_instance
 
     # Legacy config without E2EE
@@ -1473,9 +1485,9 @@ async def test_connect_matrix_legacy_config(mock_async_client, mock_ssl_context,
         "matrix": {
             "homeserver": "https://matrix.example.org",
             "access_token": "legacy_token",
-            "bot_user_id": "@bot:example.org"
+            "bot_user_id": "@bot:example.org",
         },
-        "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}]
+        "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}],
     }
 
     # Mock the global matrix_client to None to ensure fresh creation

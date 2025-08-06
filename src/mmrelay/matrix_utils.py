@@ -27,10 +27,8 @@ from nio import (
 from nio.events.room_events import RoomMemberEvent
 from PIL import Image
 
-from mmrelay.config import get_e2ee_store_dir, load_credentials, save_credentials
+from mmrelay.config import get_base_dir, get_e2ee_store_dir, save_credentials
 from mmrelay.constants.config import (
-    CONFIG_KEY_ACCESS_TOKEN,
-    CONFIG_KEY_HOMESERVER,
     CONFIG_SECTION_MATRIX,
 )
 from mmrelay.constants.database import DEFAULT_MSGS_TO_KEEP
@@ -397,6 +395,7 @@ async def connect_matrix(passed_config=None):
     # Try to find credentials.json in the config directory
     try:
         from mmrelay.config import get_base_dir
+
         config_dir = get_base_dir()
         credentials_path = os.path.join(config_dir, "credentials.json")
 
@@ -416,7 +415,9 @@ async def connect_matrix(passed_config=None):
         logger.info(f"Using credentials from {credentials_path}")
         # If config also has Matrix login info, let the user know we're ignoring it
         if config and "matrix" in config and "access_token" in config["matrix"]:
-            logger.info("NOTE: Ignoring Matrix login details in config.yaml in favor of credentials.json")
+            logger.info(
+                "NOTE: Ignoring Matrix login details in config.yaml in favor of credentials.json"
+            )
     else:
         # Check if config is available
         if config is None:
@@ -445,8 +446,13 @@ async def connect_matrix(passed_config=None):
 
     try:
         # Check both 'encryption' and 'e2ee' keys for backward compatibility
-        if (("encryption" in config["matrix"] and config["matrix"]["encryption"].get("enabled", False)) or
-            ("e2ee" in config["matrix"] and config["matrix"]["e2ee"].get("enabled", False))):
+        if (
+            "encryption" in config["matrix"]
+            and config["matrix"]["encryption"].get("enabled", False)
+        ) or (
+            "e2ee" in config["matrix"]
+            and config["matrix"]["e2ee"].get("enabled", False)
+        ):
             # Check if python-olm is installed
             try:
                 import olm  # noqa: F401
@@ -455,28 +461,43 @@ async def connect_matrix(passed_config=None):
                 logger.info("End-to-End Encryption (E2EE) is enabled")
 
                 # Get store path from config or use default
-                if "encryption" in config["matrix"] and "store_path" in config["matrix"]["encryption"]:
+                if (
+                    "encryption" in config["matrix"]
+                    and "store_path" in config["matrix"]["encryption"]
+                ):
                     e2ee_store_path = os.path.expanduser(
                         config["matrix"]["encryption"]["store_path"]
                     )
-                elif "e2ee" in config["matrix"] and "store_path" in config["matrix"]["e2ee"]:
+                elif (
+                    "e2ee" in config["matrix"]
+                    and "store_path" in config["matrix"]["e2ee"]
+                ):
                     e2ee_store_path = os.path.expanduser(
                         config["matrix"]["e2ee"]["store_path"]
                     )
                 else:
                     from mmrelay.config import get_e2ee_store_dir
+
                     e2ee_store_path = get_e2ee_store_dir()
 
                 # Create store directory if it doesn't exist
                 os.makedirs(e2ee_store_path, exist_ok=True)
 
                 # Check if store directory contains database files
-                store_files = os.listdir(e2ee_store_path) if os.path.exists(e2ee_store_path) else []
-                db_files = [f for f in store_files if f.endswith('.db')]
+                store_files = (
+                    os.listdir(e2ee_store_path)
+                    if os.path.exists(e2ee_store_path)
+                    else []
+                )
+                db_files = [f for f in store_files if f.endswith(".db")]
                 if db_files:
-                    logger.info(f"Found existing E2EE store files: {', '.join(db_files)}")
+                    logger.info(
+                        f"Found existing E2EE store files: {', '.join(db_files)}"
+                    )
                 else:
-                    logger.warning("No existing E2EE store files found. Encryption may not work correctly.")
+                    logger.warning(
+                        "No existing E2EE store files found. Encryption may not work correctly."
+                    )
 
                 logger.info(f"Using E2EE store path: {e2ee_store_path}")
 
@@ -517,9 +538,11 @@ async def connect_matrix(passed_config=None):
         matrix_client.restore_login(
             user_id=bot_user_id,
             device_id=e2ee_device_id,
-            access_token=matrix_access_token
+            access_token=matrix_access_token,
         )
-        logger.info(f"Restored login session for {bot_user_id} with device {e2ee_device_id}")
+        logger.info(
+            f"Restored login session for {bot_user_id} with device {e2ee_device_id}"
+        )
     else:
         # Fallback to direct assignment for legacy token-based auth
         matrix_client.access_token = matrix_access_token
@@ -574,12 +597,16 @@ async def connect_matrix(passed_config=None):
                         credentials["device_id"] = server_device_id
                         with open(credentials_path, "w") as f:
                             json.dump(credentials, f)
-                        logger.info(f"Updated credentials.json with device_id: {server_device_id}")
+                        logger.info(
+                            f"Updated credentials.json with device_id: {server_device_id}"
+                        )
                     except Exception as e:
                         logger.warning(f"Failed to update credentials.json: {e}")
             elif matrix_client.device_id != server_device_id:
                 # If the device_id from credentials doesn't match the server, update it
-                logger.warning(f"Device ID mismatch: credentials={matrix_client.device_id}, server={server_device_id}")
+                logger.warning(
+                    f"Device ID mismatch: credentials={matrix_client.device_id}, server={server_device_id}"
+                )
                 logger.info(f"Updating device_id to match server: {server_device_id}")
                 matrix_client.device_id = server_device_id
 
@@ -589,7 +616,9 @@ async def connect_matrix(passed_config=None):
                         credentials["device_id"] = server_device_id
                         with open(credentials_path, "w") as f:
                             json.dump(credentials, f)
-                        logger.info(f"Updated credentials.json with device_id: {server_device_id}")
+                        logger.info(
+                            f"Updated credentials.json with device_id: {server_device_id}"
+                        )
                     except Exception as e:
                         logger.warning(f"Failed to update credentials.json: {e}")
             else:
@@ -625,12 +654,16 @@ async def connect_matrix(passed_config=None):
     if e2ee_enabled:
         try:
             # Check if store directory contains database files
-            store_files = os.listdir(e2ee_store_path) if os.path.exists(e2ee_store_path) else []
-            db_files = [f for f in store_files if f.endswith('.db')]
+            store_files = (
+                os.listdir(e2ee_store_path) if os.path.exists(e2ee_store_path) else []
+            )
+            db_files = [f for f in store_files if f.endswith(".db")]
             if db_files:
                 logger.info(f"Found existing E2EE store files: {', '.join(db_files)}")
             else:
-                logger.warning("No existing E2EE store files found. Encryption may not work correctly.")
+                logger.warning(
+                    "No existing E2EE store files found. Encryption may not work correctly."
+                )
 
             # Load the store first
             logger.debug("Loading encryption store...")
@@ -639,12 +672,22 @@ async def connect_matrix(passed_config=None):
 
             # Debug store state
             logger.debug(f"E2EE store path: {e2ee_store_path}")
-            logger.debug(f"Device store users immediately after load: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
+            logger.debug(
+                f"Device store users immediately after load: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}"
+            )
 
             # Confirm client credentials are set
-            logger.debug(f"Checking client credentials: user_id={matrix_client.user_id}, device_id={matrix_client.device_id}")
-            if not (matrix_client.user_id and matrix_client.device_id and matrix_client.access_token):
-                logger.warning("Missing essential credentials for E2EE. Encryption may not work correctly.")
+            logger.debug(
+                f"Checking client credentials: user_id={matrix_client.user_id}, device_id={matrix_client.device_id}"
+            )
+            if not (
+                matrix_client.user_id
+                and matrix_client.device_id
+                and matrix_client.access_token
+            ):
+                logger.warning(
+                    "Missing essential credentials for E2EE. Encryption may not work correctly."
+                )
 
             # Upload keys BEFORE first sync
             logger.debug("Uploading encryption keys to server BEFORE sync")
@@ -662,11 +705,15 @@ async def connect_matrix(passed_config=None):
             await matrix_client.sync(timeout=5000)
 
             # Debug store state after sync
-            logger.debug(f"Device store users after sync: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
+            logger.debug(
+                f"Device store users after sync: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}"
+            )
 
             # Verify that rooms are properly populated
             if not matrix_client.rooms:
-                logger.warning("No rooms found after sync. Message delivery may not work correctly.")
+                logger.warning(
+                    "No rooms found after sync. Message delivery may not work correctly."
+                )
             else:
                 # Only log room info at debug level
                 logger.debug(f"Found {len(matrix_client.rooms)} rooms after sync")
@@ -680,9 +727,14 @@ async def connect_matrix(passed_config=None):
                 await matrix_client.sync(timeout=5000)
 
                 # Check if our user_id is in the device_store
-                if matrix_client.device_store and matrix_client.user_id in matrix_client.device_store:
+                if (
+                    matrix_client.device_store
+                    and matrix_client.user_id in matrix_client.device_store
+                ):
                     devices = matrix_client.device_store[matrix_client.user_id]
-                    logger.info(f"Found {len(devices)} of our own devices in the device store")
+                    logger.info(
+                        f"Found {len(devices)} of our own devices in the device store"
+                    )
 
                     # Trust each of our devices
                     for device_id, device in devices.items():
@@ -699,11 +751,17 @@ async def connect_matrix(passed_config=None):
 
                     # Log about our current device
                     if matrix_client.device_id in devices:
-                        logger.info(f"Our current device is in the device store: {matrix_client.device_id}")
+                        logger.info(
+                            f"Our current device is in the device store: {matrix_client.device_id}"
+                        )
                     else:
-                        logger.debug(f"Our current device {matrix_client.device_id} not found in device store (this is normal)")
+                        logger.debug(
+                            f"Our current device {matrix_client.device_id} not found in device store (this is normal)"
+                        )
                 else:
-                    logger.debug("No devices found for our user in the device store (this is normal for first run)")
+                    logger.debug(
+                        "No devices found for our user in the device store (this is normal for first run)"
+                    )
             except Exception as ve:
                 logger.warning(f"Error verifying devices: {ve}")
 
@@ -762,7 +820,9 @@ async def login_matrix_bot(
     try:
         # Get homeserver URL
         if not homeserver:
-            homeserver = input("Enter Matrix homeserver URL (e.g., https://matrix.org): ")
+            homeserver = input(
+                "Enter Matrix homeserver URL (e.g., https://matrix.org): "
+            )
 
         # Ensure homeserver URL has the correct format
         if not (homeserver.startswith("https://") or homeserver.startswith("http://")):
@@ -788,8 +848,12 @@ async def login_matrix_bot(
 
         # Ask about logging out other sessions
         if logout_others is None:
-            logout_others_input = input("Log out other sessions? (Y/n) [Default: Yes]: ").lower()
-            logout_others = not logout_others_input.startswith("n") if logout_others_input else True
+            logout_others_input = input(
+                "Log out other sessions? (Y/n) [Default: Yes]: "
+            ).lower()
+            logout_others = (
+                not logout_others_input.startswith("n") if logout_others_input else True
+            )
 
         # Check for existing credentials to reuse device_id
         existing_device_id = None
@@ -800,7 +864,10 @@ async def login_matrix_bot(
             if os.path.exists(credentials_path):
                 with open(credentials_path, "r") as f:
                     existing_creds = json.load(f)
-                    if "device_id" in existing_creds and existing_creds["user_id"] == username:
+                    if (
+                        "device_id" in existing_creds
+                        and existing_creds["user_id"] == username
+                    ):
                         existing_device_id = existing_creds["device_id"]
                         logger.info(f"Reusing existing device_id: {existing_device_id}")
         except Exception as e:
@@ -813,7 +880,9 @@ async def login_matrix_bot(
 
         # Create SSL context and client config for E2EE
         ssl_context = ssl.create_default_context(cafile=certifi.where())
-        client_config = AsyncClientConfig(store_sync_tokens=True, encryption_enabled=True)
+        client_config = AsyncClientConfig(
+            store_sync_tokens=True, encryption_enabled=True
+        )
 
         # Initialize client with E2EE support
         client = AsyncClient(
@@ -822,7 +891,7 @@ async def login_matrix_bot(
             device_id=existing_device_id,
             config=client_config,
             ssl=ssl_context,
-            store_path=store_path
+            store_path=store_path,
         )
 
         logger.info(f"Logging in as {username} to {homeserver}...")
@@ -830,11 +899,13 @@ async def login_matrix_bot(
         # Login with consistent device name
         device_name = "mmrelay-e2ee"
         if existing_device_id:
-            response = await client.login(password, device_name=device_name, device_id=existing_device_id)
+            response = await client.login(
+                password, device_name=device_name, device_id=existing_device_id
+            )
         else:
             response = await client.login(password, device_name=device_name)
 
-        if hasattr(response, 'access_token'):
+        if hasattr(response, "access_token"):
             logger.info("Login successful!")
 
             # Save credentials to credentials.json
@@ -842,7 +913,7 @@ async def login_matrix_bot(
                 "homeserver": homeserver,
                 "user_id": username,
                 "access_token": response.access_token,
-                "device_id": response.device_id
+                "device_id": response.device_id,
             }
 
             save_credentials(credentials)
@@ -1060,8 +1131,12 @@ async def matrix_relay(
 
             # Send the message with a timeout
             # For encrypted rooms, use ignore_unverified_devices=True
-            room = matrix_client.rooms.get(room_id) if matrix_client and hasattr(matrix_client, 'rooms') else None
-            ignore_unverified = getattr(room, 'encrypted', False) if room else False
+            room = (
+                matrix_client.rooms.get(room_id)
+                if matrix_client and hasattr(matrix_client, "rooms")
+                else None
+            )
+            ignore_unverified = getattr(room, "encrypted", False) if room else False
 
             response = await asyncio.wait_for(
                 matrix_client.room_send(
@@ -1364,15 +1439,18 @@ async def on_room_message(
 
     # Handle RoomEncryptionEvent - log when a room becomes encrypted
     # Use string comparison for better test compatibility
-    if hasattr(event, '__class__') and event.__class__.__name__ == 'RoomEncryptionEvent':
+    if (
+        hasattr(event, "__class__")
+        and event.__class__.__name__ == "RoomEncryptionEvent"
+    ):
         logger.info(f"Room {room.room_id} is now encrypted")
         return
 
     # Handle MegolmEvent (encrypted messages)
     # Use string comparison for better test compatibility
-    if hasattr(event, '__class__') and event.__class__.__name__ == 'MegolmEvent':
+    if hasattr(event, "__class__") and event.__class__.__name__ == "MegolmEvent":
         # If the event is encrypted but not yet decrypted, log and return
-        if hasattr(event, 'decrypted') and not event.decrypted:
+        if hasattr(event, "decrypted") and not event.decrypted:
             logger.warning(
                 f"Received encrypted event that could not be decrypted in room {room.room_id}"
             )
@@ -1382,7 +1460,7 @@ async def on_room_message(
         logger.debug(f"Processing decrypted message in room {room.room_id}")
         # The decrypted event is available as event.decrypted_event
         # We need to recursively call this function with the decrypted event
-        if hasattr(event, 'decrypted_event') and event.decrypted_event:
+        if hasattr(event, "decrypted_event") and event.decrypted_event:
             await on_room_message(room, event.decrypted_event)
         return
 

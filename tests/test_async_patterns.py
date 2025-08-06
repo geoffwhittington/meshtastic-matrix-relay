@@ -393,11 +393,17 @@ class TestAsyncPatterns(unittest.TestCase):
                     "mmrelay.matrix_utils.matrix_rooms",
                     [{"id": "!room1:matrix.org", "meshtastic_channel": 0}],
                 ):
-                    with patch("mmrelay.matrix_utils.config", {
-                        "matrix": {"enabled": True},
-                        "meshtastic": {"meshnet_name": "TestMesh"}
-                    }):
-                        with patch("mmrelay.matrix_utils.connect_matrix", return_value=mock_client):
+                    with patch(
+                        "mmrelay.matrix_utils.config",
+                        {
+                            "matrix": {"enabled": True},
+                            "meshtastic": {"meshnet_name": "TestMesh"},
+                        },
+                    ):
+                        with patch(
+                            "mmrelay.matrix_utils.connect_matrix",
+                            return_value=mock_client,
+                        ):
                             # Test matrix_relay async operation
                             await matrix_relay(
                                 room_id="!room1:matrix.org",
