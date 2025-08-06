@@ -174,7 +174,9 @@ class TestMain(unittest.TestCase):
         mock_asyncio_run,
     ):
         """
-        Tests that run_main loads configuration, sets logging, prints the banner, configures debug logging, runs the main async function, and returns 0 on successful execution.
+        Test that `run_main` executes the full startup sequence and returns 0 on success.
+        
+        Verifies that configuration is loaded and set, logging level is overridden by arguments, the banner is printed, debug logging is configured, the main async function is run, and the function returns 0 to indicate successful execution.
         """
         # Mock arguments
         mock_args = MagicMock()
@@ -186,6 +188,12 @@ class TestMain(unittest.TestCase):
         # Mock asyncio.run with coroutine cleanup to prevent warnings
         def mock_run_with_cleanup(coro):
             # Close the coroutine to prevent "never awaited" warning
+            """
+            Closes the provided coroutine to prevent "never awaited" warnings during testing.
+            
+            Parameters:
+                coro: The coroutine object to be closed.
+            """
             if hasattr(coro, "close"):
                 coro.close()
             return None
@@ -217,7 +225,7 @@ class TestMain(unittest.TestCase):
     @patch("asyncio.run")
     def test_run_main_exception_handling(self, mock_asyncio_run, mock_load_config):
         """
-        Test that run_main returns 1 if an exception occurs during execution.
+        Verify that run_main returns 1 when an exception is raised during asynchronous execution.
         """
         # Mock config loading
         mock_load_config.return_value = self.mock_config
@@ -225,6 +233,15 @@ class TestMain(unittest.TestCase):
         # Mock asyncio.run with coroutine cleanup and exception
         def mock_run_with_exception(coro):
             # Close the coroutine to prevent "never awaited" warning
+            """
+            Simulates an exception during coroutine execution in tests by closing the coroutine and raising an Exception.
+            
+            Parameters:
+                coro: The coroutine object to be closed before raising the exception.
+            
+            Raises:
+                Exception: Always raised to simulate an error during coroutine execution.
+            """
             if hasattr(coro, "close"):
                 coro.close()
             raise Exception("Test error")
@@ -240,7 +257,7 @@ class TestMain(unittest.TestCase):
     @patch("asyncio.run")
     def test_run_main_keyboard_interrupt(self, mock_asyncio_run, mock_load_config):
         """
-        Test that run_main returns 0 when a KeyboardInterrupt occurs during execution, indicating graceful shutdown.
+        Verifies that run_main returns 0 when a KeyboardInterrupt is raised during execution, ensuring graceful shutdown behavior.
         """
         # Mock config loading
         mock_load_config.return_value = self.mock_config
@@ -248,6 +265,9 @@ class TestMain(unittest.TestCase):
         # Mock asyncio.run with coroutine cleanup and KeyboardInterrupt
         def mock_run_with_keyboard_interrupt(coro):
             # Close the coroutine to prevent "never awaited" warning
+            """
+            Simulates a KeyboardInterrupt during coroutine execution in tests by closing the coroutine and raising KeyboardInterrupt.
+            """
             if hasattr(coro, "close"):
                 coro.close()
             raise KeyboardInterrupt()
@@ -277,9 +297,9 @@ class TestMain(unittest.TestCase):
         mock_connect_meshtastic,
     ):
         """
-        Test that the main application attempts Matrix connection even if Meshtastic connection fails.
-
-        Simulates a failure to connect to Meshtastic and verifies that the application still proceeds to attempt a Matrix connection during startup.
+        Test that the application attempts to connect to Matrix even if Meshtastic connection fails.
+        
+        Simulates a failed Meshtastic connection and verifies that the Matrix connection is still attempted during application startup.
         """
         # Mock Meshtastic connection to return None (failure)
         mock_connect_meshtastic.return_value = None
@@ -312,9 +332,9 @@ class TestMain(unittest.TestCase):
         mock_init_db,
     ):
         """
-        Test that an exception is raised and propagated when the Matrix connection fails during main application startup.
-
-        This test mocks the Matrix connection to raise an exception and verifies that the main function does not suppress it.
+        Test that an exception during Matrix connection is raised and not suppressed during main application startup.
+        
+        Mocks the Matrix connection to raise an exception and verifies that the main function propagates the error.
         """
         # Mock Matrix connection to raise an exception
         mock_connect_matrix.side_effect = Exception("Matrix connection failed")
@@ -387,9 +407,9 @@ class TestRunMain(unittest.TestCase):
         mock_asyncio_run,
     ):
         """
-        Test that `run_main` executes successfully with valid configuration and returns 0.
-
-        Ensures that the banner is printed, configuration is loaded, and the main asynchronous function is run when correct arguments are provided.
+        Test that `run_main` completes successfully with valid configuration and arguments.
+        
+        Verifies that the banner is printed, configuration is loaded, and the main asynchronous function is executed, resulting in a return value of 0.
         """
         # Mock configuration
         mock_config = {
@@ -402,6 +422,12 @@ class TestRunMain(unittest.TestCase):
         # Mock asyncio.run with coroutine cleanup to prevent warnings
         def mock_run_with_cleanup(coro):
             # Close the coroutine to prevent "never awaited" warning
+            """
+            Closes the provided coroutine to prevent "never awaited" warnings during testing.
+            
+            Parameters:
+                coro: The coroutine object to be closed.
+            """
             if hasattr(coro, "close"):
                 coro.close()
             return None
@@ -428,7 +454,9 @@ class TestRunMain(unittest.TestCase):
         self, mock_print_banner, mock_load_config, mock_set_config, mock_asyncio_run
     ):
         """
-        Test that run_main returns an error code when required configuration keys are missing.
+        Test that run_main returns 1 when required configuration keys are missing.
+        
+        This verifies that the application detects incomplete configuration and exits with an error code.
         """
         # Mock incomplete configuration
         mock_config = {"matrix": {"homeserver": "https://matrix.org"}}  # Missing keys
@@ -437,6 +465,12 @@ class TestRunMain(unittest.TestCase):
         # Mock asyncio.run with coroutine cleanup to prevent warnings
         def mock_run_with_cleanup(coro):
             # Close the coroutine to prevent "never awaited" warning
+            """
+            Closes the provided coroutine to prevent "never awaited" warnings during testing.
+            
+            Parameters:
+                coro: The coroutine object to be closed.
+            """
             if hasattr(coro, "close"):
                 coro.close()
             return None
@@ -465,9 +499,9 @@ class TestRunMain(unittest.TestCase):
         mock_asyncio_run,
     ):
         """
-        Test that run_main returns 0 when a KeyboardInterrupt is raised during execution with provided arguments.
-
-        This ensures the application exits gracefully on keyboard interruption, even when arguments are supplied.
+        Test that `run_main` returns 0 when a `KeyboardInterrupt` occurs during execution with command-line arguments.
+        
+        Ensures the application exits gracefully with a success code when interrupted by the user, even if arguments are provided.
         """
         mock_config = {
             "matrix": {"homeserver": "https://matrix.org"},
@@ -479,6 +513,9 @@ class TestRunMain(unittest.TestCase):
         # Mock asyncio.run with coroutine cleanup and KeyboardInterrupt
         def mock_run_with_keyboard_interrupt(coro):
             # Close the coroutine to prevent "never awaited" warning
+            """
+            Simulates a KeyboardInterrupt during coroutine execution in tests by closing the coroutine and raising KeyboardInterrupt.
+            """
             if hasattr(coro, "close"):
                 coro.close()
             raise KeyboardInterrupt()
@@ -507,7 +544,7 @@ class TestRunMain(unittest.TestCase):
         mock_asyncio_run,
     ):
         """
-        Test that run_main returns an error code when a general exception occurs during execution.
+        Test that run_main returns 1 when a general exception is raised during asynchronous execution.
         """
         mock_config = {
             "matrix": {"homeserver": "https://matrix.org"},
@@ -519,6 +556,15 @@ class TestRunMain(unittest.TestCase):
         # Mock asyncio.run with coroutine cleanup and exception
         def mock_run_with_exception(coro):
             # Close the coroutine to prevent "never awaited" warning
+            """
+            Simulates an exception during coroutine execution in tests by closing the coroutine and raising an Exception.
+            
+            Parameters:
+                coro: The coroutine object to be closed before raising the exception.
+            
+            Raises:
+                Exception: Always raised to simulate an error during coroutine execution.
+            """
             if hasattr(coro, "close"):
                 coro.close()
             raise Exception("Test error")
@@ -551,9 +597,9 @@ class TestRunMain(unittest.TestCase):
         mock_makedirs,
     ):
         """
-        Test that run_main correctly handles a custom data directory by creating it and resolving its absolute path.
-
-        This test verifies that when a custom data directory is specified, run_main ensures the directory exists and uses its absolute path during initialization.
+        Test that run_main creates and uses the absolute path of a custom data directory.
+        
+        Verifies that when a custom data directory is specified, run_main ensures the directory exists by creating it if necessary and resolves its absolute path for initialization.
         """
         import os
         import tempfile
@@ -568,6 +614,12 @@ class TestRunMain(unittest.TestCase):
         # Mock asyncio.run with coroutine cleanup to prevent warnings
         def mock_run_with_cleanup(coro):
             # Close the coroutine to prevent "never awaited" warning
+            """
+            Closes the provided coroutine to prevent "never awaited" warnings during testing.
+            
+            Parameters:
+                coro: The coroutine object to be closed.
+            """
             if hasattr(coro, "close"):
                 coro.close()
             return None
@@ -604,9 +656,9 @@ class TestRunMain(unittest.TestCase):
         mock_asyncio_run,
     ):
         """
-        Test that run_main uses a custom log level from arguments and completes successfully.
-
-        Verifies that specifying a log level in the arguments overrides the logging level in the configuration and that run_main returns 0 to indicate success.
+        Test that run_main applies a custom log level from arguments and completes successfully.
+        
+        Ensures that when a log level is specified in the arguments, it overrides the logging level in the configuration, and run_main returns 0 to indicate successful execution.
         """
         mock_config = {
             "matrix": {"homeserver": "https://matrix.org"},
@@ -618,6 +670,12 @@ class TestRunMain(unittest.TestCase):
         # Mock asyncio.run with coroutine cleanup to prevent warnings
         def mock_run_with_cleanup(coro):
             # Close the coroutine to prevent "never awaited" warning
+            """
+            Closes the provided coroutine to prevent "never awaited" warnings during testing.
+            
+            Parameters:
+                coro: The coroutine object to be closed.
+            """
             if hasattr(coro, "close"):
                 coro.close()
             return None

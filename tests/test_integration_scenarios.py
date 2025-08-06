@@ -33,16 +33,22 @@ class TestIntegrationScenarios(unittest.TestCase):
     """Test cases for integration scenarios and end-to-end flows."""
 
     def setUp(self):
+        """
+        Prepares the test environment by resetting global state before each test case.
+        """
         self._reset_global_state()
 
     def tearDown(self):
+        """
+        Cleans up after each test by resetting global state to ensure test isolation.
+        """
         self._reset_global_state()
 
     def _reset_global_state(self):
         """
-        Reset global state variables in all MMRelay modules to ensure test isolation.
-
-        This method clears or reinitializes global variables in the `meshtastic_utils`, `matrix_utils`, `plugin_loader`, `config`, and `db_utils` modules if they are loaded, preventing state leakage between tests.
+        Reset global state in MMRelay modules to ensure test isolation between tests.
+        
+        This method clears or reinitializes global variables in the `meshtastic_utils`, `matrix_utils`, `plugin_loader`, `config`, and `db_utils` modules if they are loaded, preventing shared state from affecting subsequent tests.
         """
         # Reset meshtastic_utils globals
         if "mmrelay.meshtastic_utils" in sys.modules:
@@ -89,9 +95,9 @@ class TestIntegrationScenarios(unittest.TestCase):
 
     def test_complete_meshtastic_to_matrix_flow(self):
         """
-        Tests the end-to-end flow of a Meshtastic message being relayed to Matrix, including plugin handling.
-
-        Verifies that a Meshtastic message is processed through the plugin chain and relayed to the appropriate Matrix room, ensuring both the Matrix relay and plugin handler are invoked as expected.
+        Test the end-to-end relay of a Meshtastic message to Matrix, including plugin processing.
+        
+        Simulates receiving a Meshtastic message, processes it through the plugin chain, and verifies that the message is relayed to the correct Matrix room and that the plugin handler is invoked.
         """
         # Create test configuration
         config = {
@@ -154,17 +160,17 @@ class TestIntegrationScenarios(unittest.TestCase):
 
     def test_complete_matrix_to_meshtastic_flow(self):
         """
-        Tests the end-to-end flow of a Matrix text message being processed and relayed to Meshtastic, including plugin interception.
-
-        This test sets up a mock Matrix event and Meshtastic client, loads a plugin that intercepts the message, and verifies that the plugin's handler is called once, confirming correct integration between Matrix message handling and plugin processing.
+        Test that a Matrix text message is correctly processed and intercepted by a plugin before being relayed to Meshtastic.
+        
+        This test simulates a Matrix message event, configures a plugin to intercept the message, and verifies that the plugin's handler is awaited exactly once, ensuring proper integration between Matrix message handling and plugin processing.
         """
 
         async def async_test():
             # Create test configuration
             """
             Asynchronously tests that a Matrix text message event is intercepted by a plugin during message handling.
-
-            Simulates a Matrix message event, configures a mock plugin to intercept the message, and verifies that the plugin's handler is called once.
+            
+            Simulates a Matrix message event, configures a mock plugin to intercept the message, and verifies that the plugin's async handler is called exactly once.
             """
             config = {
                 "matrix": {
@@ -229,9 +235,9 @@ class TestIntegrationScenarios(unittest.TestCase):
 
     def test_plugin_chain_processing(self):
         """
-        Test that multiple plugins process a Meshtastic message in priority order and that processing stops when a plugin intercepts the message.
-
-        This test verifies that all loaded plugins are invoked in order of their priority when handling a Meshtastic message, and that message processing halts when a plugin returns an intercept signal.
+        Test that plugins process a Meshtastic message in priority order and halt processing when intercepted.
+        
+        This test ensures that when multiple plugins are loaded, each plugin's message handler is invoked according to its priority, and that processing stops as soon as a plugin signals interception by returning True.
         """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
@@ -264,6 +270,15 @@ class TestIntegrationScenarios(unittest.TestCase):
 
                     def _done_future(coro, *args, **kwargs):
                         # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
+                        """
+                        Return a completed Future after closing the given coroutine to suppress "never awaited" warnings.
+                        
+                        Parameters:
+                            coro: The coroutine object to be closed if it is a coroutine.
+                        
+                        Returns:
+                            Future: A Future object marked as completed with a result of None.
+                        """
                         if inspect.iscoroutine(coro):
                             coro.close()
                         f = Future()
@@ -398,9 +413,9 @@ plugins:
 
     def test_error_recovery_scenario(self):
         """
-        Test error recovery mechanisms for Matrix and Meshtastic connection failures.
-
-        Simulates failures during Matrix and Meshtastic client connections by mocking exceptions and error responses. Verifies that the system returns a client instance for Matrix even if authentication fails, and gracefully returns None for Meshtastic when repeated connection attempts fail.
+        Test recovery from connection failures for Matrix and Meshtastic clients.
+        
+        Simulates authentication and connection errors during Matrix and Meshtastic client initialization. Verifies that the Matrix connection function returns a client instance even if authentication fails, and that the Meshtastic connection function returns None after repeated failures.
         """
         config = {
             "matrix": {
@@ -449,6 +464,11 @@ plugins:
                         with patch("time.sleep") as mock_sleep:
 
                             def set_shutdown(*args, **kwargs):
+                                """
+                                Set the global shutdown flag in the Meshtastic utilities module to True.
+                                
+                                This function is typically used to signal that the MMRelay system should begin shutting down.
+                                """
                                 import mmrelay.meshtastic_utils
 
                                 mmrelay.meshtastic_utils.shutting_down = True
@@ -473,8 +493,8 @@ plugins:
 
     def test_multi_room_message_routing(self):
         """
-        Tests that a Meshtastic message is routed to all Matrix rooms configured for the same channel.
-
+        Test that a Meshtastic message is relayed to all Matrix rooms configured for the same channel.
+        
         Verifies that when a Meshtastic packet is received on a specific channel, it is relayed to each Matrix room mapped to that channel, and not to rooms mapped to other channels.
         """
         config = {
@@ -542,7 +562,7 @@ plugins:
 
     def test_service_lifecycle_simulation(self):
         """
-        Simulates and tests service lifecycle management, including detection of running as a service and service installation flow, using mocked environment variables and system utilities.
+        Simulates detection of running as a systemd service and tests the service installation process using mocked environment variables and system utilities.
         """
         # Test service detection
         from mmrelay.meshtastic_utils import is_running_as_service
@@ -580,9 +600,9 @@ plugins:
 
     def test_concurrent_message_processing(self):
         """
-        Tests concurrent processing of multiple Meshtastic messages when no Matrix rooms are configured.
-
-        Verifies that each message is handled in isolation and that no messages are relayed to Matrix when the configuration lacks Matrix rooms.
+        Test that multiple Meshtastic messages are processed concurrently without relaying to Matrix when no Matrix rooms are configured.
+        
+        Verifies that each message is handled independently and that the Matrix relay function is not called if the configuration lacks Matrix rooms.
         """
         packets = []
         for i in range(10):
@@ -620,9 +640,9 @@ plugins:
 
     def test_plugin_chain_with_weather_processing(self):
         """
-        Tests plugin chain processing of a Meshtastic weather telemetry message, ensuring the telemetry plugin handles the message and that it is not relayed to Matrix.
-
-        Simulates a weather sensor packet processed through the plugin chain, verifies the telemetry plugin's handler is called, and confirms that Matrix relay is not invoked for telemetry messages.
+        Test that a Meshtastic weather telemetry message is processed by the telemetry plugin and not relayed to Matrix.
+        
+        Simulates a weather sensor packet, verifies the telemetry plugin's handler is called once, and confirms that Matrix relay is not invoked for telemetry messages.
         """
         # Create weather sensor packet
         packet = {
@@ -690,9 +710,9 @@ plugins:
 
     def test_config_hot_reload_scenario(self):
         """
-        Test dynamic reloading of configuration during runtime.
-
-        Simulates modifying the configuration file while the system is running and verifies that new Matrix rooms and plugins are detected and loaded correctly after a reload.
+        Test that configuration changes are detected and applied by reloading the config file at runtime.
+        
+        Verifies that adding new Matrix rooms and plugins to the configuration file is reflected after a reload, ensuring dynamic updates are handled correctly.
         """
         # Create initial config
         initial_config = {

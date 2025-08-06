@@ -237,8 +237,12 @@ sys.modules["s2sphere"] = MockS2Module()
 @pytest.fixture(autouse=True)
 def meshtastic_loop_safety(monkeypatch):
     """
-    Module-scoped fixture to ensure the event loop in meshtastic_utils is
-    properly managed and prevent AsyncMock pollution.
+    Module-scoped pytest fixture that creates and manages a dedicated asyncio event loop for tests using meshtastic_utils.
+    
+    Ensures that a fresh event loop is used for each test module, assigns it to meshtastic_utils, and performs thorough cleanup of all tasks and the loop after tests complete to prevent AsyncMock contamination and event loop leakage.
+    
+    Yields:
+        loop (asyncio.AbstractEventLoop): The newly created event loop for use in tests.
     """
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -261,10 +265,9 @@ def meshtastic_loop_safety(monkeypatch):
 @pytest.fixture(autouse=True)
 def reset_plugin_loader_cache():
     """
-    Reset plugin loader caches between tests to prevent AsyncMock pollution.
-
-    This fixture ensures that cached plugin instances or callables don't
-    leak between tests, which can cause unawaited AsyncMock warnings.
+    Pytest fixture that resets plugin loader caches before and after each test to prevent leakage of mocked objects between tests.
+    
+    This helps avoid issues such as AsyncMock warnings caused by stale plugin instances persisting across test runs.
     """
     import mmrelay.plugin_loader as pl
     pl._reset_caches_for_tests()
@@ -275,11 +278,9 @@ def reset_plugin_loader_cache():
 @pytest.fixture(autouse=True)
 def cleanup_asyncmock_objects(request):
     """
-    Clean up AsyncMock objects between tests to prevent warnings.
-
-    This fixture forces garbage collection after tests that use AsyncMock
-    to ensure AsyncMock objects are cleaned up promptly, preventing "never awaited"
-    warnings when they are garbage collected during other tests.
+    Forces garbage collection after tests likely to use AsyncMock to prevent "never awaited" warnings.
+    
+    This fixture runs after tests whose filenames match known patterns associated with AsyncMock usage, ensuring that AsyncMock objects are promptly cleaned up and do not trigger warnings in subsequent tests.
     """
     yield
 
@@ -314,16 +315,26 @@ def cleanup_asyncmock_objects(request):
 @pytest.fixture(autouse=True)
 def mock_submit_coro(monkeypatch):
     """
-    Mock the _submit_coro function to prevent actual async execution in tests.
-
-    This prevents AsyncMock warnings by ensuring coroutines are handled
-    properly in the test environment.
+    Pytest fixture that replaces the `_submit_coro` function in `meshtastic_utils` with a mock that synchronously runs and awaits coroutines in a temporary event loop.
+    
+    This ensures that AsyncMock coroutines are properly awaited during tests, preventing "never awaited" warnings and allowing side effects to occur as expected.
     """
     import inspect
     import asyncio
 
     def mock_submit(coro, loop=None):
-        """Mock implementation that properly handles AsyncMock coroutines."""
+        """
+        Synchronously runs a coroutine in a temporary event loop and returns a Future with its result or exception.
+        
+        If the input is not a coroutine, returns None. This function is designed to ensure that AsyncMock coroutines are properly awaited during testing, preventing "never awaited" warnings and triggering any side effects.
+        
+        Parameters:
+            coro: The coroutine to execute.
+            loop: Unused; present for compatibility.
+        
+        Returns:
+            Future: A Future containing the result or exception from the coroutine, or None if the input is not a coroutine.
+        """
         if not inspect.iscoroutine(coro):  # Not a coroutine
             return None
 
@@ -348,6 +359,12 @@ def mock_submit_coro(monkeypatch):
 
 @pytest.fixture
 def done_future():
+    """
+    Return a Future object that is already completed with a result of None.
+    
+    Returns:
+        Future: A completed Future with its result set to None.
+    """
     asyncio.get_event_loop()
     f = Future()
     f.set_result(None)

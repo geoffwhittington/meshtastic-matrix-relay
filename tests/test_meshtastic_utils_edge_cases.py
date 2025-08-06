@@ -35,7 +35,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def setUp(self):
         """
-        Reset global state in mmrelay.meshtastic_utils before each test to ensure test isolation.
+        Resets global state variables in mmrelay.meshtastic_utils to ensure each test runs in isolation.
         """
         # Reset global state
         import mmrelay.meshtastic_utils
@@ -52,7 +52,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_serial_port_exists_permission_error(self):
         """
-        Test that serial_port_exists returns False when a PermissionError occurs due to denied access to the serial port.
+        Test that serial_port_exists returns False when access to the serial port is denied due to a PermissionError.
         """
         with patch("serial.Serial", side_effect=PermissionError("Permission denied")):
             result = serial_port_exists("/dev/ttyUSB0")
@@ -80,7 +80,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_connect_meshtastic_serial_connection_timeout(self):
         """
-        Verifies that connect_meshtastic returns None and logs an error when a serial connection attempt times out.
+        Test that connect_meshtastic returns None and logs an error when a serial connection attempt results in a timeout.
         """
         config = {
             "meshtastic": {"connection_type": "serial", "serial_port": "/dev/ttyUSB0"}
@@ -100,9 +100,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_connect_meshtastic_ble_device_not_found(self):
         """
-        Test that connect_meshtastic returns None and logs an error when a BLE device is not found.
-
-        Simulates a BLE connection attempt where the device is unavailable, verifying graceful failure and error logging.
+        Test that connect_meshtastic returns None and logs an error when a BLE device is unavailable.
+        
+        Simulates a BLE connection attempt where the device cannot be found, verifying that connect_meshtastic handles the error gracefully and logs the failure.
         """
         config = {
             "meshtastic": {"connection_type": "ble", "ble_address": "00:11:22:33:44:55"}
@@ -189,7 +189,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_on_meshtastic_message_plugin_processing_failure(self):
         """
-        Verify that on_meshtastic_message logs an error when a plugin raises an exception during message processing.
+        Test that on_meshtastic_message logs an error when a plugin raises an exception during message processing.
         """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
@@ -214,7 +214,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_on_meshtastic_message_matrix_relay_failure(self):
         """
-        Verify that on_meshtastic_message logs an error when the Matrix relay integration fails during message processing.
+        Tests that on_meshtastic_message logs an error when the Matrix relay integration raises an exception during message processing.
         """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
@@ -245,9 +245,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_on_meshtastic_message_database_error(self):
         """
-        Test that on_meshtastic_message handles database errors gracefully during message processing.
-
-        Simulates a failure in the database utility function when processing a Meshtastic message and verifies that no unhandled exceptions occur.
+        Verify that on_meshtastic_message handles exceptions from database utility functions without raising unhandled errors.
+        
+        Simulates a database error during message processing and ensures the function completes gracefully.
         """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
@@ -266,7 +266,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_on_lost_meshtastic_connection_reconnection_failure(self):
         """
-        Verifies that on_lost_meshtastic_connection logs an error when reconnection fails.
+        Test that on_lost_meshtastic_connection logs an error when reconnection attempts fail.
+        
+        Simulates a failed reconnection by patching connect_meshtastic to return None and verifies that an error is logged.
         """
         mock_interface = MagicMock()
 
@@ -284,7 +286,9 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_on_lost_meshtastic_connection_detection_source_edge_cases(self):
         """
-        Test that on_lost_meshtastic_connection gracefully handles various invalid or unusual detection_source values without raising exceptions.
+        Test that on_lost_meshtastic_connection handles invalid or unusual detection_source values without raising exceptions.
+        
+        Verifies that the function does not fail when provided with unexpected detection_source inputs such as unknown strings, None, invalid types, or empty strings.
         """
         mock_interface = MagicMock()
 
@@ -390,9 +394,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
 
     def test_on_meshtastic_message_large_node_list(self):
         """
-        Verifies that on_meshtastic_message can process a packet when the interface contains a very large node list without crashing.
-
-        This test ensures robustness and scalability of message handling with extensive node data.
+        Tests that on_meshtastic_message can handle processing a packet when the interface contains a very large number of nodes, ensuring the function does not crash or fail due to scalability issues.
         """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
@@ -416,6 +418,11 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         from concurrent.futures import Future
 
         def _done_future(*args, **kwargs):
+            """
+            Return a completed Future with a result of None.
+            
+            This utility function is typically used to simulate an already-finished asynchronous operation in tests.
+            """
             f = Future()
             f.set_result(None)
             return f

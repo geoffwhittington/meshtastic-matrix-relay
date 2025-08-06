@@ -41,7 +41,7 @@ class TestConfig(unittest.TestCase):
     def test_get_base_dir_windows(self, mock_user_data_dir):
         # Test default base dir on Windows
         """
-        Test that get_base_dir returns the expected default base directory on Windows by mocking platform detection and the user data directory.
+        Test that get_base_dir returns the correct default base directory on Windows when platform detection and user data directory are mocked.
         """
         with patch("mmrelay.config.sys.platform", "win32"), patch(
             "mmrelay.config.custom_data_dir", None
@@ -81,7 +81,7 @@ class TestConfig(unittest.TestCase):
     def test_get_config_paths_linux(self):
         # Test with no args on Linux
         """
-        Test that `get_config_paths` returns the default Linux configuration path when no command-line arguments are provided.
+        Test that `get_config_paths` returns the default Linux configuration file path when no command-line arguments are provided.
         """
         with patch("sys.platform", "linux"), patch("sys.argv", ["mmrelay"]), patch(
             "mmrelay.config.custom_data_dir", None
@@ -93,9 +93,9 @@ class TestConfig(unittest.TestCase):
     def test_get_config_paths_windows(self, mock_user_config_dir):
         # Test with no args on Windows
         """
-        Test that get_config_paths returns the correct config file path on Windows platforms.
-
-        Simulates a Windows environment and verifies that the generated config paths include the expected Windows-specific config file location.
+        Test that `get_config_paths` returns the correct configuration file path on Windows.
+        
+        Simulates a Windows environment and verifies that the returned config paths include the expected Windows-specific config file location.
         """
         with patch("mmrelay.config.sys.platform", "win32"), patch("sys.argv", ["mmrelay"]):
             mock_user_config_dir.return_value = (

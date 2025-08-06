@@ -18,11 +18,9 @@ plugins_loaded = False
 
 def _reset_caches_for_tests():
     """
-    Reset plugin loader caches for testing.
-
-    This function clears the global plugin cache variables to prevent
-    test pollution where cached plugin instances or callables leak
-    between tests.
+    Reset the global plugin loader caches to their initial state for testing purposes.
+    
+    Clears cached plugin instances and loading state to ensure test isolation and prevent interference between test runs.
     """
     global sorted_active_plugins, plugins_loaded
     sorted_active_plugins = []
@@ -31,13 +29,13 @@ def _reset_caches_for_tests():
 
 def _get_plugin_dirs(plugin_type):
     """
-    Return a list of directories for the specified plugin type, ensuring user and local plugin directories exist if possible.
-
+    Return a prioritized list of directories for the specified plugin type, including user and local plugin directories if accessible.
+    
     Parameters:
-        plugin_type (str): The type of plugins ("custom" or "community").
-
+        plugin_type (str): Either "custom" or "community", specifying the type of plugins.
+    
     Returns:
-        list: Ordered list of plugin directories to search, prioritizing the user directory followed by the local directory if accessible.
+        list: List of plugin directories to search, with the user directory first if available, followed by the local directory for backward compatibility.
     """
     dirs = []
 
