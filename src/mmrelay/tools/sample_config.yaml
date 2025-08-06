@@ -5,7 +5,14 @@ matrix:
 
   # End-to-End Encryption (E2EE) configuration
   # NOTE: E2EE requires credentials.json instead of access_token for new sessions
-  # Install with: pip install mmrelay[e2e] or pip install matrix-nio[e2e] python-olm
+  #
+  # SETUP INSTRUCTIONS:
+  # 1. Install E2EE dependencies: pip install mmrelay[e2e]
+  # 2. Enable E2EE in config: uncomment and set enabled: true below
+  # 3. Create credentials: mmrelay --bot_login
+  # 4. The --bot_login command will create credentials.json with your Matrix login
+  # 5. Restart mmrelay - it will use credentials.json and enable E2EE automatically
+  #
   #e2ee:
   #  enabled: false                        # Enable E2EE support (default: false)
   #  store_path: ~/.mmrelay/store          # Path for encryption keys storage (optional)
