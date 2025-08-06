@@ -897,7 +897,7 @@ async def login_matrix_bot(
         logger.info(f"Logging in as {username} to {homeserver}...")
 
         # Login with consistent device name
-        device_name = "mmrelay-e2ee"
+        device_name = "MMRelay"
         if existing_device_id:
             response = await client.login(
                 password, device_name=device_name, device_id=existing_device_id
