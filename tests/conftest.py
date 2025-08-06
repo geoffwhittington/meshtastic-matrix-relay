@@ -238,7 +238,7 @@ sys.modules["s2sphere"] = MockS2Module()
 def meshtastic_loop_safety(monkeypatch):
     """
     Module-scoped fixture to ensure the event loop in meshtastic_utils is
-    properly managed.
+    properly managed and prevent AsyncMock pollution.
     """
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -256,6 +256,69 @@ def meshtastic_loop_safety(monkeypatch):
     finally:
         loop.close()
         asyncio.set_event_loop(None)
+
+
+@pytest.fixture(autouse=True)
+def reset_plugin_loader_cache():
+    """
+    Reset plugin loader caches between tests to prevent AsyncMock pollution.
+
+    This fixture ensures that cached plugin instances or callables don't
+    leak between tests, which can cause unawaited AsyncMock warnings.
+    """
+    import mmrelay.plugin_loader as pl
+    pl._reset_caches_for_tests()
+    yield
+    pl._reset_caches_for_tests()
+
+
+@pytest.fixture(autouse=True)
+def mock_submit_coro(monkeypatch):
+    """
+    Mock the _submit_coro function to prevent actual async execution in tests.
+
+    This prevents AsyncMock warnings by ensuring coroutines are handled
+    properly in the test environment.
+    """
+    import inspect
+    import asyncio
+
+    def mock_submit(coro, loop=None):
+        """Mock implementation that properly handles AsyncMock coroutines."""
+        if not inspect.iscoroutine(coro):  # Not a coroutine
+            return None
+
+        # For AsyncMock coroutines, we need to actually await them to get the result
+        # and prevent "never awaited" warnings
+        try:
+            # Try to get a running loop first
+            current_loop = asyncio.get_running_loop()
+            task = current_loop.create_task(coro)
+            # For tests, we want to complete immediately
+            future = Future()
+            try:
+                result = current_loop.run_until_complete(task)
+                future.set_result(result)
+            except Exception as e:
+                future.set_exception(e)
+            return future
+        except RuntimeError:
+            # No running loop, create a temporary one
+            temp_loop = asyncio.new_event_loop()
+            try:
+                result = temp_loop.run_until_complete(coro)
+                future = Future()
+                future.set_result(result)
+                return future
+            except Exception as e:
+                future = Future()
+                future.set_exception(e)
+                return future
+            finally:
+                temp_loop.close()
+
+    monkeypatch.setattr(mu, "_submit_coro", mock_submit)
+    yield
 
 
 @pytest.fixture

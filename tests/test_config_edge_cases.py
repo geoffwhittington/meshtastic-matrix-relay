@@ -76,8 +76,8 @@ class TestConfigEdgeCases(unittest.TestCase):
 
         Ensures that the returned paths include a directory under 'AppData' as expected for Windows environments.
         """
-        with patch("sys.platform", "win32"):
-            with patch("platformdirs.user_config_dir") as mock_user_config:
+        with patch("mmrelay.config.sys.platform", "win32"):
+            with patch("mmrelay.config.platformdirs.user_config_dir") as mock_user_config:
                 mock_user_config.return_value = (
                     "C:\\Users\\Test\\AppData\\Local\\mmrelay"
                 )

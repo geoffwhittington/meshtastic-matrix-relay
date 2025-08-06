@@ -37,13 +37,13 @@ class TestConfig(unittest.TestCase):
             base_dir = get_base_dir()
             self.assertEqual(base_dir, os.path.expanduser("~/.mmrelay"))
 
-    @patch("platformdirs.user_data_dir")
+    @patch("mmrelay.config.platformdirs.user_data_dir")
     def test_get_base_dir_windows(self, mock_user_data_dir):
         # Test default base dir on Windows
         """
         Test that get_base_dir returns the expected default base directory on Windows by mocking platform detection and the user data directory.
         """
-        with patch("sys.platform", "win32"), patch(
+        with patch("mmrelay.config.sys.platform", "win32"), patch(
             "mmrelay.config.custom_data_dir", None
         ):
             mock_user_data_dir.return_value = "C:\\Users\\test\\AppData\\Local\\mmrelay"
@@ -89,7 +89,7 @@ class TestConfig(unittest.TestCase):
             paths = get_config_paths()
             self.assertIn(os.path.expanduser("~/.mmrelay/config.yaml"), paths)
 
-    @patch("platformdirs.user_config_dir")
+    @patch("mmrelay.config.platformdirs.user_config_dir")
     def test_get_config_paths_windows(self, mock_user_config_dir):
         # Test with no args on Windows
         """
@@ -97,7 +97,7 @@ class TestConfig(unittest.TestCase):
 
         Simulates a Windows environment and verifies that the generated config paths include the expected Windows-specific config file location.
         """
-        with patch("sys.platform", "win32"), patch("sys.argv", ["mmrelay"]):
+        with patch("mmrelay.config.sys.platform", "win32"), patch("sys.argv", ["mmrelay"]):
             mock_user_config_dir.return_value = (
                 "C:\\Users\\test\\AppData\\Local\\mmrelay\\config"
             )
