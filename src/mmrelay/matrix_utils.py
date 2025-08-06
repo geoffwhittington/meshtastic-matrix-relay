@@ -511,9 +511,19 @@ async def connect_matrix(passed_config=None):
         ssl=ssl_context,
     )
 
-    # Set the access_token and user_id
-    matrix_client.access_token = matrix_access_token
-    matrix_client.user_id = bot_user_id
+    # Set the access_token and user_id using restore_login for better session management
+    if credentials:
+        # Use restore_login method for proper session restoration
+        matrix_client.restore_login(
+            user_id=bot_user_id,
+            device_id=e2ee_device_id,
+            access_token=matrix_access_token
+        )
+        logger.info(f"Restored login session for {bot_user_id} with device {e2ee_device_id}")
+    else:
+        # Fallback to direct assignment for legacy token-based auth
+        matrix_client.access_token = matrix_access_token
+        matrix_client.user_id = bot_user_id
 
     # =====================================================================
     # MATRIX E2EE IMPLEMENTATION - CRITICAL SEQUENCE
