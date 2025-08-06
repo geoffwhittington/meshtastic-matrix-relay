@@ -9,7 +9,14 @@ import logging
 import signal
 import sys
 
-from nio import ReactionEvent, RoomMessageEmote, RoomMessageNotice, RoomMessageText
+from nio import (
+    MegolmEvent,
+    ReactionEvent,
+    RoomEncryptionEvent,
+    RoomMessageEmote,
+    RoomMessageNotice,
+    RoomMessageText,
+)
 from nio.events.room_events import RoomMemberEvent
 
 # Import version from package
@@ -120,6 +127,9 @@ async def main(config):
     )
     # Add ReactionEvent callback so we can handle matrix reactions
     matrix_client.add_event_callback(on_room_message, ReactionEvent)
+    # Add E2EE callbacks for encrypted messages
+    matrix_client.add_event_callback(on_room_message, MegolmEvent)
+    matrix_client.add_event_callback(on_room_message, RoomEncryptionEvent)
     # Add RoomMemberEvent callback to track room-specific display name changes
     matrix_client.add_event_callback(on_room_member, RoomMemberEvent)
 
