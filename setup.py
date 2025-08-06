@@ -53,6 +53,12 @@ setup(
         "rich==14.1.0",
         "setuptools==80.9.0",
     ],
+    extras_require={
+        "e2e": [
+            "matrix-nio[e2e]==0.25.2",
+            "python-olm",
+        ],
+    },
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     include_package_data=True,
