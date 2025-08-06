@@ -77,9 +77,9 @@ class TestErrorBoundaries(unittest.TestCase):
 
     def test_plugin_failure_isolation(self):
         """
-        Test that a plugin failure during Meshtastic message handling does not prevent other plugins or the core Matrix relay from executing.
-
-        Simulates one plugin raising an exception and another succeeding, verifying that errors are isolated, logged, and do not disrupt the main relay or other plugins.
+        Verifies that a plugin failure during Meshtastic message handling does not prevent other plugins or the core Matrix relay from executing.
+        
+        Simulates one plugin raising an exception and another succeeding, ensuring that errors are isolated, logged, and do not disrupt the main relay or other plugins.
         """
         # Create plugins with different failure modes
         failing_plugin = MagicMock()
@@ -139,9 +139,9 @@ class TestErrorBoundaries(unittest.TestCase):
 
     def test_database_failure_graceful_degradation(self):
         """
-        Verify that message relay to Matrix proceeds and fallback names are used when database operations fail during message processing.
-
-        This test simulates failures in database lookups for node names and ensures that the system degrades gracefully by using available fallback information from the interface, maintaining core relay functionality.
+        Test that message relay to Matrix continues and fallback node names are used when database lookups fail during message processing.
+        
+        Simulates failures in database retrieval of node long and short names, verifying that the system uses fallback information from the interface and successfully relays the message to Matrix.
         """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},
@@ -200,7 +200,9 @@ class TestErrorBoundaries(unittest.TestCase):
 
     def test_matrix_relay_failure_recovery(self):
         """
-        Verify that the system attempts to recover when the Matrix relay function fails, ensuring subsequent messages are still processed after an initial failure.
+        Test recovery from a Matrix relay failure by simulating a failed relay on the first message and a successful relay on the second.
+        
+        Verifies that the system continues processing subsequent messages after an initial Matrix relay failure, ensuring both attempts are made.
         """
         packet = {
             "decoded": {"text": "test message", "portnum": 1},

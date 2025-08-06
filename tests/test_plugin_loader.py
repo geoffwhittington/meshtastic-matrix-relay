@@ -317,9 +317,9 @@ class Plugin:
     @patch("mmrelay.plugin_loader.get_custom_plugin_dirs")
     def test_load_plugins_with_custom(self, mock_get_custom_plugin_dirs, *mock_plugins):
         """
-        Tests that both core and custom plugins are loaded and activated when specified in the configuration.
-
-        Verifies that the plugin loader correctly discovers and instantiates core plugins (via mocks) and a custom plugin defined in a temporary directory, ensuring both are present in the loaded plugin list when marked active in the config.
+        Tests that both core and custom plugins are loaded and activated when specified as active in the configuration.
+        
+        Ensures the plugin loader discovers, instantiates, and includes both a mocked core plugin and a custom plugin from a temporary directory in the loaded plugin list when both are marked active in the config.
         """
         # Mock core plugins
         for i, mock_plugin_class in enumerate(mock_plugins):

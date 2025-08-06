@@ -37,7 +37,7 @@ class TestMeshtasticUtils(unittest.TestCase):
 
     def setUp(self):
         """
-        Prepare the test environment by initializing mock configuration and packet data, and resetting global state variables to ensure test isolation.
+        Initializes mock configuration and packet data, and resets global Meshtastic utility state to ensure test isolation before each test.
         """
         # Mock configuration
         self.mock_config = {
@@ -78,9 +78,9 @@ class TestMeshtasticUtils(unittest.TestCase):
 
     def test_on_meshtastic_message_basic(self):
         """
-        Test that a basic Meshtastic message is processed and relayed to Matrix.
-
-        Verifies that when a valid text message is received on a mapped channel, the message is relayed to Matrix by ensuring the appropriate coroutine is scheduled.
+        Test that a valid Meshtastic text message on a mapped channel is processed and relayed to Matrix.
+        
+        Verifies that when a properly formatted text message is received on a channel mapped to a Matrix room, the message relay coroutine is scheduled for delivery to Matrix.
         """
         # Mock the required functions
         from concurrent.futures import Future
@@ -88,6 +88,11 @@ class TestMeshtasticUtils(unittest.TestCase):
         import mmrelay.meshtastic_utils
 
         def _done_future(*args, **kwargs):
+            """
+            Return a completed Future with a result of None.
+            
+            This helper is used to mock asynchronous operations that are already finished.
+            """
             f = Future()
             f.set_result(None)
             return f
@@ -120,9 +125,9 @@ class TestMeshtasticUtils(unittest.TestCase):
 
     def test_on_meshtastic_message_unmapped_channel(self):
         """
-        Test that messages received on unmapped channels do not trigger Matrix relay.
-
-        Verifies that when a Meshtastic packet is received on a channel not present in the configured Matrix room mapping, no coroutine is scheduled for relaying the message to Matrix.
+        Test that Meshtastic messages on unmapped channels do not trigger Matrix message relay.
+        
+        Ensures that when a packet is received on a channel not mapped to any Matrix room, no coroutine is scheduled to relay the message.
         """
         # Modify packet to use unmapped channel
         packet_unmapped = self.mock_packet.copy()
@@ -141,9 +146,9 @@ class TestMeshtasticUtils(unittest.TestCase):
 
     def test_on_meshtastic_message_no_text(self):
         """
-        Verify that non-text Meshtastic packets do not trigger message relay to Matrix.
-
-        This test ensures that when a packet does not contain a text message (i.e., its port number is not `TEXT_MESSAGE_APP`), the message processing function does not schedule a coroutine for relaying the message to Matrix.
+        Test that non-text Meshtastic packets do not trigger message relay to Matrix.
+        
+        Ensures that when a packet's port number does not correspond to a text message, the message processing function does not schedule a coroutine to relay the message.
         """
         # Modify packet to have no text
         packet_no_text = self.mock_packet.copy()
@@ -324,9 +329,9 @@ class TestMeshtasticUtils(unittest.TestCase):
 
     def test_on_meshtastic_message_with_broadcast_config(self):
         """
-        Test that Meshtastic-to-Matrix message relaying occurs even when broadcast is disabled in the configuration.
-
-        Verifies that disabling `broadcast_enabled` in the configuration does not prevent Meshtastic messages from being relayed to Matrix, confirming that this setting only affects Matrix-to-Meshtastic message direction.
+        Test that disabling broadcast in the configuration does not prevent relaying Meshtastic messages to Matrix.
+        
+        Ensures that the `broadcast_enabled` setting only affects Matrix-to-Meshtastic message direction, and that Meshtastic-to-Matrix relaying remains functional when broadcast is disabled.
         """
         config_no_broadcast = self.mock_config.copy()
         config_no_broadcast["meshtastic"]["broadcast_enabled"] = False
@@ -336,6 +341,11 @@ class TestMeshtasticUtils(unittest.TestCase):
 
         def _done_future(coro, *args, **kwargs):
             # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
+            """
+            Return a completed Future after closing the given coroutine to prevent unawaited coroutine warnings.
+            
+            If the input is a coroutine, it is closed before the Future is returned.
+            """
             if inspect.iscoroutine(coro):
                 coro.close()
             f = Future()
@@ -505,7 +515,7 @@ class TestConnectionLossHandling(unittest.TestCase):
 
     def setUp(self):
         """
-        Resets global connection state flags before each test to ensure test isolation.
+        Reset global Meshtastic connection state flags before each test to ensure test isolation.
         """
         # Reset global state
         import mmrelay.meshtastic_utils
@@ -519,7 +529,9 @@ class TestConnectionLossHandling(unittest.TestCase):
     def test_on_lost_meshtastic_connection_normal(
         self, mock_reconnect, mock_logger
     ):
-        """Test normal connection loss handling."""
+        """
+        Verifies that losing a Meshtastic connection triggers error logging and schedules a reconnection attempt when not already reconnecting or shutting down.
+        """
         import mmrelay.meshtastic_utils
 
         mmrelay.meshtastic_utils.reconnecting = False
@@ -540,9 +552,9 @@ class TestConnectionLossHandling(unittest.TestCase):
     @patch("mmrelay.meshtastic_utils.logger")
     def test_on_lost_meshtastic_connection_already_reconnecting(self, mock_logger):
         """
-        Test that connection loss handling skips reconnection if already reconnecting.
-
-        Verifies that when the reconnecting flag is set, the function logs a debug message and does not attempt another reconnection.
+        Test that connection loss handling does not trigger reconnection when already reconnecting.
+        
+        Ensures that if the reconnecting flag is set, the function logs a debug message and skips scheduling another reconnection attempt.
         """
         import mmrelay.meshtastic_utils
 
@@ -603,7 +615,7 @@ class TestConnectMeshtasticEdgeCases(unittest.TestCase):
     @patch("mmrelay.meshtastic_utils.meshtastic.serial_interface.SerialInterface")
     def test_connect_meshtastic_serial_exception(self, mock_serial):
         """
-        Test that connect_meshtastic returns None when the serial interface raises an exception during connection.
+        Test that connect_meshtastic returns None if an exception occurs during serial interface instantiation.
         """
         mock_serial.side_effect = Exception("Serial connection failed")
 
@@ -623,7 +635,7 @@ class TestConnectMeshtasticEdgeCases(unittest.TestCase):
     )  # Limit retries to prevent infinite loop
     def test_connect_meshtastic_tcp_exception(self, mock_sleep, mock_tcp):
         """
-        Tests that connect_meshtastic returns None when an exception is raised during TCP interface instantiation.
+        Test that connect_meshtastic returns None if an exception occurs during TCP interface creation.
         """
         mock_tcp.side_effect = Exception("TCP connection failed")
 
@@ -685,7 +697,7 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
 
     def test_on_meshtastic_message_no_decoded(self):
         """
-        Tests that a Meshtastic packet without a 'decoded' field does not trigger message relay processing.
+        Verify that a Meshtastic packet lacking the 'decoded' field does not initiate message relay processing.
         """
         packet = {
             "from": 123456789,
@@ -701,6 +713,11 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
 
         def _done_future(coro, *args, **kwargs):
             # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
+            """
+            Return a completed Future after closing the given coroutine to prevent unawaited coroutine warnings.
+            
+            If the input is a coroutine, it is closed before the Future is returned.
+            """
             if inspect.iscoroutine(coro):
                 coro.close()
             f = Future()
@@ -725,7 +742,7 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
 
     def test_on_meshtastic_message_empty_text(self):
         """
-        Tests that packets with empty text messages do not trigger message relay to Matrix.
+        Test that Meshtastic packets with empty text messages do not trigger relaying to Matrix rooms.
         """
         packet = {
             "from": 123456789,
@@ -741,6 +758,11 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
 
         def _done_future(coro, *args, **kwargs):
             # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
+            """
+            Return a completed Future after closing the given coroutine to prevent unawaited coroutine warnings.
+            
+            If the input is a coroutine, it is closed before the Future is returned.
+            """
             if inspect.iscoroutine(coro):
                 coro.close()
             f = Future()
@@ -835,7 +857,11 @@ def test_connect_meshtastic_retry_exhausted(
 async def test_reconnect_attempts_connection(
     mock_logger, mock_sleep, mock_connect, reset_meshtastic_globals
 ):
-    """Test that reconnect attempts to connect to Meshtastic."""
+    """
+    Test that the reconnect coroutine attempts to establish a Meshtastic connection.
+    
+    Verifies that the reconnect logic calls the connection function with `force_connect=True` and does not actually sleep during the test.
+    """
 
     # Mock asyncio.sleep to prevent the test from actually sleeping
     mock_sleep.return_value = None
@@ -850,7 +876,9 @@ async def test_reconnect_attempts_connection(
 
 
 def test_check_connection_function_exists(reset_meshtastic_globals):
-    """Test that the check_connection function exists and can be imported."""
+    """
+    Verify that the `check_connection` function is importable and callable.
+    """
     # This test just verifies the function exists without running it
     # to avoid the hanging issue in the async loop
     assert callable(check_connection)
