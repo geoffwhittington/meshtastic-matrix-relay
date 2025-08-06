@@ -273,6 +273,22 @@ def reset_plugin_loader_cache():
 
 
 @pytest.fixture(autouse=True)
+def cleanup_asyncmock_objects():
+    """
+    Clean up AsyncMock objects between tests to prevent warnings.
+
+    This fixture forces garbage collection after each test to ensure
+    AsyncMock objects are cleaned up promptly, preventing "never awaited"
+    warnings when they are garbage collected during other tests.
+    """
+    yield
+
+    # Force garbage collection to clean up any AsyncMock objects
+    import gc
+    gc.collect()
+
+
+@pytest.fixture(autouse=True)
 def mock_submit_coro(monkeypatch):
     """
     Mock the _submit_coro function to prevent actual async execution in tests.
