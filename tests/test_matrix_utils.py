@@ -887,6 +887,8 @@ async def test_connect_matrix_whoami_error(matrix_config):
 
         # Use MagicMock instead of AsyncMock to prevent coroutine warnings
         mock_client_instance = MagicMock()
+        mock_client_instance.sync = AsyncMock()  # Add missing sync method
+        mock_client_instance.rooms = {}  # Add missing rooms attribute
         mock_client_instance.whoami = AsyncMock()
         mock_client_instance.get_displayname = AsyncMock()
         mock_async_client.return_value = mock_client_instance
@@ -1464,16 +1466,19 @@ async def test_connect_matrix_legacy_config(mock_async_client, mock_ssl_context,
         "matrix_rooms": [{"id": "!room:matrix.org", "meshtastic_channel": 0}]
     }
 
-    client = await connect_matrix(test_config)
+    # Mock the global matrix_client to None to ensure fresh creation
+    with patch("mmrelay.matrix_utils.matrix_client", None):
+        client = await connect_matrix(test_config)
 
-    assert client is not None
-    assert client == mock_client_instance
+        assert client is not None
+        assert client == mock_client_instance
 
-    # Verify AsyncClient was created without E2EE
-    mock_async_client.assert_called_once()
-    call_args = mock_async_client.call_args
-    assert call_args[1]["device_id"] is None
-    assert call_args[1]["store_path"] is None
+        # Verify AsyncClient was created without E2EE
+        mock_async_client.assert_called_once()
+        call_args = mock_async_client.call_args
+        assert call_args[1]["device_id"] is None
+        assert call_args[1]["store_path"] is None
 
-    # Verify legacy whoami call
-    mock_client_instance.whoami.assert_called_once()
+        # Verify sync and whoami were called
+        mock_client_instance.sync.assert_called()
+        mock_client_instance.whoami.assert_called_once()
