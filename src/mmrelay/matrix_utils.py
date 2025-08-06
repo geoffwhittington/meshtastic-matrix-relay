@@ -1,5 +1,7 @@
 import asyncio
 import io
+import json
+import os
 import re
 import ssl
 import time
@@ -386,61 +388,118 @@ async def connect_matrix(passed_config=None):
     if matrix_client:
         return matrix_client
 
-    # Try to load credentials.json first (E2EE path)
-    credentials = load_credentials()
-    e2ee_enabled = False
-    e2ee_store_path = None
-    device_id = None
+    # Check for credentials.json first
+    credentials = None
+    credentials_path = None
 
+    # Try to find credentials.json in the config directory
+    try:
+        from mmrelay.config import get_base_dir
+        config_dir = get_base_dir()
+        credentials_path = os.path.join(config_dir, "credentials.json")
+
+        if os.path.exists(credentials_path):
+            logger.info(f"Found credentials at {credentials_path}")
+            with open(credentials_path, "r") as f:
+                credentials = json.load(f)
+    except Exception as e:
+        logger.warning(f"Error loading credentials: {e}")
+
+    # If credentials.json exists, use it
     if credentials:
-        # Use credentials.json for E2EE setup
         matrix_homeserver = credentials["homeserver"]
         matrix_access_token = credentials["access_token"]
         bot_user_id = credentials["user_id"]
-        device_id = credentials["device_id"]
-        logger.info("Using credentials.json for Matrix authentication")
-
-        # Check if E2EE is enabled in config
-        if config.get("matrix", {}).get("e2ee", {}).get("enabled", False):
-            try:
-                import olm  # noqa: F401
-                e2ee_enabled = True
-                e2ee_store_path = config.get("matrix", {}).get("e2ee", {}).get("store_path")
-                if not e2ee_store_path:
-                    e2ee_store_path = get_e2ee_store_dir()
-                logger.info("E2EE is enabled")
-                logger.info(f"Using E2EE store path: {e2ee_store_path}")
-            except ImportError:
-                logger.warning("E2EE is enabled in config but python-olm is not installed.")
-                logger.warning("Install with: pip install mmrelay[e2e]")
-                e2ee_enabled = False
+        e2ee_device_id = credentials["device_id"]
+        logger.info(f"Using credentials from {credentials_path}")
+        # If config also has Matrix login info, let the user know we're ignoring it
+        if config and "matrix" in config and "access_token" in config["matrix"]:
+            logger.info("NOTE: Ignoring Matrix login details in config.yaml in favor of credentials.json")
     else:
-        # Fallback to config.yaml (legacy path)
-        matrix_homeserver = config[CONFIG_SECTION_MATRIX][CONFIG_KEY_HOMESERVER]
-        matrix_access_token = config[CONFIG_SECTION_MATRIX][CONFIG_KEY_ACCESS_TOKEN]
+        # Check if config is available
+        if config is None:
+            logger.error("No configuration available. Cannot connect to Matrix.")
+            return None
+
+        # Extract Matrix configuration from config
+        matrix_homeserver = config["matrix"]["homeserver"]
+        matrix_access_token = config["matrix"]["access_token"]
         bot_user_id = config["matrix"]["bot_user_id"]
-        logger.info("Using config.yaml for Matrix authentication (no E2EE)")
 
     # Get matrix rooms from config
     matrix_rooms = config["matrix_rooms"]
 
     # Create SSL context using certifi's certificates
-    try:
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
-    except Exception as e:
-        logger.error(f"Failed to create SSL context: {e}")
-        raise ConnectionError(f"SSL context creation failed: {e}") from e
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
 
-    # Initialize the Matrix client with appropriate configuration
+    # Check if E2EE is enabled
+    e2ee_enabled = False
+    e2ee_store_path = None
+    e2ee_device_id = None
+
+    try:
+        # Check both 'encryption' and 'e2ee' keys for backward compatibility
+        if (("encryption" in config["matrix"] and config["matrix"]["encryption"].get("enabled", False)) or
+            ("e2ee" in config["matrix"] and config["matrix"]["e2ee"].get("enabled", False))):
+            # Check if python-olm is installed
+            try:
+                import olm  # noqa: F401
+
+                e2ee_enabled = True
+                logger.info("End-to-End Encryption (E2EE) is enabled")
+
+                # Get store path from config or use default
+                if "encryption" in config["matrix"] and "store_path" in config["matrix"]["encryption"]:
+                    e2ee_store_path = os.path.expanduser(
+                        config["matrix"]["encryption"]["store_path"]
+                    )
+                elif "e2ee" in config["matrix"] and "store_path" in config["matrix"]["e2ee"]:
+                    e2ee_store_path = os.path.expanduser(
+                        config["matrix"]["e2ee"]["store_path"]
+                    )
+                else:
+                    from mmrelay.config import get_e2ee_store_dir
+                    e2ee_store_path = get_e2ee_store_dir()
+
+                # Create store directory if it doesn't exist
+                os.makedirs(e2ee_store_path, exist_ok=True)
+
+                # Check if store directory contains database files
+                store_files = os.listdir(e2ee_store_path) if os.path.exists(e2ee_store_path) else []
+                db_files = [f for f in store_files if f.endswith('.db')]
+                if db_files:
+                    logger.info(f"Found existing E2EE store files: {', '.join(db_files)}")
+                else:
+                    logger.warning("No existing E2EE store files found. Encryption may not work correctly.")
+
+                logger.info(f"Using E2EE store path: {e2ee_store_path}")
+
+                # We'll get the device ID from whoami() later
+                e2ee_device_id = None
+                logger.debug("Will retrieve device_id from whoami() response")
+            except ImportError:
+                logger.warning(
+                    "E2EE is enabled in config but python-olm is not installed."
+                )
+                logger.warning("Install mmrelay[e2e] to use E2EE features.")
+                e2ee_enabled = False
+    except (KeyError, TypeError):
+        # E2EE not configured
+        pass
+
+    # Initialize the Matrix client with custom SSL context
     client_config = AsyncClientConfig(
-        encryption_enabled=e2ee_enabled,
-        store_sync_tokens=True,
+        encryption_enabled=e2ee_enabled, store_sync_tokens=True
     )
+
+    # Log the device ID being used
+    if e2ee_device_id:
+        logger.info(f"Using device ID: {e2ee_device_id}")
 
     matrix_client = AsyncClient(
         homeserver=matrix_homeserver,
         user=bot_user_id,
-        device_id=device_id,
+        device_id=e2ee_device_id,  # Will be None if not specified in config or credentials
         store_path=e2ee_store_path if e2ee_enabled else None,
         config=client_config,
         ssl=ssl_context,
@@ -450,45 +509,80 @@ async def connect_matrix(passed_config=None):
     matrix_client.access_token = matrix_access_token
     matrix_client.user_id = bot_user_id
 
-    # E2EE initialization sequence (if enabled)
-    if e2ee_enabled:
-        logger.info("Initializing E2EE...")
+    # =====================================================================
+    # MATRIX E2EE IMPLEMENTATION - CRITICAL SEQUENCE
+    # =====================================================================
+    # The sequence of operations is critical for proper E2EE functionality:
+    #
+    # 1. First, perform an early lightweight sync to initialize rooms and subscriptions
+    #    This is critical for message delivery to work properly. Without this sync,
+    #    the client would have no known rooms when messages are sent, causing silent failures.
+    #    This sync populates matrix_client.rooms with the room objects needed for message delivery.
+    #
+    # 2. After this initial sync, we'll retrieve the device_id, verify credentials,
+    #    load the encryption store, and upload keys BEFORE the main sync.
+    #
+    # 3. Only then will we perform the main sync that updates encryption state.
+    #
+    # This sequence ensures both proper message delivery AND encryption.
+    # =====================================================================
 
-        # Load the encryption store
-        try:
-            matrix_client.load_store()
-            logger.debug("Encryption store loaded successfully")
-        except Exception as e:
-            logger.warning(f"Error loading encryption store: {e}")
+    # Step 1: Early lightweight sync to initialize rooms and subscriptions
+    logger.info("Performing early lightweight sync to initialize rooms...")
+    await matrix_client.sync(timeout=2000)
+    logger.info(f"Early sync completed with {len(matrix_client.rooms)} rooms")
 
-        # Upload keys if needed
-        try:
-            if matrix_client.should_upload_keys:
-                logger.debug("Uploading encryption keys...")
-                await matrix_client.keys_upload()
-                logger.debug("Encryption keys uploaded successfully")
-        except Exception as e:
-            logger.warning(f"Error uploading keys: {e}")
-
-        # Perform initial sync to populate rooms and encryption state
-        try:
-            logger.debug("Performing initial sync for E2EE...")
-            await matrix_client.sync(timeout=30000, full_state=True)
-            logger.debug(f"Initial sync completed, found {len(matrix_client.rooms)} rooms")
-        except Exception as e:
-            logger.warning(f"Error during initial sync: {e}")
-
-        logger.info("E2EE initialization complete")
+    # Retrieve the device_id using whoami() - this is critical for E2EE
+    whoami_response = await matrix_client.whoami()
+    if isinstance(whoami_response, WhoamiError):
+        logger.error(f"Failed to retrieve device_id: {whoami_response.message}")
+        if e2ee_enabled:
+            logger.error(
+                "E2EE requires a valid device_id. E2EE may not work correctly."
+            )
+        # Don't reset the device_id to None if we already have one from credentials
+        if not matrix_client.device_id:
+            logger.error("No device_id available. E2EE will not work correctly.")
     else:
-        # For non-E2EE setups, still get device_id and display name
-        whoami_response = await matrix_client.whoami()
-        if isinstance(whoami_response, WhoamiError):
-            logger.error(f"Failed to retrieve device_id: {whoami_response.message}")
-            matrix_client.device_id = None
+        # Check if the device_id from whoami matches our credentials
+        server_device_id = whoami_response.device_id
+        if server_device_id:
+            if not matrix_client.device_id:
+                # If we don't have a device_id from credentials, use the one from whoami
+                matrix_client.device_id = server_device_id
+                logger.info(f"Using device_id from server: {matrix_client.device_id}")
+
+                # Update credentials.json with the correct device_id
+                if credentials and credentials_path:
+                    try:
+                        credentials["device_id"] = server_device_id
+                        with open(credentials_path, "w") as f:
+                            json.dump(credentials, f)
+                        logger.info(f"Updated credentials.json with device_id: {server_device_id}")
+                    except Exception as e:
+                        logger.warning(f"Failed to update credentials.json: {e}")
+            elif matrix_client.device_id != server_device_id:
+                # If the device_id from credentials doesn't match the server, update it
+                logger.warning(f"Device ID mismatch: credentials={matrix_client.device_id}, server={server_device_id}")
+                logger.info(f"Updating device_id to match server: {server_device_id}")
+                matrix_client.device_id = server_device_id
+
+                # Update credentials.json with the correct device_id
+                if credentials and credentials_path:
+                    try:
+                        credentials["device_id"] = server_device_id
+                        with open(credentials_path, "w") as f:
+                            json.dump(credentials, f)
+                        logger.info(f"Updated credentials.json with device_id: {server_device_id}")
+                    except Exception as e:
+                        logger.warning(f"Failed to update credentials.json: {e}")
+            else:
+                # Device IDs match, all good
+                logger.info(f"Using verified device_id: {matrix_client.device_id}")
         else:
-            matrix_client.device_id = whoami_response.device_id
-            if matrix_client.device_id:
-                logger.debug(f"Retrieved device_id: {matrix_client.device_id}")
+            logger.error(
+                "No device_id returned by whoami(). E2EE will not work correctly."
+            )
 
     # Fetch the bot's display name
     response = await matrix_client.get_displayname(bot_user_id)
@@ -496,6 +590,137 @@ async def connect_matrix(passed_config=None):
         bot_user_name = response.displayname
     else:
         bot_user_name = bot_user_id  # Fallback if display name is not set
+
+    # =====================================================================
+    # MATRIX E2EE IMPLEMENTATION - ENCRYPTION SETUP
+    # =====================================================================
+    # This section handles the critical encryption setup sequence:
+    # 1. Load the encryption store (contains keys and device information)
+    # 2. Upload keys BEFORE performing the main sync
+    # 3. Perform sync AFTER key upload
+    # 4. Verify that rooms are properly populated
+    #
+    # This sequence is critical for proper encryption. If keys are not uploaded
+    # before the first sync that handles encrypted messages, the first message
+    # will fail to encrypt properly ("waiting for this message" error in Element).
+    # =====================================================================
+
+    # If E2EE is enabled, load the store and set up encryption
+    if e2ee_enabled:
+        try:
+            # Check if store directory contains database files
+            store_files = os.listdir(e2ee_store_path) if os.path.exists(e2ee_store_path) else []
+            db_files = [f for f in store_files if f.endswith('.db')]
+            if db_files:
+                logger.info(f"Found existing E2EE store files: {', '.join(db_files)}")
+            else:
+                logger.warning("No existing E2EE store files found. Encryption may not work correctly.")
+
+            # Load the store first
+            logger.debug("Loading encryption store...")
+            matrix_client.load_store()
+            logger.debug("Encryption store loaded successfully")
+
+            # Debug store state
+            logger.debug(f"E2EE store path: {e2ee_store_path}")
+            logger.debug(f"Device store users immediately after load: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
+
+            # Confirm client credentials are set
+            logger.debug(f"Checking client credentials: user_id={matrix_client.user_id}, device_id={matrix_client.device_id}")
+            if not (matrix_client.user_id and matrix_client.device_id and matrix_client.access_token):
+                logger.warning("Missing essential credentials for E2EE. Encryption may not work correctly.")
+
+            # Upload keys BEFORE first sync
+            logger.debug("Uploading encryption keys to server BEFORE sync")
+            try:
+                if matrix_client.should_upload_keys:
+                    await matrix_client.keys_upload()
+                    logger.debug("Encryption keys uploaded successfully")
+                else:
+                    logger.debug("No key upload needed at this stage")
+            except Exception as ke:
+                logger.warning(f"Error uploading keys: {ke}")
+
+            # Now perform sync after keys are uploaded
+            logger.debug("Performing sync AFTER key upload")
+            await matrix_client.sync(timeout=5000)
+
+            # Debug store state after sync
+            logger.debug(f"Device store users after sync: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}")
+
+            # Verify that rooms are properly populated
+            if not matrix_client.rooms:
+                logger.warning("No rooms found after sync. Message delivery may not work correctly.")
+            else:
+                # Only log room info at debug level
+                logger.debug(f"Found {len(matrix_client.rooms)} rooms after sync")
+                logger.debug(f"Available rooms: {list(matrix_client.rooms.keys())}")
+
+            # Trust all of our own devices to ensure encryption works
+            logger.debug("Trusting our own devices for encryption...")
+            try:
+                # First make sure we have synced to populate the device store
+                logger.debug("Performing sync to populate device store...")
+                await matrix_client.sync(timeout=5000)
+
+                # Check if our user_id is in the device_store
+                if matrix_client.device_store and matrix_client.user_id in matrix_client.device_store:
+                    devices = matrix_client.device_store[matrix_client.user_id]
+                    logger.info(f"Found {len(devices)} of our own devices in the device store")
+
+                    # Trust each of our devices
+                    for device_id, device in devices.items():
+                        # Skip our current device as we can't verify it
+                        if device_id == matrix_client.device_id:
+                            logger.debug(f"Skipping our current device: {device_id}")
+                            continue
+
+                        try:
+                            matrix_client.verify_device(device)
+                            logger.info(f"Trusted own device {device_id}")
+                        except Exception as e:
+                            logger.error(f"Failed to trust device {device_id}: {e}")
+
+                    # Log about our current device
+                    if matrix_client.device_id in devices:
+                        logger.info(f"Our current device is in the device store: {matrix_client.device_id}")
+                    else:
+                        logger.debug(f"Our current device {matrix_client.device_id} not found in device store (this is normal)")
+                else:
+                    logger.debug("No devices found for our user in the device store (this is normal for first run)")
+            except Exception as ve:
+                logger.warning(f"Error verifying devices: {ve}")
+
+            # Patch the client to handle unverified devices
+            # This is a safer approach than monkey patching the OlmDevice class
+            original_encrypt_for_devices = None
+            if hasattr(matrix_client, "olm") and matrix_client.olm:
+                if hasattr(matrix_client.olm, "encrypt_for_devices"):
+                    original_encrypt_for_devices = matrix_client.olm.encrypt_for_devices
+
+                    # Create a wrapper that ignores verification status
+                    async def encrypt_for_all_devices(
+                        room_id, users_devices, plaintext
+                    ):
+                        # Force ignore_unverified_devices=True
+                        return await original_encrypt_for_devices(
+                            room_id,
+                            users_devices,
+                            plaintext,
+                            ignore_unverified_devices=True,
+                        )
+
+                    # Apply the patch
+                    matrix_client.olm.encrypt_for_devices = encrypt_for_all_devices
+                    logger.debug(
+                        "Patched encrypt_for_devices to ignore verification status"
+                    )
+
+            logger.debug("E2EE setup complete - will encrypt for all devices")
+
+        except Exception as e:
+            logger.error(f"Error setting up E2EE: {e}")
+            # Continue without E2EE if there's an error
 
     return matrix_client
 
