@@ -273,19 +273,46 @@ def reset_plugin_loader_cache():
 
 
 @pytest.fixture(autouse=True)
-def cleanup_asyncmock_objects():
+def cleanup_asyncmock_objects(request):
     """
     Clean up AsyncMock objects between tests to prevent warnings.
 
-    This fixture forces garbage collection after each test to ensure
-    AsyncMock objects are cleaned up promptly, preventing "never awaited"
+    This fixture forces garbage collection after tests that use AsyncMock
+    to ensure AsyncMock objects are cleaned up promptly, preventing "never awaited"
     warnings when they are garbage collected during other tests.
     """
     yield
 
-    # Force garbage collection to clean up any AsyncMock objects
-    import gc
-    gc.collect()
+    # Only force garbage collection for tests that might create AsyncMock objects
+    test_name = request.node.name
+    test_file = request.node.fspath.basename
+
+    # List of test files/patterns that use AsyncMock
+    asyncmock_patterns = [
+        'test_async_patterns',
+        'test_matrix_utils',
+        'test_mesh_relay_plugin',
+        'test_map_plugin',
+        'test_meshtastic_utils',
+        'test_base_plugin',
+        'test_telemetry_plugin',
+        'test_performance_stress',
+        'test_main',
+        'test_health_plugin',
+        'test_error_boundaries',
+        'test_integration_scenarios',
+        'test_help_plugin',
+        'test_ping_plugin',
+        'test_nodes_plugin'
+    ]
+
+    if any(pattern in test_file for pattern in asyncmock_patterns):
+        import gc
+        import warnings
+        # Suppress AsyncMock warnings during cleanup
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*coroutine.*never awaited.*")
+            gc.collect()
 
 
 @pytest.fixture(autouse=True)
