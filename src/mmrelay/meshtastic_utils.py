@@ -96,7 +96,7 @@ subscribed_to_connection_lost = False
 def _submit_coro(coro, loop=None):
     """
     Safely submits an asyncio coroutine to the appropriate event loop for execution.
-    
+
     If a valid event loop is provided and open, schedules the coroutine thread-safely. Otherwise, attempts to use the currently running loop or creates a temporary event loop as a fallback. Returns None if the input is not a coroutine.
     """
     if not inspect.iscoroutine(coro):
@@ -122,7 +122,7 @@ def _submit_coro(coro, loop=None):
 def is_running_as_service():
     """
     Determine if the application is running as a systemd service.
-    
+
     Returns:
         bool: True if the process is running under systemd, either by detecting the INVOCATION_ID environment variable or by checking if the parent process is systemd; otherwise, False.
     """
@@ -366,7 +366,7 @@ def connect_meshtastic(passed_config=None, force_connect=False):
 def on_lost_meshtastic_connection(interface=None, detection_source="unknown"):
     """
     Handles loss of connection to the Meshtastic device by safely closing the current client and initiating a reconnection sequence, unless a shutdown or reconnection is already underway.
-    
+
     Parameters:
         interface: Optional Meshtastic interface instance, included for compatibility.
         detection_source (str): Source identifier for the connection loss, used for debugging purposes.
@@ -404,7 +404,7 @@ def on_lost_meshtastic_connection(interface=None, detection_source="unknown"):
 async def reconnect():
     """
     Asynchronously attempts to reconnect to the Meshtastic device using exponential backoff, halting if shutdown is initiated.
-    
+
     Reconnection begins with a 10-second delay, doubling after each failure up to a maximum of 5 minutes. If not running as a service, a progress bar is displayed during the wait. The process stops immediately if shutdown is triggered or reconnection succeeds.
     """
     global meshtastic_client, reconnecting, shutting_down
@@ -463,7 +463,7 @@ async def reconnect():
 def on_meshtastic_message(packet, interface):
     """
     Processes an incoming Meshtastic message and relays it to Matrix rooms or plugins according to message type and configuration.
-    
+
     Handles reactions and replies by relaying them to Matrix if enabled. Normal text messages are relayed to all mapped Matrix rooms unless handled by a plugin or directed to the relay node. Non-text messages are passed to plugins for processing. Messages from unmapped channels, disabled detection sensors, or during shutdown are ignored. Ensures sender information is retrieved or stored as needed.
     """
     global config, matrix_rooms

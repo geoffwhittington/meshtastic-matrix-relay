@@ -78,7 +78,7 @@ class TestErrorBoundaries(unittest.TestCase):
     def test_plugin_failure_isolation(self):
         """
         Verifies that a plugin failure during Meshtastic message handling does not prevent other plugins or the core Matrix relay from executing.
-        
+
         Simulates one plugin raising an exception and another succeeding, ensuring that errors are isolated, logged, and do not disrupt the main relay or other plugins.
         """
         # Create plugins with different failure modes
@@ -140,7 +140,7 @@ class TestErrorBoundaries(unittest.TestCase):
     def test_database_failure_graceful_degradation(self):
         """
         Test that message relay to Matrix continues and fallback node names are used when database lookups fail during message processing.
-        
+
         Simulates failures in database retrieval of node long and short names, verifying that the system uses fallback information from the interface and successfully relays the message to Matrix.
         """
         packet = {
@@ -201,7 +201,7 @@ class TestErrorBoundaries(unittest.TestCase):
     def test_matrix_relay_failure_recovery(self):
         """
         Test recovery from a Matrix relay failure by simulating a failed relay on the first message and a successful relay on the second.
-        
+
         Verifies that the system continues processing subsequent messages after an initial Matrix relay failure, ensuring both attempts are made.
         """
         packet = {

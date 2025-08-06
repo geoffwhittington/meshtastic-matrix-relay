@@ -47,7 +47,7 @@ class TestIntegrationScenarios(unittest.TestCase):
     def _reset_global_state(self):
         """
         Reset global state in MMRelay modules to ensure test isolation between tests.
-        
+
         This method clears or reinitializes global variables in the `meshtastic_utils`, `matrix_utils`, `plugin_loader`, `config`, and `db_utils` modules if they are loaded, preventing shared state from affecting subsequent tests.
         """
         # Reset meshtastic_utils globals
@@ -96,7 +96,7 @@ class TestIntegrationScenarios(unittest.TestCase):
     def test_complete_meshtastic_to_matrix_flow(self):
         """
         Test the end-to-end relay of a Meshtastic message to Matrix, including plugin processing.
-        
+
         Simulates receiving a Meshtastic message, processes it through the plugin chain, and verifies that the message is relayed to the correct Matrix room and that the plugin handler is invoked.
         """
         # Create test configuration
@@ -137,9 +137,7 @@ class TestIntegrationScenarios(unittest.TestCase):
             with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins:
                 # Mock debug plugin
                 mock_plugin = MagicMock()
-                mock_plugin.handle_meshtastic_message = AsyncMock(
-                    return_value=False
-                )
+                mock_plugin.handle_meshtastic_message = AsyncMock(return_value=False)
                 mock_load_plugins.return_value = [mock_plugin]
 
                 # Set up global state
@@ -161,7 +159,7 @@ class TestIntegrationScenarios(unittest.TestCase):
     def test_complete_matrix_to_meshtastic_flow(self):
         """
         Test that a Matrix text message is correctly processed and intercepted by a plugin before being relayed to Meshtastic.
-        
+
         This test simulates a Matrix message event, configures a plugin to intercept the message, and verifies that the plugin's handler is awaited exactly once, ensuring proper integration between Matrix message handling and plugin processing.
         """
 
@@ -169,7 +167,7 @@ class TestIntegrationScenarios(unittest.TestCase):
             # Create test configuration
             """
             Asynchronously tests that a Matrix text message event is intercepted by a plugin during message handling.
-            
+
             Simulates a Matrix message event, configures a mock plugin to intercept the message, and verifies that the plugin's async handler is called exactly once.
             """
             config = {
@@ -236,7 +234,7 @@ class TestIntegrationScenarios(unittest.TestCase):
     def test_plugin_chain_processing(self):
         """
         Test that plugins process a Meshtastic message in priority order and halt processing when intercepted.
-        
+
         This test ensures that when multiple plugins are loaded, each plugin's message handler is invoked according to its priority, and that processing stops as soon as a plugin signals interception by returning True.
         """
         packet = {
@@ -272,10 +270,10 @@ class TestIntegrationScenarios(unittest.TestCase):
                         # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
                         """
                         Return a completed Future after closing the given coroutine to suppress "never awaited" warnings.
-                        
+
                         Parameters:
                             coro: The coroutine object to be closed if it is a coroutine.
-                        
+
                         Returns:
                             Future: A Future object marked as completed with a result of None.
                         """
@@ -414,7 +412,7 @@ plugins:
     def test_error_recovery_scenario(self):
         """
         Test recovery from connection failures for Matrix and Meshtastic clients.
-        
+
         Simulates authentication and connection errors during Matrix and Meshtastic client initialization. Verifies that the Matrix connection function returns a client instance even if authentication fails, and that the Meshtastic connection function returns None after repeated failures.
         """
         config = {
@@ -466,7 +464,7 @@ plugins:
                             def set_shutdown(*args, **kwargs):
                                 """
                                 Set the global shutdown flag in the Meshtastic utilities module to True.
-                                
+
                                 This function is typically used to signal that the MMRelay system should begin shutting down.
                                 """
                                 import mmrelay.meshtastic_utils
@@ -494,7 +492,7 @@ plugins:
     def test_multi_room_message_routing(self):
         """
         Test that a Meshtastic message is relayed to all Matrix rooms configured for the same channel.
-        
+
         Verifies that when a Meshtastic packet is received on a specific channel, it is relayed to each Matrix room mapped to that channel, and not to rooms mapped to other channels.
         """
         config = {
@@ -556,9 +554,7 @@ plugins:
 
                                     # Should be called for each matching room
                                     # The global mock_submit_coro fixture will handle the AsyncMock properly
-                                    self.assertEqual(
-                                        mock_matrix_relay.call_count, 2
-                                    )
+                                    self.assertEqual(mock_matrix_relay.call_count, 2)
 
     def test_service_lifecycle_simulation(self):
         """
@@ -601,7 +597,7 @@ plugins:
     def test_concurrent_message_processing(self):
         """
         Test that multiple Meshtastic messages are processed concurrently without relaying to Matrix when no Matrix rooms are configured.
-        
+
         Verifies that each message is handled independently and that the Matrix relay function is not called if the configuration lacks Matrix rooms.
         """
         packets = []
@@ -641,7 +637,7 @@ plugins:
     def test_plugin_chain_with_weather_processing(self):
         """
         Test that a Meshtastic weather telemetry message is processed by the telemetry plugin and not relayed to Matrix.
-        
+
         Simulates a weather sensor packet, verifies the telemetry plugin's handler is called once, and confirms that Matrix relay is not invoked for telemetry messages.
         """
         # Create weather sensor packet
@@ -711,7 +707,7 @@ plugins:
     def test_config_hot_reload_scenario(self):
         """
         Test that configuration changes are detected and applied by reloading the config file at runtime.
-        
+
         Verifies that adding new Matrix rooms and plugins to the configuration file is reflected after a reload, ensuring dynamic updates are handled correctly.
         """
         # Create initial config

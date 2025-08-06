@@ -338,7 +338,7 @@ class TestImageUploadAndSend(unittest.TestCase):
     def test_send_image(self, mock_send_room_image, mock_upload_image):
         """
         Test that the image sending workflow uploads an image and sends it to a room.
-        
+
         Verifies that `upload_image` is awaited with the correct client and image, and that `send_room_image` is awaited with the resulting upload response.
         """
 
@@ -367,7 +367,7 @@ class TestMapPlugin(unittest.TestCase):
     def setUp(self):
         """
         Set up a Plugin instance with predefined configuration for testing.
-        
+
         Initializes the Plugin and assigns test-specific configuration values for zoom, image size, anonymization, and radius.
         """
         self.plugin = Plugin()
@@ -382,7 +382,7 @@ class TestMapPlugin(unittest.TestCase):
     def tearDown(self):
         """
         Clean up test fixtures after each test to prevent cross-test contamination.
-        
+
         Resets the plugin instance to ensure that no lingering references or mocks persist between tests.
         """
         # Clean up any references that might hold AsyncMock instances
@@ -449,7 +449,7 @@ class TestMapPlugin(unittest.TestCase):
     ):
         """
         Asynchronously tests that the plugin processes a "!map" Matrix room message by generating a map image and sending it to the room.
-        
+
         Verifies that the map is generated using node positions and that the image is sent to the correct Matrix room when the command matches.
         """
 
@@ -457,7 +457,7 @@ class TestMapPlugin(unittest.TestCase):
             # Setup mocks
             """
             Asynchronously tests that the plugin processes a "!map" room message by generating a map image and sending it to the Matrix room.
-            
+
             This test ensures that when a "!map" command is received, the plugin matches the command, generates a map using node positions, and sends the resulting image to the correct Matrix room.
             """
             mock_room = MagicMock()
@@ -509,14 +509,14 @@ class TestMapPlugin(unittest.TestCase):
     ):
         """
         Test that the plugin processes a "!map" command with a specified zoom parameter and passes it to map generation.
-        
+
         This test mocks Matrix and Meshtastic clients, simulates a room message containing "zoom=15", and verifies that the map generation function receives the correct zoom value. It asserts that the plugin's message handler returns True, indicating the command was handled.
         """
 
         async def run_test():
             """
             Asynchronously tests that the plugin processes a "!map zoom=15" command by generating a map with the specified zoom level and confirms the handler returns True.
-            
+
             This test mocks Matrix and Meshtastic clients, simulates a room message event, and verifies that the map generation function receives the correct zoom parameter.
             """
             mock_room = MagicMock()
@@ -561,14 +561,14 @@ class TestMapPlugin(unittest.TestCase):
     ):
         """
         Tests that the plugin processes a "!map" command with a custom image size, ensuring the generated map uses the specified dimensions.
-        
+
         This test verifies that when a user specifies an image size (e.g., "!map size=500,400"), the map generation function receives the correct `image_size` parameter and the plugin returns True.
         """
 
         async def run_test():
             """
             Asynchronously tests that the plugin processes a "!map size=500,400" command by generating a map image with the specified size and returns True.
-            
+
             Verifies that the `get_map` function receives the correct `image_size` parameter when a custom size is provided in the command.
             """
             mock_room = MagicMock()
@@ -603,7 +603,7 @@ class TestMapPlugin(unittest.TestCase):
     def test_handle_room_message_no_match(self):
         """
         Test that handle_room_message returns False when the message does not match the map command.
-        
+
         Verifies that the plugin's handle_room_message method returns False if the incoming message does not correspond to the map command.
         """
 
@@ -637,14 +637,14 @@ class TestMapPlugin(unittest.TestCase):
     ):
         """
         Test that an invalid zoom parameter in a map command is reset to the default value during room message handling.
-        
+
         Simulates receiving a "!map zoom=50" command and verifies that the map generation function is called with the default zoom level (8) instead of the invalid value.
         """
 
         async def run_test():
             """
             Asynchronously tests that an invalid zoom parameter in the "!map" command is reset to the default value when handling a room message.
-            
+
             Simulates a "!map zoom=50" command and verifies that the map generation function receives the default zoom level (8) instead of the invalid value.
             """
             mock_room = MagicMock()
@@ -689,14 +689,14 @@ class TestMapPlugin(unittest.TestCase):
     ):
         """
         Tests that the plugin caps oversized image size parameters to 1000x1000 pixels when handling a "!map" command in a room message.
-        
+
         Ensures that if a user requests an image larger than the allowed maximum, the plugin enforces the size limit before generating and sending the map image.
         """
 
         async def run_test():
             """
             Asynchronously tests that the plugin caps oversized image size parameters in the "!map" command to the maximum allowed dimensions when handling a room message.
-            
+
             Verifies that the map is generated with the capped image size and that the command is processed successfully.
             """
             mock_room = MagicMock()

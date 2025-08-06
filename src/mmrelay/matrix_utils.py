@@ -481,9 +481,9 @@ async def matrix_relay(
 ):
     """
     Relays a message from the Meshtastic network to a Matrix room, supporting replies, emotes, emoji reactions, and cross-network message mapping.
-    
+
     If a reply target is specified, formats the message as a Matrix reply with appropriate quoting and HTML structure. Detects and preserves markdown or HTML formatting in outgoing messages, with graceful fallback if markdown processing is unavailable. When message interactions (reactions or replies) are enabled, stores a mapping between the Meshtastic message ID and the resulting Matrix event ID to support future cross-network interactions, pruning old mappings according to configuration.
-    
+
     Parameters:
         room_id (str): The Matrix room ID to send the message to.
         message (str): The message content to relay.

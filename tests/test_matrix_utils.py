@@ -92,7 +92,7 @@ async def test_on_room_message_simple_text(
 ):
     """
     Test that a non-reaction text message event is processed and queued for Meshtastic relay.
-    
+
     Ensures that when a user sends a simple text message, the message is correctly queued with the expected content for relaying.
     """
     mock_isinstance.return_value = False
@@ -101,7 +101,7 @@ async def test_on_room_message_simple_text(
     async def mock_get_user_display_name_func(*args, **kwargs):
         """
         Asynchronously returns a fixed user display name string "user".
-        
+
         Intended for use as a mock replacement in tests requiring an async display name retrieval function.
         """
         return "user"
@@ -130,7 +130,7 @@ async def test_on_room_message_ignore_bot(
 ):
     """
     Test that messages sent by the bot user are ignored and not relayed to Meshtastic.
-    
+
     Ensures that when the event sender matches the configured bot user ID, the message is not queued for relay.
     """
     mock_event.sender = test_config["matrix"]["bot_user_id"]
@@ -165,7 +165,7 @@ async def test_on_room_message_reply_enabled(
 ):
     """
     Test that reply messages are processed and queued when reply interactions are enabled.
-    
+
     Ensures that when a Matrix event is a reply and reply interactions are enabled in the configuration, the reply text (with quoted lines removed) is extracted and passed to the Meshtastic message queue.
     """
     mock_isinstance.return_value = False
@@ -174,7 +174,7 @@ async def test_on_room_message_reply_enabled(
     async def mock_get_user_display_name_func(*args, **kwargs):
         """
         Asynchronously returns a fixed user display name string "user".
-        
+
         Intended for use as a mock replacement in tests requiring an async display name retrieval function.
         """
         return "user"
@@ -227,7 +227,7 @@ async def test_on_room_message_reply_disabled(
 ):
     """
     Test that reply messages are relayed with full content when reply interactions are disabled.
-    
+
     Ensures that when reply interactions are disabled in the configuration, the entire event body—including quoted original messages—is queued for Meshtastic relay without stripping quoted lines.
     """
     mock_isinstance.return_value = False
@@ -236,7 +236,7 @@ async def test_on_room_message_reply_disabled(
     async def mock_get_user_display_name_func(*args, **kwargs):
         """
         Asynchronously returns a fixed user display name string "user".
-        
+
         Intended for use as a mock replacement in tests requiring an async display name retrieval function.
         """
         return "user"
@@ -286,7 +286,7 @@ async def test_on_room_message_reaction_enabled(
     # This is a reaction event
     """
     Test that a Matrix reaction event is processed and queued for Meshtastic relay when reaction interactions are enabled.
-    
+
     Ensures that when a reaction event occurs and reaction interactions are enabled in the configuration, the corresponding reaction message is correctly constructed and queued for relay.
     """
     from nio import ReactionEvent
@@ -314,7 +314,7 @@ async def test_on_room_message_reaction_enabled(
     async def mock_get_user_display_name_func(*args, **kwargs):
         """
         Asynchronously returns a fixed user display name string "user".
-        
+
         Intended for use as a mock replacement in tests requiring an async display name retrieval function.
         """
         return "user"
@@ -388,7 +388,7 @@ async def test_on_room_message_unsupported_room(
 ):
     """
     Test that messages from unsupported Matrix rooms are ignored.
-    
+
     Verifies that when a message event originates from a Matrix room not listed in the configuration, it is not queued for Meshtastic relay.
     """
     mock_room.room_id = "!unsupported:matrix.org"
@@ -832,7 +832,7 @@ def matrix_config():
 async def test_connect_matrix_success(matrix_config):
     """
     Test that a Matrix client connects successfully using the provided configuration.
-    
+
     Verifies that the client is instantiated, SSL context is created, and the client is authenticated and configured as expected.
     """
     with patch("mmrelay.matrix_utils.matrix_client", None), patch(
@@ -969,7 +969,7 @@ async def test_matrix_relay_simple_message(
 ):
     """
     Tests that a simple text message is relayed to a Matrix room using the `matrix_relay` function.
-    
+
     Verifies that the message is sent with the correct room ID and message type, and that no reactions or replies are enabled in the interaction settings.
     """
     # Setup mocks
@@ -1012,7 +1012,7 @@ async def test_matrix_relay_emote_message(
 ):
     """
     Test that an emote message is relayed to Matrix with the correct message type.
-    
+
     Verifies that when the `emote` flag is set, the relayed message is sent as an `m.emote` type event to the specified Matrix room.
     """
     # Setup mocks
@@ -1244,7 +1244,7 @@ async def test_send_reply_to_meshtastic_no_reply_id(
 async def test_upload_image(mock_bytesio):
     """
     Test that the `upload_image` function correctly uploads an image to Matrix and returns the upload response.
-    
+
     This test mocks the PIL Image object, a BytesIO buffer, and the Matrix client to verify that the image is saved, uploaded, and the expected response is returned.
     """
     from PIL import Image

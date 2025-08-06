@@ -79,7 +79,7 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_on_meshtastic_message_basic(self):
         """
         Test that a valid Meshtastic text message on a mapped channel is processed and relayed to Matrix.
-        
+
         Verifies that when a properly formatted text message is received on a channel mapped to a Matrix room, the message relay coroutine is scheduled for delivery to Matrix.
         """
         # Mock the required functions
@@ -90,7 +90,7 @@ class TestMeshtasticUtils(unittest.TestCase):
         def _done_future(*args, **kwargs):
             """
             Return a completed Future with a result of None.
-            
+
             This helper is used to mock asynchronous operations that are already finished.
             """
             f = Future()
@@ -126,7 +126,7 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_on_meshtastic_message_unmapped_channel(self):
         """
         Test that Meshtastic messages on unmapped channels do not trigger Matrix message relay.
-        
+
         Ensures that when a packet is received on a channel not mapped to any Matrix room, no coroutine is scheduled to relay the message.
         """
         # Modify packet to use unmapped channel
@@ -147,7 +147,7 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_on_meshtastic_message_no_text(self):
         """
         Test that non-text Meshtastic packets do not trigger message relay to Matrix.
-        
+
         Ensures that when a packet's port number does not correspond to a text message, the message processing function does not schedule a coroutine to relay the message.
         """
         # Modify packet to have no text
@@ -330,7 +330,7 @@ class TestMeshtasticUtils(unittest.TestCase):
     def test_on_meshtastic_message_with_broadcast_config(self):
         """
         Test that disabling broadcast in the configuration does not prevent relaying Meshtastic messages to Matrix.
-        
+
         Ensures that the `broadcast_enabled` setting only affects Matrix-to-Meshtastic message direction, and that Meshtastic-to-Matrix relaying remains functional when broadcast is disabled.
         """
         config_no_broadcast = self.mock_config.copy()
@@ -343,7 +343,7 @@ class TestMeshtasticUtils(unittest.TestCase):
             # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
             """
             Return a completed Future after closing the given coroutine to prevent unawaited coroutine warnings.
-            
+
             If the input is a coroutine, it is closed before the Future is returned.
             """
             if inspect.iscoroutine(coro):
@@ -526,9 +526,7 @@ class TestConnectionLossHandling(unittest.TestCase):
 
     @patch("mmrelay.meshtastic_utils.logger")
     @patch("mmrelay.meshtastic_utils.reconnect", new_callable=AsyncMock)
-    def test_on_lost_meshtastic_connection_normal(
-        self, mock_reconnect, mock_logger
-    ):
+    def test_on_lost_meshtastic_connection_normal(self, mock_reconnect, mock_logger):
         """
         Verifies that losing a Meshtastic connection triggers error logging and schedules a reconnection attempt when not already reconnecting or shutting down.
         """
@@ -553,7 +551,7 @@ class TestConnectionLossHandling(unittest.TestCase):
     def test_on_lost_meshtastic_connection_already_reconnecting(self, mock_logger):
         """
         Test that connection loss handling does not trigger reconnection when already reconnecting.
-        
+
         Ensures that if the reconnecting flag is set, the function logs a debug message and skips scheduling another reconnection attempt.
         """
         import mmrelay.meshtastic_utils
@@ -715,7 +713,7 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
             # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
             """
             Return a completed Future after closing the given coroutine to prevent unawaited coroutine warnings.
-            
+
             If the input is a coroutine, it is closed before the Future is returned.
             """
             if inspect.iscoroutine(coro):
@@ -760,7 +758,7 @@ class TestMessageProcessingEdgeCases(unittest.TestCase):
             # Close the coroutine if it's a coroutine to prevent "never awaited" warnings
             """
             Return a completed Future after closing the given coroutine to prevent unawaited coroutine warnings.
-            
+
             If the input is a coroutine, it is closed before the Future is returned.
             """
             if inspect.iscoroutine(coro):
@@ -859,7 +857,7 @@ async def test_reconnect_attempts_connection(
 ):
     """
     Test that the reconnect coroutine attempts to establish a Meshtastic connection.
-    
+
     Verifies that the reconnect logic calls the connection function with `force_connect=True` and does not actually sleep during the test.
     """
 

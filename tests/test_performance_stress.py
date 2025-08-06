@@ -73,7 +73,7 @@ class TestPerformanceStress:
     def test_high_volume_message_processing(self):
         """
         Simulates processing of 1000 Meshtastic messages to verify that all are handled within 15 seconds at a throughput exceeding 35 messages per second.
-        
+
         Mocks dependencies and measures total processing time and throughput, asserting that all messages are processed and performance criteria are met.
         """
         import tempfile
@@ -91,10 +91,10 @@ class TestPerformanceStress:
                 def mock_matrix_relay(*args, **kwargs):
                     """
                     Mocks the matrix relay function by recording its input arguments for later inspection.
-                    
+
                     Parameters:
-                    	*args: Positional arguments passed to the relay.
-                    	**kwargs: Keyword arguments passed to the relay.
+                        *args: Positional arguments passed to the relay.
+                        **kwargs: Keyword arguments passed to the relay.
                     """
                     processed_messages.append(args)
 
@@ -177,7 +177,7 @@ class TestPerformanceStress:
     def test_message_queue_performance_under_load(self):
         """
         Test the performance of MessageQueue under rapid enqueueing with enforced minimum delay.
-        
+
         Enqueues 50 messages into the MessageQueue with a minimal requested delay, verifies all messages are processed within 120 seconds, and asserts that the enforced minimum 2-second delay and a processing rate above 0.3 messages per second are achieved.
         """
         import asyncio
@@ -186,7 +186,7 @@ class TestPerformanceStress:
             # Mock Meshtastic client to allow message sending
             """
             Asynchronously tests MessageQueue performance under rapid enqueueing with enforced minimum delay.
-            
+
             Enqueues 50 messages using a mock send function into the MessageQueue, ensuring all messages are processed within 120 seconds. Verifies that the queue enforces a minimum 2-second delay between messages, all messages are processed, and the processing rate exceeds 0.3 messages per second.
             """
             with patch(
@@ -257,7 +257,7 @@ class TestPerformanceStress:
     def test_database_performance_large_dataset(self):
         """
         Test the performance of database bulk operations and pruning with large datasets.
-        
+
         Inserts and retrieves 1000 node longnames, stores 1000 message map entries, and prunes the message map to retain only the 100 most recent entries. Asserts that each operation completes within defined time limits to ensure database efficiency under high-volume conditions.
         """
         import tempfile
@@ -322,7 +322,7 @@ class TestPerformanceStress:
     async def test_plugin_processing_performance(self, meshtastic_loop_safety):
         """
         Test the performance of processing messages through multiple plugins.
-        
+
         Simulates processing 100 messages through 10 mock plugins, ensuring each plugin's handler is called for every message. Asserts that all plugin handlers are invoked the correct number of times, total processing completes in under 10 seconds, and the aggregate plugin call rate exceeds 100 calls per second.
         """
         import tempfile
@@ -427,7 +427,7 @@ class TestPerformanceStress:
     def test_concurrent_message_queue_access(self):
         """
         Test concurrent enqueuing and processing of messages in the MessageQueue from multiple threads.
-        
+
         Spawns several threads to enqueue messages concurrently into the MessageQueue and verifies that all messages are processed within expected timing constraints. Asserts that the total processing time and processing rate meet minimum performance requirements under concurrent load.
         """
         import asyncio
@@ -436,7 +436,7 @@ class TestPerformanceStress:
             # Mock Meshtastic client to allow message sending
             """
             Test concurrent enqueuing and processing of messages in MessageQueue from multiple threads.
-            
+
             This function starts a MessageQueue with a minimal enforced delay, spawns several threads to enqueue messages concurrently, and waits for all messages to be processed. It asserts that all messages are processed within the expected time frame and that the processing rate meets minimum performance requirements.
             """
             with patch(
@@ -522,7 +522,7 @@ class TestPerformanceStress:
     def test_memory_usage_stability(self):
         """
         Verify that processing 1,000 messages in batches does not increase process memory usage by more than 50 MB.
-        
+
         Simulates extended operation by processing messages in multiple iterations, periodically forcing garbage collection, and measuring memory usage before and after to ensure stability.
         """
         import os
@@ -576,7 +576,7 @@ class TestPerformanceStress:
     def test_rate_limiting_effectiveness(self):
         """
         Test that MessageQueue enforces the minimum delay between message sends, confirming rate limiting by measuring intervals between processed messages.
-        
+
         Rapidly enqueues multiple messages with a short requested delay and asserts that the actual delay between sends is at least 80% of the enforced 2-second minimum. Ensures all messages are sent within the expected timeframe.
         """
         import asyncio
@@ -693,7 +693,7 @@ class TestPerformanceStress:
     def test_realistic_throughput_benchmark(self):
         """
         Benchmark message throughput under realistic conditions with mixed message types and enforced rate limiting.
-        
+
         Simulates a mesh network by asynchronously queuing and processing messages of various types from multiple nodes over a fixed duration. Validates that throughput adheres to a 2-second minimum delay, achieves at least 65% of theoretical maximum throughput, and processes multiple message types. Prints detailed throughput statistics after completion.
         """
         import asyncio
@@ -702,7 +702,7 @@ class TestPerformanceStress:
         async def run_throughput_test():
             """
             Run a throughput benchmark simulating a mesh network with mixed message types and nodes.
-            
+
             Queues messages of various types from multiple nodes at randomized intervals, enforcing a 2-second minimum delay between sends. Measures and prints throughput statistics, validates rate limiting, and ensures minimum throughput and message diversity requirements are met.
             """
             with patch(

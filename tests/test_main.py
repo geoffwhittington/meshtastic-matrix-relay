@@ -175,7 +175,7 @@ class TestMain(unittest.TestCase):
     ):
         """
         Test that `run_main` executes the full startup sequence and returns 0 on success.
-        
+
         Verifies that configuration is loaded and set, logging level is overridden by arguments, the banner is printed, debug logging is configured, the main async function is run, and the function returns 0 to indicate successful execution.
         """
         # Mock arguments
@@ -190,7 +190,7 @@ class TestMain(unittest.TestCase):
             # Close the coroutine to prevent "never awaited" warning
             """
             Closes the provided coroutine to prevent "never awaited" warnings during testing.
-            
+
             Parameters:
                 coro: The coroutine object to be closed.
             """
@@ -235,10 +235,10 @@ class TestMain(unittest.TestCase):
             # Close the coroutine to prevent "never awaited" warning
             """
             Simulates an exception during coroutine execution in tests by closing the coroutine and raising an Exception.
-            
+
             Parameters:
                 coro: The coroutine object to be closed before raising the exception.
-            
+
             Raises:
                 Exception: Always raised to simulate an error during coroutine execution.
             """
@@ -298,7 +298,7 @@ class TestMain(unittest.TestCase):
     ):
         """
         Test that the application attempts to connect to Matrix even if Meshtastic connection fails.
-        
+
         Simulates a failed Meshtastic connection and verifies that the Matrix connection is still attempted during application startup.
         """
         # Mock Meshtastic connection to return None (failure)
@@ -333,7 +333,7 @@ class TestMain(unittest.TestCase):
     ):
         """
         Test that an exception during Matrix connection is raised and not suppressed during main application startup.
-        
+
         Mocks the Matrix connection to raise an exception and verifies that the main function propagates the error.
         """
         # Mock Matrix connection to raise an exception
@@ -408,7 +408,7 @@ class TestRunMain(unittest.TestCase):
     ):
         """
         Test that `run_main` completes successfully with valid configuration and arguments.
-        
+
         Verifies that the banner is printed, configuration is loaded, and the main asynchronous function is executed, resulting in a return value of 0.
         """
         # Mock configuration
@@ -424,7 +424,7 @@ class TestRunMain(unittest.TestCase):
             # Close the coroutine to prevent "never awaited" warning
             """
             Closes the provided coroutine to prevent "never awaited" warnings during testing.
-            
+
             Parameters:
                 coro: The coroutine object to be closed.
             """
@@ -455,7 +455,7 @@ class TestRunMain(unittest.TestCase):
     ):
         """
         Test that run_main returns 1 when required configuration keys are missing.
-        
+
         This verifies that the application detects incomplete configuration and exits with an error code.
         """
         # Mock incomplete configuration
@@ -467,7 +467,7 @@ class TestRunMain(unittest.TestCase):
             # Close the coroutine to prevent "never awaited" warning
             """
             Closes the provided coroutine to prevent "never awaited" warnings during testing.
-            
+
             Parameters:
                 coro: The coroutine object to be closed.
             """
@@ -500,7 +500,7 @@ class TestRunMain(unittest.TestCase):
     ):
         """
         Test that `run_main` returns 0 when a `KeyboardInterrupt` occurs during execution with command-line arguments.
-        
+
         Ensures the application exits gracefully with a success code when interrupted by the user, even if arguments are provided.
         """
         mock_config = {
@@ -558,10 +558,10 @@ class TestRunMain(unittest.TestCase):
             # Close the coroutine to prevent "never awaited" warning
             """
             Simulates an exception during coroutine execution in tests by closing the coroutine and raising an Exception.
-            
+
             Parameters:
                 coro: The coroutine object to be closed before raising the exception.
-            
+
             Raises:
                 Exception: Always raised to simulate an error during coroutine execution.
             """
@@ -598,7 +598,7 @@ class TestRunMain(unittest.TestCase):
     ):
         """
         Test that run_main creates and uses the absolute path of a custom data directory.
-        
+
         Verifies that when a custom data directory is specified, run_main ensures the directory exists by creating it if necessary and resolves its absolute path for initialization.
         """
         import os
@@ -616,7 +616,7 @@ class TestRunMain(unittest.TestCase):
             # Close the coroutine to prevent "never awaited" warning
             """
             Closes the provided coroutine to prevent "never awaited" warnings during testing.
-            
+
             Parameters:
                 coro: The coroutine object to be closed.
             """
@@ -657,7 +657,7 @@ class TestRunMain(unittest.TestCase):
     ):
         """
         Test that run_main applies a custom log level from arguments and completes successfully.
-        
+
         Ensures that when a log level is specified in the arguments, it overrides the logging level in the configuration, and run_main returns 0 to indicate successful execution.
         """
         mock_config = {
@@ -672,7 +672,7 @@ class TestRunMain(unittest.TestCase):
             # Close the coroutine to prevent "never awaited" warning
             """
             Closes the provided coroutine to prevent "never awaited" warnings during testing.
-            
+
             Parameters:
                 coro: The coroutine object to be closed.
             """

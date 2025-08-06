@@ -101,7 +101,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     def test_connect_meshtastic_ble_device_not_found(self):
         """
         Test that connect_meshtastic returns None and logs an error when a BLE device is unavailable.
-        
+
         Simulates a BLE connection attempt where the device cannot be found, verifying that connect_meshtastic handles the error gracefully and logs the failure.
         """
         config = {
@@ -246,7 +246,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     def test_on_meshtastic_message_database_error(self):
         """
         Verify that on_meshtastic_message handles exceptions from database utility functions without raising unhandled errors.
-        
+
         Simulates a database error during message processing and ensures the function completes gracefully.
         """
         packet = {
@@ -267,7 +267,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     def test_on_lost_meshtastic_connection_reconnection_failure(self):
         """
         Test that on_lost_meshtastic_connection logs an error when reconnection attempts fail.
-        
+
         Simulates a failed reconnection by patching connect_meshtastic to return None and verifies that an error is logged.
         """
         mock_interface = MagicMock()
@@ -287,7 +287,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
     def test_on_lost_meshtastic_connection_detection_source_edge_cases(self):
         """
         Test that on_lost_meshtastic_connection handles invalid or unusual detection_source values without raising exceptions.
-        
+
         Verifies that the function does not fail when provided with unexpected detection_source inputs such as unknown strings, None, invalid types, or empty strings.
         """
         mock_interface = MagicMock()
@@ -420,7 +420,7 @@ class TestMeshtasticUtilsEdgeCases(unittest.TestCase):
         def _done_future(*args, **kwargs):
             """
             Return a completed Future with a result of None.
-            
+
             This utility function is typically used to simulate an already-finished asynchronous operation in tests.
             """
             f = Future()

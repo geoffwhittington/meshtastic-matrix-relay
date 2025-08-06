@@ -73,11 +73,13 @@ class TestConfigEdgeCases(unittest.TestCase):
     def test_get_config_paths_windows_platform(self):
         """
         Test that get_config_paths() returns Windows-style configuration paths when running on a Windows platform.
-        
+
         Verifies that the returned paths include a directory under 'AppData', as expected for Windows environments.
         """
         with patch("mmrelay.config.sys.platform", "win32"):
-            with patch("mmrelay.config.platformdirs.user_config_dir") as mock_user_config:
+            with patch(
+                "mmrelay.config.platformdirs.user_config_dir"
+            ) as mock_user_config:
                 mock_user_config.return_value = (
                     "C:\\Users\\Test\\AppData\\Local\\mmrelay"
                 )

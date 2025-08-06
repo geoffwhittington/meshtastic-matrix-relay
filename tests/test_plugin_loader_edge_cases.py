@@ -431,7 +431,7 @@ class Plugin:
     def test_load_plugins_duplicate_plugin_names(self):
         """
         Test that plugins with duplicate names from different directories are handled without failure.
-        
+
         Verifies that when multiple plugins with the same name but different priorities are present, the plugin loader loads at least one instance and does not crash due to the duplication.
         """
         mock_plugin1 = MagicMock()

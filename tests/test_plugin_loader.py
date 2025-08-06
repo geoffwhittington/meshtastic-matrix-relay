@@ -318,7 +318,7 @@ class Plugin:
     def test_load_plugins_with_custom(self, mock_get_custom_plugin_dirs, *mock_plugins):
         """
         Tests that both core and custom plugins are loaded and activated when specified as active in the configuration.
-        
+
         Ensures the plugin loader discovers, instantiates, and includes both a mocked core plugin and a custom plugin from a temporary directory in the loaded plugin list when both are marked active in the config.
         """
         # Mock core plugins

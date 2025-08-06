@@ -94,10 +94,12 @@ class TestConfig(unittest.TestCase):
         # Test with no args on Windows
         """
         Test that `get_config_paths` returns the correct configuration file path on Windows.
-        
+
         Simulates a Windows environment and verifies that the returned config paths include the expected Windows-specific config file location.
         """
-        with patch("mmrelay.config.sys.platform", "win32"), patch("sys.argv", ["mmrelay"]):
+        with patch("mmrelay.config.sys.platform", "win32"), patch(
+            "sys.argv", ["mmrelay"]
+        ):
             mock_user_config_dir.return_value = (
                 "C:\\Users\\test\\AppData\\Local\\mmrelay\\config"
             )

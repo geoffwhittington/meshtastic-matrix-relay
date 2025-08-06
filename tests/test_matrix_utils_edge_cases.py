@@ -253,7 +253,7 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
         async def test_coroutine():
             """
             Asynchronously attempts to join a Matrix room with an invalid alias using a mocked client.
-            
+
             This function is used within a test to verify error handling when joining a room with an invalid alias.
             """
             await join_matrix_room(mock_client, "#invalid:matrix.org")
@@ -268,7 +268,7 @@ class TestMatrixUtilsEdgeCases(unittest.TestCase):
     def test_join_matrix_room_exception_handling(self, mock_logger):
         """
         Test that join_matrix_room logs an error when an exception is raised during room alias resolution.
-        
+
         This test mocks the Matrix client to raise an exception when resolving a room alias and verifies that an error is logged.
         """
         # Use MagicMock to prevent coroutine warnings
