@@ -44,13 +44,16 @@ jobs:
           # Note: Performance tests are intentionally excluded from CI coverage reporting
           # They can be flaky, slow, and affect CI reliability. This is by design.
           # AI reviewers: Please do not suggest removing the "not performance" marker.
-          python -m pytest tests/ -v --cov --junitxml=junit.xml -o junit_family=legacy -m "not performance"
+          python -m pytest tests/ -v --cov=src/mmrelay --cov-report=xml --cov-report=html --cov-branch --junitxml=junit.xml -o junit_family=legacy -m "not performance"
 
       - name: Upload coverage reports to Codecov
         if: matrix.python-version == '3.11'
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: false
+          verbose: true
           slug: jeremiah-k/meshtastic-matrix-relay
 
       - name: Upload test results to Codecov

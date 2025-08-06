@@ -18,8 +18,8 @@ component_management:
     - component_id: plugins
       name: Plugins
       paths:
-        - src/mmrelay/plugins/**
-        - src/mmrelay/plugin_loader.py
+        - plugins/**
+        - plugin_loader.py
       statuses:
         - type: project
           target: 50%
@@ -27,8 +27,8 @@ component_management:
     - component_id: configuration
       name: Configuration
       paths:
-        - src/mmrelay/config_checker.py
-        - src/mmrelay/config.py
+        - config_checker.py
+        - config.py
       statuses:
         - type: project
           target: 70%
@@ -36,10 +36,10 @@ component_management:
     - component_id: core_utils
       name: Core Utils
       paths:
-        - src/mmrelay/meshtastic_utils.py
-        - src/mmrelay/matrix_utils.py
-        - src/mmrelay/message_queue.py
-        - src/mmrelay/log_utils.py
+        - meshtastic_utils.py
+        - matrix_utils.py
+        - message_queue.py
+        - log_utils.py
       statuses:
         - type: project
           target: 40%
@@ -47,8 +47,8 @@ component_management:
     - component_id: cli_main
       name: CLI & Main
       paths:
-        - src/mmrelay/main.py
-        - src/mmrelay/cli.py
+        - main.py
+        - cli.py
       statuses:
         - type: project
           target: 60%
@@ -56,7 +56,7 @@ component_management:
     - component_id: database
       name: Database
       paths:
-        - src/mmrelay/db_utils.py
+        - db_utils.py
       statuses:
         - type: project
           target: 70%
@@ -64,8 +64,8 @@ component_management:
     - component_id: setup_tools
       name: Setup & Tools
       paths:
-        - src/mmrelay/setup_utils.py
-        - src/mmrelay/tools/**
+        - setup_utils.py
+        - tools/**
       statuses:
         - type: project
           target: 30%
@@ -73,8 +73,8 @@ component_management:
     - component_id: constants
       name: Constants & Init
       paths:
-        - src/mmrelay/constants/**
-        - src/mmrelay/__init__.py
+        - constants/**
+        - __init__.py
       statuses:
         - type: project
           target: 80%
