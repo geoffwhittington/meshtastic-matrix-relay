@@ -129,38 +129,28 @@ class TestIntegrationScenarios(unittest.TestCase):
             "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
         ) as mock_matrix_relay:
             with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins:
-                with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
-                    # Mock debug plugin
-                    mock_plugin = MagicMock()
-                    mock_plugin.handle_meshtastic_message = AsyncMock(
-                        return_value=False
-                    )
-                    mock_load_plugins.return_value = [mock_plugin]
+                # Mock debug plugin
+                mock_plugin = MagicMock()
+                mock_plugin.handle_meshtastic_message = AsyncMock(
+                    return_value=False
+                )
+                mock_load_plugins.return_value = [mock_plugin]
 
-                    def mock_run_coro(coro, loop):
-                        try:
-                            loop = asyncio.get_running_loop()
-                        except RuntimeError:
-                            loop = asyncio.new_event_loop()
-                        return loop.run_until_complete(coro)
+                # Set up global state
+                import mmrelay.meshtastic_utils
 
-                    mock_run_coroutine.side_effect = mock_run_coro
+                mmrelay.meshtastic_utils.config = config
+                mmrelay.meshtastic_utils.matrix_rooms = config["matrix_rooms"]
+                mmrelay.meshtastic_utils.event_loop = MagicMock()  # Mock event loop
 
-                    # Set up global state
-                    import mmrelay.meshtastic_utils
+                # Process the message
+                on_meshtastic_message(packet, mock_meshtastic_interface)
 
-                    mmrelay.meshtastic_utils.config = config
-                    mmrelay.meshtastic_utils.matrix_rooms = config["matrix_rooms"]
-                    mmrelay.meshtastic_utils.event_loop = MagicMock()  # Mock event loop
+                # Verify Matrix relay was called
+                mock_matrix_relay.assert_called_once()
 
-                    # Process the message
-                    on_meshtastic_message(packet, mock_meshtastic_interface)
-
-                    # Verify Matrix relay was called
-                    mock_matrix_relay.assert_called_once()
-
-                    # Verify plugin was called
-                    mock_plugin.handle_meshtastic_message.assert_called_once()
+                # Verify plugin was called
+                mock_plugin.handle_meshtastic_message.assert_called_once()
 
     def test_complete_matrix_to_meshtastic_flow(self):
         """
@@ -679,45 +669,35 @@ plugins:
             "mmrelay.matrix_utils.matrix_relay", new_callable=AsyncMock
         ) as mock_matrix_relay:
             with patch("mmrelay.plugin_loader.load_plugins") as mock_load_plugins:
-                with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
-                    # Mock telemetry plugin (simulates weather processing)
-                    mock_telemetry_plugin = MagicMock()
-                    mock_telemetry_plugin.handle_meshtastic_message = AsyncMock(
-                        return_value=False  # Processes but doesn't intercept
-                    )
-                    mock_load_plugins.return_value = [mock_telemetry_plugin]
+                # Mock telemetry plugin (simulates weather processing)
+                mock_telemetry_plugin = MagicMock()
+                mock_telemetry_plugin.handle_meshtastic_message = AsyncMock(
+                    return_value=False  # Processes but doesn't intercept
+                )
+                mock_load_plugins.return_value = [mock_telemetry_plugin]
 
-                    def mock_run_coro(coro, loop):
-                        try:
-                            loop = asyncio.get_running_loop()
-                        except RuntimeError:
-                            loop = asyncio.new_event_loop()
-                        return loop.run_until_complete(coro)
+                # Set up global state
+                import mmrelay.meshtastic_utils
 
-                    mock_run_coroutine.side_effect = mock_run_coro
-
-                    # Set up global state
-                    import mmrelay.meshtastic_utils
-
-                    mmrelay.meshtastic_utils.config = {
-                        "matrix_rooms": [
-                            {"id": "!weather:matrix.org", "meshtastic_channel": 0}
-                        ],
-                        "meshtastic": {"meshnet_name": "TestMesh"},
-                    }
-                    mmrelay.meshtastic_utils.matrix_rooms = [
+                mmrelay.meshtastic_utils.config = {
+                    "matrix_rooms": [
                         {"id": "!weather:matrix.org", "meshtastic_channel": 0}
-                    ]
-                    mmrelay.meshtastic_utils.event_loop = MagicMock()
+                    ],
+                    "meshtastic": {"meshnet_name": "TestMesh"},
+                }
+                mmrelay.meshtastic_utils.matrix_rooms = [
+                    {"id": "!weather:matrix.org", "meshtastic_channel": 0}
+                ]
+                mmrelay.meshtastic_utils.event_loop = MagicMock()
 
-                    # Process the telemetry message
-                    on_meshtastic_message(packet, mock_interface)
+                # Process the telemetry message
+                on_meshtastic_message(packet, mock_interface)
 
-                    # Verify telemetry plugin was called
-                    mock_telemetry_plugin.handle_meshtastic_message.assert_called_once()
+                # Verify telemetry plugin was called
+                mock_telemetry_plugin.handle_meshtastic_message.assert_called_once()
 
-                    # Verify Matrix relay was NOT called (telemetry messages are not relayed)
-                    mock_matrix_relay.assert_not_called()
+                # Verify Matrix relay was NOT called (telemetry messages are not relayed)
+                mock_matrix_relay.assert_not_called()
 
     def test_config_hot_reload_scenario(self):
         """
