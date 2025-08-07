@@ -305,9 +305,8 @@ If messages from MMRelay show as unencrypted in encrypted rooms, check your MMRe
 
 ### Device Verification
 
-MMRelay uses `ignore_unverified_devices=True` by default because:
+MMRelay uses `ignore_unverified_devices=True` for automated bot operation:
 - Interactive device verification is not practical for automated bots
-- The matrix-nio library has known issues with device verification
 - This setting allows reliable operation while maintaining encryption
 
 ### Key Storage
@@ -335,12 +334,9 @@ E2EE support is fully backward compatible:
 
 ### Implementation
 
-The E2EE implementation uses:
-- **matrix-nio library**: Handles Matrix protocol and encryption
-- **Olm/Megolm protocols**: Industry-standard Matrix encryption
-- **Correct initialization sequence**: E2EE store loaded before sync operations
-- **Proven patterns**: Based on working matrix-nio examples like nio-template
-- **Automatic key management**: Handles device keys and room keys
+- Uses matrix-nio library with Olm/Megolm encryption protocols
+- E2EE store loaded before sync operations for proper initialization
+- Automatic key management with `ignore_unverified_devices=True`
 
 ### Performance Impact
 
