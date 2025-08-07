@@ -434,8 +434,19 @@ async def connect_matrix(passed_config=None):
         matrix_homeserver = credentials["homeserver"]
         matrix_access_token = credentials["access_token"]
         bot_user_id = credentials["user_id"]
-        e2ee_device_id = credentials["device_id"]
+        e2ee_device_id = credentials.get("device_id")
+
+        # DEBUG: Log the actual values
         logger.info(f"Using credentials from {credentials_path}")
+        logger.info(f"Loaded device_id: {e2ee_device_id}")
+        logger.info(f"Device_id type: {type(e2ee_device_id)}")
+
+        # Check if device_id is missing or None
+        if not e2ee_device_id:
+            logger.error(f"Device ID is missing from credentials.json! Contents: {credentials}")
+            logger.error("Please run 'mmrelay --auth' again to regenerate credentials with device_id")
+            return None
+
         # If config also has Matrix login info, let the user know we're ignoring it
         if config and "matrix" in config and "access_token" in config["matrix"]:
             logger.info(
@@ -560,9 +571,15 @@ async def connect_matrix(passed_config=None):
 
     # Set the access_token and user_id using restore_login for better session management
     if credentials:
+        # DEBUG: Log device_id before setting
+        logger.info(f"About to set device_id: {e2ee_device_id} (type: {type(e2ee_device_id)})")
+
         # CRITICAL: Set device_id on client BEFORE calling restore_login
         # matrix-nio requires this for E2EE store loading
         matrix_client.device_id = e2ee_device_id
+
+        # DEBUG: Verify device_id was set
+        logger.info(f"Client device_id after setting: {matrix_client.device_id}")
 
         # Use restore_login method for proper session restoration
         matrix_client.restore_login(
