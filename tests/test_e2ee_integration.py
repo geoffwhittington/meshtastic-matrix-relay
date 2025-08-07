@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 try:
     from mmrelay.matrix_utils import matrix_client, connect_matrix, matrix_relay
-    from mmrelay.config import get_config
+    from mmrelay.config import load_config
     from tests.test_e2ee_encryption import E2EEDebugUtilities
 except ImportError as e:
     print(f"❌ Import error: {e}")
@@ -38,7 +38,7 @@ class E2EEIntegrationTester:
         
         try:
             # Load real config
-            self.config = get_config()
+            self.config = load_config()
             if not self.config:
                 raise Exception("Could not load config")
             

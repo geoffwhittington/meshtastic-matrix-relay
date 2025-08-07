@@ -107,7 +107,6 @@ class MockWhoamiError(Exception):
 
 
 # Mock specific nio classes that are imported directly
-nio_mock.AsyncClient = MagicMock()
 nio_mock.AsyncClientConfig = MagicMock()
 nio_mock.MatrixRoom = MockMatrixRoom
 nio_mock.ReactionEvent = MockReactionEvent

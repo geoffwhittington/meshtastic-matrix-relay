@@ -615,7 +615,7 @@ async def connect_matrix(passed_config=None):
     logger.info("Performing early lightweight sync to initialize rooms...")
     try:
         await asyncio.wait_for(
-            matrix_client.sync(timeout=MATRIX_EARLY_SYNC_TIMEOUT),
+            matrix_client.sync(timeout=MATRIX_EARLY_SYNC_TIMEOUT, full_state=True),
             timeout=MATRIX_SYNC_OPERATION_TIMEOUT,
         )
         logger.info(f"Early sync completed with {len(matrix_client.rooms)} rooms")

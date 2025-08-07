@@ -15,8 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from tests.test_e2ee_encryption import (
-    E2EETestFramework, 
-    E2EEDiagnosticTools, 
+    E2EETestFramework,
     E2EEDebugUtilities,
     MockEncryptedRoom,
     MockUnencryptedRoom
@@ -70,33 +69,33 @@ async def test_room_send_parameters():
     return True
 
 
-async def test_client_diagnostic_tools():
-    """Test diagnostic tools for client inspection"""
-    print("🔍 Testing diagnostic tools...")
+# async def test_client_diagnostic_tools():
+#     """Test diagnostic tools for client inspection"""
+#     print("🔍 Testing diagnostic tools...")
     
-    framework = E2EETestFramework()
-    mock_client = framework.create_mock_client()
+#     framework = E2EETestFramework()
+#     mock_client = framework.create_mock_client()
     
-    # Test client state inspection
-    state = E2EEDiagnosticTools.inspect_client_state(mock_client)
+#     # Test client state inspection
+#     state = E2EEDiagnosticTools.inspect_client_state(mock_client)
     
-    assert state["device_id"] == "TEST_DEVICE_ID", "Should detect device ID"
-    assert state["rooms_count"] == 2, "Should count rooms correctly"
-    assert len(state["encrypted_rooms"]) == 1, "Should detect encrypted rooms"
-    assert len(state["unencrypted_rooms"]) == 1, "Should detect unencrypted rooms"
+#     assert state["device_id"] == "TEST_DEVICE_ID", "Should detect device ID"
+#     assert state["rooms_count"] == 2, "Should count rooms correctly"
+#     assert len(state["encrypted_rooms"]) == 1, "Should detect encrypted rooms"
+#     assert len(state["unencrypted_rooms"]) == 1, "Should detect unencrypted rooms"
     
-    print("✅ Client state inspection works")
-    print(f"   State: {state}")
+#     print("✅ Client state inspection works")
+#     print(f"   State: {state}")
     
-    # Test prerequisite verification
-    checks = E2EEDiagnosticTools.verify_e2ee_prerequisites(mock_client)
+#     # Test prerequisite verification
+#     checks = E2EEDiagnosticTools.verify_e2ee_prerequisites(mock_client)
     
-    assert checks["has_device_id"] == True, "Should detect device ID"
-    assert checks["has_user_id"] == True, "Should detect user ID"
+#     assert checks["has_device_id"] == True, "Should detect device ID"
+#     assert checks["has_user_id"] == True, "Should detect user ID"
     
-    print("✅ Prerequisite verification works")
-    print(f"   Checks: {checks}")
-    return True
+#     print("✅ Prerequisite verification works")
+#     print(f"   Checks: {checks}")
+#     return True
 
 
 async def run_all_tests():

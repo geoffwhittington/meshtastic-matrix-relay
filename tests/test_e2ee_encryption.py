@@ -18,7 +18,6 @@ from unittest.mock import AsyncMock, MagicMock, patch, call
 from nio import AsyncClient, MatrixRoom, RoomSendResponse
 
 from mmrelay.matrix_utils import matrix_relay, connect_matrix
-from mmrelay.config import get_config
 
 
 class MockEncryptedRoom:
@@ -43,7 +42,7 @@ class E2EETestFramework:
     @staticmethod
     def create_mock_client(rooms=None, should_upload_keys=False):
         """Create a mock Matrix client with E2EE capabilities"""
-        client = AsyncMock(spec=AsyncClient)
+        client = AsyncMock()
         client.device_id = "TEST_DEVICE_ID"
         client.user_id = "@test:example.org"
         client.access_token = "test_token"
@@ -106,10 +105,14 @@ class TestE2EEEncryption:
         unencrypted_room = mock_client.rooms["!unencrypted:example.org"]
         assert unencrypted_room.encrypted == False, "Unencrypted room should be detected as unencrypted"
     
+    @patch('mmrelay.matrix_utils.config')
     @patch('mmrelay.matrix_utils.matrix_client')
-    async def test_message_to_encrypted_room_uses_ignore_unverified(self, mock_matrix_client):
+    async def test_message_to_encrypted_room_uses_ignore_unverified(self, mock_matrix_client, mock_config):
         """Test that messages to encrypted rooms use ignore_unverified_devices=True"""
         framework = E2EETestFramework()
+
+        # Setup mock config
+        mock_config.get.return_value = {"meshtastic": {}}
         
         # Setup mock client with encrypted room
         rooms = {"!encrypted:example.org": MockEncryptedRoom("!encrypted:example.org", encrypted=True)}
@@ -132,13 +135,17 @@ class TestE2EEEncryption:
         call_args, kwargs = framework.verify_encryption_parameters(mock_client, expected_ignore_unverified=True)
         
         # Verify room_id and message content
-        assert call_args.args[0] == "!encrypted:example.org", "Should send to correct room"
+        assert kwargs['room_id'] == "!encrypted:example.org", "Should send to correct room"
         assert kwargs['message_type'] == "m.room.message", "Should use correct message type"
     
+    @patch('mmrelay.matrix_utils.config')
     @patch('mmrelay.matrix_utils.matrix_client')
-    async def test_message_to_unencrypted_room_still_uses_ignore_unverified(self, mock_matrix_client):
+    async def test_message_to_unencrypted_room_still_uses_ignore_unverified(self, mock_matrix_client, mock_config):
         """Test that messages to unencrypted rooms also use ignore_unverified_devices=True (current implementation)"""
         framework = E2EETestFramework()
+
+        # Setup mock config
+        mock_config.get.return_value = {"meshtastic": {}}
         
         # Setup mock client with unencrypted room
         rooms = {"!unencrypted:example.org": MockUnencryptedRoom("!unencrypted:example.org")}
@@ -236,10 +243,14 @@ class TestE2EERoomStateDetection:
 class TestE2EEIntegration:
     """Integration tests for E2EE functionality"""
 
+    @patch('mmrelay.matrix_utils.config')
     @patch('mmrelay.matrix_utils.matrix_client')
-    async def test_complete_e2ee_message_flow(self, mock_global_client):
+    async def test_complete_e2ee_message_flow(self, mock_global_client, mock_config):
         """Test complete flow from E2EE setup to encrypted message sending"""
         framework = E2EETestFramework()
+
+        # Setup mock config
+        mock_config.get.return_value = {"meshtastic": {}}
 
         # Create mock client with E2EE setup
         mock_client = framework.create_mock_client(should_upload_keys=True)

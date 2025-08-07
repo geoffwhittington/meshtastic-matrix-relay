@@ -67,6 +67,7 @@ class TestAsyncPatterns(unittest.TestCase):
                             "mmrelay.matrix_utils.AsyncClient"
                         ) as mock_client_class:
                             mock_client = AsyncMock()
+                            mock_client.rooms = {}
                             # Mock successful whoami response
                             mock_whoami_response = MagicMock()
                             mock_whoami_response.device_id = "test_device"
@@ -152,6 +153,7 @@ class TestAsyncPatterns(unittest.TestCase):
                             "mmrelay.matrix_utils.AsyncClient"
                         ) as mock_client_class:
                             mock_client = AsyncMock()
+                            mock_client.rooms = {}
 
                             # Make whoami take longer than timeout
                             async def slow_whoami():
@@ -200,6 +202,7 @@ class TestAsyncPatterns(unittest.TestCase):
                 # Mock Matrix client that raises an exception
                 with patch("mmrelay.matrix_utils.AsyncClient") as mock_client_class:
                     mock_client = AsyncMock()
+                    mock_client.rooms = {}
                     mock_client.whoami.side_effect = Exception("Connection failed")
                     mock_client_class.return_value = mock_client
 
