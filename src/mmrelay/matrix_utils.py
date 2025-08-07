@@ -2,6 +2,7 @@ import asyncio
 import getpass
 import io
 import json
+import logging
 import os
 import re
 import ssl
@@ -877,6 +878,12 @@ async def login_matrix_bot(
         bool: True if login was successful, False otherwise
     """
     try:
+        # Enable nio debug logging for detailed connection analysis
+        logging.getLogger("nio").setLevel(logging.DEBUG)
+        logging.getLogger("nio.client").setLevel(logging.DEBUG)
+        logging.getLogger("nio.http_client").setLevel(logging.DEBUG)
+        logging.getLogger("aiohttp").setLevel(logging.DEBUG)
+
         # Get homeserver URL
         if not homeserver:
             homeserver = input(
@@ -965,11 +972,14 @@ async def login_matrix_bot(
         os.makedirs(store_path, exist_ok=True)
         logger.info(f"Using E2EE store path: {store_path}")
 
-        # Create SSL context and client config for E2EE
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        # Create client config for E2EE
         client_config = AsyncClientConfig(
             store_sync_tokens=True, encryption_enabled=True
         )
+
+        # Try default SSL context first (like matrix-commander)
+        # If that fails, we'll try with certifi SSL context
+        ssl_context = None  # Use aiohttp default SSL context
 
         # Initialize client with E2EE support
         # Use most common pattern from matrix-nio examples: positional homeserver and user
