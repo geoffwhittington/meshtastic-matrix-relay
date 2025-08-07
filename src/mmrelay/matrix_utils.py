@@ -633,8 +633,11 @@ async def connect_matrix(passed_config=None):
     # Perform initial sync to populate rooms (needed for message delivery)
     logger.info("Performing initial sync to initialize rooms...")
     try:
+        # A full_state=True sync is required to get room encryption state
         sync_response = await asyncio.wait_for(
-            matrix_client.sync(timeout=1000, full_state=False),
+            matrix_client.sync(
+                timeout=MATRIX_EARLY_SYNC_TIMEOUT, full_state=True
+            ),
             timeout=MATRIX_SYNC_OPERATION_TIMEOUT,
         )
         # Check if sync failed by looking for error class name
