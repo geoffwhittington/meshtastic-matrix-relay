@@ -25,6 +25,7 @@ from nio import (
     RoomMessageEmote,
     RoomMessageNotice,
     RoomMessageText,
+    SyncError,
     UploadResponse,
     WhoamiError,
 )
@@ -564,8 +565,12 @@ async def connect_matrix(passed_config=None):
         pass
 
     # Initialize the Matrix client with custom SSL context
+    # Use the same AsyncClientConfig pattern as working E2EE examples
     client_config = AsyncClientConfig(
-        encryption_enabled=e2ee_enabled, store_sync_tokens=True
+        max_limit_exceeded=0,
+        max_timeouts=0,
+        store_sync_tokens=True,
+        encryption_enabled=e2ee_enabled,
     )
 
     # Log the device ID being used
@@ -602,116 +607,47 @@ async def connect_matrix(passed_config=None):
         matrix_client.access_token = matrix_access_token
         matrix_client.user_id = bot_user_id
 
-    # =====================================================================
-    # MATRIX E2EE IMPLEMENTATION - CRITICAL SEQUENCE
-    # =====================================================================
-    # The sequence of operations is critical for proper E2EE functionality:
-    #
-    # 1. First, perform an early lightweight sync to initialize rooms and subscriptions
-    #    This is critical for message delivery to work properly. Without this sync,
-    #    the client would have no known rooms when messages are sent, causing silent failures.
-    #    This sync populates matrix_client.rooms with the room objects needed for message delivery.
-    #
-    # 2. After this initial sync, we'll retrieve the device_id, verify credentials,
-    #    load the encryption store, and upload keys BEFORE the main sync.
-    #
-    # 3. Only then will we perform the main sync that updates encryption state.
-    #
-    # This sequence ensures both proper message delivery AND encryption.
-    # =====================================================================
+    # If E2EE is enabled, load the store and set up encryption BEFORE any sync operations
+    if e2ee_enabled:
+        try:
+            logger.info("Setting up End-to-End Encryption...")
 
-    # Step 1: Early lightweight sync to initialize rooms and subscriptions
-    logger.info("Performing early lightweight sync to initialize rooms...")
+            # Load the encryption store immediately after setting credentials
+            logger.debug("Loading encryption store...")
+            matrix_client.load_store()
+            logger.debug("Encryption store loaded successfully")
+
+            # Upload keys if needed
+            if matrix_client.should_upload_keys:
+                logger.info("Uploading encryption keys...")
+                await matrix_client.keys_upload()
+                logger.info("Encryption keys uploaded successfully")
+            else:
+                logger.debug("No key upload needed")
+
+        except Exception as e:
+            logger.error(f"Failed to set up E2EE: {e}")
+            logger.error("E2EE will not work correctly")
+            # Don't fail completely, continue without E2EE
+
+    # Perform initial sync to populate rooms (needed for message delivery)
+    logger.info("Performing initial sync to initialize rooms...")
     try:
-        await asyncio.wait_for(
-            matrix_client.sync(timeout=MATRIX_EARLY_SYNC_TIMEOUT, full_state=True),
+        sync_response = await asyncio.wait_for(
+            matrix_client.sync(timeout=1000, full_state=False),
             timeout=MATRIX_SYNC_OPERATION_TIMEOUT,
         )
-        logger.info(f"Early sync completed with {len(matrix_client.rooms)} rooms")
-
-        # Debug: Check encryption status of rooms after early sync
-        if matrix_client.rooms:
-            for room_id, room in matrix_client.rooms.items():
-                encrypted_status = getattr(room, "encrypted", "unknown")
-                logger.debug(f"Room {room_id} encryption status after early sync: {encrypted_status}")
+        # Check if sync failed by looking for error class name
+        if hasattr(sync_response, '__class__') and 'Error' in sync_response.__class__.__name__:
+            logger.error(f"Initial sync failed: {sync_response}")
+            raise ConnectionError(f"Matrix sync failed: {sync_response}")
+        else:
+            logger.info(f"Initial sync completed. Found {len(matrix_client.rooms)} rooms.")
     except asyncio.TimeoutError:
-        logger.error(
-            f"Early sync timed out after {MATRIX_SYNC_OPERATION_TIMEOUT} seconds"
-        )
+        logger.error(f"Initial sync timed out after {MATRIX_SYNC_OPERATION_TIMEOUT} seconds")
         raise
 
-    # Retrieve the device_id using whoami() - this is critical for E2EE
-    try:
-        whoami_response = await asyncio.wait_for(
-            matrix_client.whoami(), timeout=MATRIX_LOGIN_TIMEOUT
-        )
-    except asyncio.TimeoutError:
-        logger.error(f"whoami() timed out after {MATRIX_LOGIN_TIMEOUT} seconds")
-        whoami_response = None
-    if whoami_response is None:
-        logger.error("Failed to retrieve device_id: whoami() timed out")
-        if e2ee_enabled:
-            logger.error(
-                "E2EE requires a valid device_id. E2EE may not work correctly."
-            )
-        # Don't reset the device_id to None if we already have one from credentials
-        if not matrix_client.device_id:
-            logger.error("No device_id available. E2EE will not work correctly.")
-    elif isinstance(whoami_response, WhoamiError):
-        logger.error(f"Failed to retrieve device_id: {whoami_response.message}")
-        if e2ee_enabled:
-            logger.error(
-                "E2EE requires a valid device_id. E2EE may not work correctly."
-            )
-        # Don't reset the device_id to None if we already have one from credentials
-        if not matrix_client.device_id:
-            logger.error("No device_id available. E2EE will not work correctly.")
-    else:
-        # Check if the device_id from whoami matches our credentials
-        server_device_id = whoami_response.device_id
-        if server_device_id:
-            if not matrix_client.device_id:
-                # If we don't have a device_id from credentials, use the one from whoami
-                matrix_client.device_id = server_device_id
-                logger.info(f"Using device_id from server: {matrix_client.device_id}")
 
-                # Update credentials.json with the correct device_id
-                if credentials and credentials_path:
-                    try:
-                        credentials["device_id"] = server_device_id
-                        with open(credentials_path, "w") as f:
-                            json.dump(credentials, f)
-                        logger.info(
-                            f"Updated credentials.json with device_id: {server_device_id}"
-                        )
-                    except Exception as e:
-                        logger.warning(f"Failed to update credentials.json: {e}")
-            elif matrix_client.device_id != server_device_id:
-                # If the device_id from credentials doesn't match the server, update it
-                logger.warning(
-                    f"Device ID mismatch: credentials={matrix_client.device_id}, server={server_device_id}"
-                )
-                logger.info(f"Updating device_id to match server: {server_device_id}")
-                matrix_client.device_id = server_device_id
-
-                # Update credentials.json with the correct device_id
-                if credentials and credentials_path:
-                    try:
-                        credentials["device_id"] = server_device_id
-                        with open(credentials_path, "w") as f:
-                            json.dump(credentials, f)
-                        logger.info(
-                            f"Updated credentials.json with device_id: {server_device_id}"
-                        )
-                    except Exception as e:
-                        logger.warning(f"Failed to update credentials.json: {e}")
-            else:
-                # Device IDs match, all good
-                logger.info(f"Using verified device_id: {matrix_client.device_id}")
-        else:
-            logger.error(
-                "No device_id returned by whoami(). E2EE will not work correctly."
-            )
 
     # Fetch the bot's display name
     response = await matrix_client.get_displayname(bot_user_id)
@@ -720,203 +656,11 @@ async def connect_matrix(passed_config=None):
     else:
         bot_user_name = bot_user_id  # Fallback if display name is not set
 
-    # =====================================================================
-    # MATRIX E2EE IMPLEMENTATION - ENCRYPTION SETUP
-    # =====================================================================
-    # This section handles the critical encryption setup sequence:
-    # 1. Load the encryption store (contains keys and device information)
-    # 2. Upload keys BEFORE performing the main sync
-    # 3. Perform sync AFTER key upload
-    # 4. Verify that rooms are properly populated
-    #
-    # This sequence is critical for proper encryption. If keys are not uploaded
-    # before the first sync that handles encrypted messages, the first message
-    # will fail to encrypt properly ("waiting for this message" error in Element).
-    # =====================================================================
 
-    # If E2EE is enabled, load the store and set up encryption
-    if e2ee_enabled:
-        try:
-            # Check if store directory contains database files
-            store_files = (
-                os.listdir(e2ee_store_path) if os.path.exists(e2ee_store_path) else []
-            )
-            db_files = [f for f in store_files if f.endswith(".db")]
-            if db_files:
-                logger.info(f"Found existing E2EE store files: {', '.join(db_files)}")
-            else:
-                logger.warning(
-                    "No existing E2EE store files found. Encryption may not work correctly."
-                )
 
-            # Load the store first
-            logger.debug("Loading encryption store...")
-            matrix_client.load_store()
-            logger.debug("Encryption store loaded successfully")
 
-            # Debug store state
-            logger.debug(f"E2EE store path: {e2ee_store_path}")
-            logger.debug(
-                f"Device store users immediately after load: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}"
-            )
 
-            # Confirm client credentials are set
-            logger.debug(
-                f"Checking client credentials: user_id={matrix_client.user_id}, device_id={matrix_client.device_id}"
-            )
-            if not (
-                matrix_client.user_id
-                and matrix_client.device_id
-                and matrix_client.access_token
-            ):
-                logger.warning(
-                    "Missing essential credentials for E2EE. Encryption may not work correctly."
-                )
 
-            # Upload keys BEFORE first sync
-            logger.debug("Uploading encryption keys to server BEFORE sync")
-            try:
-                if matrix_client.should_upload_keys:
-                    await matrix_client.keys_upload()
-                    logger.debug("Encryption keys uploaded successfully")
-                else:
-                    logger.debug("No key upload needed at this stage")
-            except Exception as ke:
-                logger.warning(f"Error uploading keys: {ke}")
-
-            # Now perform sync after keys are uploaded
-            logger.debug("Performing sync AFTER key upload")
-            try:
-                await asyncio.wait_for(
-                    matrix_client.sync(timeout=MATRIX_MAIN_SYNC_TIMEOUT),
-                    timeout=MATRIX_SYNC_OPERATION_TIMEOUT,
-                )
-            except asyncio.TimeoutError:
-                logger.error(
-                    f"Sync after key upload timed out after {MATRIX_SYNC_OPERATION_TIMEOUT} seconds"
-                )
-                # Continue anyway, don't fail completely
-
-            # Debug store state after sync
-            logger.debug(
-                f"Device store users after sync: {list(matrix_client.device_store.users) if matrix_client.device_store else 'None'}"
-            )
-
-            # Verify that rooms are properly populated
-            if not matrix_client.rooms:
-                logger.warning(
-                    "No rooms found after sync. Message delivery may not work correctly."
-                )
-            else:
-                # Only log room info at debug level
-                logger.debug(f"Found {len(matrix_client.rooms)} rooms after sync")
-                logger.debug(f"Available rooms: {list(matrix_client.rooms.keys())}")
-
-            # Trust all of our own devices to ensure encryption works
-            logger.debug("Trusting our own devices for encryption...")
-            try:
-                # First make sure we have synced to populate the device store
-                logger.debug("Performing sync to populate device store...")
-                try:
-                    await asyncio.wait_for(
-                        matrix_client.sync(timeout=MATRIX_MAIN_SYNC_TIMEOUT),
-                        timeout=MATRIX_SYNC_OPERATION_TIMEOUT,
-                    )
-                except asyncio.TimeoutError:
-                    logger.error(
-                        f"Sync to populate device store timed out after {MATRIX_SYNC_OPERATION_TIMEOUT} seconds"
-                    )
-                    # Continue anyway, don't fail completely
-
-                # Check if our user_id is in the device_store
-                if (
-                    matrix_client.device_store
-                    and matrix_client.user_id in matrix_client.device_store
-                ):
-                    devices = matrix_client.device_store[matrix_client.user_id]
-                    logger.info(
-                        f"Found {len(devices)} of our own devices in the device store"
-                    )
-
-                    # Trust each of our devices
-                    for device_id, device in devices.items():
-                        # Skip our current device as we can't verify it
-                        if device_id == matrix_client.device_id:
-                            logger.debug(f"Skipping our current device: {device_id}")
-                            continue
-
-                        try:
-                            matrix_client.verify_device(device)
-                            logger.info(f"Trusted own device {device_id}")
-                        except Exception as e:
-                            logger.error(f"Failed to trust device {device_id}: {e}")
-
-                    # Log about our current device
-                    if matrix_client.device_id in devices:
-                        logger.info(
-                            f"Our current device is in the device store: {matrix_client.device_id}"
-                        )
-                    else:
-                        logger.debug(
-                            f"Our current device {matrix_client.device_id} not found in device store (this is normal)"
-                        )
-                else:
-                    logger.debug(
-                        "No devices found for our user in the device store (this is normal for first run)"
-                    )
-            except Exception as ve:
-                logger.warning(f"Error verifying devices: {ve}")
-
-            # Patch the client to handle unverified devices
-            # This is a safer approach than monkey patching the OlmDevice class
-            original_encrypt_for_devices = None
-            if hasattr(matrix_client, "olm") and matrix_client.olm:
-                if hasattr(matrix_client.olm, "encrypt_for_devices"):
-                    original_encrypt_for_devices = matrix_client.olm.encrypt_for_devices
-
-                    # Create a wrapper that ignores verification status
-                    async def encrypt_for_all_devices(
-                        room_id, users_devices, plaintext
-                    ):
-                        # Force ignore_unverified_devices=True
-                        return await original_encrypt_for_devices(
-                            room_id,
-                            users_devices,
-                            plaintext,
-                            ignore_unverified_devices=True,
-                        )
-
-                    # Apply the patch
-                    matrix_client.olm.encrypt_for_devices = encrypt_for_all_devices
-                    logger.debug(
-                        "Patched encrypt_for_devices to ignore verification status"
-                    )
-
-            logger.debug("E2EE setup complete - will encrypt for all devices")
-
-            # Perform a full sync to populate room encryption state properly
-            # This is critical for encryption to work - based on matrix-nio-send implementation
-            logger.debug("Performing full sync to populate room encryption state...")
-            try:
-                await asyncio.wait_for(
-                    matrix_client.sync(timeout=30000, full_state=True),
-                    timeout=MATRIX_SYNC_OPERATION_TIMEOUT,
-                )
-                logger.debug("Full sync completed for E2EE room state population")
-            except asyncio.TimeoutError:
-                logger.warning("Full sync timed out, but continuing anyway")
-            except Exception as sync_e:
-                logger.warning(f"Full sync failed: {sync_e}, but continuing anyway")
-
-            # Debug: Check final encryption status of rooms after full sync
-            if matrix_client.rooms:
-                for room_id, room in matrix_client.rooms.items():
-                    encrypted_status = getattr(room, "encrypted", "unknown")
-                    logger.debug(f"Room {room_id} final encryption status after full sync: {encrypted_status}")
-
-        except Exception as e:
-            logger.error(f"Error setting up E2EE: {e}")
-            # Continue without E2EE if there's an error
 
     return matrix_client
 
