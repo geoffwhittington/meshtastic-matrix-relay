@@ -275,13 +275,20 @@ def set_config(module, passed_config):
                 module.bot_user_id = passed_config[CONFIG_SECTION_MATRIX][
                     CONFIG_KEY_BOT_USER_ID
                 ]
-            elif "username" in passed_config[CONFIG_SECTION_MATRIX] and "password" in passed_config[CONFIG_SECTION_MATRIX]:
+            elif (
+                "username" in passed_config[CONFIG_SECTION_MATRIX]
+                and "password" in passed_config[CONFIG_SECTION_MATRIX]
+            ):
                 # Legacy format - set dummy values and let matrix_utils handle the error
                 module.matrix_access_token = None
                 module.bot_user_id = None
                 # Store legacy credentials for potential future use
-                module.matrix_username = passed_config[CONFIG_SECTION_MATRIX]["username"]
-                module.matrix_password = passed_config[CONFIG_SECTION_MATRIX]["password"]
+                module.matrix_username = passed_config[CONFIG_SECTION_MATRIX][
+                    "username"
+                ]
+                module.matrix_password = passed_config[CONFIG_SECTION_MATRIX][
+                    "password"
+                ]
             else:
                 raise ValueError(
                     "Invalid Matrix configuration. Missing access_token or username/password."

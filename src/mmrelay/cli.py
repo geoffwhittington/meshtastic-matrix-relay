@@ -354,6 +354,7 @@ def main():
 
     except Exception as e:
         import traceback
+
         print(f"Unexpected error: {e}")
         print("Full traceback:")
         traceback.print_exc()

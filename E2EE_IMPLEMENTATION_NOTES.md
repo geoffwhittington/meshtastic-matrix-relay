@@ -141,6 +141,7 @@ client_config = AsyncClientConfig(
 #### Login/Token Handling Patterns (PRODUCTION-TESTED)
 
 **1. Token Restoration (Most Common):**
+
 ```python
 if config.user_token:
     client.access_token = config.user_token
@@ -153,6 +154,7 @@ if config.user_token:
 ```
 
 **2. Password Login (Initial Setup):**
+
 ```python
 login_response = await client.login(
     password=config.user_password,
@@ -161,6 +163,7 @@ login_response = await client.login(
 ```
 
 **3. Session Restoration (matrix-commander):**
+
 ```python
 client.restore_login(
     user_id=credentials["user_id"],
@@ -172,6 +175,7 @@ client.restore_login(
 #### Encrypted Message Callback Patterns
 
 **Universal Callback Registration:**
+
 ```python
 # nio-channel-bot
 client.add_event_callback(callbacks.message, (RoomMessageText,))
@@ -185,6 +189,7 @@ client.add_event_callback(callbacks.decryption_failure, (MegolmEvent,))
 ```
 
 **Decryption Failure Handling (Critical):**
+
 ```python
 async def decryption_failure(self, room: MatrixRoom, event: MegolmEvent) -> None:
     logger.error(f"Failed to decrypt event '{event.event_id}' in room '{room.room_id}'!")
@@ -409,6 +414,7 @@ Our `login_matrix_bot()` function implements the complete pattern:
 #### **Callback Handling - READY FOR EXTENSION**
 
 Current implementation supports:
+
 - ✅ **RoomMessageText** - Regular message handling
 - ✅ **MegolmEvent** - Encrypted message handling (in connect_matrix)
 - 🔄 **Ready for extension** - Can add decryption_failure callbacks like nio-channel-bot
@@ -416,6 +422,7 @@ Current implementation supports:
 ### 📋 **Analysis Summary - 12 Projects Examined**
 
 #### **Matrix-nio Official Examples**
+
 - ✅ basic_client.py - Basic patterns
 - ✅ manual_encrypted_verify.py - E2EE verification
 - ✅ restore_login.py - Session restoration
@@ -423,6 +430,7 @@ Current implementation supports:
 - ✅ verify_with_emoji.py - Interactive verification
 
 #### **Real-World Production Projects**
+
 - ✅ nio-channel-bot - Channel management bot
 - ✅ matrix-commander - Comprehensive CLI client
 - ✅ LainBot - Image processing bot
@@ -434,6 +442,7 @@ Current implementation supports:
 ### 🎯 **IMPLEMENTATION EXCELLENCE ACHIEVED**
 
 Our E2EE implementation now:
+
 - ✅ **Follows matrix-nio best practices** from 12+ analyzed projects
 - ✅ **Uses production-tested patterns** from real-world deployments
 - ✅ **Handles edge cases** discovered in comprehensive analysis

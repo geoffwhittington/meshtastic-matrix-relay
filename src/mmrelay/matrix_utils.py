@@ -17,8 +17,6 @@ from nio import (
     AsyncClientConfig,
     DiscoveryInfoError,
     DiscoveryInfoResponse,
-    LoginError,
-    LoginResponse,
     MatrixRoom,
     MegolmEvent,
     ReactionEvent,
@@ -443,8 +441,12 @@ async def connect_matrix(passed_config=None):
 
         # Check if device_id is missing or None
         if not e2ee_device_id:
-            logger.error(f"Device ID is missing from credentials.json! Contents: {credentials}")
-            logger.error("Please run 'mmrelay --auth' again to regenerate credentials with device_id")
+            logger.error(
+                f"Device ID is missing from credentials.json! Contents: {credentials}"
+            )
+            logger.error(
+                "Please run 'mmrelay --auth' again to regenerate credentials with device_id"
+            )
             return None
 
         # If config also has Matrix login info, let the user know we're ignoring it
@@ -572,7 +574,9 @@ async def connect_matrix(passed_config=None):
     # Set the access_token and user_id using restore_login for better session management
     if credentials:
         # DEBUG: Log device_id before setting
-        logger.info(f"About to set device_id: {e2ee_device_id} (type: {type(e2ee_device_id)})")
+        logger.info(
+            f"About to set device_id: {e2ee_device_id} (type: {type(e2ee_device_id)})"
+        )
 
         # CRITICAL: Set device_id on client BEFORE calling restore_login
         # matrix-nio requires this for E2EE store loading
@@ -618,18 +622,19 @@ async def connect_matrix(passed_config=None):
     try:
         await asyncio.wait_for(
             matrix_client.sync(timeout=MATRIX_EARLY_SYNC_TIMEOUT),
-            timeout=MATRIX_SYNC_OPERATION_TIMEOUT
+            timeout=MATRIX_SYNC_OPERATION_TIMEOUT,
         )
         logger.info(f"Early sync completed with {len(matrix_client.rooms)} rooms")
     except asyncio.TimeoutError:
-        logger.error(f"Early sync timed out after {MATRIX_SYNC_OPERATION_TIMEOUT} seconds")
+        logger.error(
+            f"Early sync timed out after {MATRIX_SYNC_OPERATION_TIMEOUT} seconds"
+        )
         raise
 
     # Retrieve the device_id using whoami() - this is critical for E2EE
     try:
         whoami_response = await asyncio.wait_for(
-            matrix_client.whoami(),
-            timeout=MATRIX_LOGIN_TIMEOUT
+            matrix_client.whoami(), timeout=MATRIX_LOGIN_TIMEOUT
         )
     except asyncio.TimeoutError:
         logger.error(f"whoami() timed out after {MATRIX_LOGIN_TIMEOUT} seconds")
@@ -775,10 +780,12 @@ async def connect_matrix(passed_config=None):
             try:
                 await asyncio.wait_for(
                     matrix_client.sync(timeout=MATRIX_MAIN_SYNC_TIMEOUT),
-                    timeout=MATRIX_SYNC_OPERATION_TIMEOUT
+                    timeout=MATRIX_SYNC_OPERATION_TIMEOUT,
                 )
             except asyncio.TimeoutError:
-                logger.error(f"Sync after key upload timed out after {MATRIX_SYNC_OPERATION_TIMEOUT} seconds")
+                logger.error(
+                    f"Sync after key upload timed out after {MATRIX_SYNC_OPERATION_TIMEOUT} seconds"
+                )
                 # Continue anyway, don't fail completely
 
             # Debug store state after sync
@@ -804,10 +811,12 @@ async def connect_matrix(passed_config=None):
                 try:
                     await asyncio.wait_for(
                         matrix_client.sync(timeout=MATRIX_MAIN_SYNC_TIMEOUT),
-                        timeout=MATRIX_SYNC_OPERATION_TIMEOUT
+                        timeout=MATRIX_SYNC_OPERATION_TIMEOUT,
                     )
                 except asyncio.TimeoutError:
-                    logger.error(f"Sync to populate device store timed out after {MATRIX_SYNC_OPERATION_TIMEOUT} seconds")
+                    logger.error(
+                        f"Sync to populate device store timed out after {MATRIX_SYNC_OPERATION_TIMEOUT} seconds"
+                    )
                     # Continue anyway, don't fail completely
 
                 # Check if our user_id is in the device_store
@@ -925,8 +934,7 @@ async def login_matrix_bot(
         temp_client = AsyncClient(homeserver, "")
         try:
             discovery_response = await asyncio.wait_for(
-                temp_client.discovery_info(),
-                timeout=30.0
+                temp_client.discovery_info(), timeout=30.0
             )
 
             if isinstance(discovery_response, DiscoveryInfoResponse):
@@ -934,14 +942,20 @@ async def login_matrix_bot(
                 logger.info(f"Server discovery successful: {actual_homeserver}")
                 homeserver = actual_homeserver
             elif isinstance(discovery_response, DiscoveryInfoError):
-                logger.info(f"Server discovery failed, using original URL: {homeserver}")
+                logger.info(
+                    f"Server discovery failed, using original URL: {homeserver}"
+                )
                 # Continue with original homeserver URL
 
         except asyncio.TimeoutError:
-            logger.warning(f"Server discovery timed out, using original URL: {homeserver}")
+            logger.warning(
+                f"Server discovery timed out, using original URL: {homeserver}"
+            )
             # Continue with original homeserver URL
         except Exception as e:
-            logger.warning(f"Server discovery error: {e}, using original URL: {homeserver}")
+            logger.warning(
+                f"Server discovery error: {e}, using original URL: {homeserver}"
+            )
             # Continue with original homeserver URL
         finally:
             await temp_client.close()
@@ -1027,23 +1041,25 @@ async def login_matrix_bot(
                     client.login(
                         password, device_name=device_name, device_id=existing_device_id
                     ),
-                    timeout=MATRIX_LOGIN_TIMEOUT
+                    timeout=MATRIX_LOGIN_TIMEOUT,
                 )
             else:
                 response = await asyncio.wait_for(
                     client.login(password, device_name=device_name),
-                    timeout=MATRIX_LOGIN_TIMEOUT
+                    timeout=MATRIX_LOGIN_TIMEOUT,
                 )
         except asyncio.TimeoutError:
             logger.error(f"Login timed out after {MATRIX_LOGIN_TIMEOUT} seconds")
-            logger.error("This may indicate network connectivity issues or a slow Matrix server")
+            logger.error(
+                "This may indicate network connectivity issues or a slow Matrix server"
+            )
             await client.close()
             return False
         except Exception as e:
             # Handle other exceptions during login (e.g., network errors)
             logger.error(f"Login exception: {e}")
             logger.error(f"Exception type: {type(e)}")
-            if hasattr(e, 'message'):
+            if hasattr(e, "message"):
                 logger.error(f"Exception message: {e.message}")
             await client.close()
             return False
@@ -1075,9 +1091,9 @@ async def login_matrix_bot(
         else:
             # Better error logging
             logger.error(f"Login failed: {response}")
-            if hasattr(response, 'message'):
+            if hasattr(response, "message"):
                 logger.error(f"Error message: {response.message}")
-            if hasattr(response, 'status_code'):
+            if hasattr(response, "status_code"):
                 logger.error(f"Status code: {response.status_code}")
             await client.close()
             return False
