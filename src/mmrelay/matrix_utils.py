@@ -561,7 +561,7 @@ async def connect_matrix(passed_config=None):
 
     # Log the device ID being used
     if e2ee_device_id:
-        logger.info(f"Using device ID: {e2ee_device_id}")
+        logger.debug(f"Device ID from credentials: {e2ee_device_id}")
 
     matrix_client = AsyncClient(
         homeserver=matrix_homeserver,
@@ -885,11 +885,25 @@ async def connect_matrix(passed_config=None):
 
             logger.debug("E2EE setup complete - will encrypt for all devices")
 
-            # Debug: Check final encryption status of rooms after E2EE setup
+            # Perform a full sync to populate room encryption state properly
+            # This is critical for encryption to work - based on matrix-nio-send implementation
+            logger.debug("Performing full sync to populate room encryption state...")
+            try:
+                await asyncio.wait_for(
+                    matrix_client.sync(timeout=30000, full_state=True),
+                    timeout=MATRIX_SYNC_OPERATION_TIMEOUT,
+                )
+                logger.debug("Full sync completed for E2EE room state population")
+            except asyncio.TimeoutError:
+                logger.warning("Full sync timed out, but continuing anyway")
+            except Exception as sync_e:
+                logger.warning(f"Full sync failed: {sync_e}, but continuing anyway")
+
+            # Debug: Check final encryption status of rooms after full sync
             if matrix_client.rooms:
                 for room_id, room in matrix_client.rooms.items():
                     encrypted_status = getattr(room, "encrypted", "unknown")
-                    logger.debug(f"Room {room_id} final encryption status after E2EE setup: {encrypted_status}")
+                    logger.debug(f"Room {room_id} final encryption status after full sync: {encrypted_status}")
 
         except Exception as e:
             logger.error(f"Error setting up E2EE: {e}")
@@ -1299,28 +1313,30 @@ async def matrix_relay(
 
             # Send the message with a timeout
             # For encrypted rooms, use ignore_unverified_devices=True
+            # After checking working implementations, always use ignore_unverified_devices=True
+            # for text messages to ensure encryption works properly
             room = (
                 matrix_client.rooms.get(room_id)
                 if matrix_client and hasattr(matrix_client, "rooms")
                 else None
             )
-            ignore_unverified = getattr(room, "encrypted", False) if room else False
 
             # Debug logging for encryption status
             if room:
-                logger.debug(f"Room {room_id} encryption status: encrypted={getattr(room, 'encrypted', 'unknown')}")
-                logger.debug(f"Room object attributes: {[attr for attr in dir(room) if not attr.startswith('_')]}")
+                encrypted_status = getattr(room, "encrypted", "unknown")
+                logger.debug(f"Room {room_id} encryption status: encrypted={encrypted_status}")
             else:
                 logger.warning(f"Room {room_id} not found in client.rooms")
 
-            logger.debug(f"Sending message with ignore_unverified_devices={ignore_unverified}")
+            # Always use ignore_unverified_devices=True for text messages (like matrix-nio-send)
+            logger.debug(f"Sending message with ignore_unverified_devices=True (always for text messages)")
 
             response = await asyncio.wait_for(
                 matrix_client.room_send(
                     room_id=room_id,
                     message_type="m.room.message",
                     content=content,
-                    ignore_unverified_devices=ignore_unverified,
+                    ignore_unverified_devices=True,
                 ),
                 timeout=MATRIX_ROOM_SEND_TIMEOUT,  # Increased timeout
             )
