@@ -14,6 +14,10 @@ import meshtastic.protobuf.portnums_pb2
 from nio import (
     AsyncClient,
     AsyncClientConfig,
+    DiscoveryInfoError,
+    DiscoveryInfoResponse,
+    LoginError,
+    LoginResponse,
     MatrixRoom,
     MegolmEvent,
     ReactionEvent,
@@ -882,6 +886,34 @@ async def login_matrix_bot(
         # Ensure homeserver URL has the correct format
         if not (homeserver.startswith("https://") or homeserver.startswith("http://")):
             homeserver = "https://" + homeserver
+
+        # Step 1: Perform server discovery to get the actual homeserver URL
+        logger.info(f"Performing server discovery for {homeserver}...")
+
+        # Create a temporary client for discovery
+        temp_client = AsyncClient(homeserver, "")
+        try:
+            discovery_response = await asyncio.wait_for(
+                temp_client.discovery_info(),
+                timeout=30.0
+            )
+
+            if isinstance(discovery_response, DiscoveryInfoResponse):
+                actual_homeserver = discovery_response.homeserver_url
+                logger.info(f"Server discovery successful: {actual_homeserver}")
+                homeserver = actual_homeserver
+            elif isinstance(discovery_response, DiscoveryInfoError):
+                logger.info(f"Server discovery failed, using original URL: {homeserver}")
+                # Continue with original homeserver URL
+
+        except asyncio.TimeoutError:
+            logger.warning(f"Server discovery timed out, using original URL: {homeserver}")
+            # Continue with original homeserver URL
+        except Exception as e:
+            logger.warning(f"Server discovery error: {e}, using original URL: {homeserver}")
+            # Continue with original homeserver URL
+        finally:
+            await temp_client.close()
 
         # Get username
         if not username:
