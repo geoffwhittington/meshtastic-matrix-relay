@@ -7,7 +7,7 @@
 End-to-End Encryption ensures that only you and the intended recipients can read your messages. When MMRelay connects to encrypted Matrix rooms, it will:
 
 - **Automatically encrypt** outgoing messages to encrypted rooms
-- **Automatically decrypt** incoming messages from encrypted rooms
+- **Automatically decrypt** incoming messages from encrypted rooms, requesting keys as needed
 - **Maintain device identity** across sessions for consistent encryption
 - **Handle mixed environments** with both encrypted and unencrypted rooms seamlessly
 
@@ -38,10 +38,10 @@ matrix:
 
 ### 3. Set Up Authentication
 
-Use the built-in authentication command:
+Use the built-in authentication command to create your bot's E2EE-enabled credentials:
 
 ```bash
-mmrelay --auth
+mmrelay --bot_login
 ```
 
 This interactive command will:
@@ -56,7 +56,7 @@ This interactive command will:
 mmrelay
 ```
 
-That's it! MMRelay will automatically encrypt messages for encrypted rooms and decrypt incoming encrypted messages.
+That's it! MMRelay will automatically encrypt messages for encrypted rooms and decrypt incoming encrypted messages. The first time it sees an encrypted message from a new device, it may log a "Failed to decrypt" error, but it will automatically request the necessary keys and decrypt the message on the next sync.
 
 ## Requirements
 
@@ -70,7 +70,7 @@ That's it! MMRelay will automatically encrypt messages for encrypted rooms and d
 
 **E2EE is not available on Windows** due to technical limitations with the required cryptographic libraries. The `python-olm` library requires native C libraries that are difficult to compile and install on Windows systems.
 
-**Windows users can still use MMRelay** for regular (unencrypted) Matrix communication by configuring Matrix credentials directly in `config.yaml` instead of using the `--auth` command.
+**Windows users can still use MMRelay** for regular (unencrypted) Matrix communication by configuring Matrix credentials directly in `config.yaml` instead of using the `--bot_login` command.
 
 ### Step 2: Create E2EE Credentials
 
@@ -78,10 +78,10 @@ Use the authentication command to create E2EE credentials:
 
 ```bash
 # Create E2EE credentials (interactive)
-mmrelay --auth
+mmrelay --bot_login
 ```
 
-**What the `--auth` command does:**
+**What the `--bot_login` command does:**
 1. Prompts for your Matrix homeserver, username, and password
 2. Creates a new Matrix session with E2EE support
 3. Generates a unique device ID for MMRelay
@@ -110,14 +110,14 @@ MMRelay will automatically:
 - Initialize encryption keys and device trust
 - Connect to Matrix with full E2EE support
 
-## The `--auth` Command
+## The `--bot_login` Command
 
-The `--auth` command is the recommended way to set up Matrix authentication for MMRelay v1.2+. It provides secure credential management with full E2EE support.
+The `--bot_login` command is the recommended way to set up Matrix authentication for MMRelay v1.2+. It provides secure credential management with full E2EE support.
 
 ### What It Does
 
 ```bash
-mmrelay --auth
+mmrelay --bot_login
 ```
 
 **The authentication process:**
@@ -130,7 +130,7 @@ mmrelay --auth
 ### Example Session
 
 ```
-$ mmrelay --auth
+$ mmrelay --bot_login
 Matrix Bot Login for E2EE
 =========================
 Matrix homeserver (e.g., https://matrix.org): https://matrix.example.org
@@ -182,6 +182,7 @@ MMRelay manages encryption devices automatically:
 
 - **Consistent Device ID**: Maintains the same device identity across restarts
 - **Key Storage**: Encryption keys are stored securely in `~/.mmrelay/store/`
+- **Automatic Key Sharing**: When the bot sees an encrypted message it can't read, it automatically requests the necessary keys from other clients in the room.
 - **Device Trust**: Uses `ignore_unverified_devices=True` for reliable operation
 - **Key Upload**: Automatically uploads encryption keys when needed
 
@@ -194,9 +195,10 @@ MMRelay manages encryption devices automatically:
    - Sends encrypted message to Matrix room
 
 2. **Incoming Messages** (Matrix → Meshtastic):
-   - MMRelay receives message from Matrix room
-   - If message is encrypted: Automatically decrypts using stored keys
-   - Forwards decrypted message to Meshtastic device
+   - MMRelay receives an encrypted message from a Matrix room.
+   - If it cannot be decrypted, the bot automatically requests the key.
+   - On a subsequent sync, the bot receives the key and decrypts the message.
+   - Forwards decrypted message to Meshtastic device.
 
 ## File Locations
 
@@ -227,13 +229,13 @@ The `credentials.json` file contains:
 
 #### "E2EE features not available on Windows"
 
-**Problem**: E2EE features don't work on Windows even with `mmrelay --auth`.
+**Problem**: E2EE features don't work on Windows even with `mmrelay --bot_login`.
 
 **Explanation**: E2EE requires the `python-olm` library, which depends on native C libraries that are difficult to compile on Windows.
 
 **Solutions**:
 - **Use Linux or macOS** for full E2EE support
-- **On Windows**: `mmrelay --auth` still works for regular Matrix communication
+- **On Windows**: `mmrelay --bot_login` still works for regular Matrix communication
 - **Alternative**: Configure credentials manually in `config.yaml`:
   ```yaml
   matrix:
@@ -242,7 +244,7 @@ The `credentials.json` file contains:
     bot_user_id: @yourbot:your-matrix-server.org
   ```
 
-**Note**: Credentials created with `mmrelay --auth` on Windows will work with E2EE if you later use them on Linux/macOS.
+**Note**: Credentials created with `mmrelay --bot_login` on Windows will work with E2EE if you later use them on Linux/macOS.
 
 #### "No E2EE dependencies found"
 
@@ -251,32 +253,23 @@ The `credentials.json` file contains:
 pip install mmrelay[e2e]
 ```
 
-#### "Failed to decrypt message"
+#### "Failed to decrypt event" error in logs
 
-**Possible causes**:
-- Device keys not properly synchronized
-- Store directory corrupted
-- Different device ID used
+**Problem**: You see `ERROR Matrix: Failed to decrypt event...` in your logs.
 
-**Solution**: Recreate credentials:
-```bash
-# Remove old credentials and store
-rm ~/.mmrelay/credentials.json
-rm -rf ~/.mmrelay/store/
+**Explanation**: This is usually normal, temporary behavior. It happens when another user sends a message in an encrypted room and the relay doesn't have the decryption key for it yet.
 
-# Create new credentials
-mmrelay --auth
-```
+**Solution**:
+- **Wait**: The relay will automatically request the key in the background. The message should be successfully decrypted within the next minute during the next sync from the server.
+- **If the error persists for a long time**: This might indicate a de-synchronized session. The best way to fix this is to regenerate your credentials and key store.
+  ```bash
+  # Remove old credentials and store
+  rm ~/.mmrelay/credentials.json
+  rm -rf ~/.mmrelay/store/
 
-#### Messages appear unencrypted in encrypted rooms
-
-This was a known issue that has been **fixed** in the latest version. The fix involved correcting the E2EE initialization sequence:
-- E2EE store is now loaded BEFORE any sync operations
-- Encryption keys are uploaded at the correct time in the sequence
-- Device ID is handled consistently using credentials
-- Follows proven patterns from working matrix-nio examples
-
-**Solution**: Update to the latest version of MMRelay.
+  # Create new credentials
+  mmrelay --bot_login
+  ```
 
 ### Verification and Testing
 
@@ -296,8 +289,8 @@ INFO Matrix: Initial sync completed. Found X rooms.
 #### Verify Message Encryption
 
 In your Matrix client (Element, etc.):
-- **Encrypted messages**: Show with a lock icon or green shield
-- **Unencrypted messages**: Show with a red shield and "Not encrypted" warning
+- **Encrypted messages**: Show with a lock icon or green shield.
+- **Unencrypted messages**: Show with a red shield and "Not encrypted" warning.
 
 If messages from MMRelay show as unencrypted in encrypted rooms, check your MMRelay version and configuration.
 

@@ -1,16 +1,16 @@
 # E2EE Implementation Notes
 
-**This document summarizes the final, working implementation of End-to-End Encryption (E2EE) in MMRelay.**
+**This document summarizes the final, working implementation of End-to-End Encryption (E2EE) in MMRelay as of August 2025.**
 
 ## Core E2EE Implementation Logic
 
-The final working E2EE implementation relies on three critical components to function correctly.
+The final working E2EE implementation relies on four critical components to function correctly.
 
 ### 1. Initial Sync with Full State
 
 To correctly identify encrypted rooms at startup, the initial sync with the homeserver **must** be performed with `full_state=True`. A lightweight sync (`full_state=False`) does not provide the necessary `m.room.encryption` state events, causing the client to incorrectly treat encrypted rooms as unencrypted.
 
-**Correct Implementation (`src/mmrelay/matrix_utils.py`):**
+**Implementation (`src/mmrelay/matrix_utils.py`):**
 ```python
 # In connect_matrix()
 sync_response = await asyncio.wait_for(
@@ -43,31 +43,22 @@ matrix_client.add_event_callback(on_decryption_failure, (MegolmEvent,))
 
 When the `on_decryption_failure` callback is triggered, it is not enough to simply log the error. The client must actively request the missing decryption key from other clients in the room.
 
-The implementation now manually constructs and sends an `m.room_key_request` to-device message. It uses the `room.room_id` from the callback's `room` object, as the `event.room_id` was found to be unreliable.
+The implementation now monkey-patches the `event.room_id` (which was found to be unreliable) and then uses the standard `event.as_key_request()` method to create and send the `m.room_key_request`.
 
-**Correct Implementation (`src/mmrelay/matrix_utils.py`):**
+**Implementation (`src/mmrelay/matrix_utils.py`):**
 ```python
 # In on_decryption_failure(room, event)
-content = {
-    "action": "request",
-    "body": {
-        "algorithm": event.algorithm,
-        "room_id": room.room_id, # Use the reliable room_id from the room object
-        "sender_key": event.sender_key,
-        "session_id": event.session_id,
-    },
-    "requesting_device_id": matrix_client.device_id,
-    "request_id": str(uuid4()),
-}
+try:
+    # Monkey-patch the event object with the correct room_id from the room object
+    event.room_id = room.room_id
 
-message = ToDeviceMessage(
-    "m.room_key_request",
-    event.sender,
-    "*",  # To all devices
-    content,
-)
-
-await matrix_client.to_device(message)
+    request = event.as_key_request(
+        matrix_client.user_id, matrix_client.device_id
+    )
+    await matrix_client.to_device(request)
+    logger.info(f"Requested keys for failed decryption of event {event.event_id}")
+except Exception as e:
+    logger.error(f"Failed to request keys for event {event.event_id}: {e}")
 ```
 
 ### 4. Outgoing Message Formatting (`formatted_body` fix)
@@ -76,7 +67,7 @@ A validation error in `matrix-nio`'s event parser was triggered when the relay s
 
 To work around this, all outgoing `m.room.message` events of `msgtype: "m.text"` sent by `matrix_relay` now **always** include a `format` and `formatted_body` key. For plain-text messages, the `body` and `formatted_body` are identical.
 
-**Correct Implementation (`src/mmrelay/matrix_utils.py`):**
+**Implementation (`src/mmrelay/matrix_utils.py`):**
 ```python
 # In matrix_relay()
 content = {
@@ -92,10 +83,10 @@ content["formatted_body"] = formatted_body
 
 ## Summary of E2EE Flow
 
-1.  **Startup**: The client connects and performs a `sync(full_state=True)`, learning which rooms are encrypted.
+1.  **Startup**: The client connects and performs a `sync(full_state=True)`, learning which rooms are encrypted. The E2EE store is loaded and keys are uploaded if needed *before* this sync.
 2.  **Outgoing Message**: `matrix_relay` sends a message from Meshtastic to Matrix. It is correctly encrypted by `nio` because the room's encrypted state is known. The message content includes a `formatted_body` to prevent parser errors.
 3.  **Incoming Encrypted Message**: A `MegolmEvent` is received.
-    - **If decryption succeeds**: `nio` fires the `RoomMessageText` callback. `on_room_message` is triggered, and the decrypted message is relayed to Meshtastic.
+    - **If decryption succeeds**: `nio` automatically generates a `RoomMessageText` event. `on_room_message` is triggered, and the decrypted message is relayed to Meshtastic.
     - **If decryption fails**: `nio` fires the `MegolmEvent` callback. `on_decryption_failure` is triggered. The bot logs the error and sends out an `m.room_key_request`.
 4.  **Key Arrival**: The key request is received by other clients, who send the key back in a `m.forwarded_room_key` to-device event. `nio` automatically processes this key and stores it.
 5.  **Decryption Retry**: The next time the client syncs, it can now decrypt the original message it failed on. The `RoomMessageText` callback will be fired, and the message will be processed.

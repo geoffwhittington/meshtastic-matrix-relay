@@ -10,11 +10,11 @@ import sys
 import time
 from typing import Union
 from urllib.parse import urlparse
-
-import certifi
-import meshtastic.protobuf.portnums_pb2
 from uuid import uuid4
 
+import certifi
+import markdown
+import meshtastic.protobuf.portnums_pb2
 from nio import (
     AsyncClient,
     AsyncClientConfig,
@@ -1365,17 +1365,23 @@ async def on_decryption_failure(room: MatrixRoom, event: MegolmEvent) -> None:
         f"Try logging in again with 'mmrelay --auth'."
     )
 
-    # Attempt to request the keys for the failed event
+    # Manually construct and send a key request.
+    # We use room.room_id because event.room_id is not reliably populated.
     try:
         if not matrix_client:
             logger.error("Matrix client not available, cannot request keys.")
             return
 
+        # Monkey-patch the event object with the correct room_id
+        event.room_id = room.room_id
+
         request = event.as_key_request(
             matrix_client.user_id, matrix_client.device_id
         )
+
         await matrix_client.to_device(request)
         logger.info(f"Requested keys for failed decryption of event {event.event_id}")
+
     except Exception as e:
         logger.error(f"Failed to request keys for event {event.event_id}: {e}")
 
