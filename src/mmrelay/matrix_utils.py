@@ -13,6 +13,8 @@ from urllib.parse import urlparse
 
 import certifi
 import meshtastic.protobuf.portnums_pb2
+from uuid import uuid4
+
 from nio import (
     AsyncClient,
     AsyncClientConfig,
@@ -29,6 +31,7 @@ from nio import (
     UploadResponse,
     WhoamiError,
 )
+from nio.event_builders import ToDeviceMessage
 from nio.events.room_events import RoomMemberEvent
 from PIL import Image
 
