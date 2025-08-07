@@ -1038,18 +1038,14 @@ async def login_matrix_bot(
         # Use the original working device name
         device_name = "mmrelay-e2ee"
         try:
+            # Set device_id on client if we have an existing one
             if existing_device_id:
-                response = await asyncio.wait_for(
-                    client.login(
-                        password, device_name=device_name, device_id=existing_device_id
-                    ),
-                    timeout=MATRIX_LOGIN_TIMEOUT,
-                )
-            else:
-                response = await asyncio.wait_for(
-                    client.login(password, device_name=device_name),
-                    timeout=MATRIX_LOGIN_TIMEOUT,
-                )
+                client.device_id = existing_device_id
+
+            response = await asyncio.wait_for(
+                client.login(password, device_name=device_name),
+                timeout=MATRIX_LOGIN_TIMEOUT,
+            )
         except asyncio.TimeoutError:
             logger.error(f"Login timed out after {MATRIX_LOGIN_TIMEOUT} seconds")
             logger.error(
