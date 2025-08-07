@@ -270,10 +270,11 @@ mmrelay --auth
 
 #### Messages appear unencrypted in encrypted rooms
 
-This was a known issue that has been **fixed** in the latest version. The fix ensures that:
-- Room encryption state is properly detected during initialization
-- Full sync is performed to populate room encryption information
-- Messages are automatically encrypted for encrypted rooms
+This was a known issue that has been **fixed** in the latest version. The fix involved correcting the E2EE initialization sequence:
+- E2EE store is now loaded BEFORE any sync operations
+- Encryption keys are uploaded at the correct time in the sequence
+- Device ID is handled consistently using credentials
+- Follows proven patterns from working matrix-nio examples
 
 **Solution**: Update to the latest version of MMRelay.
 
@@ -285,10 +286,11 @@ Look for these log messages when MMRelay starts:
 
 ```
 INFO Matrix: Found credentials at ~/.mmrelay/credentials.json
-INFO Matrix: Loaded device_id: YOUR_DEVICE_ID
 INFO Matrix: Using device ID: YOUR_DEVICE_ID
-INFO Matrix: Performing early lightweight sync to initialize rooms...
-INFO Matrix: Early sync completed with X rooms
+INFO Matrix: Setting up End-to-End Encryption...
+INFO Matrix: Encryption keys uploaded successfully
+INFO Matrix: Performing initial sync to initialize rooms...
+INFO Matrix: Initial sync completed. Found X rooms.
 ```
 
 #### Verify Message Encryption
@@ -336,7 +338,8 @@ E2EE support is fully backward compatible:
 The E2EE implementation uses:
 - **matrix-nio library**: Handles Matrix protocol and encryption
 - **Olm/Megolm protocols**: Industry-standard Matrix encryption
-- **Full state sync**: Ensures proper room encryption detection
+- **Correct initialization sequence**: E2EE store loaded before sync operations
+- **Proven patterns**: Based on working matrix-nio examples like nio-template
 - **Automatic key management**: Handles device keys and room keys
 
 ### Performance Impact
