@@ -940,10 +940,10 @@ async def login_matrix_bot(
         )
 
         # Initialize client with E2EE support
-        # Use proper matrix-nio AsyncClient constructor signature
+        # Use most common pattern from matrix-nio examples: positional homeserver and user
         client = AsyncClient(
             homeserver,
-            user=username,
+            username,
             device_id=existing_device_id,
             store_path=store_path,
             config=client_config,
