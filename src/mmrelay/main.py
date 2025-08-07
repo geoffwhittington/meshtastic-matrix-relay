@@ -32,7 +32,11 @@ from mmrelay.db_utils import (
 from mmrelay.log_utils import get_logger
 from mmrelay.matrix_utils import connect_matrix, join_matrix_room
 from mmrelay.matrix_utils import logger as matrix_logger
-from mmrelay.matrix_utils import on_room_member, on_room_message
+from mmrelay.matrix_utils import (
+    on_decryption_failure,
+    on_room_member,
+    on_room_message,
+)
 from mmrelay.meshtastic_utils import connect_meshtastic
 from mmrelay.meshtastic_utils import logger as meshtastic_logger
 from mmrelay.message_queue import (
@@ -123,15 +127,14 @@ async def main(config):
     # Register the message callback for Matrix
     matrix_logger.info("Listening for inbound Matrix messages...")
     matrix_client.add_event_callback(
-        on_room_message, (RoomMessageText, RoomMessageNotice, RoomMessageEmote)
+        on_room_message,
+        (RoomMessageText, RoomMessageNotice, RoomMessageEmote, ReactionEvent),
     )
-    # Add ReactionEvent callback so we can handle matrix reactions
-    matrix_client.add_event_callback(on_room_message, ReactionEvent)
-    # Add E2EE callbacks for encrypted messages
-    matrix_client.add_event_callback(on_room_message, MegolmEvent)
-    matrix_client.add_event_callback(on_room_message, RoomEncryptionEvent)
+    # Add E2EE callbacks
+    matrix_client.add_event_callback(on_decryption_failure, (MegolmEvent,))
+    matrix_client.add_event_callback(on_room_message, (RoomEncryptionEvent,))
     # Add RoomMemberEvent callback to track room-specific display name changes
-    matrix_client.add_event_callback(on_room_member, RoomMemberEvent)
+    matrix_client.add_event_callback(on_room_member, (RoomMemberEvent,))
 
     # Set up shutdown event
     shutdown_event = asyncio.Event()

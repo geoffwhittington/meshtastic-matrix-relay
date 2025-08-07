@@ -1353,6 +1353,16 @@ async def handle_matrix_reply(
     return True  # Reply was handled, stop further processing
 
 
+async def on_decryption_failure(room: MatrixRoom, event: MegolmEvent) -> None:
+    """Callback for when an event fails to decrypt."""
+    logger.error(
+        f"Failed to decrypt event '{event.event_id}' in room '{room.room_id}'! "
+        f"This is usually temporary and resolves on its own. "
+        f"If this persists, the bot's session may be corrupt. "
+        f"Try logging in again with 'mmrelay --auth'."
+    )
+
+
 # Callback for new messages in Matrix room
 async def on_room_message(
     room: MatrixRoom,
@@ -1387,31 +1397,13 @@ async def on_room_message(
         return
 
     # Handle RoomEncryptionEvent - log when a room becomes encrypted
-    # Use string comparison for better test compatibility
-    if (
-        hasattr(event, "__class__")
-        and event.__class__.__name__ == "RoomEncryptionEvent"
-    ):
+    if isinstance(event, RoomEncryptionEvent):
         logger.info(f"Room {room.room_id} is now encrypted")
         return
 
-    # Handle MegolmEvent (encrypted messages)
-    # Use string comparison for better test compatibility
-    if hasattr(event, "__class__") and event.__class__.__name__ == "MegolmEvent":
-        # If the event is encrypted but not yet decrypted, log and return
-        if hasattr(event, "decrypted") and not event.decrypted:
-            logger.warning(
-                f"Received encrypted event that could not be decrypted in room {room.room_id}"
-            )
-            return
-
-        # If decrypted, extract the decrypted event and process it
-        logger.debug(f"Processing decrypted message in room {room.room_id}")
-        # The decrypted event is available as event.decrypted_event
-        # We need to recursively call this function with the decrypted event
-        if hasattr(event, "decrypted_event") and event.decrypted_event:
-            await on_room_message(room, event.decrypted_event)
-        return
+    # Note: MegolmEvent (encrypted) messages are handled by the `on_decryption_failure`
+    # callback if they fail, or by the `RoomMessageText` callback if they succeed.
+    # No explicit handling is needed here.
 
     # Find the room_config that matches this room, if any
     room_config = None
