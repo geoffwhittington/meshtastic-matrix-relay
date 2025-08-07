@@ -28,7 +28,6 @@ from nio.events.room_events import RoomMemberEvent
 from PIL import Image
 
 from mmrelay.config import get_base_dir, get_e2ee_store_dir, save_credentials
-from mmrelay.constants.app import MATRIX_DEVICE_NAME
 from mmrelay.constants.config import (
     CONFIG_SECTION_MATRIX,
 )
@@ -941,10 +940,10 @@ async def login_matrix_bot(
         )
 
         # Initialize client with E2EE support
-        # Note: AsyncClient expects user_id format, not username
+        # Use positional arguments like the original working implementation
         client = AsyncClient(
-            homeserver=homeserver,
-            user=username,  # This should be the full user_id (@user:server)
+            homeserver,
+            username,
             device_id=existing_device_id,
             config=client_config,
             ssl=ssl_context,
@@ -954,7 +953,8 @@ async def login_matrix_bot(
         logger.info(f"Logging in as {username} to {homeserver}...")
 
         # Login with consistent device name and timeout
-        device_name = MATRIX_DEVICE_NAME
+        # Use the original working device name
+        device_name = "mmrelay-e2ee"
         try:
             if existing_device_id:
                 response = await asyncio.wait_for(
@@ -970,11 +970,15 @@ async def login_matrix_bot(
                 )
         except asyncio.TimeoutError:
             logger.error(f"Login timed out after {MATRIX_LOGIN_TIMEOUT} seconds")
+            logger.error("This may indicate network connectivity issues or a slow Matrix server")
             await client.close()
             return False
         except Exception as e:
             # Handle other exceptions during login (e.g., network errors)
             logger.error(f"Login exception: {e}")
+            logger.error(f"Exception type: {type(e)}")
+            if hasattr(e, 'message'):
+                logger.error(f"Exception message: {e.message}")
             await client.close()
             return False
 
