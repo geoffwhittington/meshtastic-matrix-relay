@@ -452,6 +452,9 @@ async def connect_matrix(passed_config=None):
         matrix_access_token = config["matrix"]["access_token"]
         bot_user_id = config["matrix"]["bot_user_id"]
 
+        # Set device_id for E2EE - use config value or generate default
+        e2ee_device_id = config["matrix"].get("device_id", "mmrelay-device")
+
     # Get matrix rooms from config
     matrix_rooms = config["matrix_rooms"]
 

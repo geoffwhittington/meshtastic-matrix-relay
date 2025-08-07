@@ -265,12 +265,27 @@ def set_config(module, passed_config):
                 CONFIG_KEY_HOMESERVER
             ]
             module.matrix_rooms = passed_config["matrix_rooms"]
-            module.matrix_access_token = passed_config[CONFIG_SECTION_MATRIX][
-                CONFIG_KEY_ACCESS_TOKEN
-            ]
-            module.bot_user_id = passed_config[CONFIG_SECTION_MATRIX][
-                CONFIG_KEY_BOT_USER_ID
-            ]
+
+            # Support both new format (access_token) and legacy format (username/password)
+            if CONFIG_KEY_ACCESS_TOKEN in passed_config[CONFIG_SECTION_MATRIX]:
+                # New format with access_token
+                module.matrix_access_token = passed_config[CONFIG_SECTION_MATRIX][
+                    CONFIG_KEY_ACCESS_TOKEN
+                ]
+                module.bot_user_id = passed_config[CONFIG_SECTION_MATRIX][
+                    CONFIG_KEY_BOT_USER_ID
+                ]
+            elif "username" in passed_config[CONFIG_SECTION_MATRIX] and "password" in passed_config[CONFIG_SECTION_MATRIX]:
+                # Legacy format - set dummy values and let matrix_utils handle the error
+                module.matrix_access_token = None
+                module.bot_user_id = None
+                # Store legacy credentials for potential future use
+                module.matrix_username = passed_config[CONFIG_SECTION_MATRIX]["username"]
+                module.matrix_password = passed_config[CONFIG_SECTION_MATRIX]["password"]
+            else:
+                raise ValueError(
+                    "Invalid Matrix configuration. Missing access_token or username/password."
+                )
 
     elif module_name == "meshtastic_utils":
         # Set Meshtastic-specific configuration

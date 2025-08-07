@@ -350,7 +350,10 @@ def run_main(args):
         logger.info("Interrupted by user. Exiting.")
         return 0
     except Exception as e:
+        import traceback
         logger.error(f"Error running main functionality: {e}")
+        logger.error("Full traceback:")
+        logger.error(traceback.format_exc())
         return 1
 
 
