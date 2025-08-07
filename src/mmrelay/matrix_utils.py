@@ -1014,10 +1014,10 @@ async def matrix_relay(
             "meshtastic_portnum": portnum,
         }
 
-        # Add HTML formatting fields if message has markdown or HTML
-        if has_markdown or has_html:
-            content["format"] = "org.matrix.custom.html"
-            content["formatted_body"] = formatted_body
+        # Always add format and formatted_body to avoid nio validation errors
+        # where formatted_body becomes None and fails schema validation.
+        content["format"] = "org.matrix.custom.html"
+        content["formatted_body"] = formatted_body
         if meshtastic_id is not None:
             content["meshtastic_id"] = meshtastic_id
         if meshtastic_replyId is not None:
