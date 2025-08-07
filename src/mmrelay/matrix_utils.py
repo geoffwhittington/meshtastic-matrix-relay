@@ -560,6 +560,10 @@ async def connect_matrix(passed_config=None):
 
     # Set the access_token and user_id using restore_login for better session management
     if credentials:
+        # CRITICAL: Set device_id on client BEFORE calling restore_login
+        # matrix-nio requires this for E2EE store loading
+        matrix_client.device_id = e2ee_device_id
+
         # Use restore_login method for proper session restoration
         matrix_client.restore_login(
             user_id=bot_user_id,
