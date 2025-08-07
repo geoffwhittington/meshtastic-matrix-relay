@@ -627,6 +627,12 @@ async def connect_matrix(passed_config=None):
             timeout=MATRIX_SYNC_OPERATION_TIMEOUT,
         )
         logger.info(f"Early sync completed with {len(matrix_client.rooms)} rooms")
+
+        # Debug: Check encryption status of rooms after early sync
+        if matrix_client.rooms:
+            for room_id, room in matrix_client.rooms.items():
+                encrypted_status = getattr(room, "encrypted", "unknown")
+                logger.debug(f"Room {room_id} encryption status after early sync: {encrypted_status}")
     except asyncio.TimeoutError:
         logger.error(
             f"Early sync timed out after {MATRIX_SYNC_OPERATION_TIMEOUT} seconds"
@@ -886,6 +892,12 @@ async def connect_matrix(passed_config=None):
                     )
 
             logger.debug("E2EE setup complete - will encrypt for all devices")
+
+            # Debug: Check final encryption status of rooms after E2EE setup
+            if matrix_client.rooms:
+                for room_id, room in matrix_client.rooms.items():
+                    encrypted_status = getattr(room, "encrypted", "unknown")
+                    logger.debug(f"Room {room_id} final encryption status after E2EE setup: {encrypted_status}")
 
         except Exception as e:
             logger.error(f"Error setting up E2EE: {e}")
@@ -1301,6 +1313,15 @@ async def matrix_relay(
                 else None
             )
             ignore_unverified = getattr(room, "encrypted", False) if room else False
+
+            # Debug logging for encryption status
+            if room:
+                logger.debug(f"Room {room_id} encryption status: encrypted={getattr(room, 'encrypted', 'unknown')}")
+                logger.debug(f"Room object attributes: {[attr for attr in dir(room) if not attr.startswith('_')]}")
+            else:
+                logger.warning(f"Room {room_id} not found in client.rooms")
+
+            logger.debug(f"Sending message with ignore_unverified_devices={ignore_unverified}")
 
             response = await asyncio.wait_for(
                 matrix_client.room_send(
