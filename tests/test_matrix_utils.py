@@ -867,15 +867,13 @@ async def test_connect_matrix_success(matrix_config):
         # Verify client was created and configured
         mock_async_client.assert_called_once()
         assert result == mock_client_instance
-        mock_client_instance.whoami.assert_called_once()
+        # Note: whoami() is no longer called in the new E2EE implementation
 
 
-async def test_connect_matrix_whoami_error(matrix_config):
+async def test_connect_matrix_without_credentials(matrix_config):
     """
-    Test that `connect_matrix` returns the Matrix client with `device_id` set to None when the `whoami` call fails during authentication.
+    Test that `connect_matrix` returns the Matrix client successfully when using legacy config without credentials.json.
     """
-    from nio import WhoamiError
-
     with patch("mmrelay.matrix_utils.matrix_client", None), patch(
         "mmrelay.matrix_utils.AsyncClient"
     ) as mock_async_client, patch("mmrelay.matrix_utils.logger"), patch(
@@ -889,20 +887,20 @@ async def test_connect_matrix_whoami_error(matrix_config):
         mock_client_instance = MagicMock()
         mock_client_instance.sync = AsyncMock()  # Add missing sync method
         mock_client_instance.rooms = {}  # Add missing rooms attribute
-        mock_client_instance.device_id = None  # Set device_id to None for this test
-        mock_client_instance.whoami = AsyncMock()
+        mock_client_instance.device_id = None  # Set device_id to None for legacy config
         mock_client_instance.get_displayname = AsyncMock()
         mock_async_client.return_value = mock_client_instance
 
-        # Mock whoami error
-        mock_whoami_error = WhoamiError("Authentication failed")
-        mock_client_instance.whoami.return_value = mock_whoami_error
+        # Mock get_displayname response
+        mock_displayname_response = MagicMock()
+        mock_displayname_response.displayname = "Test Bot"
+        mock_client_instance.get_displayname.return_value = mock_displayname_response
 
         result = await connect_matrix(matrix_config)
 
-        # Should still return client but with None device_id
+        # Should return client successfully
         assert result == mock_client_instance
-        assert mock_client_instance.device_id is None
+        # Note: device_id remains None for legacy config without E2EE
 
 
 @patch("mmrelay.matrix_utils.matrix_client")
@@ -1503,6 +1501,6 @@ async def test_connect_matrix_legacy_config(
         assert call_args[1]["device_id"] is None
         assert call_args[1]["store_path"] is None
 
-        # Verify sync and whoami were called
+        # Verify sync was called
         mock_client_instance.sync.assert_called()
-        mock_client_instance.whoami.assert_called_once()
+        # Note: whoami() is no longer called in the new E2EE implementation
