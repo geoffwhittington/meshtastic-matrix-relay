@@ -15,10 +15,11 @@ A powerful and easy-to-use relay between Meshtastic devices and Matrix chat room
 - Configurable through a simple YAML file
 - Supports mapping multiple rooms and channels 1:1
 - Relays messages to/from an MQTT broker, if configured in the Meshtastic firmware
-- ✨️ _Bidirectional replies and reactions support_ ✨️ **NEW!!**
-- ✨️ _Native Docker support_ ✨️ **NEW!!**
+- ✨️ _Bidirectional replies and reactions support_ ✨️
+- ✨️ _Native Docker support_ ✨️
+- 🔐 **Matrix End-to-End Encryption (E2EE) support** 🔐 **NEW in v1.2!**
 
-_We would love to support [Matrix E2EE rooms](https://github.com/jeremiah-k/meshtastic-matrix-relay/issues/33), but this is currently not implemented._
+**MMRelay v1.2** introduces full **Matrix End-to-End Encryption** support for secure communication in encrypted rooms. Messages are automatically encrypted/decrypted when communicating with encrypted Matrix rooms, with simple setup using `mmrelay --auth`.
 
 ## Documentation
 
