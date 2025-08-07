@@ -16,6 +16,25 @@ plugins/community/**
 data/**
 src/mmrelay.egg-info
 
+# Virtual environments
+venv/
+.venv/
+env/
+.env
+
+# Test and coverage artifacts
+.coverage
+coverage.xml
+junit.xml
+htmlcov/
+
+# Docker compose files (user-specific)
+docker-compose.yaml
+docker-compose.yml
+
+# Test artifacts
+MagicMock/
+
 # Allow the directories themselves to be tracked
 !data/.gitkeep
 !logs/.gitkeep
