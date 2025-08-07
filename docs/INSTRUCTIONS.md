@@ -62,7 +62,7 @@ This command will:
 
 ### Matrix Authentication Setup
 
-**Recommended Method (v1.2+)**: Use the built-in authentication command (Linux/macOS only):
+**Recommended Method (v1.2+)**: Use the built-in authentication command:
 
 ```bash
 mmrelay --auth
@@ -70,19 +70,21 @@ mmrelay --auth
 
 This interactive command will:
 - Prompt for your Matrix homeserver, username, and password
-- Create secure credentials with E2EE support
-- Save authentication details to `~/.mmrelay/credentials.json`
-- Set up encryption keys for secure communication
+- Create secure credentials and save to `~/.mmrelay/credentials.json`
+- Set up encryption keys for secure communication (Linux/macOS)
+- Work for regular Matrix communication on all platforms
 
-**Windows Users**: E2EE is not supported on Windows due to library limitations. Configure Matrix credentials directly in `config.yaml`:
+**Platform Notes**:
+- **Linux/macOS**: Full E2EE support with automatic encryption
+- **Windows**: Regular Matrix communication (E2EE not available due to library limitations)
+
+**Alternative Method**: You can manually configure Matrix credentials in `config.yaml`:
 ```yaml
 matrix:
   homeserver: https://your-matrix-server.org
   access_token: your_access_token
   bot_user_id: @yourbot:your-matrix-server.org
 ```
-
-**Legacy Method**: You can still manually configure Matrix credentials in `config.yaml`, but the `--auth` method is recommended for better security and E2EE support on Linux/macOS.
 
 ### Configuration Tips
 

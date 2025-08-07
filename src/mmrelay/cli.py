@@ -325,25 +325,22 @@ def main():
 
         # Handle --auth
         if args.auth:
-            # Check if running on Windows
-            if sys.platform == WINDOWS_PLATFORM:
-                print("Error: E2EE authentication is not supported on Windows.")
-                print("")
-                print("The Matrix End-to-End Encryption feature requires the python-olm library,")
-                print("which depends on native C libraries that are difficult to install on Windows.")
-                print("")
-                print("For E2EE support, please use MMRelay on Linux or macOS.")
-                print("On Windows, you can still use MMRelay with regular (unencrypted) Matrix rooms")
-                print("by configuring Matrix credentials directly in config.yaml.")
-                return 1
-
             import asyncio
 
             from mmrelay.matrix_utils import login_matrix_bot
 
-            # Only run the login function, not the main application
-            print("Matrix Bot Login for E2EE")
-            print("=========================")
+            # Show different header based on platform
+            if sys.platform == WINDOWS_PLATFORM:
+                print("Matrix Bot Authentication")
+                print("=========================")
+                print("Note: E2EE features are not available on Windows due to library limitations.")
+                print("These credentials will work for regular Matrix communication on Windows,")
+                print("and can be used with E2EE features if you later use Linux or macOS.")
+                print("")
+            else:
+                print("Matrix Bot Login for E2EE")
+                print("=========================")
+
             try:
                 # Run the login function
                 result = asyncio.run(login_matrix_bot())

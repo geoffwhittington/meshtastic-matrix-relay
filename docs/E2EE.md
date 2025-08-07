@@ -225,21 +225,24 @@ The `credentials.json` file contains:
 
 ### Common Issues
 
-#### "E2EE authentication is not supported on Windows"
+#### "E2EE features not available on Windows"
 
-**Problem**: Trying to use `mmrelay --auth` on Windows.
+**Problem**: E2EE features don't work on Windows even with `mmrelay --auth`.
 
 **Explanation**: E2EE requires the `python-olm` library, which depends on native C libraries that are difficult to compile on Windows.
 
 **Solutions**:
-- **Use Linux or macOS** for E2EE support
-- **Use regular Matrix authentication** on Windows by configuring credentials in `config.yaml`:
+- **Use Linux or macOS** for full E2EE support
+- **On Windows**: `mmrelay --auth` still works for regular Matrix communication
+- **Alternative**: Configure credentials manually in `config.yaml`:
   ```yaml
   matrix:
     homeserver: https://your-matrix-server.org
     access_token: your_access_token
     bot_user_id: @yourbot:your-matrix-server.org
   ```
+
+**Note**: Credentials created with `mmrelay --auth` on Windows will work with E2EE if you later use them on Linux/macOS.
 
 #### "No E2EE dependencies found"
 
