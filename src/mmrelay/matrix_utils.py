@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import ssl
+import sys
 import time
 from typing import Union
 from urllib.parse import urlparse
@@ -31,6 +32,7 @@ from nio.events.room_events import RoomMemberEvent
 from PIL import Image
 
 from mmrelay.config import get_base_dir, get_e2ee_store_dir, save_credentials
+from mmrelay.constants.app import WINDOWS_PLATFORM
 from mmrelay.constants.config import (
     CONFIG_SECTION_MATRIX,
 )
@@ -493,63 +495,70 @@ async def connect_matrix(passed_config=None):
             "e2ee" in config["matrix"]
             and config["matrix"]["e2ee"].get("enabled", False)
         ):
-            # Check if python-olm is installed
-            try:
-                import olm  # noqa: F401
-
-                e2ee_enabled = True
-                logger.info("End-to-End Encryption (E2EE) is enabled")
-
-                # Get store path from config or use default
-                if (
-                    "encryption" in config["matrix"]
-                    and "store_path" in config["matrix"]["encryption"]
-                ):
-                    e2ee_store_path = os.path.expanduser(
-                        config["matrix"]["encryption"]["store_path"]
-                    )
-                elif (
-                    "e2ee" in config["matrix"]
-                    and "store_path" in config["matrix"]["e2ee"]
-                ):
-                    e2ee_store_path = os.path.expanduser(
-                        config["matrix"]["e2ee"]["store_path"]
-                    )
-                else:
-                    from mmrelay.config import get_e2ee_store_dir
-
-                    e2ee_store_path = get_e2ee_store_dir()
-
-                # Create store directory if it doesn't exist
-                os.makedirs(e2ee_store_path, exist_ok=True)
-
-                # Check if store directory contains database files
-                store_files = (
-                    os.listdir(e2ee_store_path)
-                    if os.path.exists(e2ee_store_path)
-                    else []
-                )
-                db_files = [f for f in store_files if f.endswith(".db")]
-                if db_files:
-                    logger.info(
-                        f"Found existing E2EE store files: {', '.join(db_files)}"
-                    )
-                else:
-                    logger.warning(
-                        "No existing E2EE store files found. Encryption may not work correctly."
-                    )
-
-                logger.info(f"Using E2EE store path: {e2ee_store_path}")
-
-                # We'll get the device ID from whoami() later
-                e2ee_device_id = None
-                logger.debug("Will retrieve device_id from whoami() response")
-            except ImportError:
-                logger.warning(
-                    "E2EE is enabled in config but python-olm is not installed."
-                )
-                logger.warning("Install mmrelay[e2e] to use E2EE features.")
+            # Check if running on Windows
+            if sys.platform == WINDOWS_PLATFORM:
+                logger.error("E2EE is not supported on Windows due to library limitations.")
+                logger.error("The python-olm library requires native C libraries that are difficult to install on Windows.")
+                logger.error("Please disable E2EE in your configuration or use a Linux/macOS system for E2EE support.")
                 e2ee_enabled = False
+            else:
+                # Check if python-olm is installed
+                try:
+                    import olm  # noqa: F401
+
+                    e2ee_enabled = True
+                    logger.info("End-to-End Encryption (E2EE) is enabled")
+
+                    # Get store path from config or use default
+                    if (
+                        "encryption" in config["matrix"]
+                        and "store_path" in config["matrix"]["encryption"]
+                    ):
+                        e2ee_store_path = os.path.expanduser(
+                            config["matrix"]["encryption"]["store_path"]
+                        )
+                    elif (
+                        "e2ee" in config["matrix"]
+                        and "store_path" in config["matrix"]["e2ee"]
+                    ):
+                        e2ee_store_path = os.path.expanduser(
+                            config["matrix"]["e2ee"]["store_path"]
+                        )
+                    else:
+                        from mmrelay.config import get_e2ee_store_dir
+
+                        e2ee_store_path = get_e2ee_store_dir()
+
+                    # Create store directory if it doesn't exist
+                    os.makedirs(e2ee_store_path, exist_ok=True)
+
+                    # Check if store directory contains database files
+                    store_files = (
+                        os.listdir(e2ee_store_path)
+                        if os.path.exists(e2ee_store_path)
+                        else []
+                    )
+                    db_files = [f for f in store_files if f.endswith(".db")]
+                    if db_files:
+                        logger.info(
+                            f"Found existing E2EE store files: {', '.join(db_files)}"
+                        )
+                    else:
+                        logger.warning(
+                            "No existing E2EE store files found. Encryption may not work correctly."
+                        )
+
+                    logger.info(f"Using E2EE store path: {e2ee_store_path}")
+
+                    # We'll get the device ID from whoami() later
+                    e2ee_device_id = None
+                    logger.debug("Will retrieve device_id from whoami() response")
+                except ImportError:
+                    logger.warning(
+                        "E2EE is enabled in config but python-olm is not installed."
+                    )
+                    logger.warning("Install mmrelay[e2e] to use E2EE features.")
+                    e2ee_enabled = False
     except (KeyError, TypeError):
         # E2EE not configured
         pass

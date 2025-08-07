@@ -54,7 +54,7 @@ setup(
         "setuptools==80.9.0",
     ],
     extras_require={
-        "e2e": [
+        'e2e:sys_platform != "win32"': [
             "matrix-nio[e2e]==0.25.2",
             "python-olm",
         ],

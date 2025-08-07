@@ -325,6 +325,18 @@ def main():
 
         # Handle --auth
         if args.auth:
+            # Check if running on Windows
+            if sys.platform == WINDOWS_PLATFORM:
+                print("Error: E2EE authentication is not supported on Windows.")
+                print("")
+                print("The Matrix End-to-End Encryption feature requires the python-olm library,")
+                print("which depends on native C libraries that are difficult to install on Windows.")
+                print("")
+                print("For E2EE support, please use MMRelay on Linux or macOS.")
+                print("On Windows, you can still use MMRelay with regular (unencrypted) Matrix rooms")
+                print("by configuring Matrix credentials directly in config.yaml.")
+                return 1
+
             import asyncio
 
             from mmrelay.matrix_utils import login_matrix_bot

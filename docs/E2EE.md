@@ -61,9 +61,16 @@ That's it! MMRelay will automatically encrypt messages for encrypted rooms and d
 ## Requirements
 
 - **Python 3.9 or higher**
+- **Linux or macOS** (E2EE is not supported on Windows due to library limitations)
 - **MMRelay v1.2+** with E2EE support: `pip install mmrelay[e2e]`
 - **Matrix homeserver** that supports E2EE (most modern servers do)
 - **Dedicated bot account** recommended (don't use your personal Matrix account)
+
+### Windows Limitation
+
+**E2EE is not available on Windows** due to technical limitations with the required cryptographic libraries. The `python-olm` library requires native C libraries that are difficult to compile and install on Windows systems.
+
+**Windows users can still use MMRelay** for regular (unencrypted) Matrix communication by configuring Matrix credentials directly in `config.yaml` instead of using the `--auth` command.
 
 ### Step 2: Create E2EE Credentials
 
@@ -218,9 +225,25 @@ The `credentials.json` file contains:
 
 ### Common Issues
 
+#### "E2EE authentication is not supported on Windows"
+
+**Problem**: Trying to use `mmrelay --auth` on Windows.
+
+**Explanation**: E2EE requires the `python-olm` library, which depends on native C libraries that are difficult to compile on Windows.
+
+**Solutions**:
+- **Use Linux or macOS** for E2EE support
+- **Use regular Matrix authentication** on Windows by configuring credentials in `config.yaml`:
+  ```yaml
+  matrix:
+    homeserver: https://your-matrix-server.org
+    access_token: your_access_token
+    bot_user_id: @yourbot:your-matrix-server.org
+  ```
+
 #### "No E2EE dependencies found"
 
-**Solution**: Install E2EE dependencies:
+**Solution**: Install E2EE dependencies (Linux/macOS only):
 ```bash
 pip install mmrelay[e2e]
 ```

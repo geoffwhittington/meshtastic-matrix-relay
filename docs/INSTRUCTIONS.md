@@ -2,7 +2,7 @@
 
 MMRelay v1.2+ works on Linux, macOS, and Windows and requires Python 3.9+.
 
-**New in v1.2**: Full Matrix End-to-End Encryption (E2EE) support for secure communication in encrypted rooms.
+**New in v1.2**: Full Matrix End-to-End Encryption (E2EE) support for secure communication in encrypted rooms (Linux/macOS only).
 
 ## Installation
 
@@ -62,7 +62,7 @@ This command will:
 
 ### Matrix Authentication Setup
 
-**Recommended Method (v1.2+)**: Use the built-in authentication command:
+**Recommended Method (v1.2+)**: Use the built-in authentication command (Linux/macOS only):
 
 ```bash
 mmrelay --auth
@@ -74,7 +74,15 @@ This interactive command will:
 - Save authentication details to `~/.mmrelay/credentials.json`
 - Set up encryption keys for secure communication
 
-**Legacy Method**: You can still manually configure Matrix credentials in `config.yaml`, but the `--auth` method is recommended for better security and E2EE support.
+**Windows Users**: E2EE is not supported on Windows due to library limitations. Configure Matrix credentials directly in `config.yaml`:
+```yaml
+matrix:
+  homeserver: https://your-matrix-server.org
+  access_token: your_access_token
+  bot_user_id: @yourbot:your-matrix-server.org
+```
+
+**Legacy Method**: You can still manually configure Matrix credentials in `config.yaml`, but the `--auth` method is recommended for better security and E2EE support on Linux/macOS.
 
 ### Configuration Tips
 
