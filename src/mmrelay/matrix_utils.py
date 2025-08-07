@@ -1362,6 +1362,20 @@ async def on_decryption_failure(room: MatrixRoom, event: MegolmEvent) -> None:
         f"Try logging in again with 'mmrelay --auth'."
     )
 
+    # Attempt to request the keys for the failed event
+    try:
+        if not matrix_client:
+            logger.error("Matrix client not available, cannot request keys.")
+            return
+
+        request = event.as_key_request(
+            matrix_client.user_id, matrix_client.device_id
+        )
+        await matrix_client.to_device(request)
+        logger.info(f"Requested keys for failed decryption of event {event.event_id}")
+    except Exception as e:
+        logger.error(f"Failed to request keys for event {event.event_id}: {e}")
+
 
 # Callback for new messages in Matrix room
 async def on_room_message(
