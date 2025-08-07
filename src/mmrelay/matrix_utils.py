@@ -481,7 +481,9 @@ async def connect_matrix(passed_config=None):
     # Check if E2EE is enabled
     e2ee_enabled = False
     e2ee_store_path = None
-    e2ee_device_id = None
+    # Only initialize e2ee_device_id if not already set from credentials
+    if "e2ee_device_id" not in locals():
+        e2ee_device_id = None
 
     try:
         # Check both 'encryption' and 'e2ee' keys for backward compatibility
