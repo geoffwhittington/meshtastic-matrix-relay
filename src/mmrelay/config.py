@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import sys
@@ -154,6 +155,74 @@ def get_log_dir():
     return log_dir
 
 
+def get_e2ee_store_dir():
+    """
+    Returns the directory for storing E2EE data (encryption keys, etc.).
+    Creates the directory if it doesn't exist.
+    """
+    if sys.platform in ["linux", "darwin"]:
+        # Use ~/.mmrelay/store/ for Linux and Mac
+        store_dir = os.path.join(get_base_dir(), "store")
+    else:
+        # Use platformdirs default for Windows
+        store_dir = os.path.join(
+            platformdirs.user_data_dir(APP_NAME, APP_AUTHOR), "store"
+        )
+
+    os.makedirs(store_dir, exist_ok=True)
+    return store_dir
+
+
+def load_credentials():
+    """
+    Load Matrix credentials from credentials.json file.
+
+    Returns:
+        dict or None: Credentials dictionary if file exists and is valid, None otherwise.
+    """
+    try:
+        config_dir = get_base_dir()
+        credentials_path = os.path.join(config_dir, "credentials.json")
+
+        if os.path.exists(credentials_path):
+            with open(credentials_path, "r") as f:
+                credentials = json.load(f)
+
+            # Validate required fields
+            required_fields = ["homeserver", "user_id", "access_token", "device_id"]
+            if all(field in credentials for field in required_fields):
+                return credentials
+            else:
+                logger.warning(
+                    f"credentials.json missing required fields: {required_fields}"
+                )
+                return None
+        else:
+            return None
+    except (json.JSONDecodeError, OSError, PermissionError) as e:
+        logger.warning(f"Error loading credentials.json: {e}")
+        return None
+
+
+def save_credentials(credentials):
+    """
+    Save Matrix credentials to credentials.json file.
+
+    Args:
+        credentials (dict): Credentials dictionary to save.
+    """
+    try:
+        config_dir = get_base_dir()
+        credentials_path = os.path.join(config_dir, "credentials.json")
+
+        with open(credentials_path, "w") as f:
+            json.dump(credentials, f, indent=2)
+
+        logger.info(f"Saved credentials to {credentials_path}")
+    except (OSError, PermissionError) as e:
+        logger.error(f"Error saving credentials.json: {e}")
+
+
 # Set up a basic logger for config
 logger = logging.getLogger("Config")
 logger.setLevel(logging.INFO)
@@ -196,12 +265,34 @@ def set_config(module, passed_config):
                 CONFIG_KEY_HOMESERVER
             ]
             module.matrix_rooms = passed_config["matrix_rooms"]
-            module.matrix_access_token = passed_config[CONFIG_SECTION_MATRIX][
-                CONFIG_KEY_ACCESS_TOKEN
-            ]
-            module.bot_user_id = passed_config[CONFIG_SECTION_MATRIX][
-                CONFIG_KEY_BOT_USER_ID
-            ]
+
+            # Support both new format (access_token) and legacy format (username/password)
+            if CONFIG_KEY_ACCESS_TOKEN in passed_config[CONFIG_SECTION_MATRIX]:
+                # New format with access_token
+                module.matrix_access_token = passed_config[CONFIG_SECTION_MATRIX][
+                    CONFIG_KEY_ACCESS_TOKEN
+                ]
+                module.bot_user_id = passed_config[CONFIG_SECTION_MATRIX][
+                    CONFIG_KEY_BOT_USER_ID
+                ]
+            elif (
+                "username" in passed_config[CONFIG_SECTION_MATRIX]
+                and "password" in passed_config[CONFIG_SECTION_MATRIX]
+            ):
+                # Legacy format - set dummy values and let matrix_utils handle the error
+                module.matrix_access_token = None
+                module.bot_user_id = None
+                # Store legacy credentials for potential future use
+                module.matrix_username = passed_config[CONFIG_SECTION_MATRIX][
+                    "username"
+                ]
+                module.matrix_password = passed_config[CONFIG_SECTION_MATRIX][
+                    "password"
+                ]
+            else:
+                raise ValueError(
+                    "Invalid Matrix configuration. Missing access_token or username/password."
+                )
 
     elif module_name == "meshtastic_utils":
         # Set Meshtastic-specific configuration

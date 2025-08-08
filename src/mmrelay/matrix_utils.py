@@ -1,29 +1,43 @@
 import asyncio
+import getpass
 import io
+import json
+import logging
+import os
 import re
 import ssl
+import sys
 import time
 from typing import Union
+from urllib.parse import urlparse
+from uuid import uuid4
 
 import certifi
+import markdown
 import meshtastic.protobuf.portnums_pb2
 from nio import (
     AsyncClient,
     AsyncClientConfig,
+    DiscoveryInfoError,
+    DiscoveryInfoResponse,
     MatrixRoom,
+    MegolmEvent,
     ReactionEvent,
+    RoomEncryptionEvent,
     RoomMessageEmote,
     RoomMessageNotice,
     RoomMessageText,
+    SyncError,
     UploadResponse,
     WhoamiError,
 )
+from nio.event_builders import ToDeviceMessage
 from nio.events.room_events import RoomMemberEvent
 from PIL import Image
 
+from mmrelay.config import get_base_dir, get_e2ee_store_dir, save_credentials
+from mmrelay.constants.app import WINDOWS_PLATFORM
 from mmrelay.constants.config import (
-    CONFIG_KEY_ACCESS_TOKEN,
-    CONFIG_KEY_HOMESERVER,
     CONFIG_SECTION_MATRIX,
 )
 from mmrelay.constants.database import DEFAULT_MSGS_TO_KEEP
@@ -32,7 +46,23 @@ from mmrelay.constants.formats import (
     DEFAULT_MESHTASTIC_PREFIX,
     DETECTION_SENSOR_APP,
 )
-from mmrelay.constants.network import MILLISECONDS_PER_SECOND
+from mmrelay.constants.messages import (
+    DEFAULT_MESSAGE_TRUNCATE_BYTES,
+    DISPLAY_NAME_DEFAULT_LENGTH,
+    MAX_TRUNCATION_LENGTH,
+    MESHNET_NAME_ABBREVIATION_LENGTH,
+    MESSAGE_PREVIEW_LENGTH,
+    SHORTNAME_FALLBACK_LENGTH,
+    TRUNCATION_LOG_LIMIT,
+)
+from mmrelay.constants.network import (
+    MATRIX_EARLY_SYNC_TIMEOUT,
+    MATRIX_LOGIN_TIMEOUT,
+    MATRIX_MAIN_SYNC_TIMEOUT,
+    MATRIX_ROOM_SEND_TIMEOUT,
+    MATRIX_SYNC_OPERATION_TIMEOUT,
+    MILLISECONDS_PER_SECOND,
+)
 from mmrelay.db_utils import (
     get_message_map_by_matrix_event_id,
     prune_message_map,
@@ -150,10 +180,12 @@ def _add_truncated_vars(format_vars, prefix, text):
     # Always add truncated variables, even for empty text (to prevent KeyError)
     text = text or ""  # Convert None to empty string
     logger.debug(f"Adding truncated vars for prefix='{prefix}', text='{text}'")
-    for i in range(1, 21):  # Support up to 20 chars, always add all variants
+    for i in range(
+        1, MAX_TRUNCATION_LENGTH + 1
+    ):  # Support up to MAX_TRUNCATION_LENGTH chars, always add all variants
         truncated_value = text[:i]
         format_vars[f"{prefix}{i}"] = truncated_value
-        if i <= 6:  # Only log first few to avoid spam
+        if i <= TRUNCATION_LOG_LIMIT:  # Only log first few to avoid spam
             logger.debug(f"  {prefix}{i} = '{truncated_value}'")
 
 
@@ -238,7 +270,7 @@ def get_meshtastic_prefix(config, display_name, user_id=None):
         )
         # The default format only uses 'display5', which is safe to format
         return DEFAULT_MESHTASTIC_PREFIX.format(
-            display5=display_name[:5] if display_name else ""
+            display5=display_name[:DISPLAY_NAME_DEFAULT_LENGTH] if display_name else ""
         )
 
 
@@ -363,9 +395,10 @@ def bot_command(command, event):
 
 async def connect_matrix(passed_config=None):
     """
-    Asynchronously connects to the Matrix homeserver, initializes the Matrix client, and retrieves the bot's device ID and display name.
+    Establish a connection to the Matrix homeserver with optional E2EE support.
 
-    If a configuration dictionary is provided, it updates the global configuration before connecting. Returns the initialized Matrix AsyncClient instance, or `None` if configuration is missing. Raises `ConnectionError` if SSL context creation fails.
+    Supports both legacy token-based authentication and new credentials.json-based E2EE setup.
+    Returns the initialized Matrix AsyncClient instance, or None if configuration is missing.
     """
     global matrix_client, bot_user_name, matrix_homeserver, matrix_rooms, matrix_access_token, bot_user_id, config
 
@@ -378,15 +411,70 @@ async def connect_matrix(passed_config=None):
         logger.error("No configuration available. Cannot connect to Matrix.")
         return None
 
-    # Extract Matrix configuration
-    matrix_homeserver = config[CONFIG_SECTION_MATRIX][CONFIG_KEY_HOMESERVER]
-    matrix_rooms = config["matrix_rooms"]
-    matrix_access_token = config[CONFIG_SECTION_MATRIX][CONFIG_KEY_ACCESS_TOKEN]
-    bot_user_id = config["matrix"]["bot_user_id"]
-
     # Check if client already exists
     if matrix_client:
         return matrix_client
+
+    # Check for credentials.json first
+    credentials = None
+    credentials_path = None
+
+    # Try to find credentials.json in the config directory
+    try:
+        from mmrelay.config import get_base_dir
+
+        config_dir = get_base_dir()
+        credentials_path = os.path.join(config_dir, "credentials.json")
+
+        if os.path.exists(credentials_path):
+            logger.info(f"Found credentials at {credentials_path}")
+            with open(credentials_path, "r") as f:
+                credentials = json.load(f)
+    except Exception as e:
+        logger.warning(f"Error loading credentials: {e}")
+
+    # If credentials.json exists, use it
+    if credentials:
+        matrix_homeserver = credentials["homeserver"]
+        matrix_access_token = credentials["access_token"]
+        bot_user_id = credentials["user_id"]
+        e2ee_device_id = credentials.get("device_id")
+
+        # Log credentials loading
+        logger.info(f"Using credentials from {credentials_path}")
+        logger.info(f"Loaded device_id: {e2ee_device_id}")
+
+        # Check if device_id is missing or None
+        if not e2ee_device_id:
+            logger.error(
+                f"Device ID is missing from credentials.json! Contents: {credentials}"
+            )
+            logger.error(
+                "Please run 'mmrelay --auth' again to regenerate credentials with device_id"
+            )
+            return None
+
+        # If config also has Matrix login info, let the user know we're ignoring it
+        if config and "matrix" in config and "access_token" in config["matrix"]:
+            logger.info(
+                "NOTE: Ignoring Matrix login details in config.yaml in favor of credentials.json"
+            )
+    else:
+        # Check if config is available
+        if config is None:
+            logger.error("No configuration available. Cannot connect to Matrix.")
+            return None
+
+        # Extract Matrix configuration from config
+        matrix_homeserver = config["matrix"]["homeserver"]
+        matrix_access_token = config["matrix"]["access_token"]
+        bot_user_id = config["matrix"]["bot_user_id"]
+
+        # Set device_id for E2EE - only use config value if specified
+        e2ee_device_id = config["matrix"].get("device_id")
+
+    # Get matrix rooms from config
+    matrix_rooms = config["matrix_rooms"]
 
     # Create SSL context using certifi's certificates
     try:
@@ -395,30 +483,177 @@ async def connect_matrix(passed_config=None):
         logger.error(f"Failed to create SSL context: {e}")
         raise ConnectionError(f"SSL context creation failed: {e}") from e
 
+    # Check if E2EE is enabled
+    e2ee_enabled = False
+    e2ee_store_path = None
+    # Only initialize e2ee_device_id if not already set from credentials
+    if "e2ee_device_id" not in locals():
+        e2ee_device_id = None
+
+    try:
+        # Check both 'encryption' and 'e2ee' keys for backward compatibility
+        if (
+            "encryption" in config["matrix"]
+            and config["matrix"]["encryption"].get("enabled", False)
+        ) or (
+            "e2ee" in config["matrix"]
+            and config["matrix"]["e2ee"].get("enabled", False)
+        ):
+            # Check if running on Windows
+            if sys.platform == WINDOWS_PLATFORM:
+                logger.error("E2EE is not supported on Windows due to library limitations.")
+                logger.error("The python-olm library requires native C libraries that are difficult to install on Windows.")
+                logger.error("Please disable E2EE in your configuration or use a Linux/macOS system for E2EE support.")
+                e2ee_enabled = False
+            else:
+                # Check if python-olm is installed
+                try:
+                    import olm  # noqa: F401
+
+                    e2ee_enabled = True
+                    logger.info("End-to-End Encryption (E2EE) is enabled")
+
+                    # Get store path from config or use default
+                    if (
+                        "encryption" in config["matrix"]
+                        and "store_path" in config["matrix"]["encryption"]
+                    ):
+                        e2ee_store_path = os.path.expanduser(
+                            config["matrix"]["encryption"]["store_path"]
+                        )
+                    elif (
+                        "e2ee" in config["matrix"]
+                        and "store_path" in config["matrix"]["e2ee"]
+                    ):
+                        e2ee_store_path = os.path.expanduser(
+                            config["matrix"]["e2ee"]["store_path"]
+                        )
+                    else:
+                        from mmrelay.config import get_e2ee_store_dir
+
+                        e2ee_store_path = get_e2ee_store_dir()
+
+                    # Create store directory if it doesn't exist
+                    os.makedirs(e2ee_store_path, exist_ok=True)
+
+                    # Check if store directory contains database files
+                    store_files = (
+                        os.listdir(e2ee_store_path)
+                        if os.path.exists(e2ee_store_path)
+                        else []
+                    )
+                    db_files = [f for f in store_files if f.endswith(".db")]
+                    if db_files:
+                        logger.info(
+                            f"Found existing E2EE store files: {', '.join(db_files)}"
+                        )
+                    else:
+                        logger.warning(
+                            "No existing E2EE store files found. Encryption may not work correctly."
+                        )
+
+                    logger.info(f"Using E2EE store path: {e2ee_store_path}")
+
+                    # We'll get the device ID from whoami() later
+                    e2ee_device_id = None
+                    logger.debug("Will retrieve device_id from whoami() response")
+                except ImportError:
+                    logger.warning(
+                        "E2EE is enabled in config but python-olm is not installed."
+                    )
+                    logger.warning("Install mmrelay[e2e] to use E2EE features.")
+                    e2ee_enabled = False
+    except (KeyError, TypeError):
+        # E2EE not configured
+        pass
+
     # Initialize the Matrix client with custom SSL context
-    client_config = AsyncClientConfig(encryption_enabled=False)
+    # Use the same AsyncClientConfig pattern as working E2EE examples
+    client_config = AsyncClientConfig(
+        max_limit_exceeded=0,
+        max_timeouts=0,
+        store_sync_tokens=True,
+        encryption_enabled=e2ee_enabled,
+    )
+
+    # Log the device ID being used
+    if e2ee_device_id:
+        logger.debug(f"Device ID from credentials: {e2ee_device_id}")
+
     matrix_client = AsyncClient(
         homeserver=matrix_homeserver,
         user=bot_user_id,
+        device_id=e2ee_device_id,  # Will be None if not specified in config or credentials
+        store_path=e2ee_store_path if e2ee_enabled else None,
         config=client_config,
         ssl=ssl_context,
     )
 
-    # Set the access_token and user_id
-    matrix_client.access_token = matrix_access_token
-    matrix_client.user_id = bot_user_id
+    # Set the access_token and user_id using restore_login for better session management
+    if credentials:
+        # CRITICAL: Set device_id on client BEFORE calling restore_login
+        # matrix-nio requires this for E2EE store loading
+        matrix_client.device_id = e2ee_device_id
+        logger.info(f"Using device ID: {matrix_client.device_id}")
 
-    # Attempt to retrieve the device_id using whoami()
-    whoami_response = await matrix_client.whoami()
-    if isinstance(whoami_response, WhoamiError):
-        logger.error(f"Failed to retrieve device_id: {whoami_response.message}")
-        matrix_client.device_id = None
+        # Use restore_login method for proper session restoration
+        matrix_client.restore_login(
+            user_id=bot_user_id,
+            device_id=e2ee_device_id,
+            access_token=matrix_access_token,
+        )
+        logger.info(
+            f"Restored login session for {bot_user_id} with device {e2ee_device_id}"
+        )
     else:
-        matrix_client.device_id = whoami_response.device_id
-        if matrix_client.device_id:
-            logger.debug(f"Retrieved device_id: {matrix_client.device_id}")
+        # Fallback to direct assignment for legacy token-based auth
+        matrix_client.access_token = matrix_access_token
+        matrix_client.user_id = bot_user_id
+
+    # If E2EE is enabled, load the store and set up encryption BEFORE any sync operations
+    if e2ee_enabled:
+        try:
+            logger.info("Setting up End-to-End Encryption...")
+
+            # Load the encryption store immediately after setting credentials
+            logger.debug("Loading encryption store...")
+            matrix_client.load_store()
+            logger.debug("Encryption store loaded successfully")
+
+            # Upload keys if needed
+            if matrix_client.should_upload_keys:
+                logger.info("Uploading encryption keys...")
+                await matrix_client.keys_upload()
+                logger.info("Encryption keys uploaded successfully")
+            else:
+                logger.debug("No key upload needed")
+
+        except Exception as e:
+            logger.error(f"Failed to set up E2EE: {e}")
+            logger.error("E2EE will not work correctly")
+            # Don't fail completely, continue without E2EE
+
+    # Perform initial sync to populate rooms (needed for message delivery)
+    logger.info("Performing initial sync to initialize rooms...")
+    try:
+        # A full_state=True sync is required to get room encryption state
+        sync_response = await asyncio.wait_for(
+            matrix_client.sync(
+                timeout=MATRIX_EARLY_SYNC_TIMEOUT, full_state=True
+            ),
+            timeout=MATRIX_SYNC_OPERATION_TIMEOUT,
+        )
+        # Check if sync failed by looking for error class name
+        if hasattr(sync_response, '__class__') and 'Error' in sync_response.__class__.__name__:
+            logger.error(f"Initial sync failed: {sync_response}")
+            raise ConnectionError(f"Matrix sync failed: {sync_response}")
         else:
-            logger.warning("device_id not returned by whoami()")
+            logger.info(f"Initial sync completed. Found {len(matrix_client.rooms)} rooms.")
+    except asyncio.TimeoutError:
+        logger.error(f"Initial sync timed out after {MATRIX_SYNC_OPERATION_TIMEOUT} seconds")
+        raise
+
+
 
     # Fetch the bot's display name
     response = await matrix_client.get_displayname(bot_user_id)
@@ -427,7 +662,220 @@ async def connect_matrix(passed_config=None):
     else:
         bot_user_name = bot_user_id  # Fallback if display name is not set
 
+
+
+
+
+
+
     return matrix_client
+
+
+async def login_matrix_bot(
+    homeserver=None, username=None, password=None, logout_others=False
+):
+    """
+    Login to Matrix as a bot and save the access token for E2EE use.
+
+    This function creates a new Matrix session with E2EE support and saves
+    the credentials to credentials.json for use by the relay.
+
+    Args:
+        homeserver: The Matrix homeserver URL
+        username: The Matrix username
+        password: The Matrix password
+        logout_others: Whether to log out other sessions
+
+    Returns:
+        bool: True if login was successful, False otherwise
+    """
+    try:
+        # Enable nio debug logging for detailed connection analysis
+        logging.getLogger("nio").setLevel(logging.DEBUG)
+        logging.getLogger("nio.client").setLevel(logging.DEBUG)
+        logging.getLogger("nio.http_client").setLevel(logging.DEBUG)
+        logging.getLogger("aiohttp").setLevel(logging.DEBUG)
+
+        # Get homeserver URL
+        if not homeserver:
+            homeserver = input(
+                "Enter Matrix homeserver URL (e.g., https://matrix.org): "
+            )
+
+        # Ensure homeserver URL has the correct format
+        if not (homeserver.startswith("https://") or homeserver.startswith("http://")):
+            homeserver = "https://" + homeserver
+
+        # Step 1: Perform server discovery to get the actual homeserver URL
+        logger.info(f"Performing server discovery for {homeserver}...")
+
+        # Create a temporary client for discovery
+        temp_client = AsyncClient(homeserver, "")
+        try:
+            discovery_response = await asyncio.wait_for(
+                temp_client.discovery_info(), timeout=30.0
+            )
+
+            if isinstance(discovery_response, DiscoveryInfoResponse):
+                actual_homeserver = discovery_response.homeserver_url
+                logger.info(f"Server discovery successful: {actual_homeserver}")
+                homeserver = actual_homeserver
+            elif isinstance(discovery_response, DiscoveryInfoError):
+                logger.info(
+                    f"Server discovery failed, using original URL: {homeserver}"
+                )
+                # Continue with original homeserver URL
+
+        except asyncio.TimeoutError:
+            logger.warning(
+                f"Server discovery timed out, using original URL: {homeserver}"
+            )
+            # Continue with original homeserver URL
+        except Exception as e:
+            logger.warning(
+                f"Server discovery error: {e}, using original URL: {homeserver}"
+            )
+            # Continue with original homeserver URL
+        finally:
+            await temp_client.close()
+
+        # Get username
+        if not username:
+            username = input("Enter Matrix username (without @): ")
+
+        # Format username correctly
+        if not username.startswith("@"):
+            username = f"@{username}"
+
+        server_name = urlparse(homeserver).netloc
+        if ":" not in username:
+            username = f"{username}:{server_name}"
+
+        logger.info(f"Using username: {username}")
+
+        # Get password
+        if not password:
+            password = getpass.getpass("Enter Matrix password: ")
+
+        # Ask about logging out other sessions
+        if logout_others is None:
+            logout_others_input = input(
+                "Log out other sessions? (Y/n) [Default: Yes]: "
+            ).lower()
+            logout_others = (
+                not logout_others_input.startswith("n") if logout_others_input else True
+            )
+
+        # Check for existing credentials to reuse device_id
+        existing_device_id = None
+        try:
+            config_dir = get_base_dir()
+            credentials_path = os.path.join(config_dir, "credentials.json")
+
+            if os.path.exists(credentials_path):
+                with open(credentials_path, "r") as f:
+                    existing_creds = json.load(f)
+                    if (
+                        "device_id" in existing_creds
+                        and existing_creds["user_id"] == username
+                    ):
+                        existing_device_id = existing_creds["device_id"]
+                        logger.info(f"Reusing existing device_id: {existing_device_id}")
+        except Exception as e:
+            logger.debug(f"Could not load existing credentials: {e}")
+
+        # Get the E2EE store path
+        store_path = get_e2ee_store_dir()
+        os.makedirs(store_path, exist_ok=True)
+        logger.info(f"Using E2EE store path: {store_path}")
+
+        # Create client config for E2EE
+        client_config = AsyncClientConfig(
+            store_sync_tokens=True, encryption_enabled=True
+        )
+
+        # Try default SSL context first (like matrix-commander)
+        # If that fails, we'll try with certifi SSL context
+        ssl_context = None  # Use aiohttp default SSL context
+
+        # Initialize client with E2EE support
+        # Use most common pattern from matrix-nio examples: positional homeserver and user
+        client = AsyncClient(
+            homeserver,
+            username,
+            device_id=existing_device_id,
+            store_path=store_path,
+            config=client_config,
+            ssl=ssl_context,
+        )
+
+        logger.info(f"Logging in as {username} to {homeserver}...")
+
+        # Login with consistent device name and timeout
+        # Use the original working device name
+        device_name = "mmrelay-e2ee"
+        try:
+            # Set device_id on client if we have an existing one
+            if existing_device_id:
+                client.device_id = existing_device_id
+
+            response = await asyncio.wait_for(
+                client.login(password, device_name=device_name),
+                timeout=MATRIX_LOGIN_TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Login timed out after {MATRIX_LOGIN_TIMEOUT} seconds")
+            logger.error(
+                "This may indicate network connectivity issues or a slow Matrix server"
+            )
+            await client.close()
+            return False
+        except Exception as e:
+            # Handle other exceptions during login (e.g., network errors)
+            logger.error(f"Login exception: {e}")
+            logger.error(f"Exception type: {type(e)}")
+            if hasattr(e, "message"):
+                logger.error(f"Exception message: {e.message}")
+            await client.close()
+            return False
+
+        if hasattr(response, "access_token"):
+            logger.info("Login successful!")
+
+            # Save credentials to credentials.json
+            credentials = {
+                "homeserver": homeserver,
+                "user_id": username,
+                "access_token": response.access_token,
+                "device_id": response.device_id,
+            }
+
+            config_dir = get_base_dir()
+            credentials_path = os.path.join(config_dir, "credentials.json")
+            save_credentials(credentials)
+            logger.info(f"Credentials saved to {credentials_path}")
+
+            # Logout other sessions if requested
+            if logout_others:
+                logger.info("Logging out other sessions...")
+                # Note: This would require additional implementation
+                logger.warning("Logout others not yet implemented")
+
+            await client.close()
+            return True
+        else:
+            # Better error logging
+            logger.error(f"Login failed: {response}")
+            if hasattr(response, "message"):
+                logger.error(f"Error message: {response.message}")
+            if hasattr(response, "status_code"):
+                logger.error(f"Status code: {response.status_code}")
+            await client.close()
+            return False
+
+    except Exception as e:
+        logger.error(f"Error during login: {e}")
+        return False
 
 
 async def join_matrix_room(matrix_client, room_id_or_alias: str) -> None:
@@ -543,19 +991,8 @@ async def matrix_relay(
 
         # Process markdown to HTML if needed (like base plugin does)
         if has_markdown or has_html:
-            try:
-                import markdown
-
-                formatted_body = markdown.markdown(message)
-                plain_body = re.sub(
-                    r"</?[^>]*>", "", formatted_body
-                )  # Strip all HTML tags
-            except ImportError:
-                # Fallback if markdown is not available
-                formatted_body = message
-                plain_body = message
-                has_markdown = False
-                has_html = False
+            formatted_body = markdown.markdown(message)
+            plain_body = re.sub(r"</?[^>]*>", "", formatted_body)  # Strip all HTML tags
         else:
             formatted_body = message
             plain_body = message
@@ -569,10 +1006,10 @@ async def matrix_relay(
             "meshtastic_portnum": portnum,
         }
 
-        # Add HTML formatting fields if message has markdown or HTML
-        if has_markdown or has_html:
-            content["format"] = "org.matrix.custom.html"
-            content["formatted_body"] = formatted_body
+        # Always add format and formatted_body to avoid nio validation errors
+        # where formatted_body becomes None and fails schema validation.
+        content["format"] = "org.matrix.custom.html"
+        content["formatted_body"] = formatted_body
         if meshtastic_id is not None:
             content["meshtastic_id"] = meshtastic_id
         if meshtastic_replyId is not None:
@@ -623,13 +1060,33 @@ async def matrix_relay(
                 return
 
             # Send the message with a timeout
+            # For encrypted rooms, use ignore_unverified_devices=True
+            # After checking working implementations, always use ignore_unverified_devices=True
+            # for text messages to ensure encryption works properly
+            room = (
+                matrix_client.rooms.get(room_id)
+                if matrix_client and hasattr(matrix_client, "rooms")
+                else None
+            )
+
+            # Debug logging for encryption status
+            if room:
+                encrypted_status = getattr(room, "encrypted", "unknown")
+                logger.debug(f"Room {room_id} encryption status: encrypted={encrypted_status}")
+            else:
+                logger.warning(f"Room {room_id} not found in client.rooms")
+
+            # Always use ignore_unverified_devices=True for text messages (like matrix-nio-send)
+            logger.debug(f"Sending message with ignore_unverified_devices=True (always for text messages)")
+
             response = await asyncio.wait_for(
                 matrix_client.room_send(
                     room_id=room_id,
                     message_type="m.room.message",
                     content=content,
+                    ignore_unverified_devices=True,
                 ),
-                timeout=10.0,  # Increased timeout
+                timeout=MATRIX_ROOM_SEND_TIMEOUT,  # Increased timeout
             )
 
             # Log at info level, matching one-point-oh pattern
@@ -676,7 +1133,7 @@ async def matrix_relay(
         logger.error(f"Error sending radio message to matrix room {room_id}: {e}")
 
 
-def truncate_message(text, max_bytes=227):
+def truncate_message(text, max_bytes=DEFAULT_MESSAGE_TRUNCATE_BYTES):
     """
     Truncate the given text to fit within the specified byte size.
 
@@ -888,10 +1345,44 @@ async def handle_matrix_reply(
     return True  # Reply was handled, stop further processing
 
 
+async def on_decryption_failure(room: MatrixRoom, event: MegolmEvent) -> None:
+    """Callback for when an event fails to decrypt."""
+    logger.error(
+        f"Failed to decrypt event '{event.event_id}' in room '{room.room_id}'! "
+        f"This is usually temporary and resolves on its own. "
+        f"If this persists, the bot's session may be corrupt. "
+        f"Try logging in again with 'mmrelay --auth'."
+    )
+
+    # Attempt to request the keys for the failed event
+    try:
+        if not matrix_client:
+            logger.error("Matrix client not available, cannot request keys.")
+            return
+
+        # Monkey-patch the event object with the correct room_id
+        event.room_id = room.room_id
+
+        request = event.as_key_request(
+            matrix_client.user_id, matrix_client.device_id
+        )
+        await matrix_client.to_device(request)
+        logger.info(f"Requested keys for failed decryption of event {event.event_id}")
+    except Exception as e:
+        logger.error(f"Failed to request keys for event {event.event_id}: {e}")
+
+
 # Callback for new messages in Matrix room
 async def on_room_message(
     room: MatrixRoom,
-    event: Union[RoomMessageText, RoomMessageNotice, ReactionEvent, RoomMessageEmote],
+    event: Union[
+        RoomMessageText,
+        RoomMessageNotice,
+        ReactionEvent,
+        RoomMessageEmote,
+        MegolmEvent,
+        RoomEncryptionEvent,
+    ],
 ) -> None:
     """
     Asynchronously handles incoming Matrix room messages, reactions, and replies, relaying them to Meshtastic as appropriate.
@@ -913,6 +1404,15 @@ async def on_room_message(
     # Do not process messages from the bot itself
     if event.sender == bot_user_id:
         return
+
+    # Handle RoomEncryptionEvent - log when a room becomes encrypted
+    if isinstance(event, RoomEncryptionEvent):
+        logger.info(f"Room {room.room_id} is now encrypted")
+        return
+
+    # Note: MegolmEvent (encrypted) messages are handled by the `on_decryption_failure`
+    # callback if they fail, or by the `RoomMessageText` callback if they succeed.
+    # No explicit handling is needed here.
 
     # Find the room_config that matches this room, if any
     room_config = None
@@ -1011,12 +1511,12 @@ async def on_room_message(
         ):
             logger.info(f"Relaying reaction from remote meshnet: {meshnet_name}")
 
-            short_meshnet_name = meshnet_name[:4]
+            short_meshnet_name = meshnet_name[:MESHNET_NAME_ABBREVIATION_LENGTH]
 
             # Format the reaction message for relaying to the local meshnet.
             # The necessary information is in the m.emote event
             if not shortname:
-                shortname = longname[:3] if longname else "???"
+                shortname = longname[:SHORTNAME_FALLBACK_LENGTH] if longname else "???"
 
             meshtastic_text_db = event.source["content"].get("meshtastic_text", "")
             # Strip out any quoted lines from the text
@@ -1026,8 +1526,8 @@ async def on_room_message(
             )
 
             abbreviated_text = (
-                meshtastic_text_db[:40] + "..."
-                if len(meshtastic_text_db) > 40
+                meshtastic_text_db[:MESSAGE_PREVIEW_LENGTH] + "..."
+                if len(meshtastic_text_db) > MESSAGE_PREVIEW_LENGTH
                 else meshtastic_text_db
             )
 
@@ -1098,8 +1598,8 @@ async def on_room_message(
             )
 
             abbreviated_text = (
-                meshtastic_text_db[:40] + "..."
-                if len(meshtastic_text_db) > 40
+                meshtastic_text_db[:MESSAGE_PREVIEW_LENGTH] + "..."
+                if len(meshtastic_text_db) > MESSAGE_PREVIEW_LENGTH
                 else meshtastic_text_db
             )
 
@@ -1158,10 +1658,10 @@ async def on_room_message(
         if meshnet_name != local_meshnet_name:
             # A message from a remote meshnet relayed into Matrix, now going back out
             logger.info(f"Processing message from remote meshnet: {meshnet_name}")
-            short_meshnet_name = meshnet_name[:4]
+            short_meshnet_name = meshnet_name[:MESHNET_NAME_ABBREVIATION_LENGTH]
             # If shortname is not available, derive it from the longname
             if shortname is None:
-                shortname = longname[:3] if longname else "???"
+                shortname = longname[:SHORTNAME_FALLBACK_LENGTH] if longname else "???"
             # Remove the original prefix to avoid double-tagging
             # Get the prefix that would have been used for this message
             original_prefix = get_matrix_prefix(

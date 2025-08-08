@@ -564,6 +564,7 @@ class TestMainFunction(unittest.TestCase):
         args.install_service = False
         args.generate_config = False
         args.version = False
+        args.auth = False  # Add missing auth attribute
         mock_parse.return_value = args
         mock_run_main.return_value = 0
 

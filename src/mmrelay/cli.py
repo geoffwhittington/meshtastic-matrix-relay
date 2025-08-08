@@ -79,6 +79,11 @@ def parse_arguments():
         action="store_true",
         help="Check if the configuration file is valid",
     )
+    parser.add_argument(
+        "--auth",
+        action="store_true",
+        help="Authenticate with Matrix and save credentials for E2EE support",
+    )
 
     # Windows-specific handling for backward compatibility
     # On Windows, add a positional argument for the config file path
@@ -318,6 +323,35 @@ def main():
             print_version()
             return 0
 
+        # Handle --auth
+        if args.auth:
+            import asyncio
+
+            from mmrelay.matrix_utils import login_matrix_bot
+
+            # Show different header based on platform
+            if sys.platform == WINDOWS_PLATFORM:
+                print("Matrix Bot Authentication")
+                print("=========================")
+                print("Note: E2EE features are not available on Windows due to library limitations.")
+                print("These credentials will work for regular Matrix communication on Windows,")
+                print("and can be used with E2EE features if you later use Linux or macOS.")
+                print("")
+            else:
+                print("Matrix Bot Login for E2EE")
+                print("=========================")
+
+            try:
+                # Run the login function
+                result = asyncio.run(login_matrix_bot())
+                return 0 if result else 1
+            except KeyboardInterrupt:
+                print("\nLogin cancelled by user.")
+                return 1
+            except Exception as e:
+                print(f"\nError during login: {e}")
+                return 1
+
         # If no command was specified, run the main functionality
         try:
             from mmrelay.main import run_main
@@ -328,7 +362,11 @@ def main():
             return 1
 
     except Exception as e:
+        import traceback
+
         print(f"Unexpected error: {e}")
+        print("Full traceback:")
+        traceback.print_exc()
         return 1
 
 
