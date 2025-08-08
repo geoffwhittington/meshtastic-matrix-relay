@@ -991,19 +991,8 @@ async def matrix_relay(
 
         # Process markdown to HTML if needed (like base plugin does)
         if has_markdown or has_html:
-            try:
-                import markdown
-
-                formatted_body = markdown.markdown(message)
-                plain_body = re.sub(
-                    r"</?[^>]*>", "", formatted_body
-                )  # Strip all HTML tags
-            except ImportError:
-                # Fallback if markdown is not available
-                formatted_body = message
-                plain_body = message
-                has_markdown = False
-                has_html = False
+            formatted_body = markdown.markdown(message)
+            plain_body = re.sub(r"</?[^>]*>", "", formatted_body)  # Strip all HTML tags
         else:
             formatted_body = message
             plain_body = message
@@ -1365,8 +1354,7 @@ async def on_decryption_failure(room: MatrixRoom, event: MegolmEvent) -> None:
         f"Try logging in again with 'mmrelay --auth'."
     )
 
-    # Manually construct and send a key request.
-    # We use room.room_id because event.room_id is not reliably populated.
+    # Attempt to request the keys for the failed event
     try:
         if not matrix_client:
             logger.error("Matrix client not available, cannot request keys.")
@@ -1378,10 +1366,8 @@ async def on_decryption_failure(room: MatrixRoom, event: MegolmEvent) -> None:
         request = event.as_key_request(
             matrix_client.user_id, matrix_client.device_id
         )
-
         await matrix_client.to_device(request)
         logger.info(f"Requested keys for failed decryption of event {event.event_id}")
-
     except Exception as e:
         logger.error(f"Failed to request keys for event {event.event_id}: {e}")
 

@@ -75,6 +75,7 @@ nio_mock = MagicMock()
 sys.modules["nio"] = nio_mock
 sys.modules["nio.events"] = MagicMock()
 sys.modules["nio.events.room_events"] = MagicMock()
+sys.modules["nio.event_builders"] = MagicMock()
 
 
 # Create proper mock classes for nio that can be used with isinstance()
