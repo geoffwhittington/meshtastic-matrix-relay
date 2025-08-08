@@ -99,6 +99,14 @@ class MockRoomMessageText:
     pass
 
 
+class MockRoomEncryptionEvent:
+    pass
+
+
+class MockMegolmEvent:
+    pass
+
+
 class MockWhoamiError(Exception):
     """Mock WhoamiError that inherits from Exception for isinstance checks."""
 
@@ -114,6 +122,8 @@ nio_mock.ReactionEvent = MockReactionEvent
 nio_mock.RoomMessageEmote = MockRoomMessageEmote
 nio_mock.RoomMessageNotice = MockRoomMessageNotice
 nio_mock.RoomMessageText = MockRoomMessageText
+nio_mock.RoomEncryptionEvent = MockRoomEncryptionEvent
+nio_mock.MegolmEvent = MockMegolmEvent
 nio_mock.UploadResponse = MagicMock()
 nio_mock.WhoamiError = MockWhoamiError
 
