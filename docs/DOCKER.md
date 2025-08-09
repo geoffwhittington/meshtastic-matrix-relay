@@ -251,7 +251,7 @@ docker compose exec mmrelay bash
 Uses the same directories as standalone installation:
 
 - **Config**: `~/.mmrelay/config.yaml` (mounted read-only to `/app/config.yaml`)
-- **Data Directory**: `~/.mmrelay/` (mounted to `/app/data` - contains database, logs, plugins)
+- **Data Directory**: `~/.mmrelay/` (mounted to `/app/data`). This directory on your host will contain subdirectories for the database (`data/`), logs (`logs/`), and plugins.
 
 **Volume Mounting Explanation:**
 The Docker compose files mount `~/.mmrelay/` to `/app/data` which contains all persistent data (database, logs, plugins). The config file is also mounted separately to `/app/config.yaml` for clarity, even though it's technically accessible via the data mount. This dual mounting ensures the container can find the config file at the expected location.
