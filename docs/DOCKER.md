@@ -11,7 +11,7 @@ MMRelay supports Docker deployment with two image options and multiple deploymen
     - [Option B: Direct Docker Compose (no repo needed)](#option-b-direct-docker-compose-no-repo-needed)
     - [Option C: Portainer/GUI Tools](#option-c-portainergui-tools)
   - [Method 2: Build from Source](#method-2-build-from-source)
-    - [Option A: With Make (from cloned repository)](#option-a-with-make-from-cloned-repository-1)
+    - [Option A: With Make (build from source)](#option-a-with-make-build-from-source)
     - [Option B: Without Make](#option-b-without-make)
 - [Environment Variables](#environment-variables)
 - [Make Commands Reference](#make-commands-reference)
@@ -88,6 +88,7 @@ docker compose logs -f
 ```
 
 **Notes:**
+
 - Skip the .env file if you want to use defaults (UID=1000, GID=1000, MMRELAY_HOME=$HOME)
 - For BLE or Watchtower features, uncomment relevant sections in the docker-compose.yaml
 - The container will automatically pull the latest official image
@@ -97,6 +98,7 @@ docker compose logs -f
 For users who prefer web-based Docker management:
 
 1. **Create config file on your host:**
+
    ```bash
    mkdir -p ~/.mmrelay/data ~/.mmrelay/logs
    curl -o ~/.mmrelay/config.yaml https://raw.githubusercontent.com/jeremiah-k/meshtastic-matrix-relay/main/src/mmrelay/tools/sample_config.yaml
@@ -136,7 +138,7 @@ For users who prefer web-based Docker management:
 - **Benefits**: Full control, local modifications, development, latest features
 - **Best for**: Developers, contributors, users who want customization
 
-#### Option A: With Make (from cloned repository)
+#### Option A: With Make (build from source)
 
 If you've cloned the repository locally, use the convenient Make commands:
 
@@ -163,8 +165,6 @@ docker compose logs -f
 ```
 
 **Note:** The `make config` command is still the easiest way to set up the files correctly. Building from source without any Make commands would require manually creating all configuration files and is not recommended.
-
-
 
 ## Environment Variables
 
