@@ -7,12 +7,12 @@ MMRelay supports Docker deployment with two image options and multiple deploymen
 - [Quick Start](#quick-start)
 - [Deployment Methods](#deployment-methods)
   - [Method 1: Prebuilt Images (Recommended)](#method-1-prebuilt-images-recommended)
-    - [Option A: With Make (if you have the repo)](#option-a-with-make-if-you-have-the-repo)
+    - [Option A: With Make (from cloned repository)](#option-a-with-make-from-cloned-repository)
     - [Option B: Direct Docker Compose (no repo needed)](#option-b-direct-docker-compose-no-repo-needed)
     - [Option C: Portainer/GUI Tools](#option-c-portainergui-tools)
   - [Method 2: Build from Source](#method-2-build-from-source)
-    - [Option A: With Make (recommended)](#option-a-with-make-recommended)
-    - [Option B: Manual Docker Build](#option-b-manual-docker-build)
+    - [Option A: With Make (from cloned repository)](#option-a-with-make-from-cloned-repository-1)
+    - [Option B: Without Make](#option-b-without-make)
 - [Environment Variables](#environment-variables)
 - [Make Commands Reference](#make-commands-reference)
 - [Connection Types](#connection-types)
@@ -49,9 +49,9 @@ Choose the method that best fits your needs:
 - **Benefits**: Fastest setup, multi-platform (amd64/arm64), automatic updates
 - **Best for**: Most users who want to run MMRelay quickly
 
-#### Option A: With Make (if you have the repo)
+#### Option A: With Make (from cloned repository)
 
-If you've cloned the repository, use the convenient Make commands:
+If you've cloned the repository locally, use the convenient Make commands:
 
 ```bash
 make setup-prebuilt  # Copy config, .env, and docker-compose.yaml, then opens editor
@@ -136,9 +136,9 @@ For users who prefer web-based Docker management:
 - **Benefits**: Full control, local modifications, development, latest features
 - **Best for**: Developers, contributors, users who want customization
 
-#### Option A: With Make (recommended)
+#### Option A: With Make (from cloned repository)
 
-If you've cloned the repository, use the convenient Make commands:
+If you've cloned the repository locally, use the convenient Make commands:
 
 ```bash
 make setup    # Copy config, .env, and docker-compose.yaml, then opens editor
@@ -147,47 +147,22 @@ make run      # Start container
 make logs     # View logs
 ```
 
-#### Option B: Manual Docker Build
+#### Option B: Without Make
 
-**Build from source without Make commands:**
+If you prefer not to use Make commands, you can use the standard Docker Compose workflow:
 
 ```bash
-# Step 1: Clone repository (if not already done)
-git clone https://github.com/jeremiah-k/meshtastic-matrix-relay.git
-cd meshtastic-matrix-relay
+# After cloning the repository:
+make config  # Creates ~/.mmrelay/config.yaml, .env, and docker-compose.yaml
+nano ~/.mmrelay/config.yaml  # Edit your settings
 
-# Step 2: Create directories and config
-mkdir -p ~/.mmrelay/data ~/.mmrelay/logs
-cp src/mmrelay/tools/sample_config.yaml ~/.mmrelay/config.yaml
-nano ~/.mmrelay/config.yaml  # Edit with your settings
-
-# Step 3: Create docker-compose.yaml for building
-cat > docker-compose.yaml << 'EOF'
-services:
-  mmrelay:
-    build: .
-    container_name: meshtastic-matrix-relay
-    restart: unless-stopped
-    user: "${UID:-1000}:${GID:-1000}"
-    environment:
-      - TZ=UTC
-      - PYTHONUNBUFFERED=1
-      - MPLCONFIGDIR=/tmp/matplotlib
-    volumes:
-      - ~/.mmrelay/config.yaml:/app/config.yaml:ro
-      - ~/.mmrelay:/app/data
-    ports:
-      - "4403:4403"
-EOF
-
-# Step 4: Build and start
-export UID=$(id -u) GID=$(id -g)
+# Build and start:
 docker compose build
 docker compose up -d
-
-# View logs
 docker compose logs -f
 ```
+
+**Note:** The `make config` command is still the easiest way to set up the files correctly. Building from source without any Make commands would require manually creating all configuration files and is not recommended.
 
 
 
@@ -275,9 +250,11 @@ docker compose exec mmrelay bash
 
 Uses the same directories as standalone installation:
 
-- **Config**: `~/.mmrelay/config.yaml` (mounted read-only)
-- **Database**: `~/.mmrelay/data/` (persistent)
-- **Logs**: `~/.mmrelay/logs/` (persistent)
+- **Config**: `~/.mmrelay/config.yaml` (mounted read-only to `/app/config.yaml`)
+- **Data Directory**: `~/.mmrelay/` (mounted to `/app/data` - contains database, logs, plugins)
+
+**Volume Mounting Explanation:**
+The Docker compose files mount `~/.mmrelay/` to `/app/data` which contains all persistent data (database, logs, plugins). The config file is also mounted separately to `/app/config.yaml` for clarity, even though it's technically accessible via the data mount. This dual mounting ensures the container can find the config file at the expected location.
 
 This means your Docker and standalone installations share the same data!
 
