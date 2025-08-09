@@ -27,7 +27,7 @@ MMRelay supports Docker deployment with two image options and multiple deploymen
 ```bash
 # 1. Create directories and get config
 mkdir -p ~/.mmrelay/data ~/.mmrelay/logs
-curl -o ~/.mmrelay/config.yaml https://raw.githubusercontent.com/jeremiah-k/meshtastic-matrix-relay/main/src/mmrelay/tools/sample_config.yaml
+curl -Lo ~/.mmrelay/config.yaml https://raw.githubusercontent.com/jeremiah-k/meshtastic-matrix-relay/main/src/mmrelay/tools/sample_config.yaml
 
 # 2. Edit your config
 nano ~/.mmrelay/config.yaml
